@@ -1,0 +1,17 @@
+{
+  "name": "SWARMFALL_P1A",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {"$className": "Workspace", "Level01": {"$path": "build/Level01.rbxmx"}},
+    "ReplicatedStorage": {
+      "Shared": {"$path": "src/shared"},
+      "Remotes": {"Input": {"$className": "RemoteEvent"}, "Snapshot": {"$className": "RemoteEvent"}, "FX": {"$className": "RemoteEvent"}}
+    },
+    "ServerScriptService": {"$path": "src/server"},
+    "StarterPlayer": {
+      "StarterPlayerScripts": {"$path": "src/client"},
+      "StarterCharacterScripts": {"$path": "src/startercharacter"}
+    },
+    "Lighting": {"$properties": {"ClockTime": 14, "Brightness": 2}}
+  }
+}

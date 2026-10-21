@@ -1,0 +1,1 @@
+-- Replaces Roblox's default "Health" regen script. The server simulation owns player HP.

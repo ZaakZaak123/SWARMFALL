@@ -1,0 +1,6 @@
+__pycache__/
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxl.autosave
+build/
+roblox.yml

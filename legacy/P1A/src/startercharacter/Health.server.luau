@@ -1,0 +1,1 @@
+-- Disable Roblox's default automatic health regeneration. Server owns HP.

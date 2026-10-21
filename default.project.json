@@ -1,0 +1,38 @@
+{
+  "name": "SWARMFALL",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": { "$path": "src/shared" }
+    },
+    "ServerScriptService": {
+      "Server": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CharacterUseJumpPower": true,
+        "CharacterJumpPower": 0,
+        "CharacterWalkSpeed": 18,
+        "CameraMaxZoomDistance": 128,
+        "EnableMouseLockOption": false,
+        "AutoJumpEnabled": false
+      },
+      "StarterPlayerScripts": {
+        "Client": { "$path": "src/client" }
+      },
+      "StarterCharacterScripts": { "$path": "src/startercharacter" }
+    },
+    "Players": {
+      "$properties": { "CharacterAutoLoads": false, "RespawnTime": 3 }
+    },
+    "Lighting": {
+      "$properties": { "Technology": "Future", "ClockTime": 0.4, "GlobalShadows": true }
+    },
+    "Workspace": {
+      "$properties": { "FallenPartsDestroyHeight": -60, "Gravity": 196.2 }
+    },
+    "SoundService": {
+      "$properties": { "RespectFilteringEnabled": true }
+    }
+  }
+}

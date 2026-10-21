@@ -1,0 +1,2 @@
+-- Replaces Roblox's default Animate script: characters are animated procedurally by the client Rig
+-- (PlayerScripts/Client/Rig.luau) for every squad member, so no default animations play.
