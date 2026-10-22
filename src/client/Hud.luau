@@ -91,6 +91,13 @@ function Hud.init(playerGui: PlayerGui)
 		ui.slots[i] = { frame = s, icon = nil, id = nil, pips = pipList, stroke = s:FindFirstChildOfClass("UIStroke") }
 	end
 
+	-- Evolution recipe tracker (under the vitals): key upgrades + core -> evolution name.
+	ui.evoTrack = Theme.panel({ Name = "EvoTrack", Position = UDim2.fromOffset(12, 110), Size = UDim2.fromOffset(250, 30), Parent = root }, C.gold)
+	ui.evoTrackStroke = ui.evoTrack:FindFirstChildOfClass("UIStroke")
+	ui.evoIcons = {}
+	ui.evoName = label("", { Position = UDim2.fromOffset(104, 0), Size = UDim2.new(1, -110, 1, 0), FontFace = F.head, TextSize = 15, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.evoTrack })
+	label("→", { Position = UDim2.fromOffset(84, 0), Size = UDim2.fromOffset(18, 30), FontFace = F.head, TextSize = 16, TextColor3 = C.dim, Parent = ui.evoTrack })
+
 	-- Camera view toggle (top-right)
 	ui.view = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 10), Size = UDim2.fromOffset(58, 58), BackgroundColor3 = C.panel, BackgroundTransparency = 0.2, Text = "", AutoButtonColor = false, Corner = 4, Stroke = { Color = C.cyan, Transparency = 0.45 }, Parent = root })
 	ui.viewIconName = nil
@@ -98,7 +105,7 @@ function Hud.init(playerGui: PlayerGui)
 	ui.viewName = label("", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -78, 0, 28), Size = UDim2.fromOffset(260, 22), FontFace = F.head, TextSize = 18, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Right, TextTransparency = 1, Parent = root })
 
 	-- Squad (coop)
-	ui.squad = new("Frame", { Position = UDim2.fromOffset(12, 114), Size = UDim2.fromOffset(220, 120), List = { Padding = UDim.new(0, 4) }, Parent = root })
+	ui.squad = new("Frame", { Position = UDim2.fromOffset(12, 146), Size = UDim2.fromOffset(220, 120), List = { Padding = UDim.new(0, 4) }, Parent = root })
 
 	-- Timer (top-center) -----------------------------------------------------------------------------
 	local top = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 4), Size = UDim2.fromOffset(380, 84), Parent = root })
@@ -372,6 +379,32 @@ function Hud.update(run, me, extra, dt: number)
 		ui.weaponName.Text = if evolved then Defs.Evolutions[me.evolved].name else wdef.short
 		ui.weaponName.TextColor3 = if evolved then C.gold else wdef.color
 		ui.coreBadge.Visible = me.core and not evolved
+		-- Evolution recipe: lit icons for owned keys / the core; pulses gold when ready, hides once evolved
+		local recipe = Defs.Evolutions[wdef.evolution]
+		ui.evoTrack.Visible = not evolved
+		if not evolved then
+			if ui.evoTrackFor ~= wdef.id then
+				ui.evoTrackFor = wdef.id
+				for _, ic in ui.evoIcons do
+					ic.frame:Destroy()
+				end
+				table.clear(ui.evoIcons)
+				local x = 6
+				for _, key in recipe.keys do
+					local def = Defs.Upgrades[key]
+					table.insert(ui.evoIcons, { frame = icon(def.icon, 22, def.color, { Position = UDim2.fromOffset(x, 4), Parent = ui.evoTrack }), key = key, color = def.color })
+					x += 26
+				end
+				table.insert(ui.evoIcons, { frame = icon("core", 22, C.gold, { Position = UDim2.fromOffset(x, 4), Parent = ui.evoTrack }), core = true, color = C.gold })
+				ui.evoName.Text = recipe.name
+			end
+			for _, ic in ui.evoIcons do
+				local have = if ic.core then me.core else (me.ranks[ic.key] or 0) > 0
+				Icons.recolor(ic.frame, if have then ic.color else C.line)
+			end
+			ui.evoName.TextColor3 = if me.canEvolve then C.gold else C.dim
+			ui.evoTrackStroke.Transparency = if me.canEvolve then 0.05 + math.sin(now * 8) * 0.1 else 0.6
+		end
 		-- Build slots
 		local owned = {}
 		for _, id in Defs.UpgradeOrder do
@@ -424,11 +457,14 @@ function Hud.update(run, me, extra, dt: number)
 			ui.ammo.Text = tostring(me.ammo)
 			ui.ammoMax.Text = "/ " .. me.mag
 			ui.magFill.Size = UDim2.fromScale(if me.reload > 0 then me.reload else me.ammo / math.max(1, me.mag), 1)
-			ui.magFill.BackgroundColor3 = if me.reload > 0 then C.gold elseif me.ammo / me.mag < 0.25 then C.orange else wdef.color
-			ui.reloadText.Text = if me.reload > 0 then "ПЕРЕЗАРЯДКА" elseif me.ammo == 0 then "ПУСТО" else ""
-			ui.reloadText.TextColor3 = C.gold
+			local low = me.ammo / math.max(1, me.mag) < 0.25
+			ui.magFill.BackgroundColor3 = if me.reload > 0 then C.gold elseif low then C.orange else wdef.color
+			local reloadLabel = if not wdef.reloadEmpty then "ПЕРЕЗАРЯДКА" elseif me.reloadEmpty then "ПУСТАЯ ЯЧЕЙКА · ЗАТВОР" else "СМЕНА ЯЧЕЙКИ"
+			ui.reloadText.Text = if me.reload > 0 then reloadLabel elseif me.ammo == 0 then "ПУСТО" elseif low then "ЗАРЯД НА ИСХОДЕ" else ""
+			ui.reloadText.TextColor3 = if me.reload <= 0 and low then C.orange else C.gold
 		end
-		ui.ammo.TextColor3 = if me.overheated or me.reload > 0 then C.dim else C.text
+		local lowAmmo = wdef.kind ~= "beam" and me.reload <= 0 and me.ammo / math.max(1, me.mag) < 0.25
+		ui.ammo.TextColor3 = if me.overheated or me.reload > 0 then C.dim elseif lowAmmo and math.sin(now * 10) > 0 then C.orange else C.text
 		-- Dash tile
 		local dashMax = me.dashMax or Defs.Player.DashCooldown
 		ui.dash.fill.Size = UDim2.fromScale(1, 1 - math.clamp(me.dash / dashMax, 0, 1))
@@ -517,9 +553,12 @@ function Hud.update(run, me, extra, dt: number)
 		ui.reticle.Position = UDim2.fromOffset(extra.cursor.X, extra.cursor.Y)
 	end
 	bloom *= math.exp(-dt * 9)
+	-- weapons with accuracy bloom (W01) open the reticle with the real cone
+	local wdefR = me and Defs.Weapons[me.weapon]
+	local cone = if wdefR and wdefR.spreadMin and extra.spread then (extra.spread - wdefR.spreadMin) * 5 else 0
 	for i, tick in ui.reticleTicks do
 		local ang = (i - 1) * math.pi / 2
-		local r = 11 + bloom
+		local r = 11 + bloom + cone
 		tick.Position = UDim2.new(0.5, math.cos(ang) * r, 0.5, math.sin(ang) * r)
 	end
 	local hk = now - hitT
@@ -531,6 +570,9 @@ function Hud.update(run, me, extra, dt: number)
 		ui.hit.Size = UDim2.fromOffset(30 + hk * 80, 30 + hk * 80)
 	end
 	ui.reloadRing.Visible = me ~= nil and (me.reload > 0 or me.overheated)
+	if ui.reloadRing.Visible then
+		ui.reloadRing.Rotation = (me.reload or 0) * 360
+	end
 	-- Arrows
 	for i, a in arrows do
 		local info = extra.arrows[i]

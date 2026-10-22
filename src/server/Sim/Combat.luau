@@ -39,9 +39,14 @@ function Combat.recompute(p)
 	s.range = wd.range
 	s.magazine = wd.magazine
 	s.reload = wd.reload / (1 + 0.6 * fireBonus)
+	s.reloadEmpty = (wd.reloadEmpty or wd.reload) / (1 + 0.6 * fireBonus)
 	s.pierce = wd.pierce + rv(p, "UPG_PIERCE", UV.UPG_PIERCE.extra)
 	s.pellets = wd.pellets
 	s.spread = wd.spread
+	s.spreadMin = wd.spreadMin or wd.spread
+	s.spreadMax = wd.spreadMax or wd.spread
+	s.bloom = wd.bloom or 0
+	s.recover = wd.recover or 0
 	s.critChance = rv(p, "UPG_CRIT", UV.UPG_CRIT.chance)
 	s.critMult = if s.critChance > 0 then pick(rank(p, "UPG_CRIT"), UV.UPG_CRIT.mult) else 1
 	s.multi = rv(p, "UPG_MULTISHOT", UV.UPG_MULTISHOT.extra)
@@ -50,9 +55,10 @@ function Combat.recompute(p)
 	s.falloff = wd.falloff
 	local evo = p.evolved
 	if evo == "EV_THUNDERLORD" then
-		s.damage += 2
-		s.rate *= 1.15
-		s.magazine = 60
+		local m = Defs.Evolutions.EV_THUNDERLORD.mods
+		s.damage += m.damageAdd
+		s.rate *= m.rateMult
+		s.magazine = m.magazine
 	elseif evo == "EV_INFERNO_GRINDER" then
 		s.pellets += 4
 		s.magazine = 9
@@ -73,11 +79,14 @@ function Combat.recompute(p)
 	end
 end
 
+-- Tactical reload (rounds left) is a quick cell swap; an empty magazine also needs the bolt racked.
 function Combat.startReload(w, p)
 	if p.weaponDef.kind == "beam" or p.reloadT > 0 or p.ammo >= p.stats.magazine then
 		return
 	end
-	p.reloadT = p.stats.reload
+	p.reloadEmpty = p.ammo <= 0
+	p.reloadT = if p.reloadEmpty then p.stats.reloadEmpty else p.stats.reload
+	p.reloadDur = p.reloadT
 end
 
 -- Tracing ---------------------------------------------------------------------------------------------
@@ -163,6 +172,11 @@ function Combat.fire(w, p)
 			end
 		end
 	else
+		if s.bloom > 0 then
+			-- accuracy bloom: the cone opens with sustained fire and closes when the trigger is released
+			half = math.rad(p.spread) / 2
+			p.spread = math.min(s.spreadMax, p.spread + s.bloom)
+		end
 		shoot(w, p, base + rng:range(-half, half), s.damage, s.pierce, s.range)
 		for k = 1, s.multi do
 			local side = if k % 2 == 1 then 1 else -1
@@ -285,22 +299,22 @@ function Combat.hit(w, p, e, dmg: number, dx: number, dz: number)
 	end
 	table.clear(visited)
 	visited[e] = true
-	-- Thunderlord: every hit forks through up to 3 more targets.
+	-- Thunderlord: every hit forks through up to 3 more targets (damage share per hop from Defs).
 	if p.evolved == "EV_THUNDERLORD" then
 		local fromX, fromZ = ex, ez
-		local mults = { 0.45, 0.3, 0.2 }
-		for hop = 1, 3 do
+		local m = Defs.Evolutions.EV_THUNDERLORD.mods
+		for _, mult in m.forks do
 			if not spend(p, 1) then
 				break
 			end
-			local target = nearest(w, fromX, fromZ, 22, visited)
+			local target = nearest(w, fromX, fromZ, m.forkRadius, visited)
 			if not target then
 				break
 			end
 			visited[target] = true
 			w:emit(E.ARC, fromX, fromZ, target.x, target.z, C.BLUE)
 			fromX, fromZ = target.x, target.z
-			Combat.damage(w, p, target, s.damage * mults[hop] * 1.6, 1, DF.ARC, fromX, fromZ)
+			Combat.damage(w, p, target, s.damage * mult, 1, DF.ARC, fromX, fromZ)
 		end
 	end
 	-- Chain Arc
@@ -536,6 +550,9 @@ function Combat.updatePlayer(w, p, dt: number)
 				p.reloadT = 0
 				p.ammo = s.magazine
 			end
+		end
+		if not p.firing or p.reloadT > 0 then
+			p.spread = math.max(s.spreadMin, (p.spread or s.spreadMin) - s.recover * dt)
 		end
 		if p.firing and p.reloadT <= 0 then
 			p.cool -= dt

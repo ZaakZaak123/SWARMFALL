@@ -32,6 +32,10 @@ def faces(part):
         out.append(("poly", a)); out.append(("poly", b[::-1]))
         return out
     c = [xf(cf, (dx * sx, dy * sy, dz * sz)) for dx in (-1, 1) for dy in (-1, 1) for dz in (-1, 1)]
+    if part["shape"] == "Wedge":
+        # Roblox wedge: full height at +Z, slope from the top-back edge down to the bottom-front edge
+        idx = [(0, 1, 3), (4, 7, 5), (0, 4, 5, 1), (1, 5, 7, 3), (0, 3, 7, 4)]
+        return [("poly", [c[i] for i in f]) for f in idx]
     idx = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
     return [("poly", [c[i] for i in f]) for f in idx]
 

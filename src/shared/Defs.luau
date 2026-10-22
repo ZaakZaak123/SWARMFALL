@@ -49,7 +49,12 @@ export type WeaponDef = {
 	range: number,
 	magazine: number,
 	reload: number,
+	reloadEmpty: number?, -- full reload from an empty magazine (cell swap + bolt rack); defaults to reload
 	spread: number,
+	spreadMin: number?, -- accuracy bloom (degrees, full cone): first-shot cone, sustained-fire cap,
+	spreadMax: number?, -- growth per shot and recovery per second while the trigger is released
+	bloom: number?,
+	recover: number?,
 	pellets: number,
 	pierce: number,
 	falloff: number,
@@ -72,8 +77,13 @@ Defs.Weapons = {
 		rate = 7,
 		range = 82,
 		magazine = 42,
-		reload = 1.35,
+		reload = 1.25,
+		reloadEmpty = 1.6,
 		spread = 2,
+		spreadMin = 0.6,
+		spreadMax = 3.4,
+		bloom = 0.2,
+		recover = 8,
 		pellets = 1,
 		pierce = 0,
 		falloff = 0.72,
@@ -167,7 +177,9 @@ Defs.Evolutions = {
 		keys = { "UPG_CHAIN", "UPG_RICOCHET" },
 		coreName = "ЯДРО БУРИ",
 		color = rgb(140, 220, 255),
-		text = "Каждое попадание бьёт молнией ещё по 3 целям. +15% скорострельность.",
+		text = "Каждое попадание бьёт молнией ещё по 3 целям. +15% скорострельность, ячейка на 60.",
+		-- Single source for the server rule (Combat) and the dossier UI.
+		mods = { damageAdd = 2, rateMult = 1.15, magazine = 60, forks = { 0.72, 0.48, 0.32 }, forkRadius = 22 },
 	},
 	EV_INFERNO_GRINDER = {
 		id = "EV_INFERNO_GRINDER",

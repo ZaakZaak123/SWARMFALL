@@ -79,6 +79,53 @@ local function scrapTag(parent, amount: number, props, color: Color3?)
 	return row
 end
 
+local function fmt(n: number): string
+	return if n % 1 == 0 then tostring(n) else string.format("%.2f", n):gsub("0+$", ""):gsub("%.$", "")
+end
+
+-- Real numbers shown on the weapon card (one short value per stat bar).
+local function cardValue(w, stat: string): string
+	if stat == "power" then
+		return if w.pellets > 1 then fmt(w.damage) .. "×" .. w.pellets else fmt(w.damage)
+	elseif stat == "rate" then
+		return if w.kind == "beam" then "ЛУЧ" else fmt(w.rate) .. "/с"
+	elseif stat == "range" then
+		return tostring(w.range)
+	end
+	return if w.pierce > 0 then "×" .. (w.pierce + 1) else ""
+end
+
+-- Dossier rows: { label, base value, evolved value? } from Defs (evolution mods where declared).
+local function dossierRows(w, evolved: boolean)
+	local evo = Defs.Evolutions[w.evolution]
+	local m = evolved and evo.mods or {}
+	local damage = w.damage + (m.damageAdd or 0)
+	local rate = w.rate * (m.rateMult or 1)
+	local mag = m.magazine or w.magazine
+	local rows = {}
+	local function row(name: string, value: string)
+		table.insert(rows, { name, value })
+	end
+	row("УРОН ЗА ПОПАДАНИЕ", if w.pellets > 1 then fmt(damage) .. " × " .. w.pellets .. " дробин" else fmt(damage))
+	if w.kind == "beam" then
+		row("ТЕМП", "непрерывный луч · " .. fmt(rate) .. " тик/с")
+		row("УРОН В СЕКУНДУ", fmt(math.floor(damage * rate + 0.5)))
+		row("ОХЛАЖДЕНИЕ", "перегрев → " .. fmt(w.reload) .. " с")
+	else
+		row("ТЕМП", string.format("%.1f выстр/с", rate))
+		row("УРОН В СЕКУНДУ", fmt(math.floor(damage * rate * w.pellets + 0.5)))
+		row("ЯЧЕЙКА / МАГАЗИН", tostring(mag))
+		row("ПЕРЕЗАРЯДКА", if w.reloadEmpty then fmt(w.reload) .. " с · пустая " .. fmt(w.reloadEmpty) .. " с" else fmt(w.reload) .. " с")
+	end
+	row("ДАЛЬНОСТЬ", tostring(w.range))
+	row("РАЗБРОС", if w.spreadMin then fmt(w.spreadMin) .. "° → " .. fmt(w.spreadMax) .. "° в очереди" else fmt(w.spread) .. "°")
+	row("ПРОБИТИЕ", if w.pierce > 0 then "насквозь " .. w.pierce .. " (−" .. math.floor((1 - w.falloff) * 100 + 0.5) .. "% за цель)" else "нет · улучшение ПРОБОЙ")
+	if evolved and m.forks then
+		row("МОЛНИИ", #m.forks .. " цели · радиус " .. m.forkRadius)
+	end
+	return rows
+end
+
 local function clear(frame: Instance)
 	for _, c in frame:GetChildren() do
 		if not c:IsA("UIListLayout") and not c:IsA("UIGridLayout") and not c:IsA("UIPadding") then
@@ -206,7 +253,8 @@ local function buildLobby()
 			local x = 12 + (k % 2) * 122
 			local y = 140 + (k // 2) * 24
 			icon(STAT_ICONS[stat], 16, w.color, { Position = UDim2.fromOffset(x, y + 2) }).Parent = card
-			local back = new("Frame", { Position = UDim2.fromOffset(x + 22, y + 8), Size = UDim2.fromOffset(92, 6), BackgroundTransparency = 0.5, BackgroundColor3 = Color3.new(0, 0, 0), Parent = card })
+			label(cardValue(w, stat), { Position = UDim2.fromOffset(x + 20, y), Size = UDim2.fromOffset(44, 20), FontFace = F.num, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
+			local back = new("Frame", { Position = UDim2.fromOffset(x + 64, y + 8), Size = UDim2.fromOffset(50, 6), BackgroundTransparency = 0.5, BackgroundColor3 = Color3.new(0, 0, 0), Parent = card })
 			for s = 1, 5 do
 				new("Frame", { Position = UDim2.fromScale((s - 1) / 5, 0), Size = UDim2.new(0.2, -2, 1, 0), BackgroundTransparency = if s / 5 <= w.stats[stat] + 0.05 then 0 else 0.85, BackgroundColor3 = w.color, Parent = back })
 			end
@@ -223,6 +271,13 @@ local function buildLobby()
 		icon("core", 26, C.gold, { Position = UDim2.fromOffset(x, 8) }).Parent = recipe
 		label("→", { Position = UDim2.fromOffset(x + 28, 0), Size = UDim2.fromOffset(18, 42), FontFace = F.head, TextSize = 20, TextColor3 = C.dim, Parent = recipe })
 		label(evo.name, { Position = UDim2.fromOffset(x + 46, 0), Size = UDim2.new(1, -(x + 50), 1, 0), FontFace = F.head, TextSize = 15, TextWrapped = true, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, Parent = recipe })
+		-- dossier (full numbers + evolved form preview)
+		local info = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 12), Size = UDim2.fromOffset(30, 30), BackgroundColor3 = C.panel2, BackgroundTransparency = 0.15, Text = "", AutoButtonColor = false, Corner = 4, ZIndex = 3, Stroke = { Color = w.color, Transparency = 0.4 }, Parent = card })
+		icon("eye", 20, w.color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 4 }, C.panel2).Parent = info
+		info.Activated:Connect(function()
+			Menus.dossier(id)
+			Audio.play("ui")
+		end)
 		-- lock overlay
 		local lock = new("Frame", { Name = "Lock", Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.3, Corner = 5, ZIndex = 5, Visible = false, Parent = card })
 		icon("lock", 36, C.gold, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 120), ZIndex = 6 }).Parent = lock
@@ -343,6 +398,92 @@ function Menus.selectWeapon(id: string)
 		send("weapon", id)
 	end
 	Menus.refreshLobby()
+end
+
+-- Weapon dossier: big preview (base / evolved), every real number, the evolution recipe.
+local function buildDossier()
+	local d = new("TextButton", { Name = "Dossier", Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.25, Text = "", AutoButtonColor = false, Visible = false, ZIndex = 20, Parent = gui })
+	ui.dossier = d
+	local box = Theme.panel({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(940, 540), ZIndex = 21, Parent = d }, C.cyan)
+	ui.dossierBox = box
+	ui.dossierStroke = box:FindFirstChildOfClass("UIStroke")
+	new("UIScale", { Name = "Fit", Parent = box })
+	ui.dossierView = new("Frame", { Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(470, 380), BackgroundColor3 = C.bg, BackgroundTransparency = 0.3, Corner = 4, ZIndex = 22, Parent = box })
+	ui.dossierTabs = {}
+	for i, t in { { "base", "БАЗОВАЯ" }, { "evo", "ЭВОЛЮЦИЯ" } } do
+		local b, l = button(box, t[2], { Position = UDim2.fromOffset(16 + (i - 1) * 238, 404), Size = UDim2.fromOffset(232, 40), ZIndex = 22 }, C.panel2)
+		l.TextSize = 16
+		b.Activated:Connect(function()
+			Menus.dossier(ui.dossierWeapon, t[1] == "evo")
+			Audio.play("ui")
+		end)
+		ui.dossierTabs[t[1]] = { button = b, label = l }
+	end
+	ui.dossierRecipe = new("Frame", { Position = UDim2.fromOffset(16, 456), Size = UDim2.fromOffset(470, 68), BackgroundColor3 = C.bg, BackgroundTransparency = 0.4, Corner = 4, ZIndex = 22, Parent = box })
+	ui.dossierName = label("", { Position = UDim2.fromOffset(506, 14), Size = UDim2.fromOffset(410, 34), FontFace = F.head, TextSize = 30, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22, Parent = box })
+	ui.dossierTag = label("", { Position = UDim2.fromOffset(506, 50), Size = UDim2.fromOffset(410, 40), FontFace = F.body, TextSize = 15, TextWrapped = true, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 22, Parent = box })
+	ui.dossierRows = new("Frame", { Position = UDim2.fromOffset(506, 96), Size = UDim2.fromOffset(410, 330), List = { Padding = UDim.new(0, 4) }, ZIndex = 22, Parent = box })
+	local pick, pickLabel = button(box, "ВЫБРАТЬ", { Position = UDim2.fromOffset(506, 470), Size = UDim2.fromOffset(250, 50), ZIndex = 22 }, C.cyan, "play")
+	ui.dossierPick, ui.dossierPickLabel = pick, pickLabel
+	pick.Activated:Connect(function()
+		Menus.selectWeapon(ui.dossierWeapon)
+		d.Visible = false
+		Audio.play("ui", 1, 1.2)
+	end)
+	local close = button(box, "ЗАКРЫТЬ", { Position = UDim2.fromOffset(766, 470), Size = UDim2.fromOffset(150, 50), ZIndex = 22 }, C.panel2)
+	close.Activated:Connect(function()
+		d.Visible = false
+		Audio.play("ui")
+	end)
+	d.Activated:Connect(function()
+		d.Visible = false
+	end)
+end
+
+function Menus.dossier(id: string, evolved: boolean?)
+	local w = Defs.Weapons[id]
+	if not w then
+		return
+	end
+	if not ui.dossier then
+		buildDossier()
+	end
+	local evo = Defs.Evolutions[w.evolution]
+	ui.dossierWeapon = id
+	ui.dossier.Visible = true
+	ui.dossierBox.Fit.Scale = math.min(1, workspace.CurrentCamera.ViewportSize.X / 1000, workspace.CurrentCamera.ViewportSize.Y / 580)
+	local accent = if evolved then evo.color else w.color
+	ui.dossierStroke.Color = accent
+	clear(ui.dossierView)
+	Preview.weapon(ui.dossierView, id, evolved == true, { spin = true, zoom = 0.6, pitch = 0.32 }).ZIndex = 23
+	ui.dossierName.Text = if evolved then evo.name else w.name
+	ui.dossierName.TextColor3 = if evolved then C.gold else C.text
+	ui.dossierTag.Text = if evolved then evo.text else w.tagline
+	for key, t in ui.dossierTabs do
+		local on = (key == "evo") == (evolved == true)
+		t.button.BackgroundColor3 = if on then accent else C.panel2
+		t.label.TextColor3 = if on then C.bg else C.text
+	end
+	ui.dossierTabs.evo.label.Text = evo.name
+	clear(ui.dossierRows)
+	for i, r in dossierRows(w, evolved == true) do
+		local line = new("Frame", { LayoutOrder = i, Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = C.panel2, BackgroundTransparency = if i % 2 == 0 then 0.6 else 0.35, Corner = 3, ZIndex = 22, Parent = ui.dossierRows })
+		label(r[1], { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(0.48, -10, 1, 0), FontFace = F.title, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = line })
+		label(r[2], { Position = UDim2.new(0.48, 0, 0, 0), Size = UDim2.new(0.52, -10, 1, 0), FontFace = F.bodyBold, TextSize = 15, TextColor3 = if evolved then C.gold else C.text, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 23, Parent = line })
+	end
+	clear(ui.dossierRecipe)
+	label("ЭВОЛЮЦИЯ", { Position = UDim2.fromOffset(10, 4), Size = UDim2.fromOffset(200, 14), FontFace = F.title, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
+	local x = 10
+	for _, key in evo.keys do
+		local def = Defs.Upgrades[key]
+		icon(def.icon, 30, def.color, { Position = UDim2.fromOffset(x, 24), ZIndex = 23 }).Parent = ui.dossierRecipe
+		label(def.name, { Position = UDim2.fromOffset(x + 34, 28), Size = UDim2.fromOffset(110, 22), FontFace = F.bodyBold, TextSize = 13, TextColor3 = def.color, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
+		x += 140
+	end
+	icon("core", 30, C.gold, { Position = UDim2.fromOffset(x, 24), ZIndex = 23 }).Parent = ui.dossierRecipe
+	label(evo.coreName, { Position = UDim2.fromOffset(x + 34, 28), Size = UDim2.fromOffset(110, 22), FontFace = F.bodyBold, TextSize = 13, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
+	local owned = profile == nil or profile.weapons[id] == true
+	ui.dossierPick.Visible = owned
 end
 
 function Menus.setProfile(pub)

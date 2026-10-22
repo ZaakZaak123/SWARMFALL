@@ -39,11 +39,15 @@ local function impact(feel, item, dir: Vector3, color: Color3, vk: number)
 	end
 	if item.wall then
 		Fx.impactWall(item.to, item.normal or -dir, color, if feel.tracer and feel.tracer.style == "rail" then 2 else 0.9)
+		if feel.impact.wallSound then
+			Audio.at(feel.impact.wallSound, item.to, 0.7)
+		end
 	end
 end
 
 -- One trigger pull. character may be nil (fallback origin). items = { {to, hits = {{pos, id}}, wall, normal} }
-function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallback: Vector3, items, isLocal: boolean, quiet: boolean?)
+-- ammoFrac (local shots) lets the sound tell the player the cell is running dry.
+function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallback: Vector3, items, isLocal: boolean, quiet: boolean?, ammoFrac: number?)
 	local feel = Feel.get(weapon, evolved)
 	local color = Shots.color(weapon, evolved)
 	local mcf = character and Rig.muzzleCFrame(character)
@@ -61,6 +65,13 @@ function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallbac
 		local fl = feel.flash
 		Fx.muzzle(mcf, fl.style, color, fl.size * (0.6 + 0.4 * vk), fl.life)
 		Fx.light(origin, color, fl.light, 0.07)
+		if fl.arc and character and not Fx.busy(40) then
+			-- the charge jumps between the emitter electrodes as the bolt leaves
+			local a, b = Rig.prongTips(character)
+			if a and b then
+				Fx.lightning(a, b, color, 0.1 * vk, 0.05)
+			end
+		end
 		if fl.smoke then
 			Fx.emit("muzzleSmoke", origin, fl.smoke, mcf.LookVector)
 		end
@@ -85,6 +96,10 @@ function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallbac
 			else
 				Audio.at(cue, origin, if i > 1 then 0.3 else 0.55)
 			end
+		end
+		if isLocal and feel.lowAmmo and ammoFrac and ammoFrac < feel.lowAmmo then
+			-- the dry tick rises in pitch as the cell empties
+			Audio.play("rifleLow", 1, 1 + (feel.lowAmmo - ammoFrac) * 1.6)
 		end
 		if feel.actionSound then
 			local cue, delay = feel.actionSound[1], feel.actionSound[2]

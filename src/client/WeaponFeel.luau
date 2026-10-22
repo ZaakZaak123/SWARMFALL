@@ -7,21 +7,26 @@
 local Feel = {}
 
 local PROFILES = {
-	-- Fast, precise energy rifle: snappy light kick, bright bolts that streak to the target.
+	-- W01 arc rifle: fast, precise; a crisp electric crack, snappy light kick that builds a little over a
+	-- long burst, an arc jumping between the emitter prongs, bright bolts that streak to the target.
 	W_ARC_RIFLE = {
 		scale = 0.66,
 		hold = Vector3.new(-0.75, -0.36, -1.05), -- grip offset from the right shoulder (aim space)
 		lowReady = 0.3, -- gun dips by this angle (rad) when not firing
 		sway = 0.6,
-		recoil = { back = 0.32, rise = 0.09, side = 0.035, roll = 0.05, freq = 8, damp = 0.45, torso = 0.03 },
-		cam = { kick = 0.7, shake = 0.04, push = 0.22, fov = 0.6, reticle = 5 },
-		flash = { style = "star", size = 1.0, light = 10, life = 0.045 },
-		tracer = { style = "bolt", speed = 300, length = 8, width = 0.26 },
-		impact = { style = "spark", size = 1.0, knock = 0.35 },
+		recoil = { back = 0.3, rise = 0.08, side = 0.035, roll = 0.05, freq = 8, damp = 0.45, torso = 0.03, build = 0.6 },
+		cam = { kick = 0.6, shake = 0.035, push = 0.2, fov = 0.5, reticle = 4 },
+		flash = { style = "star", size = 1.0, light = 10, life = 0.045, arc = true },
+		tracer = { style = "bolt", speed = 320, length = 8, width = 0.26 },
+		impact = { style = "spark", size = 1.0, knock = 0.35, wallSound = "wallHit" },
 		shell = { kind = "cell", delay = 0 },
 		action = "coil",
-		reload = "mag",
-		sound = { "rifle", "rifleClick" },
+		reload = "cell",
+		sound = { "rifleZap", "rifle", "rifleClick" },
+		lowAmmo = 0.25, -- below this fraction the shot gains a dry "tick" layer
+		-- animation beats (Rig) -> sound cues; magOut also drops the spent cell
+		beats = { equip = "equip", magOut = "magOut", magIn = "magIn", bolt = "boltRack", evolve = "evolveStorm" },
+		dry = "dryFire",
 	},
 	-- Close-range pump shotgun: huge shove, cone of pellets, fire, pump + ejected shell.
 	W_SCATTERGUN = {
@@ -79,11 +84,14 @@ local PROFILES = {
 
 -- Evolution overrides (merged one level deep over the base profile).
 local EVOLVED = {
+	-- Громовержец: storm bolts — a forked lightning tracer riding a fast bolt, heavier crack + thunder.
 	W_ARC_RIFLE = {
 		tracer = { style = "lightning", speed = 600, length = 12, width = 0.3 },
-		flash = { style = "star", size = 1.3, light = 14, life = 0.05 },
-		impact = { style = "shock", size = 1.2, knock = 0.4 },
-		sound = { "thunder", "rifleClick" },
+		flash = { style = "star", size = 1.3, light = 14, life = 0.05, arc = true },
+		impact = { style = "shock", size = 1.2, knock = 0.45, wallSound = "wallHit" },
+		recoil = { back = 0.34, rise = 0.1, side = 0.04, roll = 0.06, freq = 7.5, damp = 0.45, torso = 0.04, build = 0.6 },
+		cam = { kick = 0.75, shake = 0.05, push = 0.25, fov = 0.7, reticle = 5 },
+		sound = { "stormZap", "thunder", "rifleClick" },
 	},
 	W_SCATTERGUN = {
 		tracer = { style = "pellet", speed = 230, length = 4.2, width = 0.22, fire = true },

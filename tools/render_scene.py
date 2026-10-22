@@ -12,6 +12,11 @@ cols = min(len(views), data.get("cols", 3))
 rows = math.ceil(len(views) / cols)
 img = Image.new("RGB", (cols * CELL, rows * CELL), (14, 20, 30))
 d = ImageDraw.Draw(img, "RGBA")
+try:
+    from PIL import ImageFont
+    FONT = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 14)
+except Exception:
+    FONT = None
 LIGHT = (0.4, 0.8, -0.45)
 ln = math.sqrt(sum(v * v for v in LIGHT)); LIGHT = tuple(v / ln for v in LIGHT)
 
@@ -36,6 +41,10 @@ def faces(part):
         out.append(("poly", a)); out.append(("poly", b[::-1]))
         return out
     c = [xf(cf, (dx * sx, dy * sy, dz * sz)) for dx in (-1, 1) for dy in (-1, 1) for dz in (-1, 1)]
+    if part["shape"] == "Wedge":
+        # Roblox wedge: full height at +Z, slope from the top-back edge down to the bottom-front edge
+        idx = [(0, 1, 3), (4, 7, 5), (0, 4, 5, 1), (1, 5, 7, 3), (0, 3, 7, 4)]
+        return [("poly", [c[i] for i in f]) for f in idx]
     idx = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
     return [("poly", [c[i] for i in f]) for f in idx]
 
@@ -95,7 +104,7 @@ def render(item, ox, oy):
         shade = 1.0 if part["neon"] else 0.35 + 0.75 * lam
         fill = tuple(min(255, int(v * shade)) for v in col)
         d.polygon([S(p) for p in pr[2]], fill=fill + (alpha,), outline=tuple(int(v * 0.5) for v in fill) + (min(255, alpha),))
-    d.text((ox + 10, oy + 8), item["name"], fill=(220, 230, 240))
+    d.text((ox + 10, oy + 8), item["name"], fill=(220, 230, 240), font=FONT)
 
 
 for i, item in enumerate(views):

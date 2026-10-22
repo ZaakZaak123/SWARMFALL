@@ -7,7 +7,10 @@
 --     the magazine, the breech during reloads);
 --   * legs are IK'd onto procedurally planted feet: stride length/frequency match the real velocity in
 --     any direction (strafe, backpedal), feet lift and plant, hips bob, the body leans into motion;
---   * recoil, flinch and torso response are damped springs fed by WeaponFeel profiles.
+--   * recoil, flinch and torso response are damped springs fed by WeaponFeel profiles;
+--   * weapon mechanisms (bolt, coils, prongs, energy cell windows, heat glow), the draw animation, the
+--     reload choreography and the evolution transformation; timed beats are reported through
+--     Rig.setEventHandler so sound / debris stay in sync with the animation for every squad member.
 -- Motor6D.Transform is written in PreSimulation (after the Animator), so nothing fights it.
 
 local RunService = game:GetService("RunService")
@@ -199,6 +202,15 @@ local function build(character: Model)
 		lastShot = -10,
 		actionT = -10,
 		reload = 0,
+		rl = 0,
+		ammo = 1,
+		reloadEmpty = false,
+		beats = {},
+		spin = 0,
+		coilAng = 0,
+		heat = 0,
+		equipT = -10,
+		evoT = -10,
 		feel = nil,
 		gun = nil,
 		buzz = 0,
@@ -264,6 +276,19 @@ function Rig.get(character: Model)
 	return st
 end
 
+local onEvent = nil
+-- fn(character, name, cframe?) for animation beats: equip, magOut, magIn, bolt, evolve.
+function Rig.setEventHandler(fn)
+	onEvent = fn
+end
+local function beat(st, name: string, cf: CFrame?)
+	if onEvent then
+		task.spawn(onEvent, st.character, name, cf, st.feel)
+	end
+end
+
+local EVOLVE_TIME = 1.6
+
 -- Weapon: gun model (unanchored, built by Models) + its hold metadata and feel profile.
 function Rig.setWeapon(character: Model, gun: Model, meta, feel)
 	local st = Rig.get(character)
@@ -271,6 +296,19 @@ function Rig.setWeapon(character: Model, gun: Model, meta, feel)
 		return
 	end
 	local s = feel.scale
+	-- parts welded to each movable group (to hide the magazine while it is "away" during a reload)
+	local groupParts = {}
+	for _, d in gun:GetDescendants() do
+		if d:IsA("WeldConstraint") and d.Part0 and d.Part0.Name:sub(1, 6) == "Group_" then
+			local name = d.Part0.Name:sub(7)
+			groupParts[name] = groupParts[name] or {}
+			table.insert(groupParts[name], d.Part1)
+		end
+	end
+	local pivots = {}
+	for name, v in meta.pivots or {} do
+		pivots[name] = v * s
+	end
 	local motor = Instance.new("Motor6D")
 	motor.Name = "GunMotor"
 	motor.Part0 = st.hrp
@@ -291,8 +329,27 @@ function Rig.setWeapon(character: Model, gun: Model, meta, feel)
 		eject = meta.eject * s,
 		mag = meta.mag * s,
 		muzzle = (meta.muzzle or Vector3.new(0, 0.4, -4.8)) * s,
+		boltHandle = (meta.boltHandle or meta.eject) * s,
+		prongTips = meta.prongTips and { meta.prongTips[1] * s, meta.prongTips[2] * s },
 		charge = gun:FindFirstChild("Charge", true),
+		groupParts = groupParts,
+		pivots = pivots,
+		cells = { gun:FindFirstChild("Cell1", true), gun:FindFirstChild("Cell2", true), gun:FindFirstChild("Cell3", true) },
+		heatPart = gun:FindFirstChild("Heat", true),
+		core = gun:FindFirstChild("Core", true),
 	}
+	for _, c in st.gun.cells do
+		c:SetAttribute("Base", c.Color)
+	end
+	if st.gun.heatPart then
+		st.gun.heatPart:SetAttribute("Base", st.gun.heatPart.Color)
+	end
+	local now = os.clock()
+	-- draw the weapon (spawn, respawn, run start) unless it is being rebuilt mid-evolution
+	if now - st.evoT > EVOLVE_TIME then
+		st.equipT = now
+		beat(st, "equip")
+	end
 	st.feel = feel
 	local r = feel.recoil
 	st.kickPos.f, st.kickPos.d = r.freq, r.damp
@@ -319,7 +376,7 @@ function Rig.fire(character: Model, strength: number?)
 		return
 	end
 	local r = st.feel.recoil
-	local k = strength or 1
+	local k = (strength or 1) * (1 + (r.build or 0) * st.heat)
 	local rnd = function()
 		return math.random() * 2 - 1
 	end
@@ -372,11 +429,29 @@ function Rig.dash(character: Model, dirX: number, dirZ: number, duration: number
 	end
 end
 
-function Rig.setState(character: Model, alive: boolean, reload: number)
+function Rig.setState(character: Model, alive: boolean, reload: number, ammoFrac: number?, reloadEmpty: boolean?)
 	local st = rigs[character]
 	if st then
 		st.alive = alive
+		if reload <= 0 or st.reload <= 0 then
+			st.rl = reload -- snap at the start / end of a reload, smooth in between
+			if reload > 0 then
+				table.clear(st.beats)
+				st.reloadEmpty = reloadEmpty == true
+			end
+		end
 		st.reload = reload
+		st.ammo = ammoFrac or st.ammo
+	end
+end
+
+-- Evolution transformation: raise the weapon, unfold the new parts, settle back (1.6 s).
+function Rig.evolve(character: Model)
+	local st = rigs[character]
+	if st then
+		st.evoT = os.clock()
+		st.equipT = -10
+		beat(st, "evolve")
 	end
 end
 
@@ -397,6 +472,24 @@ function Rig.muzzleCFrame(character: Model): CFrame?
 	return nil
 end
 
+-- World positions of the emitter electrode tips (the muzzle arc jumps between them), if any.
+function Rig.prongTips(character: Model): (Vector3?, Vector3?)
+	local st = rigs[character]
+	if st and st.gun and st.gun.prongTips and st.gunLocal then
+		local cf = st.hrp.CFrame * st.gunLocal
+		return cf * st.gun.prongTips[1], cf * st.gun.prongTips[2]
+	end
+	return nil, nil
+end
+
+function Rig.gunCFrame(character: Model): CFrame?
+	local st = rigs[character]
+	if st and st.gun and st.gunLocal then
+		return st.hrp.CFrame * st.gunLocal
+	end
+	return nil
+end
+
 function Rig.ejectCFrame(character: Model): CFrame?
 	local st = rigs[character]
 	if st and st.gun and st.gunLocal then
@@ -413,7 +506,54 @@ local function reloadPose(st, r: number, style: string, s: number)
 	local handGun, handBlend = nil, 0
 	local groupCF = {}
 	local inOut = window(r, 0, 0.14) * (1 - window(r, 0.86, 1))
-	if style == "mag" then
+	if style == "cell" then
+		-- Energy cell swap: cant the rifle, strip the spent cell, fetch a fresh one from the belt, seat
+		-- it with a slap; an empty reload also racks the bolt. Beats fire once per reload.
+		rot = CFrame.Angles(-0.2 * inOut, 0.2 * inOut, 0.6 * inOut)
+		off = Vector3.new(-0.18, 0.12, 0.22) * inOut
+		local empty = st.reloadEmpty
+		local e = if empty then 0.82 else 1 -- the cell part of the timeline (empty: bolt after it)
+		local pull = window(r, 0.24 * e, 0.36 * e)
+		local insert = window(r, 0.56 * e, 0.72 * e)
+		local away = pull >= 1 and insert <= 0
+		groupCF.mag = CFrame.new(0, -1.5 * s * (pull - insert * pull), 0.25 * s * (pull - insert * pull))
+		local belt = st.gun.mag + Vector3.new(-0.35 * s, -1.6 * s, 0.9 * s)
+		local magHand = st.gun.mag + Vector3.new(0, -0.25 * s, 0)
+		if pull < 1 then
+			handGun = magHand + Vector3.new(0, -1.5 * s * pull, 0.25 * s * pull)
+		elseif insert <= 0 then
+			handGun = (magHand + Vector3.new(0, -1.5 * s, 0.25 * s)):Lerp(belt, window(r, 0.38 * e, 0.47 * e))
+			handGun = handGun:Lerp(magHand + Vector3.new(0, -1.5 * s, 0.25 * s), window(r, 0.47 * e, 0.56 * e))
+		else
+			handGun = magHand + Vector3.new(0, -1.5 * s * (1 - insert), 0.25 * s * (1 - insert))
+		end
+		handBlend = window(r, 0.08 * e, 0.22 * e) * (1 - window(r, 0.8 * e, 0.92 * e))
+		st.magHidden = away
+		if pull >= 0.4 and not st.beats.magOut then
+			st.beats.magOut = true
+			beat(st, "magOut", st.gunWorld and st.gunWorld * CFrame.new(st.gun.mag) * CFrame.new(0, -0.6 * s, 0))
+		end
+		if insert >= 1 and not st.beats.magIn then
+			st.beats.magIn = true
+			beat(st, "magIn")
+			st.kickRot:impulse(Vector3.new(-1.5, 0, 0.8))
+		end
+		if empty then
+			-- left hand to the charging handle, rack it back, let it slam home
+			local rack = window(r, 0.84, 0.9) * (1 - window(r, 0.92, 0.95))
+			groupCF.bolt = CFrame.new(0, 0, 0.32 * s * rack)
+			local boltBlend = window(r, 0.76, 0.84) * (1 - window(r, 0.94, 0.99))
+			if boltBlend > 0 then
+				handGun = (handGun or magHand):Lerp(st.gun.boltHandle + Vector3.new(0.05 * s, 0, 0.32 * s * rack), boltBlend)
+				handBlend = math.max(handBlend, boltBlend)
+			end
+			if r >= 0.92 and not st.beats.bolt then
+				st.beats.bolt = true
+				beat(st, "bolt")
+				st.kickPos:impulse(Vector3.new(0, 0, 3))
+			end
+		end
+	elseif style == "mag" then
 		rot = CFrame.Angles(-0.25 * inOut, 0.15 * inOut, 0.55 * inOut)
 		off = Vector3.new(-0.15, 0.1, 0.25) * inOut
 		local drop = window(r, 0.3, 0.42) * (1 - window(r, 0.55, 0.72))
@@ -554,8 +694,25 @@ local function step(st, dt: number, now: number)
 		end
 		local rRot, rOff, handGun, handBlend, groupCF = ID, Vector3.zero, nil, 0, {}
 		st.pumpHand = 0
+		st.magHidden = false
 		if st.reload > 0 and alive then
-			rRot, rOff, handGun, handBlend, groupCF = reloadPose(st, st.reload, feel.reload, s)
+			-- server reload progress arrives at ~20 Hz: advance smoothly between updates
+			st.rl = math.min(st.reload + 0.06, st.rl + (st.reload - st.rl) * math.min(1, dt * 12) + dt * 0.5)
+			rRot, rOff, handGun, handBlend, groupCF = reloadPose(st, math.clamp(st.rl, 0, 1), feel.reload, s)
+		end
+		-- Draw: the rifle swings up from a low carry into the shoulder.
+		local equip = smooth((now - st.equipT) / 0.55)
+		if equip < 1 then
+			rRot = rRot * CFrame.Angles(-1.1 * (1 - equip), 0.5 * (1 - equip), 0.9 * (1 - equip))
+			rOff += Vector3.new(0.25, -0.45, 0.35) * (1 - equip)
+		end
+		-- Evolution: present the weapon, unfold its new parts, snap back to the shoulder.
+		local evo = (now - st.evoT) / EVOLVE_TIME
+		local present = 0
+		if evo >= 0 and evo <= 1 then
+			present = window(evo, 0, 0.16) * (1 - window(evo, 0.84, 1))
+			rRot = rRot * CFrame.Angles(0.25 * present, 0.95 * present, 0.15 * present * math.sin(evo * 18))
+			rOff += Vector3.new(0.5, 0.45, 0.35) * present
 		end
 		local hold = feel.hold + rOff + Vector3.new(-0.12 * (1 - ready), -0.12 * (1 - ready), 0.1 * (1 - ready))
 		local gripWorld = shoulderPos + yawRot:VectorToWorldSpace(hold)
@@ -567,6 +724,7 @@ local function step(st, dt: number, now: number)
 			* rRot
 		local gunRoot = gunCF * CFrame.new(-gun.grip)
 		st.gunLocal = hrpCF:ToObjectSpace(gunRoot)
+		st.gunWorld = gunRoot
 		gun.motor.Transform = st.gunLocal
 
 		-- Mechanisms.
@@ -581,9 +739,66 @@ local function step(st, dt: number, now: number)
 			groupCF.barrel = CFrame.new(0, 0, 0.55 * s * (1 - p) ^ 2)
 		elseif feel.action == "spin" and not groupCF.crystal then
 			groupCF.crystal = CFrame.new(0, math.sin(now * 3) * 0.06 * s + st.buzz * 0.08 * s, 0)
+		elseif feel.action == "coil" then
+			-- bolt cycles with every shot; coils spin up with sustained fire; prongs flare
+			local firing = since < 0.25
+			st.spin += ((if firing then 22 else 0) - st.spin) * math.min(1, dt * (if firing then 6 else 1.5))
+			st.coilAng = (st.coilAng + st.spin * dt) % (2 * math.pi)
+			st.heat = math.clamp(st.heat + (if firing then dt * 0.45 else -dt * 0.5), 0, 1)
+			if not groupCF.bolt then
+				local cyc = if since < 0.025 then since / 0.025 else math.max(0, 1 - (since - 0.025) / 0.07)
+				groupCF.bolt = CFrame.new(0, 0, 0.26 * s * cyc)
+			end
+			local pivot = gun.pivots.coil
+			if pivot then
+				groupCF.coil = CFrame.new(pivot) * CFrame.Angles(0, 0, st.coilAng) * CFrame.new(-pivot)
+			end
+			local flare = 0.06 * s * math.exp(-since * 28)
+			groupCF.prongU = CFrame.new(0, flare, 0)
+			groupCF.prongD = CFrame.new(0, -flare, 0)
+			groupCF.prongL = CFrame.new(-flare, 0, 0)
+			groupCF.prongR = CFrame.new(flare, 0, 0)
+		end
+		-- Evolution unfold: crown prongs slide out of the emitter, capacitors out of the handguard,
+		-- the lightning rod rises from the sight.
+		if present > 0 or (evo >= 0 and evo <= 1) then
+			local u = window(evo, 0.3, 0.62)
+			local v = window(evo, 0.45, 0.75)
+			local w = window(evo, 0.55, 0.85)
+			groupCF.prongL = (groupCF.prongL or ID) * CFrame.new(0.15 * s * (1 - u), 0, 0.7 * s * (1 - u))
+			groupCF.prongR = (groupCF.prongR or ID) * CFrame.new(-0.15 * s * (1 - u), 0, 0.7 * s * (1 - u))
+			groupCF.capL = CFrame.new(0.3 * s * (1 - v), 0, 0)
+			groupCF.capR = CFrame.new(-0.3 * s * (1 - v), 0, 0)
+			groupCF.rod = CFrame.new(0, -0.5 * s * (1 - w), 0)
 		end
 		for name, motor in gun.groups do
 			motor.Transform = groupCF[name] or ID
+		end
+		local magParts = gun.groupParts.mag
+		if magParts and st.magShown ~= not st.magHidden then
+			st.magShown = not st.magHidden
+			for _, part in magParts do
+				part.LocalTransparencyModifier = if st.magHidden then 1 else 0
+			end
+		end
+		-- Charge windows: lit by rounds left (dark while the cell is out, blink red when low).
+		local cells = gun.cells
+		if #cells > 0 then
+			local frac = if st.reload > 0 then window(st.rl, 0.75, 0.95) else st.ammo
+			local lowBlink = frac > 0 and frac < 0.2 and st.reload <= 0 and math.sin(now * 14) > 0
+			for k, c in cells do
+				local lit = frac > (k - 1) / 3 + 0.001
+				c.Transparency = if lit then (if lowBlink then 0.6 else 0) else 0.85
+				c.Color = if frac < 0.2 and st.reload <= 0 then Color3.fromRGB(255, 70, 60) else c:GetAttribute("Base")
+			end
+		end
+		if gun.heatPart then
+			local base = gun.heatPart:GetAttribute("Base")
+			gun.heatPart.Transparency = 0.55 * (1 - st.heat)
+			gun.heatPart.Color = base:Lerp(Color3.new(1, 1, 1), st.heat * 0.6)
+		end
+		if gun.core then
+			gun.core.Transparency = 0.25 + 0.25 * math.sin(now * 9) - present * 0.25
 		end
 		if gun.charge and feel.charge then
 			local c = math.clamp((now - st.lastShot) * 1.6, 0, 1)

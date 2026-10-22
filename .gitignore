@@ -4,3 +4,35 @@ __pycache__/
 *.rbxl.autosave
 build/
 roblox.yml
+
+# Local caches, logs and generated output (keep source models and assets)
+*.py[cod]
+.pytest_cache/
+.cache/
+node_modules/
+dist/
+tmp/
+temp/
+*.log
+*.tmp
+*.blend1
+*.blend2
+.DS_Store
+Thumbs.db
+
+# Secrets and machine-local credentials
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+auth.toml
+.aws/
+.codex/
+*.local.json
+*.local.toml

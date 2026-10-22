@@ -1,17 +1,31 @@
 --!nonstrict
--- Voice-pooled 2D audio with per-cue rate limits. Uses only engine-bundled sounds (no uploads needed),
--- shaped with pitch and effects. Swap any `id` for a licensed rbxassetid to upgrade a cue.
+-- Voice-pooled 2D audio with per-cue rate limits. Engine-bundled sounds plus Roblox-licensed Pro Sound
+-- Effects library assets (free for use in Roblox experiences); cues can play a trimmed region of a file.
 
 local SoundService = game:GetService("SoundService")
 
 local Audio = {}
 
 local S = "rbxasset://sounds/"
--- id, base volume, base pitch, pitch jitter, max plays per second, group
+local PSE = "rbxassetid://" -- Pro Sound Effects (Roblox-licensed SFX library), verified to load in Studio
+-- id, base volume, base pitch, pitch jitter, max plays per second, group, region {from, to} seconds
 local CUES = {
-	rifle = { S .. "impact_explosion_03.mp3", 0.16, 2.9, 0.12, 14, "sfx" },
-	rifleClick = { S .. "volume_slider.ogg", 0.22, 0.75, 0.05, 14, "sfx" },
-	thunder = { S .. "impact_explosion_03.mp3", 0.2, 2.2, 0.15, 14, "sfx" },
+	-- W01 arc rifle: zap crack + body thump + mechanism click; storm variant adds a thunder crack
+	rifleZap = { PSE .. "9114277757", 0.32, 1.3, 0.07, 16, "sfx", { 0, 0.13 } },
+	rifle = { S .. "impact_explosion_03.mp3", 0.12, 2.9, 0.12, 16, "sfx" },
+	rifleClick = { S .. "volume_slider.ogg", 0.2, 0.75, 0.05, 16, "sfx" },
+	rifleLow = { S .. "volume_slider.ogg", 0.16, 2.3, 0.02, 16, "sfx" },
+	stormZap = { PSE .. "9114277757", 0.36, 0.95, 0.08, 16, "sfx", { 0, 0.16 } },
+	thunder = { PSE .. "9126082854", 0.22, 1.35, 0.1, 5, "sfx", { 0.08, 0.6 } },
+	dryFire = { PSE .. "9118138689", 0.4, 1.35, 0.03, 4, "sfx", { 0, 0.1 } },
+	magOut = { PSE .. "9118138689", 0.45, 0.85, 0.03, 4, "sfx", { 0, 0.12 } },
+	magIn = { PSE .. "9125656958", 0.6, 1.1, 0.03, 4, "sfx", { 0.48, 0.74 } },
+	boltRack = { PSE .. "9114701864", 0.5, 1.25, 0.03, 4, "sfx", { 0.22, 0.42 } },
+	equip = { PSE .. "9114701864", 0.4, 1.0, 0.03, 4, "sfx", { 0, 0.5 } },
+	armorHit = { PSE .. "9119651975", 0.3, 1.15, 0.12, 10, "sfx", { 0, 0.3 } },
+	wallHit = { PSE .. "9113632278", 0.18, 1.25, 0.12, 10, "sfx", { 0.08, 0.4 } },
+	ricochet = { PSE .. "9113634061", 0.22, 1.2, 0.1, 6, "sfx", { 0.08, 0.5 } },
+	evolveStorm = { PSE .. "9119841013", 0.8, 1.0, 0, 2, "sfx", { 0.3, 3.2 } },
 	rail = { S .. "impact_explosion_03.mp3", 0.5, 0.9, 0.05, 4, "sfx" },
 	shotgun = { S .. "impact_explosion_03.mp3", 0.42, 1.35, 0.08, 6, "sfx" },
 	beamStart = { S .. "action_falling.ogg", 0.0, 1, 0, 4, "sfx" },
@@ -128,7 +142,12 @@ function Audio.play(name: string, volume: number?, pitch: number?)
 	s.SoundGroup = group(cue[6])
 	s.Volume = cue[2] * (volume or 1)
 	s.PlaybackSpeed = cue[3] * (pitch or 1) * (1 + (math.random() * 2 - 1) * cue[4])
-	s.TimePosition = 0
+	local region = cue[7]
+	s.PlaybackRegionsEnabled = region ~= nil
+	if region then
+		s.PlaybackRegion = NumberRange.new(region[1], region[2])
+	end
+	s.TimePosition = if region then region[1] else 0
 	s:Play()
 end
 

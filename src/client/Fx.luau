@@ -62,10 +62,22 @@ local function give(kind: string, p: Part)
 end
 
 -- Effect: { t, life, update(fx, k, dt) -> nil, parts = {{kind, part}} }
+local liveParts = 0
 local function spawn(life: number, update, parts)
 	local e = { t = 0, life = life, update = update, parts = parts }
 	table.insert(active, e)
+	liveParts += #parts
 	return e
+end
+
+-- Pooled parts currently driven by effects. Optional / cosmetic effects check Fx.busy() and skip
+-- themselves under load, so a long burst into a dense swarm never grows the pool without bound.
+local PART_BUDGET = 420
+function Fx.busy(extra: number?): boolean
+	return liveParts + (extra or 0) > PART_BUDGET
+end
+function Fx.stats()
+	return { live = liveParts, effects = #active, pooled = #pools.block + #pools.cyl + #pools.ball }
 end
 
 local function flatCyl(p: Part, x: number, y: number, z: number, diameter: number, thickness: number?)
@@ -712,14 +724,14 @@ function Fx.lightning(a: Vector3, b: Vector3, color: Color3, width: number?, lif
 	if len < 0.1 then
 		return
 	end
-	local segs = math.clamp(math.floor(len / 2.2), 3, if Settings.quality >= 2 then 10 else 5)
+	local segs = math.clamp(math.floor(len / 2.2), 3, if Settings.quality >= 2 and not Fx.busy(60) then 10 else 5)
 	local parts, main, glows = {}, {}, {}
 	for i = 1, segs do
 		local p = take("block")
 		p.Color = WHITE
 		table.insert(parts, { "block", p })
 		main[i] = p
-		if Settings.quality >= 3 then
+		if Settings.quality >= 3 and not Fx.busy(120) then
 			local g = take("block")
 			g.Color = color
 			table.insert(parts, { "block", g })
@@ -880,13 +892,20 @@ function Fx.shell(cf: CFrame, kind: string, color: Color3)
 		p.Size = Vector3.new(0.3, 0.3, 0.75)
 		p.Color = color
 		p.Material = Enum.Material.Neon
+	elseif kind == "cellMag" then
+		-- spent energy cell stripped during a reload: drops (no sideways throw), lingers a little longer
+		p.Size = Vector3.new(0.24, 0.52, 0.34)
+		p.Color = Color3.fromRGB(86, 96, 112)
+		p.Material = Enum.Material.Metal
 	else
 		p.Size = Vector3.new(0.16, 0.16, 0.3)
 		p.Color = color
 		p.Material = Enum.Material.Neon
 	end
 	p.Transparency = 0
-	local v = cf.RightVector * rnd(9, 14) + Vector3.yAxis * rnd(9, 15) + cf.LookVector * rnd(-3, 1)
+	local v = if kind == "cellMag"
+		then cf.RightVector * rnd(-1.5, 1.5) + Vector3.yAxis * rnd(-2, 1) + cf.LookVector * rnd(-1, 1)
+		else cf.RightVector * rnd(9, 14) + Vector3.yAxis * rnd(9, 15) + cf.LookVector * rnd(-3, 1)
 	table.insert(shells, {
 		p = p,
 		pos = cf.Position,
@@ -894,7 +913,7 @@ function Fx.shell(cf: CFrame, kind: string, color: Color3)
 		rot = cf.Rotation,
 		spin = Vector3.new(rnd(-20, 20), rnd(-20, 20), rnd(-20, 20)),
 		t = 0,
-		life = if kind == "slug" then 1.6 else 1.3,
+		life = if kind == "slug" then 1.6 elseif kind == "cellMag" then 2.2 else 1.3,
 		kind = kind,
 		bounced = false,
 		color = if kind == "shell" then p.Color else color,
@@ -925,7 +944,7 @@ local function updateShells(dt: number)
 			s.rot = s.rot * CFrame.Angles(s.spin.X * dt, s.spin.Y * dt, s.spin.Z * dt)
 			s.p.CFrame = CFrame.new(pos) * s.rot
 			s.p.Transparency = math.max(0, (s.t - (s.life - 0.35)) / 0.35)
-			if s.kind ~= "shell" and s.t > 0.1 then
+			if s.kind ~= "shell" and s.kind ~= "cellMag" and s.t > 0.1 then
 				-- glowing casings cool down fast (so they never read as XP orbs)
 				local cool = math.clamp((s.t - 0.1) / (if s.kind == "slug" then 0.8 else 0.3), 0, 1)
 				s.p.Color = s.color:Lerp(Color3.fromRGB(60, 64, 72), cool)
@@ -1118,6 +1137,7 @@ function Fx.update(dt: number)
 			for _, entry in e.parts do
 				give(entry[1], entry[2])
 			end
+			liveParts -= #e.parts
 			active[i] = active[#active]
 			active[#active] = nil
 		else
@@ -1164,6 +1184,7 @@ function Fx.clear()
 		end
 	end
 	table.clear(active)
+	liveParts = 0
 	Fx.clearOrbs()
 	for key in beams do
 		Fx.beamHide(key)

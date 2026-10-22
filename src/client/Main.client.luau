@@ -26,6 +26,7 @@ local Preview = require(script.Parent:WaitForChild("Preview"))
 local Menus = require(script.Parent:WaitForChild("Menus"))
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
+local WeaponFeel = require(script.Parent:WaitForChild("WeaponFeel"))
 
 local E, C = Codec.E, Theme.C
 local player = Players.LocalPlayer
@@ -65,7 +66,29 @@ Controls.init(playerGui)
 Menus.init(playerGui, send)
 Shots.setHud(Hud)
 Fx.setShellSound(function(pos, kind)
+	if kind == "cellMag" then
+		Audio.at("magOut", pos, 0.5, 0.6)
+		return
+	end
 	Audio.at("shell", pos, if kind == "shell" then 0.6 else 0.9, if kind == "slug" then 0.7 else 1)
+end)
+-- Animation beats from the procedural rig (draw, cell out / in, bolt rack, evolution) -> sound + debris,
+-- for every squad member, in sync with what the body is doing.
+Rig.setEventHandler(function(character: Model, name: string, cf: CFrame?, feel)
+	local cue = feel and feel.beats and feel.beats[name]
+	if not cue then
+		return
+	end
+	local isLocal = character == player.Character
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if isLocal then
+		Audio.play(cue)
+	elseif root then
+		Audio.at(cue, root.Position, 0.45)
+	end
+	if name == "magOut" and cf then
+		Fx.shell(cf, "cellMag", Color3.new())
+	end
 end)
 
 -- State -------------------------------------------------------------------------------------------
@@ -94,6 +117,8 @@ local burrowDustT = 0
 local lastFirstPerson = -1
 local remoteBeams = {} -- pid -> { untilT, from, to, evolved }
 local wasReloading = false
+local localSpread = 0 -- predicted accuracy bloom (degrees), reconciled toward the server value
+local dryClicked = false
 -- Forearms and hands stay visible in first person (they hold the gun in front of the camera).
 local FP_KEEP = { RightHand = true, LeftHand = true, RightLowerArm = true, LeftLowerArm = true, ["Right Arm"] = true, ["Left Arm"] = true }
 
@@ -393,7 +418,13 @@ handlers[E.DMG] = function(id, amount, flags, fromX, fromZ)
 	if crit then
 		Audio.at("crit", pos, 0.7)
 	elseif armor then
-		Audio.at("hit", pos, 0.8, 0.6)
+		Audio.at("armorHit", pos, 0.8)
+		if fromX and Settings.quality >= 2 then
+			local back = Vector3.new(fromX - pos.X, 0, fromZ - pos.Z)
+			if back.Magnitude > 0.01 then
+				Fx.emit("hitOrange", pos + Vector3.yAxis, 4, (back.Unit + Vector3.yAxis * 0.7).Unit)
+			end
+		end
 	else
 		Audio.at("hit", pos, 0.6)
 	end
@@ -441,7 +472,7 @@ handlers[E.ARC] = function(x1, z1, x2, z2, color)
 		Fx.projectile(a, b, Color3.fromRGB(255, 240, 200), 0.16, 260, 4, function()
 			Fx.emit("hitWhite", b, 3, (a - b).Unit)
 		end)
-		Audio.at("crit", a, 0.35, 1.8)
+		Audio.at("ricochet", a, 0.5)
 	else
 		local c = Theme.Code[color] or C.cyan
 		Fx.lightning(a, b, c, if color == Codec.C.BLUE then 0.32 else 0.22, 0.17)
@@ -517,6 +548,10 @@ handlers[E.OVERDRIVE] = function(pid, x, z)
 	end
 end
 handlers[E.EVOLVE] = function(pid, evoId)
+	local char = characterOf(pid)
+	if char then
+		Rig.evolve(char)
+	end
 	local root = characterRoot(pid)
 	if root then
 		Fx.shockwave(root.Position, 22, C.gold, 0.8)
@@ -693,18 +728,39 @@ local function localFire(dt: number)
 		Audio.loop("beam", Audio.Ids.whoosh, if active then 0.28 else 0, if evolved then 1.3 else 1.8)
 		return
 	end
+	local bloomy = wdef.bloom ~= nil
+	if bloomy then
+		-- mirror the server's accuracy bloom locally so the reticle and tracers react instantly
+		local srv = me.spread or wdef.spreadMin
+		if not Controls.firing or me.reload > 0 then
+			localSpread = math.max(wdef.spreadMin, localSpread - wdef.recover * dt)
+		end
+		localSpread += (srv - localSpread) * math.min(1, dt * 2)
+		localSpread = math.clamp(localSpread, wdef.spreadMin, wdef.spreadMax)
+	end
+	if Controls.firing and me.ammo <= 0 and me.reload <= 0 then
+		local feel = WeaponFeel.get(me.weapon, evolved)
+		if feel.dry and not dryClicked then
+			dryClicked = true
+			Audio.play(feel.dry)
+		end
+	elseif not Controls.firing then
+		dryClicked = false
+	end
 	if not Controls.firing or me.reload > 0 or me.ammo <= 0 then
 		fireAcc = math.max(0, fireAcc - dt)
 		return
 	end
 	fireAcc -= dt
 	local guard = 0
+	local predictedAmmo = me.ammo
 	while fireAcc <= 0 and guard < 3 do
 		guard += 1
 		fireAcc += 1 / math.max(0.5, me.rate)
 		lastLocalShot = os.clock()
 		local base = math.atan2(Controls.aimX, Controls.aimZ)
 		local items = {}
+		local multi = me.multi or 0
 		if wdef.kind == "shotgun" then
 			local pellets = wdef.pellets + (if me.evolved == "EV_INFERNO_GRINDER" then 4 else 0)
 			local half = math.rad(wdef.spread) / 2
@@ -712,12 +768,32 @@ local function localFire(dt: number)
 				local a = base + (math.random() * 2 - 1) * half
 				table.insert(items, predictShot(muzzle, math.sin(a), math.cos(a), range * (0.85 + math.random() * 0.15), 0))
 			end
+			for k = 1, multi do
+				-- Расщепление: side clusters just outside the cone (same rule as the server)
+				local side = if k % 2 == 1 then 1 else -1
+				local center = base + side * (math.rad(wdef.spread) / 2 + math.rad(6))
+				for _ = 1, 3 do
+					local a = center + (math.random() * 2 - 1) * 0.12
+					table.insert(items, predictShot(muzzle, math.sin(a), math.cos(a), range * 0.9, 0))
+				end
+			end
 		else
-			local a = base + (math.random() * 2 - 1) * math.rad(wdef.spread) / 2
-			local pierce = if wdef.kind == "rail" then wdef.pierce + (if evolved then 7 else 0) else 0
+			local cone = if bloomy then localSpread else wdef.spread
+			local a = base + (math.random() * 2 - 1) * math.rad(cone) / 2
+			local pierce = if wdef.kind == "rail" then wdef.pierce + (if evolved then 7 else 0) else (me.pierce or 0)
 			table.insert(items, predictShot(muzzle, math.sin(a), math.cos(a), range, pierce))
+			for k = 1, multi do
+				-- Расщепление: side rounds at ±9° steps (same rule as the server)
+				local side = if k % 2 == 1 then 1 else -1
+				local sa = base + side * math.rad(9) * math.ceil(k / 2)
+				table.insert(items, predictShot(muzzle, math.sin(sa), math.cos(sa), range * 0.9, pierce))
+			end
+			if bloomy then
+				localSpread = math.min(wdef.spreadMax, localSpread + wdef.bloom)
+			end
 		end
-		Shots.fire(char, me.weapon, evolved, muzzle, items, true)
+		predictedAmmo -= 1
+		Shots.fire(char, me.weapon, evolved, muzzle, items, true, false, predictedAmmo / math.max(1, me.mag))
 	end
 end
 
@@ -892,11 +968,11 @@ local function frame(dt: number)
 				if rig then
 					Gear.update(rig, p.odT > 0, p.shield, not p.alive)
 					local beamKind = Defs.Weapons[p.weapon].kind == "beam"
-					Rig.setState(char, p.alive, if p.reload > 0 then p.reload elseif beamKind and p.overheated then 0.5 else 0)
+					Rig.setState(char, p.alive, if p.reload > 0 then p.reload elseif beamKind and p.overheated then 0.5 else 0, p.ammo / math.max(1, p.mag), p.reloadEmpty)
 					if p.id == myId then
 						local reloading = p.reload > 0
-						if reloading and not wasReloading then
-							Audio.play("reload")
+						if reloading and not wasReloading and not WeaponFeel.get(p.weapon, false).beats then
+							Audio.play("reload") -- weapons with animation beats voice their own reload
 						end
 						wasReloading = reloading
 						if isPlaying and not choosing then
@@ -988,7 +1064,8 @@ local function frame(dt: number)
 			cursor = if immersive then Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2) elseif Controls.device == "pc" then Controls.cursor else nil,
 			showReticle = (Controls.device == "pc" or immersive) and isPlaying and not choosing,
 			device = Controls.device,
-			debug = if RunService:IsStudio() then string.format("%.0f FPS  ·  %d ENEMIES  ·  SIM %.2fms  ·  REJ %s", fps, EnemyView.count(), debugExtra.simMs or 0, tostring(debugExtra.rejected or 0)) else nil,
+			spread = localSpread,
+			debug = if RunService:IsStudio() then string.format("%.0f FPS  ·  %d ENEMIES  ·  SIM %.2fms  ·  REJ %s  ·  FX %d", fps, EnemyView.count(), debugExtra.simMs or 0, tostring(debugExtra.rejected or 0), Fx.stats().live) else nil,
 		}
 		Hud.update(run, me, extra, dt)
 		Hud.setView(CameraRig.mode(), CameraRig.ModeIcons[CameraRig.mode()], nil, Controls.device)

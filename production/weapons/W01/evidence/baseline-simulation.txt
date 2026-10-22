@@ -1,0 +1,135 @@
+=== W_ARC_RIFLE  players=1 seed=20261021
+  [0:00] BANNER РЕАКТОРНЫЙ ДВОР — Держись. Эволюционируй. Убей босса.
+  [0:30] BANNER НАРАСТАНИЕ — Прорывы: 4 направлений
+  0:30  lvl  1  enemies  13  kills   37  hp 100  od  24  dmg    1036  
+  1:00  lvl  4  enemies  30  kills  102  hp  93  od  66  dmg    3278  CHAI2 RICO1
+  [1:30] BANNER КИСЛОТНЫЙ ДОЖДЬ — Прорывы: 5 направлений
+  1:30  lvl  5  enemies  23  kills  189  hp 100  od   3  dmg    6766  CHAI2 RICO2
+  2:00  lvl  6  enemies  45  kills  266  hp 100  od  53  dmg   10429  CHAI3 RICO2
+  [2:30] BANNER ЭЛИТА НА ПОДХОДЕ — Убей элиту — она несёт ядро эволюции
+  2:30  lvl  6  enemies  36  kills  367  hp  93  od   0  dmg   15622  CHAI3 RICO2
+  3:00  lvl 10  enemies  46  kills  443  hp  85  od  49  dmg   21138  CHAI3 CORR1 FREE1 RICO3 SHIE1
+  [3:04] BANNER ЯДРО БУРИ ПОЛУЧЕНО — Собери оба ключа, чтобы получить ГРОМОВЕРЖЕЦ
+  [3:04] BANNER ЭВОЛЮЦИЯ ГОТОВА — ГРОМОВЕРЖЕЦ — нажми F или кнопку ЭВО
+  [3:04] BANNER ГРОМОВЕРЖЕЦ — BOT1: эволюция оружия
+  [3:30] BANNER ПРОРЫВ — Прорывы: 8 направлений
+  3:30  lvl 10  enemies  43  kills  540  hp 100  od  13  dmg   28286  CHAI3 CORR1 FREE1 RICO3 SHIE1  [EV_THUNDERLORD]
+  4:00  lvl 11  enemies  62  kills  652  hp 100  od  85  dmg   35950  CHAI3 CORR1 FIRE1 FREE1 RICO3 SHIE1  [EV_THUNDERLORD]
+  [4:30] BANNER ВТОРАЯ ЭЛИТА — Убей элиту — она несёт ядро эволюции
+  4:30  lvl 11  enemies  62  kills  780  hp 100  od  44  dmg   47046  CHAI3 CORR1 FIRE1 FREE1 RICO3 SHIE1  [EV_THUNDERLORD]
+  [5:00] BANNER РОЙ — Прорывы: 8 направлений
+  5:00  lvl 12  enemies  64  kills  910  hp 100  od  11  dmg   59101  CHAI3 CORR1 FIRE1 FREE1 RICO3 SHIE2  [EV_THUNDERLORD]
+  [5:30] BANNER ПРОРЫВ УЛЬЯ — Уничтожь 3 гнезда, пока они не ушли под землю
+  5:30  lvl 12  enemies  97  kills 1068  hp 100  od   0  dmg   72203  CHAI3 CORR1 FIRE1 FREE1 RICO3 SHIE2  [EV_THUNDERLORD]
+  6:00  lvl 13  enemies  58  kills 1185  hp 100  od  61  dmg   85120  CHAI3 CORR1 FIRE1 FREE2 RICO3 SHIE2  [EV_THUNDERLORD]
+  [6:20] BANNER ПЕРЕДЫШКА — Затишье — подлечись и соберись
+  [6:25] BANNER ГНЁЗДА УШЛИ — Рой становится сильнее
+  6:30  lvl 17  enemies   8  kills 1302  hp 100  od  18  dmg   94747  CHAI3 CORR3 FIRE2 FREE3 RICO3 SHIE2  [EV_THUNDERLORD]
+  [7:00] BANNER МАТКА РАЗЛОМА — Королева роя прорвалась через северные ворота
+  7:00  lvl 17  enemies   6  kills 1335  hp 100  od  40  dmg   97309  CHAI3 CORR3 FIRE2 FREE3 RICO3 SHIE2  [EV_THUNDERLORD]
+  7:30  lvl 17  enemies  21  kills 1379  hp  82  od  68  dmg  105019  CHAI3 CORR3 FIRE2 FREE3 RICO3 SHIE2  [EV_THUNDERLORD]
+  [7:42] BANNER ЗОНА ЗАЧИЩЕНА — МАТКА РАЗЛОМА ПОВЕРЖЕНА
+  RESULT VICTORY (МАТКА РАЗЛОМА ПОВЕРЖЕНА) at 7:42  level 17  kills 1409  hive failed
+  first kill 6.7s  first level 44.6s  first choice 44.6s  core 3:04  evolved 3:04  overdrives 7
+  sim tick avg 2.838 ms  max 37.67 ms  peak enemies 98  spawned 1429  lowest hp 29  events/s 47  enemy stream 6.8 KB/s
+=== W_SCATTERGUN  players=1 seed=20261021
+  [0:00] BANNER РЕАКТОРНЫЙ ДВОР — Держись. Эволюционируй. Убей босса.
+  [0:30] BANNER НАРАСТАНИЕ — Прорывы: 4 направлений
+  0:30  lvl  2  enemies  16  kills   27  hp  93  od  17  dmg     743  IGNI1
+  1:00  lvl  4  enemies  36  kills   78  hp  86  od  50  dmg    4245  IGNI3
+  [1:30] BANNER КИСЛОТНЫЙ ДОЖДЬ — Прорывы: 5 направлений
+  1:30  lvl  5  enemies  35  kills  137  hp  72  od  89  dmg    7685  CHAI1 IGNI3
+  2:00  lvl  6  enemies  46  kills  218  hp  82  od  28  dmg   11729  CHAI1 DETO1 IGNI3
+  [2:30] BANNER ЭЛИТА НА ПОДХОДЕ — Убей элиту — она несёт ядро эволюции
+  2:30  lvl  7  enemies  47  kills  301  hp 100  od  82  dmg   15767  CHAI1 CRIT1 DETO1 IGNI3
+  3:00  lvl  8  enemies  45  kills  367  hp  74  od  16  dmg   19334  CHAI1 CRIT1 DETO1 FREE1 IGNI3
+  [3:30] BANNER ПРОРЫВ — Прорывы: 8 направлений
+  3:30  lvl  8  enemies  45  kills  436  hp  61  od  61  dmg   23434  CHAI1 CRIT1 DETO1 FREE1 IGNI3
+  4:00  lvl  9  enemies  58  kills  537  hp  57  od  14  dmg   31922  CHAI1 CRIT1 DETO1 FIRE1 FREE1 IGNI3
+  [4:16] BANNER ЯДРО ПЛАМЕНИ ПОЛУЧЕНО — Собери оба ключа, чтобы получить АДСКАЯ МЕЛЬНИЦА
+  [4:16] BANNER ЭВОЛЮЦИЯ ГОТОВА — АДСКАЯ МЕЛЬНИЦА — нажми F или кнопку ЭВО
+  [4:16] BANNER АДСКАЯ МЕЛЬНИЦА — BOT1: эволюция оружия
+  [4:30] BANNER ВТОРАЯ ЭЛИТА — Убей элиту — она несёт ядро эволюции
+  4:30  lvl 10  enemies  60  kills  647  hp  33  od   0  dmg   40276  CHAI1 CRIT1 DETO2 FIRE1 FREE1 IGNI3  [EV_INFERNO_GRINDER]
+  [5:00] BANNER РОЙ — Прорывы: 8 направлений
+  5:00  lvl 10  enemies  73  kills  757  hp  34  od  52  dmg   51749  CHAI1 CRIT1 DETO2 FIRE1 FREE1 IGNI3  [EV_INFERNO_GRINDER]
+  [5:15] BANNER СИГНАЛ ПОТЕРЯН — 
+  [5:15] BANNER ПОРАЖЕНИЕ — РОЙ ПРОРВАЛСЯ
+  RESULT DEFEAT (РОЙ ПРОРВАЛСЯ) at 5:15  level 11  kills 839  hive idle
+  first kill 9.2s  first level 26.5s  first choice 26.5s  core 4:16  evolved 4:16  overdrives 5
+  sim tick avg 2.877 ms  max 23.26 ms  peak enemies 96  spawned 934  lowest hp 0  events/s 52  enemy stream 7.3 KB/s
+=== W_PLASMA_BEAM  players=1 seed=20261021
+  [0:00] BANNER РЕАКТОРНЫЙ ДВОР — Держись. Эволюционируй. Убей босса.
+  [0:30] BANNER НАРАСТАНИЕ — Прорывы: 4 направлений
+  0:30  lvl  1  enemies  16  kills   32  hp 100  od  20  dmg     980  
+  1:00  lvl  2  enemies  33  kills   92  hp 100  od  59  dmg    2945  PIER1
+  [1:30] BANNER КИСЛОТНЫЙ ДОЖДЬ — Прорывы: 5 направлений
+  1:30  lvl  4  enemies  30  kills  166  hp 100  od   0  dmg    5637  CORR1 PIER2
+  2:00  lvl  6  enemies  39  kills  242  hp 100  od  37  dmg    9020  CORR2 PIER3
+  [2:30] BANNER ЭЛИТА НА ПОДХОДЕ — Убей элиту — она несёт ядро эволюции
+  2:30  lvl  7  enemies  44  kills  307  hp  86  od  79  dmg   12064  CORR2 PIER3 SHIE1
+  3:00  lvl  8  enemies  40  kills  380  hp 100  od  16  dmg   17512  CORR3 PIER3 SHIE1
+  [3:16] BANNER ЯДРО ПУСТОТЫ ПОЛУЧЕНО — Собери оба ключа, чтобы получить КОПЬЁ ПУСТОТЫ
+  [3:16] BANNER ЭВОЛЮЦИЯ ГОТОВА — КОПЬЁ ПУСТОТЫ — нажми F или кнопку ЭВО
+  [3:16] BANNER КОПЬЁ ПУСТОТЫ — BOT1: эволюция оружия
+  [3:30] BANNER ПРОРЫВ — Прорывы: 8 направлений
+  3:30  lvl  9  enemies  41  kills  453  hp 100  od  83  dmg   23932  CORR3 DETO1 PIER3 SHIE1  [EV_VOID_LANCE]
+  4:00  lvl 10  enemies  60  kills  548  hp 100  od  30  dmg   31651  CHAI1 CORR3 DETO1 PIER3 SHIE1  [EV_VOID_LANCE]
+  [4:30] BANNER ВТОРАЯ ЭЛИТА — Убей элиту — она несёт ядро эволюции
+  4:30  lvl 10  enemies  60  kills  671  hp 100  od   0  dmg   41504  CHAI1 CORR3 DETO1 PIER3 SHIE1  [EV_VOID_LANCE]
+  [5:00] BANNER РОЙ — Прорывы: 8 направлений
+  5:00  lvl 11  enemies  73  kills  779  hp 100  od  64  dmg   52539  CHAI1 CORR3 DETO1 FIRE1 PIER3 SHIE1  [EV_VOID_LANCE]
+  [5:30] BANNER ПРОРЫВ УЛЬЯ — Уничтожь 3 гнезда, пока они не ушли под землю
+  5:30  lvl 12  enemies  98  kills  950  hp 100  od  35  dmg   71341  CHAI1 CORR3 DETO2 FIRE1 PIER3 SHIE1  [EV_VOID_LANCE]
+  6:00  lvl 15  enemies  51  kills 1089  hp 100  od   7  dmg   86272  CHAI2 CORR3 DETO3 FIRE2 PIER3 SHIE1  [EV_VOID_LANCE]
+  [6:10] BANNER УЛЕЙ ЗАЧИЩЕН — Гнёзда уничтожены: лечение и опыт
+  [6:20] BANNER ПЕРЕДЫШКА — Затишье — подлечись и соберись
+  6:30  lvl 16  enemies  12  kills 1197  hp 100  od  77  dmg   96529  CHAI2 CORR3 DETO3 FIRE3 PIER3 SHIE1  [EV_VOID_LANCE]
+  [7:00] BANNER МАТКА РАЗЛОМА — Королева роя прорвалась через северные ворота
+  7:00  lvl 16  enemies   7  kills 1233  hp 100  od   0  dmg   99968  CHAI2 CORR3 DETO3 FIRE3 PIER3 SHIE1  [EV_VOID_LANCE]
+  7:30  lvl 17  enemies  23  kills 1273  hp 100  od  24  dmg  107522  CHAI2 CORR3 DETO3 FIRE3 PIER3 SHIE2  [EV_VOID_LANCE]
+  [7:49] BANNER ЗОНА ЗАЧИЩЕНА — МАТКА РАЗЛОМА ПОВЕРЖЕНА
+  RESULT VICTORY (МАТКА РАЗЛОМА ПОВЕРЖЕНА) at 7:49  level 17  kills 1318  hive cleared
+  first kill 6.9s  first level 49.7s  first choice 49.7s  core 3:16  evolved 3:16  overdrives 7
+  sim tick avg 3.111 ms  max 128.40 ms  peak enemies 98  spawned 1333  lowest hp 53  events/s 33  enemy stream 6.8 KB/s
+=== W_RAILGUN  players=1 seed=20261021
+  [0:00] BANNER РЕАКТОРНЫЙ ДВОР — Держись. Эволюционируй. Убей босса.
+  [0:30] BANNER НАРАСТАНИЕ — Прорывы: 4 направлений
+  0:30  lvl  1  enemies  18  kills   33  hp  93  od  21  dmg    2108  
+  1:00  lvl  3  enemies  30  kills   97  hp  86  od  63  dmg    6015  CHAI1 CRIT1
+  [1:30] BANNER КИСЛОТНЫЙ ДОЖДЬ — Прорывы: 5 направлений
+  1:30  lvl  5  enemies  30  kills  172  hp  79  od   0  dmg   10755  CHAI1 CRIT2 DASH1
+  2:00  lvl  6  enemies  46  kills  238  hp  88  od  42  dmg   15410  CHAI1 CRIT2 DASH1 DETO1
+  [2:30] BANNER ЭЛИТА НА ПОДХОДЕ — Убей элиту — она несёт ядро эволюции
+  2:30  lvl  7  enemies  47  kills  319  hp 100  od  95  dmg   20836  CHAI1 CRIT2 DASH1 DETO1 SHIE1
+  3:00  lvl  9  enemies  46  kills  387  hp  94  od  24  dmg   27110  CHAI1 CRIT3 DASH1 DETO2 SHIE1
+  [3:30] BANNER ПРОРЫВ — Прорывы: 8 направлений
+  3:30  lvl  9  enemies  45  kills  456  hp  74  od  69  dmg   33559  CHAI1 CRIT3 DASH1 DETO2 SHIE1
+  [3:36] BANNER ЗВЁЗДНОЕ ЯДРО ПОЛУЧЕНО — Собери оба ключа, чтобы получить ЗВЕЗДОЛОМ
+  [3:36] BANNER ЭВОЛЮЦИЯ ГОТОВА — ЗВЕЗДОЛОМ — нажми F или кнопку ЭВО
+  [3:36] BANNER ЗВЕЗДОЛОМ — BOT1: эволюция оружия
+  4:00  lvl 10  enemies  61  kills  561  hp  74  od  34  dmg   44408  CHAI1 CRIT3 DASH1 DETO2 RICO1 SHIE1  [EV_STARBREAKER]
+  [4:30] BANNER ВТОРАЯ ЭЛИТА — Убей элиту — она несёт ядро эволюции
+  4:30  lvl 13  enemies  59  kills  683  hp 100  od   0  dmg   55660  CHAI2 CRIT3 DASH1 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  [5:00] BANNER РОЙ — Прорывы: 8 направлений
+  5:00  lvl 14  enemies  71  kills  798  hp 100  od  74  dmg   68883  CHAI3 CRIT3 DASH1 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  [5:30] BANNER ПРОРЫВ УЛЬЯ — Уничтожь 3 гнезда, пока они не ушли под землю
+  5:30  lvl 14  enemies  99  kills  975  hp 100  od  81  dmg   90636  CHAI3 CRIT3 DASH1 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  6:00  lvl 15  enemies  50  kills 1122  hp 100  od  38  dmg  108628  CHAI3 CRIT3 DASH2 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  [6:20] BANNER ПЕРЕДЫШКА — Затишье — подлечись и соберись
+  [6:25] BANNER ГНЁЗДА УШЛИ — Рой становится сильнее
+  6:30  lvl 16  enemies  13  kills 1238  hp 100  od   0  dmg  121212  CHAI3 CRIT3 DASH3 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  [7:00] BANNER МАТКА РАЗЛОМА — Королева роя прорвалась через северные ворота
+  7:00  lvl 16  enemies   7  kills 1275  hp 100  od  22  dmg  125055  CHAI3 CRIT3 DASH3 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  7:30  lvl 16  enemies  20  kills 1316  hp 100  od  48  dmg  132048  CHAI3 CRIT3 DASH3 DETO3 RICO1 SHIE2  [EV_STARBREAKER]
+  [7:42] BANNER СИГНАЛ ПОТЕРЯН — 
+  [7:42] BANNER ПОРАЖЕНИЕ — РОЙ ПРОРВАЛСЯ
+  RESULT DEFEAT (РОЙ ПРОРВАЛСЯ) at 7:42  level 16  kills 1341  hive failed
+  first kill 6.8s  first level 44.9s  first choice 44.9s  core 3:36  evolved 3:36  overdrives 7
+  sim tick avg 2.919 ms  max 85.31 ms  peak enemies 99  spawned 1364  lowest hp 0  events/s 18  enemy stream 6.8 KB/s
+PASS determinism (seed 777)
+PASS navigation reachability MAP_REACTOR_YARD
+PASS navigation reachability MAP_HIVE_DEPTHS
+PASS perks / threat / rewards 594
+PASS railgun on Hive Depths threat 2: DEFEAT РОЙ ПРОРВАЛСЯ at 3:30
+ALL SIM CHECKS PASSED
