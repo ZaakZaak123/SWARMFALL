@@ -258,6 +258,23 @@ function Profile.hasBlueprint(player: Player, weaponId: string): boolean
 	return (d.ops[opId] or 0) >= 2 or (d.wins_by_op and d.wins_by_op[opId] or 0) > 0
 end
 
+-- Starter technologies: available after the first O01 win (D03 §6).
+function Profile.buyTech(player: Player, id: string): boolean
+	local d = Profile.get(player)
+	local def = Defs.Tech[id]
+	if not d or not def or d.tech[id] or d.scrap < def.cost then
+		return false
+	end
+	if not ((d.wins_by_op and (d.wins_by_op.O01 or 0) > 0) or (d.ops.O01 or 1) >= 2) then
+		return false
+	end
+	d.scrap -= def.cost
+	d.tech[id] = true
+	mark(player)
+	task.spawn(Profile.save, player)
+	return true
+end
+
 -- Permanent form: owned weapon + M10 with it + its component + Ксенит, crafted once.
 function Profile.formStatus(player: Player, evoId: string)
 	local d = Profile.get(player)
@@ -347,10 +364,11 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		local wid = mine.weapon
 		local before = Defs.masteryRank(wid, d.mastery[wid] or 0)
 		d.mastery[wid] = (d.mastery[wid] or 0) + (mine.weaponKills or 0)
-		local after = Defs.masteryRank(wid, d.mastery[wid])
+		local after, into, need = Defs.masteryRank(wid, d.mastery[wid])
 		if after > before then
 			table.insert(unlocked, { "mastery", wid, after })
 		end
+		reward.progress = { weapon = wid, added = mine.weaponKills or 0, rank = after, into = into, need = need }
 		for kind, n in mine.species or {} do
 			local was = Defs.researchStage(kind, d.research[kind] or 0)
 			d.research[kind] = (d.research[kind] or 0) + n

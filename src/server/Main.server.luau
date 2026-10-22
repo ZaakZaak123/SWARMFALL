@@ -171,6 +171,7 @@ local function startRun()
 				perks = perks,
 				s01 = data ~= nil and data.s01 == true,
 				form = Profile.equippedForm(player, weapon),
+				tech = if data then table.clone(data.tech) else {},
 			})
 			participants[player.UserId] = player
 		end
@@ -181,7 +182,11 @@ local function startRun()
 	buildArena(Ops.get(lobby.op).map)
 	seedCounter += 1
 	runId = HttpService:GenerateGUID(false)
-	world = World.new({ seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat })
+	-- Repeat variant when the host has already won this operation (story first attempt stays scripted).
+	local hostPlayer = host()
+	local hostData = hostPlayer and Profile.get(hostPlayer)
+	local replay = hostData ~= nil and hostData.wins_by_op ~= nil and (hostData.wins_by_op[lobby.op] or 0) > 0
+	world = World.new({ seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay })
 	mode = "RUN"
 	lobby.countdown = nil
 	table.clear(lobby.ready)
@@ -214,6 +219,19 @@ end
 
 local function backToLobby()
 	settle()
+	-- «Продолжить»: after a first win the lobby pre-selects the next story operation. Nothing starts
+	-- until the squad presses В БОЙ again (GDD §3.2).
+	if world and world.result and world.result.victory then
+		local h = host()
+		for _, nextId in world.op.unlocks do
+			if Ops[nextId] and h and Profile.maxThreat(h, nextId) >= 1 and nextId ~= "CA01" then
+				lobby.op = nextId
+				lobby.threat = 1
+				buildArena(Ops.get(nextId).map)
+				break
+			end
+		end
+	end
 	world = nil
 	mode = "LOBBY"
 	table.clear(participants)
@@ -299,6 +317,10 @@ end
 
 function handlers.buyWeapon(player: Player, id)
 	return lobbyOnly() and type(id) == "string" and Profile.buyWeapon(player, id)
+end
+
+function handlers.buyTech(player: Player, id)
+	return lobbyOnly() and type(id) == "string" and Profile.buyTech(player, id)
 end
 
 function handlers.craftForm(player: Player, evoId)

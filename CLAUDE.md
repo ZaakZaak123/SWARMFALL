@@ -24,7 +24,11 @@
 ```
 rojo build -o build/SWARMFALL.rbxlx
 lune run tests/compile
-lune run tests/sim_run all
+lune run tests/ops_order            (быстро: данные операций)
+lune run tests/profile              (быстро: инварианты профиля D03)
+lune run tests/ops_run O01          (бот играет O01: ~10 мин)
+lune run tests/ops_run <O02..CA01>  (бот играет операцию; запускай параллельно в фоне)
+lune run tests/sim_run W_ARC_RIFLE  (старый регрессионный прогон)
 stylua --check src   (форматирование: только для новых/изменённых файлов)
 selene src
 ```

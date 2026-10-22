@@ -118,7 +118,7 @@ do
 	local perks = { PK_VITALITY = 5, PK_MAGNET = 3, PK_REROLL = 3, PK_BANISH = 2, PK_INSIGHT = 1, PK_OVERDRIVE = 2, PK_DASH = 3 }
 	local w = World.new({ seed = 5, players = { { id = 1, name = "P", weapon = "W_RAILGUN", perks = perks } }, map = "MAP_HIVE_DEPTHS", threat = 3 })
 	local p = w.playerList[1]
-	assert(p.maxHp == 140 and p.rerolls == 3 and p.banishes == 2 and p.cards == 4 and p.od == 50, "perks not applied")
+	assert(p.maxHp == 140 and p.rerolls == 3 and p.banishes == 2 and p.cards == 4 and math.abs(p.s01Cd - Defs.S01.Cooldown * (1 - 2 * Defs.S01.PerkCut)) < 1e-6, "perks not applied")
 	w:step(5)
 	w.t = 100
 	local e = w:spawnEnemy("EN_RUNNER", 50, 50)

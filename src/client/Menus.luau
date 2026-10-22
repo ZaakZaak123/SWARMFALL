@@ -159,7 +159,7 @@ local function buildLobby()
 		end
 	end
 	ui.title = title
-	label("ВЫЖИВИ В РОЕ · ЭВОЛЮЦИОНИРУЙ · УБЕЙ БОССА", { Position = UDim2.fromOffset(32, 76), Size = UDim2.fromOffset(500, 18), FontFace = F.title, TextSize = 14, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, Parent = content })
+	label("СДЕРЖИ РОЙ · РАЗВИВАЙ ОРУЖИЕ · ЗАЩИТИ РЕАКТОР", { Position = UDim2.fromOffset(32, 76), Size = UDim2.fromOffset(500, 18), FontFace = F.title, TextSize = 14, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, Parent = content })
 
 	-- Scrap + settings (top-right)
 	ui.scrapBox = Theme.panel({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromOffset(1196, 22), Size = UDim2.fromOffset(170, 44), Parent = content }, C.gold)
@@ -175,7 +175,7 @@ local function buildLobby()
 
 	-- Tabs
 	ui.tabs = {}
-	for i, t in { { "play", "В БОЙ", "swords" }, { "workshop", "МАСТЕРСКАЯ", "level" } } do
+	for i, t in { { "play", "В БОЙ", "swords" }, { "workshop", "РАЗВИТИЕ", "level" } } do
 		local b, l = button(content, t[2], { Position = UDim2.fromOffset(560 + (i - 1) * 210, 24), Size = UDim2.fromOffset(200, 40) }, C.panel2, t[3])
 		l.TextColor3 = C.text
 		b.Activated:Connect(function()
@@ -319,7 +319,7 @@ local function buildLobby()
 			Menus.selectWeapon(id)
 			Audio.play("ui")
 		end)
-		ui.cards[id] = { card = card, stroke = card:FindFirstChildOfClass("UIStroke"), color = w.color, lock = lock, vp = vp, view = view, recipe = recipe, mRank = mRank, mFill = mFill, mKills = mKills, formState = formState, evo = evo }
+		ui.cards[id] = { card = card, stroke = card:FindFirstChildOfClass("UIStroke"), color = w.color, lock = lock, price = priceRow, vp = vp, view = view, recipe = recipe, mRank = mRank, mFill = mFill, mKills = mKills, formState = formState, evo = evo }
 	end
 
 	-- Squad + deploy (right)
@@ -341,28 +341,60 @@ local function buildLobby()
 	-- WORKSHOP tab ---------------------------------------------------------------------------------
 	local shop = new("Frame", { Name = "Workshop", Position = UDim2.fromOffset(0, 104), Size = UDim2.fromOffset(1280, 616), Visible = false, Parent = content })
 	ui.shopTab = shop
-	label("Перки действуют во всех забегах. Они не дают огромной силы — они дают выбор.", { Position = UDim2.fromOffset(32, 0), Size = UDim2.fromOffset(900, 20), FontFace = F.body, TextSize = 15, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
+	label("ПЕРКИ — действуют во всех забегах. Не огромная сила, а выбор.", { Position = UDim2.fromOffset(32, 0), Size = UDim2.fromOffset(800, 20), FontFace = F.body, TextSize = 15, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
 	ui.perkCards = {}
 	for i, id in Defs.PerkOrder do
 		local def = Defs.Perks[id]
 		local col, row = (i - 1) % 4, (i - 1) // 4
-		local card = Theme.panel({ Position = UDim2.fromOffset(28 + col * 306, 32 + row * 276), Size = UDim2.fromOffset(296, 266), Parent = shop }, def.color)
-		local badge = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 16), Size = UDim2.fromOffset(84, 84), BackgroundColor3 = C.bg, BackgroundTransparency = 0.2, Rotation = 45, Corner = 10, Stroke = { Color = def.color, Thickness = 2 }, Parent = card })
-		icon(def.icon, 54, def.color, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 31) }, C.bg).Parent = card
-		label(def.name, { Position = UDim2.fromOffset(0, 118), Size = UDim2.new(1, 0, 0, 26), FontFace = F.head, TextSize = 22, Parent = card })
-		local pips = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 148), Size = UDim2.fromOffset(200, 8), List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 5) }, Parent = card })
+		local card = Theme.panel({ Position = UDim2.fromOffset(28 + col * 202, 28 + row * 292), Size = UDim2.fromOffset(194, 284), Parent = shop }, def.color)
+		local badge = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 16), Size = UDim2.fromOffset(70, 70), BackgroundColor3 = C.bg, BackgroundTransparency = 0.2, Rotation = 45, Corner = 10, Stroke = { Color = def.color, Thickness = 2 }, Parent = card })
+		icon(def.icon, 44, def.color, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 29) }, C.bg).Parent = card
+		label(def.name, { Position = UDim2.fromOffset(0, 104), Size = UDim2.new(1, 0, 0, 24), FontFace = F.head, TextSize = 19, Parent = card })
+		local pips = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 134), Size = UDim2.fromOffset(180, 8), List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 5) }, Parent = card })
 		local pipList = {}
 		for r = 1, def.max do
-			pipList[r] = new("Frame", { Size = UDim2.fromOffset(28, 8), BackgroundTransparency = 0, BackgroundColor3 = C.line, Parent = pips })
+			pipList[r] = new("Frame", { Size = UDim2.fromOffset(24, 8), BackgroundTransparency = 0, BackgroundColor3 = C.line, Parent = pips })
 		end
-		local stat = label("", { Position = UDim2.fromOffset(12, 164), Size = UDim2.new(1, -24, 0, 40), FontFace = F.bodyBold, TextSize = 16, TextWrapped = true, Parent = card })
-		local buy, buyLabel = button(card, "", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(200, 44) }, def.color)
+		local stat = label("", { Position = UDim2.fromOffset(10, 150), Size = UDim2.new(1, -20, 0, 64), FontFace = F.bodyBold, TextSize = 14, TextWrapped = true, Parent = card })
+		local buy, buyLabel = button(card, "", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.fromOffset(170, 40) }, def.color)
 		buy.Activated:Connect(function()
 			send("buyPerk", id)
 			Audio.play("level", 1, 1.15)
 		end)
 		ui.perkCards[id] = { card = card, pips = pipList, stat = stat, buy = buy, buyLabel = buyLabel, def = def }
 	end
+
+	-- Laboratory: starter technologies (after the first O01 win)
+	label("ЛАБОРАТОРИЯ", { Position = UDim2.fromOffset(852, 0), Size = UDim2.fromOffset(300, 20), FontFace = F.title, TextSize = 13, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
+	ui.techCards = {}
+	for i, tid in Defs.TechOrder do
+		local def = Defs.Tech[tid]
+		local card = new("TextButton", { Position = UDim2.fromOffset(848, 26 + (i - 1) * 74), Size = UDim2.fromOffset(404, 68), BackgroundColor3 = C.panel, BackgroundTransparency = 0.1, Text = "", AutoButtonColor = false, Corner = 5, Stroke = { Color = C.line, Transparency = 0.3 }, Parent = shop })
+		icon(if tid == "TECH_PIERCE_CORE" then "pierce" else "reactor", 30, C.cyan, { Position = UDim2.fromOffset(10, 19) }).Parent = card
+		label(def.name, { Position = UDim2.fromOffset(50, 6), Size = UDim2.fromOffset(240, 20), FontFace = F.head, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
+		label(def.text, { Position = UDim2.fromOffset(50, 28), Size = UDim2.fromOffset(240, 36), FontFace = F.body, TextSize = 12, TextWrapped = true, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = card })
+		local state = label("", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.fromOffset(104, 68), FontFace = F.title, TextSize = 12, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Right, Parent = card })
+		card.Activated:Connect(function()
+			send("buyTech", tid)
+			Audio.play("level", 1, 1.15)
+		end)
+		ui.techCards[tid] = { card = card, state = state, stroke = card:FindFirstChildOfClass("UIStroke") }
+	end
+
+	-- Research: personal confirmed kills per species (stages I–III)
+	label("ИССЛЕДОВАНИЯ ВИДОВ", { Position = UDim2.fromOffset(852, 180), Size = UDim2.fromOffset(300, 20), FontFace = F.title, TextSize = 13, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
+	ui.researchRows = {}
+	local order = { "EN_RUNNER", "EN_SPITTER", "EN_STALKER", "EN_BULWARK", "EN_BOMBER", "ELITE_BULWARK", "HIVE", "BOSS_BROODMOTHER", "BOSS_DEVOURER" }
+	for i, kind in order do
+		local row = new("Frame", { Position = UDim2.fromOffset(848, 204 + (i - 1) * 34), Size = UDim2.fromOffset(404, 30), BackgroundColor3 = C.panel, BackgroundTransparency = 0.25, Corner = 4, Parent = shop })
+		local name = label("", { Position = UDim2.fromOffset(10, 0), Size = UDim2.fromOffset(190, 30), FontFace = F.head, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+		local stage = label("", { Position = UDim2.fromOffset(200, 0), Size = UDim2.fromOffset(40, 30), FontFace = F.num, TextSize = 14, TextColor3 = C.lime, Parent = row })
+		local back = new("Frame", { Position = UDim2.fromOffset(244, 12), Size = UDim2.fromOffset(84, 6), BackgroundTransparency = 0.4, BackgroundColor3 = Color3.new(0, 0, 0), Parent = row })
+		local fill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.lime, Parent = back })
+		local count = label("", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 0), Size = UDim2.fromOffset(70, 30), FontFace = F.num, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
+		ui.researchRows[kind] = { name = name, stage = stage, fill = fill, count = count }
+	end
+	ui.s01Line = label("", { Position = UDim2.fromOffset(852, 512), Size = UDim2.fromOffset(400, 40), FontFace = F.bodyBold, TextSize = 13, TextWrapped = true, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
 
 	Menus.selectWeapon(selectedWeapon)
 end
@@ -533,6 +565,7 @@ function Menus.refreshLobby()
 		if not owned then
 			local blueprint = profile == nil or profile.blueprints == nil or profile.blueprints[id] ~= false
 			local afford = scrap >= Defs.Weapons[id].cost
+			c.price.Visible = blueprint
 			if not blueprint then
 				local opId = Defs.Blueprints[id]
 				c.lock.Hint.Text = "ЧЕРТЁЖ: ПОБЕДА В " .. opId .. " · " .. Ops.get(opId).name
@@ -618,6 +651,43 @@ function Menus.refreshLobby()
 		then "Обычная сложность. Победа откроет следующую угрозу."
 		else string.format("Здоровье врагов +%d%%, урон +%d%% · награда ×%.2f", (Defs.Threat.hp(threat) - 1) * 100, (Defs.Threat.damage(threat) - 1) * 100, Defs.Threat.reward(threat))
 	ui.hostNote.Text = if isHost or not lobbyState then "" else "Операцию и угрозу выбирает лидер отряда"
+	-- laboratory
+	local won = profile and ((profile.ops and (profile.ops.O01 or 1) >= 2) or (profile.ops and profile.ops.O02 ~= nil))
+	for tid, tc in ui.techCards or {} do
+		local def = Defs.Tech[tid]
+		local owned = profile and profile.tech and profile.tech[tid]
+		if owned then
+			tc.state.Text = "ИЗУЧЕНО"
+			tc.state.TextColor3 = C.lime
+		elseif not won then
+			tc.state.Text = "ПОСЛЕ ПОБЕДЫ В O01"
+			tc.state.TextColor3 = C.dim
+		else
+			tc.state.Text = "ИЗУЧИТЬ · " .. Theme.commas(def.cost)
+			tc.state.TextColor3 = if scrap >= def.cost then C.gold else C.dim
+		end
+		tc.stroke.Color = if owned then C.lime elseif won and scrap >= def.cost then C.gold else C.line
+	end
+	-- research
+	for kind, row in ui.researchRows or {} do
+		local kills = profile and profile.research and profile.research[kind] or 0
+		local st = Defs.researchStage(kind, kills)
+		local th = Defs.Research[kind]
+		local known = kills > 0
+		row.name.Text = if known then Defs.Enemies[kind].name else "???"
+		row.name.TextColor3 = if known then C.text else C.dim
+		row.stage.Text = if st > 0 then string.rep("I", st) else "—"
+		local nextNeed = th[math.min(st + 1, #th)]
+		local prevNeed = if st > 0 then th[st] else 0
+		row.fill.Size = UDim2.fromScale(if st >= #th then 1 else math.clamp((kills - prevNeed) / math.max(1, nextNeed - prevNeed), 0, 1), 1)
+		row.count.Text = if st >= #th then Theme.commas(kills) else Theme.commas(kills) .. "/" .. Theme.commas(nextNeed)
+	end
+	if ui.s01Line then
+		local s = profile and profile.s01Stats
+		ui.s01Line.Text = if profile and profile.s01
+			then string.format("ГРАВИМОЛОТ S01 · попаданий %s · убийств %s · массовых ударов %s", Theme.commas(s.hits), Theme.commas(s.kills), Theme.commas(s.crowds))
+			else "ГРАВИМОЛОТ S01 — откроется в O01"
+	end
 	-- perks
 	for id, pc in ui.perkCards do
 		local rank = profile and profile.perks[id] or 0
@@ -648,9 +718,9 @@ function Menus.showLobby(info, id: number, device: string)
 	local vs = workspace.CurrentCamera.ViewportSize
 	ui.lobbyScale.Scale = math.clamp(math.min(vs.X / 1300, vs.Y / 740), 0.4, 1.5)
 	ui.controlsHint.Text = if device == "touch"
-		then "Левый стик — движение\nПравая площадка — прицел и огонь\nКнопки справа — рывок, перегрузка, эволюция"
-		elseif device == "gamepad" then "L-стик движение · R-стик прицел/огонь\nB рывок · Y перегрузка · X эволюция\nA/X/B — выбор карты"
-		else "WASD движение · МЫШЬ прицел · ЛКМ огонь\nПРОБЕЛ рывок · Q перегрузка · F эволюция\nR перезарядка · 1-4 выбор улучшения"
+		then "Левый стик — движение\nПравая площадка — прицел и огонь\nКнопки справа — рывок и Гравимолот"
+		elseif device == "gamepad" then "L-стик движение · R-стик прицел/огонь\nB рывок · Y Гравимолот · Start пауза\nA/X/B — выбор карты"
+		else "WASD движение · МЫШЬ прицел · ЛКМ огонь\nПРОБЕЛ рывок · Q Гравимолот · V камера\nR перезарядка · 1-4 выбор улучшения"
 	clear(ui.squadList)
 	local me = nil
 	local readyCount = 0
@@ -870,7 +940,7 @@ function Menus.showOffer(me, run)
 				c.pips[k].BackgroundTransparency = if k == rank then 0 elseif k < rank then 0.3 else 0.6
 				c.pips[k].Visible = rank > 0
 			end
-			local isKey = me.evolved == "" and table.find(evo.keys, id) ~= nil
+			local isKey = run ~= nil and run.runEvolution == true and me.evolved == "" and table.find(evo.keys, id) ~= nil
 			c.tag.Text = if isKey then "КЛЮЧ ЭВОЛЮЦИИ" else ""
 			c.tagIcon.Visible = isKey
 			c.tag2.Text = synergyNote(me, id) or ""
@@ -993,7 +1063,8 @@ local function buildResults()
 	ui.resReason = label("", { Position = UDim2.fromOffset(0, 120), Size = UDim2.new(1, 0, 0, 22), FontFace = F.title, TextSize = 15, TextColor3 = C.dim, ZIndex = 21, Parent = content })
 	ui.resStats = new("Frame", { Position = UDim2.fromOffset(0, 156), Size = UDim2.new(1, 0, 0, 96), List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center }, ZIndex = 21, Parent = content })
 	ui.resReward = Theme.panel({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 264), Size = UDim2.fromOffset(700, 74), ZIndex = 21, Parent = content }, C.gold)
-	ui.resPlayers = new("Frame", { Position = UDim2.fromOffset(0, 350), Size = UDim2.new(1, 0, 0, 220), List = { Padding = UDim.new(0, 8) }, ZIndex = 21, Parent = content })
+	ui.resProgress = label("", { Position = UDim2.fromOffset(0, 342), Size = UDim2.new(1, 0, 0, 22), FontFace = F.head, TextSize = 16, TextColor3 = C.cyan, ZIndex = 21, Parent = content })
+	ui.resPlayers = new("Frame", { Position = UDim2.fromOffset(0, 370), Size = UDim2.new(1, 0, 0, 200), List = { Padding = UDim.new(0, 8) }, ZIndex = 21, Parent = content })
 	ui.resButton, ui.resButtonLabel = button(content, "В ЛОББИ", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.fromOffset(360, 60), ZIndex = 22 }, C.cyan, "play")
 	ui.resButtonLabel.TextSize = 24
 	ui.resButton.Activated:Connect(function()
@@ -1027,6 +1098,17 @@ function Menus.showResults(result, votes, id: number, reward)
 	ui.resTitle.TextColor3 = if result.victory then C.gold else C.red
 	local op = Ops.get(result.op)
 	ui.resReason.Text = result.reason .. "  ·  " .. op.code .. " " .. op.name .. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
+	-- Main permanent progress: the weapon's mastery, counted even on defeat.
+	local pr = reward and reward.progress
+	if pr then
+		local w = Defs.Weapons[pr.weapon]
+		ui.resProgress.Text = string.format("+%s УБИЙСТВ · %s M%d%s", Theme.commas(pr.added), w and w.short or "", pr.rank, if pr.need then string.format("  (%s / %s)", Theme.commas(pr.into), Theme.commas(pr.need)) else "  МАКС")
+	else
+		ui.resProgress.Text = ""
+	end
+	if result.chapterEnd and result.victory then
+		ui.resProgress.Text = "ГЛАВА 1 ЗАВЕРШЕНА  ·  " .. ui.resProgress.Text
+	end
 	clear(ui.resStats)
 	statTile(ui.resStats, "timer", "ВРЕМЯ", Theme.fmtTime(result.time), C.text)
 	statTile(ui.resStats, "level", "УРОВЕНЬ", tostring(result.level), C.cyan)

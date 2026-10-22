@@ -40,7 +40,8 @@ function Combat.recompute(p)
 	s.magazine = wd.magazine
 	s.reload = wd.reload / (1 + 0.6 * fireBonus)
 	s.reloadEmpty = (wd.reloadEmpty or wd.reload) / (1 + 0.6 * fireBonus)
-	s.pierce = wd.pierce + rv(p, "UPG_PIERCE", UV.UPG_PIERCE.extra)
+	-- TECH_PIERCE_CORE: one extra pierce (downstream hits keep the weapon falloff).
+	s.pierce = wd.pierce + rv(p, "UPG_PIERCE", UV.UPG_PIERCE.extra) + (if p.tech and p.tech.TECH_PIERCE_CORE then 1 else 0)
 	s.pellets = wd.pellets
 	s.spread = wd.spread
 	s.spreadMin = wd.spreadMin or wd.spread

@@ -45,6 +45,18 @@ function Mission.new(w, op)
 	self.targets = {} -- objective entities (nests / nodes / acid sources): enemy records
 	self.destroyed = 0
 	self.marks = {}
+	-- Repeat variant (D02 §11.2): which relay coil starts, which nest the Bulwark guards.
+	self.relayPrimary = op.relay and op.relay.primary
+	self.relayBackup = op.relay and op.relay.backup
+	self.guardShift = 0
+	if w.replay then
+		if op.relay then
+			local coils = #w.map.coils
+			self.relayPrimary = w.rng:int(1, coils)
+			self.relayBackup = (self.relayPrimary % coils) + 1
+		end
+		self.guardShift = w.rng:int(0, 2)
+	end
 	if op.reactor then
 		local hp = op.reactor.hp * Defs.Reactor.hpScale(w.threat, #w.playerList)
 		local radius = op.reactor.radius or Defs.Reactor.Radius
@@ -131,6 +143,29 @@ function Mission:hurtObject(obj, amount: number, fromX: number, fromZ: number, a
 			w:banner(`{obj.name} {math.floor(mark * 100)}%`, "Вернись и перехвати штурм", C.RED, 3, "reactor")
 		end
 	end
+	-- TECH_EMERGENCY_CAP: once per operation, the hull discharges when it first drops below half.
+	if pct <= 0.5 and not self.capUsed then
+		for _, pl in w.playerList do
+			if pl.tech.TECH_EMERGENCY_CAP then
+				self.capUsed = true
+				local T = Defs.Tech.TECH_EMERGENCY_CAP
+				w:emit(E.REACTOR, 5, 0, obj.x, obj.z)
+				w:banner("АВАРИЙНЫЙ КОНДЕНСАТОР", "Импульс корпуса отбросил штурм", C.CYAN, 2.5, "reactor")
+				for _, e in w:query(obj.x, obj.z, T.radius, {}) do
+					if e.alive and not e.def.boss then
+						local dx, dz = e.x - obj.x, e.z - obj.z
+						local m = math.max(0.1, math.sqrt(dx * dx + dz * dz))
+						if not e.def.big then
+							e.x, e.z = w.nav.resolve(e.x + dx / m * T.knock, e.z + dz / m * T.knock, e.def.radius)
+							e.stunUntil = math.max(e.stunUntil, w.t + 1)
+						end
+						w:damage(pl, e, T.damage, 1, bit32.bor(Codec.DF.BLAST, Codec.DF.ENV), obj.x, obj.z)
+					end
+				end
+				break
+			end
+		end
+	end
 	if obj.hp <= 0 then
 		obj.alive = false
 		w:emit(E.REACTOR, 3)
@@ -189,10 +224,10 @@ function Mission:relayLost()
 	if self.relay.charge >= self.relay.need then
 		return -- a charged relay stays done (D02 §5.1)
 	end
-	if not self.relay.used[cfg.backup] then
+	if not self.relay.used[self.relayBackup] then
 		-- Backup coil takes over with 100% of the confirmed charge.
 		local carried = self.relay.charge
-		self:activateRelay(cfg.backup, carried)
+		self:activateRelay(self.relayBackup, carried)
 		w:banner("КАТУШКА ПОТЕРЯНА", `Запасная катушка активна · заряд сохранён {carried}/{self.relay.need}`, C.ORANGE, 4, "reactor")
 		return
 	end
@@ -226,6 +261,19 @@ function Mission:targetsLeft(): number
 	return n
 end
 
+-- Targets required to complete the objective (nests: any 2 of 3; nodes / acid: all planned).
+function Mission:need(): number
+	local o = self.op.objective
+	if o == "nests" then
+		return self.op.nests.need
+	elseif o == "nodes" then
+		return self.op.nodes.count
+	elseif o == "acid" then
+		return self.op.acid.count
+	end
+	return #self.targets
+end
+
 -- Called by World:kill for every death.
 function Mission:onKill(e, p)
 	local w = self.w
@@ -244,7 +292,7 @@ function Mission:onKill(e, p)
 	if e.objective then
 		self.destroyed += 1
 		w:emit(E.OBJECTIVE, 4, e.x, e.z, e.objIndex or 0, self.destroyed, #self.targets)
-		local need = if e.objective == "nest" then self.op.nests.need else #self.targets
+		local need = self:need()
 		local names = { nest = "ГНЕЗДО", node = "УЗЕЛ", acid = "ИСТОЧНИК" }
 		if self.destroyed >= need and self.state == "FIGHT" then
 			if e.objective == "nest" then
@@ -311,6 +359,7 @@ function Mission:assault(beat)
 	end
 	local _, ph = w:currentPhaseDef()
 	local key = beat.dir or pickDir(w, ph.dirs)
+	key = w.dirMap and w.dirMap[key] or key
 	local s = w.map.spawns[key]
 	local n = math.max(1, math.floor((beat.count or 8) * (1 + 0.35 * (#w.playerList - 1))))
 	local spawned = 0
@@ -388,7 +437,7 @@ end
 
 function Mission:guard(beat)
 	local w = self.w
-	local nest = self.targets[beat.index or 1]
+	local nest = self.targets[((beat.index or 1) - 1 + self.guardShift) % math.max(1, #self.targets) + 1]
 	if not nest or not nest.alive then
 		-- Escort the first nest still standing.
 		for _, e in self.targets do
@@ -425,8 +474,8 @@ function Mission:runBeat(beat)
 			w:legacyElite()
 		end
 	elseif t == "relay" then
-		self:activateRelay(self.op.relay.primary, 0)
-		local c = w.map.coils[self.op.relay.primary]
+		self:activateRelay(self.relayPrimary, 0)
+		local c = w.map.coils[self.relayPrimary]
 		w:emit(E.ASSAULT, c.x, c.z, 0, 0, 0, 0)
 		w:banner("ВНЕШНЯЯ КАТУШКА", "Убивай врагов в её зоне, чтобы зарядить ретранслятор", C.CYAN, 4, "reactor")
 	elseif t == "nests" then
@@ -436,15 +485,15 @@ function Mission:runBeat(beat)
 	elseif t == "guard" then
 		self:guard(beat)
 	elseif t == "nodes" then
-		local sites = { w.map.hiveSites[1], w.map.hiveSites[2] }
-		self:spawnTargets("node", sites, self.op.nodes.hp, { noSpawn = true })
-		self.goal = "Разрушь 2 питающих узла"
-		w:banner("ПИТАЮЩИЕ УЗЛЫ", "Оба узла уязвимы для любого оружия. Взрывуны помогают", C.VIOLET, 4, "@6")
+		local i = beat.index or 1
+		self:spawnTargets("node", { w.map.hiveSites[i] }, self.op.nodes.hp, { noSpawn = true })
+		self.goal = "Разрушь питающие узлы"
+		w:banner(if i == 1 then "ПИТАЮЩИЙ УЗЕЛ" else "ВТОРОЙ УЗЕЛ", "Уязвим для любого оружия. Взрывуны помогают", C.VIOLET, 4, "@6")
 	elseif t == "acid" then
-		local sites = { w.map.hiveSites[1], w.map.hiveSites[2] }
-		self:spawnTargets("acid", sites, self.op.acid.hp, { noSpawn = true, acidSource = true })
-		self.goal = "Уничтожь 2 кислотных источника"
-		w:banner("КИСЛОТНЫЕ ИСТОЧНИКИ", "Стреляй по источникам — они травят двор", C.LIME, 4, "@6")
+		local i = beat.index or 1
+		self:spawnTargets("acid", { w.map.hiveSites[i] }, self.op.acid.hp, { noSpawn = true, acidSource = true })
+		self.goal = "Уничтожь кислотные источники"
+		w:banner(if i == 1 then "КИСЛОТНЫЙ ИСТОЧНИК" else "ВТОРОЙ ИСТОЧНИК", "Стреляй по источнику — он травит двор", C.LIME, 4, "@6")
 	elseif t == "hive" then
 		w:startHive()
 	elseif t == "boss" then
@@ -506,8 +555,7 @@ function Mission:goalText(): string
 		if self.relay and self.relay.coil then
 			g = `Заряди катушку {self.relay.charge}/{self.relay.need}`
 		elseif #self.targets > 0 then
-			local need = if self.op.objective == "nest" or self.op.objective == "nests" then self.op.nests.need else #self.targets
-			g = self.goal .. ` · {self.destroyed}/{need}`
+			g = self.goal .. ` · {self.destroyed}/{self:need()}`
 		end
 	end
 	return g

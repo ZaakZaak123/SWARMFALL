@@ -329,7 +329,7 @@ end
 function Hud.update(run, me, extra, dt: number)
 	local now = os.clock()
 	ui.scale.Scale = math.clamp(workspace.CurrentCamera.ViewportSize.Y / 900, 0.6, 1.15)
-	local remaining = Defs.Run.HardLimit - run.t
+	local remaining = (run.hardLimit or Defs.Run.HardLimit) - run.t
 	ui.timer.Text = Theme.fmtTime(run.t)
 	ui.timer.TextColor3 = if run.boss and run.boss.enraged then C.red else C.text
 	ui.phase.Text = run.label

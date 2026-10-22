@@ -77,6 +77,7 @@ local function newPlayer(map, info, index: number, count: number)
 		hammerAt = nil,
 		hammerEmergency = false,
 		s01Stats = { casts = 0, hits = 0, kills = 0, crowds = 0, best = 0 },
+		tech = info.tech or {}, -- owned starter technologies (Defs.Tech)
 		weaponKills = 0, -- personal lethal kills credited to this run's weapon (mastery M1–M20)
 		lineShots = 0, -- railgun trial shots (>= 2 normal enemies in one line)
 		species = {}, -- personal confirmed kills per species (research)
@@ -112,6 +113,7 @@ export type Options = {
 	map: string?,
 	threat: number?,
 	players: { { id: number, name: string?, weapon: string?, perks: { [string]: number }? } },
+	replay: boolean?, -- a repeat of an operation already won: 1–2 whitelisted changes (D02 §11.2)
 }
 
 function World.new(opts: Options)
@@ -174,6 +176,12 @@ function World.new(opts: Options)
 	self.hitBuf = {}
 	self.dead = {}
 	self.teamKills = 0
+	self.replay = opts.replay == true
+	-- Mirrored approach on repeats: the heavier side of the swarm swaps east/west.
+	self.dirMap = nil
+	if self.replay and self.rng:chance(0.5) then
+		self.dirMap = { E = "W", W = "E", NE = "NW", NW = "NE", SE = "SW", SW = "SE" }
+	end
 	self.mission = Mission.new(self, self.op)
 	return self
 end
@@ -829,7 +837,7 @@ function World:director(dt: number)
 	end
 	local n = math.max(1, #self.playerList)
 	local cap = math.min(ph.cap * (1 + 0.45 * (n - 1)), Defs.Run.MaxActive * (1 + 0.45 * (n - 1)))
-	self.spawnAcc += ph.rate * (1 + 0.4 * (n - 1)) * Defs.Threat.spawn(self.threat) * dt
+	self.spawnAcc += ph.rate * (1 + 0.4 * (n - 1)) * Defs.Threat.spawn(self.threat) * (self.op.spawnMult or 1) * dt
 	local active, specials = 0, 0
 	for _, e in self.enemies do
 		if not e.def.boss and e.kind ~= "HIVE" then
@@ -918,6 +926,8 @@ function World:spawnBoss()
 	end
 	self.bossSpawned = true
 	local b = self:spawnEnemy(self.map.boss, self.map.bossEntry.x, self.map.bossEntry.z, 0.1)
+	b.hp *= self.op.bossHpMult or 1
+	b.maxHp = b.hp
 	b.state = ST.ENTER
 	b.stateUntil = self.t + 3.5
 	b.invulnerable = true
@@ -930,7 +940,8 @@ function World:enrageBoss()
 	if self.boss and not self.enraged then
 		self.enraged = true
 		self:emit(E.BOSS, 3)
-		self:banner("ЯРОСТЬ", "Убей босса до 9:00", C.RED, 3, "skull")
+		local limit = self.op.hardLimit or Defs.Run.HardLimit
+		self:banner("ЯРОСТЬ", string.format("Убей босса до %d:%02d", limit // 60, limit % 60), C.RED, 3, "skull")
 	end
 end
 
@@ -938,6 +949,7 @@ function World:spawnAtBreach(kind: string, dirs: { string }, spawnTime: number?)
 	local def = Defs.Enemies[kind]
 	for _ = 1, 6 do
 		local key = dirs[self.rng:int(1, #dirs)]
+		key = self.dirMap and self.dirMap[key] or key
 		local s = self.map.spawns[key]
 		local x = s.x + self.rng:range(-9, 9)
 		local z = s.z + self.rng:range(-9, 9)
@@ -1346,6 +1358,7 @@ function World:publicState()
 		map = self.map.id,
 		op = self.op.id,
 		runEvolution = self.op.runEvolution,
+		hardLimit = self.op.hardLimit or Defs.Run.HardLimit,
 		mission = self.mission:publicState(),
 		threat = self.threat,
 		result = self.result,

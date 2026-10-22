@@ -88,8 +88,8 @@ check(d.mastery.W_ARC_RIFLE == 640 and d.scrap == scrapAfter1 and d.runs == 1, "
 -- Victory: unlocks, threat, grant up to 180 once.
 d.scrap = 40
 local r2 = Profile.grantRun(p, "run-2", result(true, { components = { "CMP_STORM_CORE" } }), "O01", 1)
-check(d.ops.O02 == nil, "O02 not opened while it does not exist yet")
-check(d.ops.O04 == 1, "O01 win opens the next available operation")
+check(d.ops.O02 == 1 and d.ops.O04 == nil, "O01 win opens O02 (and nothing further)")
+check(Profile.hasBlueprint(p, "W_SCATTERGUN") == false, "Вулкан blueprint needs the O02 win")
 check(d.ops.O01 == 2, "O01 win opens threat 2")
 check(d.firstWinGrantUsed and d.scrap >= Defs.FirstWinGrant, string.format("first-win grant tops up to %d (balance %d, grant %s)", Defs.FirstWinGrant, d.scrap, tostring(r2.grant)))
 local count = 0

@@ -562,7 +562,7 @@ end
 -- Starter technologies (O01 first win). Grant tops the balance up to one of them (D03 §6).
 Defs.Tech = {
 	TECH_PIERCE_CORE = { id = "TECH_PIERCE_CORE", name = "ПРОБИВНОЙ СЕРДЕЧНИК", cost = 180, text = "Первое попадание каждого выстрела пробивает цель" },
-	TECH_EMERGENCY_CAP = { id = "TECH_EMERGENCY_CAP", name = "АВАРИЙНЫЙ КОНДЕНСАТОР", cost = 180, text = "Раз за операцию: импульс реактора отбрасывает штурм" },
+	TECH_EMERGENCY_CAP = { id = "TECH_EMERGENCY_CAP", name = "АВАРИЙНЫЙ КОНДЕНСАТОР", cost = 180, text = "Раз за операцию: при 50% реактор бьёт импульсом", radius = 22, damage = 90, knock = 12 },
 }
 Defs.TechOrder = { "TECH_PIERCE_CORE", "TECH_EMERGENCY_CAP" }
 Defs.FirstWinGrant = 180
