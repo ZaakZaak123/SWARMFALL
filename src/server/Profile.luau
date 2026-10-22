@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Ops = require(Shared:WaitForChild("Ops"))
+local Modules = require(Shared:WaitForChild("Modules"))
 
 local Profile = {}
 
@@ -49,6 +50,8 @@ local function defaults()
 		forms = {}, -- crafted permanent forms (evolution id -> true)
 		equip = {}, -- weapon id -> equipped form id
 		lineTrial = 0, -- railgun «Пробой линии» qualified shots
+		modules = {}, -- crafted modules (moduleId -> true)
+		loadout = {}, -- weapon id -> { core = moduleId?, adapter = moduleId? }
 		firstWinGrantUsed = false,
 		lastRun = "",
 	}
@@ -186,6 +189,9 @@ function Profile.public(player: Player)
 		tech = d.tech,
 		forms = d.forms,
 		equip = d.equip,
+		modules = d.modules,
+		loadout = d.loadout,
+		winsByOp = d.wins_by_op or {},
 		lineTrial = d.lineTrial,
 		blueprints = (function()
 			local out = {}
@@ -256,6 +262,78 @@ function Profile.hasBlueprint(player: Player, weaponId: string): boolean
 		return true
 	end
 	return (d.ops[opId] or 0) >= 2 or (d.wins_by_op and d.wins_by_op[opId] or 0) > 0
+end
+
+-- Modules (D03 §3): craft once (mastery gate + previous tier of the same branch + Ксенит), then equip as
+-- CORE or ADAPTER. Owned and equipped are separate states.
+function Profile.craftModule(player: Player, id: string): boolean
+	local d = Profile.get(player)
+	local m = Modules.get(id)
+	if not d or not m or d.modules[id] or not d.weapons[m.weapon] or d.scrap < m.cost then
+		return false
+	end
+	if Defs.masteryRank(m.weapon, d.mastery[m.weapon] or 0) < m.mastery then
+		return false
+	end
+	if m.tier > 1 then
+		local prev = string.format("MOD_%s_%s%d", m.weapon:sub(3), m.branch, m.tier - 1)
+		if not d.modules[prev] then
+			return false
+		end
+	end
+	d.scrap -= m.cost
+	d.modules[id] = true
+	-- First module of a weapon goes straight into the CORE slot.
+	local lo = d.loadout[m.weapon] or {}
+	d.loadout[m.weapon] = lo
+	if not lo.core then
+		lo.core = id
+	end
+	mark(player)
+	task.spawn(Profile.save, player)
+	return true
+end
+
+-- slot = "core" | "adapter"; id = "" clears the slot.
+function Profile.equipModule(player: Player, weaponId: string, slot: string, id: string): boolean
+	local d = Profile.get(player)
+	if not d or not Defs.Weapons[weaponId] or (slot ~= "core" and slot ~= "adapter") then
+		return false
+	end
+	local lo = table.clone(d.loadout[weaponId] or {})
+	if id == "" then
+		lo[slot] = nil
+	else
+		if not d.modules[id] then
+			return false
+		end
+		lo[slot] = id
+		-- Moving a module between slots frees the other slot.
+		local other = if slot == "core" then "adapter" else "core"
+		if lo[other] == id then
+			lo[other] = nil
+		end
+	end
+	if not Modules.validLoadout(weaponId, lo.core, lo.adapter) then
+		return false
+	end
+	d.loadout[weaponId] = lo
+	mark(player)
+	return true
+end
+
+function Profile.loadoutFor(player: Player, weaponId: string)
+	local d = Profile.get(player)
+	local lo = d and d.loadout[weaponId]
+	if not lo then
+		return nil
+	end
+	local core = if lo.core and d.modules[lo.core] then lo.core else nil
+	local adapter = if lo.adapter and d.modules[lo.adapter] then lo.adapter else nil
+	if not Modules.validLoadout(weaponId, core, adapter) then
+		return nil
+	end
+	return { core = core, adapter = adapter }
 end
 
 -- Starter technologies: available after the first O01 win (D03 §6).

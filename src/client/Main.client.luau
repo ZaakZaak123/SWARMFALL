@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
@@ -369,6 +370,94 @@ local function leaveRun()
 	Controls.enabled = false
 end
 
+-- Узел-7 ------------------------------------------------------------------------------------------
+-- Walking the base is optional: the quick menu (default after results) does everything the terminals do.
+local hubWalk = false
+local hubBar = Instance.new("ScreenGui")
+hubBar.Name = "Node7Bar"
+hubBar.ResetOnSpawn = false
+hubBar.Enabled = false
+hubBar.Parent = player:WaitForChild("PlayerGui")
+do
+	local b = Instance.new("TextButton")
+	b.AnchorPoint = Vector2.new(0.5, 0)
+	b.Position = UDim2.new(0.5, 0, 0, 12)
+	b.Size = UDim2.fromOffset(300, 40)
+	b.BackgroundColor3 = C.bg
+	b.BackgroundTransparency = 0.2
+	b.TextColor3 = C.cyan
+	b.Font = Enum.Font.GothamBlack
+	b.TextSize = 16
+	b.Text = "УЗЕЛ-7  ·  МЕНЮ [H]"
+	b.Parent = hubBar
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	b.Activated:Connect(function()
+		hubWalk = false
+		Audio.play("ui")
+	end)
+end
+
+local function refreshHub()
+	local node = workspace:FindFirstChild("Node7")
+	local prof = Menus.profile and Menus.profile()
+	if not node or not prof then
+		return
+	end
+	local lit = {
+		TrophyStormCore = prof.components and prof.components.CMP_STORM_CORE == true,
+		TrophyBroodmother = prof.winsByOp and (prof.winsByOp.O04 or 0) > 0,
+		TrophyDevourer = prof.winsByOp and (prof.winsByOp.O06 or 0) > 0,
+	}
+	for _, d in node:GetDescendants() do
+		if d:IsA("BasePart") then
+			local trophy = d:GetAttribute("Trophy")
+			if trophy then
+				d.Transparency = if lit[trophy] then 0.1 else 0.85
+				local g = d:FindFirstChild("Glow")
+				if g then
+					g.Brightness = if lit[trophy] then 2 else 0
+				end
+			end
+			local wid = d:GetAttribute("Weapon")
+			if wid and d.Name:sub(1, 8) == "RackLamp" then
+				d.Transparency = if prof.weapons and prof.weapons[wid] then 0.2 else 0.9
+			end
+		end
+	end
+end
+
+Menus.onWalk = function()
+	if player.Character then
+		hubWalk = true
+	end
+end
+
+game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)
+	local action = prompt:GetAttribute("Terminal")
+	if not action or mode ~= "LOBBY" then
+		return
+	end
+	hubWalk = false
+	Menus.setTab(if action == "lab" then "workshop" else "play")
+	if action == "arsenal" and Menus.dossierSelected then
+		Menus.dossierSelected("mods")
+	end
+	Audio.play("ui", 1, 1.1)
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or mode ~= "LOBBY" then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.H or input.KeyCode == Enum.KeyCode.ButtonSelect then
+		if hubWalk then
+			hubWalk = false
+		elseif player.Character then
+			hubWalk = true
+		end
+	end
+end)
+
 stateRemote.OnClientEvent:Connect(function(buf, info)
 	if type(info) ~= "table" then
 		return
@@ -378,9 +467,18 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			leaveRun()
 		end
 		mode = "LOBBY"
-		Menus.showLobby(info.lobby, myId, Controls.device)
+		if hubWalk and player.Character then
+			Menus.hideLobby()
+		else
+			hubWalk = false
+			Menus.showLobby(info.lobby, myId, Controls.device)
+		end
+		hubBar.Enabled = hubWalk
+		refreshHub()
 		return
 	end
+	hubWalk = false
+	hubBar.Enabled = false
 	mode = "RUN"
 	if not inRun then
 		enterRun()
@@ -407,6 +505,8 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Menus.note(string.format("ВЫСАДКА: %s  ·  %d", Maps.get(run.map).name, math.ceil(run.countdown)))
 	elseif not me then
 		Menus.note("НАБЛЮДЕНИЕ · ВЫ ВОЙДЁТЕ В СЛЕДУЮЩИЙ ЗАБЕГ")
+	elseif not me.alive and not run.result and me.downed then
+		Menus.note(string.format("ВЫ РАНЕНЫ · НАПАРНИК ПОДНИМЕТ ВАС  ·  %d с  ·  %d%%", me.bleed or 0, me.revive or 0))
 	elseif not me.alive and not run.result then
 		Menus.note("ВЫ ПОВЕРЖЕНЫ · НАБЛЮДАЕТЕ ЗА ОТРЯДОМ")
 	elseif run.paused == "MENU" then
@@ -1206,6 +1306,15 @@ local function frame(dt: number)
 		end
 		if focus then
 			Audio.setFocus(focus)
+		end
+	elseif hubWalk and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+		-- Third-person walk around Узел-7 with the stock follow camera.
+		local cam = workspace.CurrentCamera
+		local hum = player.Character:FindFirstChildOfClass("Humanoid")
+		if cam.CameraType ~= Enum.CameraType.Custom or cam.CameraSubject ~= hum then
+			cam.CameraType = Enum.CameraType.Custom
+			cam.CameraSubject = hum
+			cam.FieldOfView = 70
 		end
 	else
 		CameraRig.update(dt, "lobby", nil, 0, 1, 0)

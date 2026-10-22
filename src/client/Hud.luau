@@ -576,7 +576,7 @@ function Hud.update(run, me, extra, dt: number)
 				end
 				rows[k] = nil
 				row.B.HP.Size = UDim2.fromScale(math.clamp(p.hp / p.maxHp, 0, 1), 1)
-				row.N.Text = p.name .. (if not p.alive then "  · ПОВЕРЖЕН" elseif p.offer then "  · выбирает" else "")
+				row.N.Text = p.name .. (if p.downed then string.format("  · РАНЕН %dс  %d%%", p.bleed or 0, p.revive or 0) elseif not p.alive then "  · ПОВЕРЖЕН" elseif p.offer then "  · выбирает" else "")
 				row.N.TextColor3 = if p.alive then C.text else C.red
 			end
 		end

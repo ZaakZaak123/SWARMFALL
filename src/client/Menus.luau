@@ -7,6 +7,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Maps = require(Shared:WaitForChild("Maps"))
 local Ops = require(Shared:WaitForChild("Ops"))
+local Modules = require(Shared:WaitForChild("Modules"))
 local Theme = require(script.Parent.Theme)
 local Settings = require(script.Parent.Settings)
 local Audio = require(script.Parent.Audio)
@@ -162,10 +163,19 @@ local function buildLobby()
 	label("СДЕРЖИ РОЙ · РАЗВИВАЙ ОРУЖИЕ · ЗАЩИТИ РЕАКТОР", { Position = UDim2.fromOffset(32, 76), Size = UDim2.fromOffset(500, 18), FontFace = F.title, TextSize = 14, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, Parent = content })
 
 	-- Scrap + settings (top-right)
-	ui.scrapBox = Theme.panel({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromOffset(1196, 22), Size = UDim2.fromOffset(170, 44), Parent = content }, C.gold)
+	ui.scrapBox = Theme.panel({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromOffset(1196, 22), Size = UDim2.fromOffset(150, 44), Parent = content }, C.gold)
 	icon("xp", 26, C.gold, { Position = UDim2.fromOffset(12, 9) }).Parent = ui.scrapBox
 	ui.scrap = label("0", { Position = UDim2.fromOffset(46, 0), Size = UDim2.new(1, -56, 1, 0), FontFace = F.num, TextSize = 26, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.scrapBox })
 	label("КСЕНИТ", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 2), Size = UDim2.fromOffset(60, 12), FontFace = F.title, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = ui.scrapBox })
+	-- Walk in Узел-7 (the physical base); the same menus open from its terminals.
+	local walk, walkLabel = button(content, "УЗЕЛ-7 [H]", { Position = UDim2.fromOffset(916, 22), Size = UDim2.fromOffset(120, 44) }, C.panel2, "pin")
+	walkLabel.TextSize = 15
+	walk.Activated:Connect(function()
+		Audio.play("ui")
+		if Menus.onWalk then
+			Menus.onWalk()
+		end
+	end)
 	local gear = button(content, "", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromOffset(1252, 22), Size = UDim2.fromOffset(44, 44) }, C.panel2)
 	icon("gear", 28, C.text, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 3 }, C.panel2).Parent = gear
 	gear.Activated:Connect(function()
@@ -176,7 +186,7 @@ local function buildLobby()
 	-- Tabs
 	ui.tabs = {}
 	for i, t in { { "play", "В БОЙ", "swords" }, { "workshop", "РАЗВИТИЕ", "level" } } do
-		local b, l = button(content, t[2], { Position = UDim2.fromOffset(560 + (i - 1) * 210, 24), Size = UDim2.fromOffset(200, 40) }, C.panel2, t[3])
+		local b, l = button(content, t[2], { Position = UDim2.fromOffset(520 + (i - 1) * 200, 24), Size = UDim2.fromOffset(192, 40) }, C.panel2, t[3])
 		l.TextColor3 = C.text
 		b.Activated:Connect(function()
 			tab = t[1]
@@ -457,11 +467,11 @@ local function buildDossier()
 	new("UIScale", { Name = "Fit", Parent = box })
 	ui.dossierView = new("Frame", { Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(470, 380), BackgroundColor3 = C.bg, BackgroundTransparency = 0.3, Corner = 4, ZIndex = 22, Parent = box })
 	ui.dossierTabs = {}
-	for i, t in { { "base", "БАЗОВАЯ" }, { "evo", "ЭВОЛЮЦИЯ" } } do
-		local b, l = button(box, t[2], { Position = UDim2.fromOffset(16 + (i - 1) * 238, 404), Size = UDim2.fromOffset(232, 40), ZIndex = 22 }, C.panel2)
-		l.TextSize = 16
+	for i, t in { { "base", "БАЗОВАЯ" }, { "evo", "ЭВОЛЮЦИЯ" }, { "mods", "МОДУЛИ" } } do
+		local b, l = button(box, t[2], { Position = UDim2.fromOffset(16 + (i - 1) * 158, 404), Size = UDim2.fromOffset(152, 40), ZIndex = 22 }, C.panel2)
+		l.TextSize = 15
 		b.Activated:Connect(function()
-			Menus.dossier(ui.dossierWeapon, t[1] == "evo")
+			Menus.dossier(ui.dossierWeapon, t[1])
 			Audio.play("ui")
 		end)
 		ui.dossierTabs[t[1]] = { button = b, label = l }
@@ -470,6 +480,43 @@ local function buildDossier()
 	ui.dossierName = label("", { Position = UDim2.fromOffset(506, 14), Size = UDim2.fromOffset(410, 34), FontFace = F.head, TextSize = 30, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22, Parent = box })
 	ui.dossierTag = label("", { Position = UDim2.fromOffset(506, 50), Size = UDim2.fromOffset(410, 40), FontFace = F.body, TextSize = 15, TextWrapped = true, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 22, Parent = box })
 	ui.dossierRows = new("Frame", { Position = UDim2.fromOffset(506, 96), Size = UDim2.fromOffset(410, 330), List = { Padding = UDim.new(0, 4) }, ZIndex = 22, Parent = box })
+	-- Modules: 3 branches (columns) × 3 tiers (rows). Click: craft, then cycle CORE → ADAPTER → off.
+	ui.dossierMods = new("Frame", { Position = UDim2.fromOffset(506, 96), Size = UDim2.fromOffset(410, 360), Visible = false, ZIndex = 22, Parent = box })
+	ui.modCells = {}
+	ui.modHeads = {}
+	for col = 1, 3 do
+		ui.modHeads[col] = label("", { Position = UDim2.fromOffset((col - 1) * 138, 0), Size = UDim2.fromOffset(132, 18), FontFace = F.title, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierMods })
+		for row = 1, 3 do
+			local cell = new("TextButton", { Position = UDim2.fromOffset((col - 1) * 138, 22 + (row - 1) * 106), Size = UDim2.fromOffset(132, 100), BackgroundColor3 = C.panel2, BackgroundTransparency = 0.25, Text = "", AutoButtonColor = false, Corner = 4, Stroke = { Color = C.line, Transparency = 0.4 }, ZIndex = 23, Parent = ui.dossierMods })
+			local tier = label(Modules.Roman[row], { Position = UDim2.fromOffset(8, 4), Size = UDim2.fromOffset(40, 16), FontFace = F.num, TextSize = 14, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 24, Parent = cell })
+			local name = label("", { Position = UDim2.fromOffset(8, 20), Size = UDim2.fromOffset(118, 34), FontFace = F.head, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 24, Parent = cell })
+			local text = label("", { Position = UDim2.fromOffset(8, 54), Size = UDim2.fromOffset(118, 26), FontFace = F.body, TextSize = 10, TextWrapped = true, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 24, Parent = cell })
+			local state = label("", { Position = UDim2.fromOffset(8, 80), Size = UDim2.fromOffset(118, 16), FontFace = F.title, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 24, Parent = cell })
+			local c = { cell = cell, tier = tier, name = name, text = text, state = state, stroke = cell:FindFirstChildOfClass("UIStroke") }
+			cell.Activated:Connect(function()
+				local m = c.def
+				if not m or not profile then
+					return
+				end
+				local owned = profile.modules and profile.modules[m.id]
+				if not owned then
+					send("craftModule", m.id)
+					Audio.play("level", 1, 1.1)
+					return
+				end
+				local lo = profile.loadout and profile.loadout[m.weapon] or {}
+				if lo.core == m.id then
+					send("equipModule", m.weapon, "adapter", m.id)
+				elseif lo.adapter == m.id then
+					send("equipModule", m.weapon, "adapter", "")
+				else
+					send("equipModule", m.weapon, "core", m.id)
+				end
+				Audio.play("ui")
+			end)
+			ui.modCells[(col - 1) * 3 + row] = c
+		end
+	end
 	local pick, pickLabel = button(box, "ВЫБРАТЬ", { Position = UDim2.fromOffset(506, 470), Size = UDim2.fromOffset(250, 50), ZIndex = 22 }, C.cyan, "play")
 	ui.dossierPick, ui.dossierPickLabel = pick, pickLabel
 	pick.Activated:Connect(function()
@@ -487,11 +534,62 @@ local function buildDossier()
 	end)
 end
 
-function Menus.dossier(id: string, evolved: boolean?)
+local function refreshModules(id: string)
+	local list = Modules.ByWeapon[id] or {}
+	local mastery = Defs.masteryRank(id, profile and profile.mastery and profile.mastery[id] or 0)
+	local owned = profile and profile.modules or {}
+	local lo = profile and profile.loadout and profile.loadout[id] or {}
+	local scrap = profile and profile.scrap or 0
+	for _, m in list do
+		local col = if m.branch == "A" then 1 elseif m.branch == "B" then 2 else 3
+		ui.modHeads[col].Text = m.branch .. " · " .. string.upper(m.branchName)
+		local c = ui.modCells[(col - 1) * 3 + m.tier]
+		c.def = m
+		c.name.Text = m.name
+		c.text.Text = m.text
+		local prevOwned = m.tier == 1 or owned[string.format("MOD_%s_%s%d", id:sub(3), m.branch, m.tier - 1)]
+		local accent = C.line
+		if lo.core == m.id then
+			c.state.Text = "CORE · нажми → ADAPTER"
+			c.state.TextColor3 = C.gold
+			accent = C.gold
+		elseif lo.adapter == m.id then
+			c.state.Text = "ADAPTER · нажми → снять"
+			c.state.TextColor3 = C.cyan
+			accent = C.cyan
+		elseif owned[m.id] then
+			c.state.Text = "ИЗГОТОВЛЕН · нажми → CORE"
+			c.state.TextColor3 = C.text
+		elseif mastery < m.mastery then
+			c.state.Text = "НУЖНО M" .. m.mastery
+			c.state.TextColor3 = C.dim
+		elseif not prevOwned then
+			c.state.Text = "СНАЧАЛА " .. Modules.Roman[m.tier - 1]
+			c.state.TextColor3 = C.dim
+		else
+			c.state.Text = "ИЗГОТОВИТЬ · " .. Theme.commas(m.cost)
+			c.state.TextColor3 = if scrap >= m.cost then C.gold else C.dim
+			if scrap >= m.cost then
+				accent = C.gold
+			end
+		end
+		c.stroke.Color = accent
+		c.stroke.Transparency = if accent == C.line then 0.4 else 0.05
+	end
+end
+
+function Menus.dossier(id: string, mode: any?)
 	local w = Defs.Weapons[id]
 	if not w then
 		return
 	end
+	if mode == true then
+		mode = "evo"
+	elseif mode == nil or mode == false then
+		mode = "base"
+	end
+	local evolved = mode == "evo"
+	ui.dossierMode = mode
 	if not ui.dossier then
 		buildDossier()
 	end
@@ -507,34 +605,57 @@ function Menus.dossier(id: string, evolved: boolean?)
 	ui.dossierName.TextColor3 = if evolved then C.gold else C.text
 	ui.dossierTag.Text = if evolved then evo.text else w.tagline
 	for key, t in ui.dossierTabs do
-		local on = (key == "evo") == (evolved == true)
+		local on = key == mode
 		t.button.BackgroundColor3 = if on then accent else C.panel2
 		t.label.TextColor3 = if on then C.bg else C.text
 	end
 	ui.dossierTabs.evo.label.Text = evo.name
+	ui.dossierRows.Visible = mode ~= "mods"
+	ui.dossierMods.Visible = mode == "mods"
+	if mode == "mods" then
+		ui.dossierName.Text = w.name .. " · МОДУЛИ"
+		ui.dossierTag.Text = "1 CORE + 1 ADAPTER из другой ветки (ADAPTER до II). III — только CORE."
+		refreshModules(id)
+	end
 	clear(ui.dossierRows)
 	for i, r in dossierRows(w, evolved == true) do
 		local line = new("Frame", { LayoutOrder = i, Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = C.panel2, BackgroundTransparency = if i % 2 == 0 then 0.6 else 0.35, Corner = 3, ZIndex = 22, Parent = ui.dossierRows })
 		label(r[1], { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(0.48, -10, 1, 0), FontFace = F.title, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = line })
 		label(r[2], { Position = UDim2.new(0.48, 0, 0, 0), Size = UDim2.new(0.52, -10, 1, 0), FontFace = F.bodyBold, TextSize = 15, TextColor3 = if evolved then C.gold else C.text, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 23, Parent = line })
 	end
+	-- Permanent form requirements (crafted once in the arsenal; no in-run recipe).
 	clear(ui.dossierRecipe)
-	label("ЭВОЛЮЦИЯ", { Position = UDim2.fromOffset(10, 4), Size = UDim2.fromOffset(200, 14), FontFace = F.title, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
+	label("ПОСТОЯННАЯ ФОРМА · " .. evo.name, { Position = UDim2.fromOffset(10, 4), Size = UDim2.fromOffset(440, 14), FontFace = F.title, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
+	local comp = Defs.Components[evo.component]
 	local x = 10
-	for _, key in evo.keys do
-		local def = Defs.Upgrades[key]
-		icon(def.icon, 30, def.color, { Position = UDim2.fromOffset(x, 24), ZIndex = 23 }).Parent = ui.dossierRecipe
-		label(def.name, { Position = UDim2.fromOffset(x + 34, 28), Size = UDim2.fromOffset(110, 22), FontFace = F.bodyBold, TextSize = 13, TextColor3 = def.color, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
-		x += 140
+	for _, part in { { "level", "M" .. Defs.FormMastery, C.cyan }, { "core", comp and comp.name or "", C.gold }, { "xp", Theme.commas(evo.cost) .. " КСЕНИТА", C.gold } } do
+		icon(part[1], 26, part[3], { Position = UDim2.fromOffset(x, 28), ZIndex = 23 }).Parent = ui.dossierRecipe
+		label(part[2], { Position = UDim2.fromOffset(x + 30, 30), Size = UDim2.fromOffset(120, 22), FontFace = F.bodyBold, TextSize = 13, TextColor3 = part[3], TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
+		x += 150
 	end
-	icon("core", 30, C.gold, { Position = UDim2.fromOffset(x, 24), ZIndex = 23 }).Parent = ui.dossierRecipe
-	label(evo.coreName, { Position = UDim2.fromOffset(x + 34, 28), Size = UDim2.fromOffset(110, 22), FontFace = F.bodyBold, TextSize = 13, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.dossierRecipe })
 	local owned = profile == nil or profile.weapons[id] == true
 	ui.dossierPick.Visible = owned
 end
 
+-- Opens a lobby tab directly (Узел-7 terminals): "play" | "workshop".
+function Menus.profile()
+	return profile
+end
+
+function Menus.dossierSelected(view: string)
+	Menus.dossier(selectedWeapon, view)
+end
+
+function Menus.setTab(name: string)
+	tab = name
+	Menus.refreshLobby()
+end
+
 function Menus.setProfile(pub)
 	profile = pub
+	if ui.dossier and ui.dossier.Visible and ui.dossierMode == "mods" then
+		refreshModules(ui.dossierWeapon)
+	end
 	if profile and not profile.weapons[selectedWeapon] then
 		selectedWeapon = "W_ARC_RIFLE"
 	end

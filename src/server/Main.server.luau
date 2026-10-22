@@ -16,6 +16,7 @@ local Ops = require(Shared:WaitForChild("Ops"))
 local World = require(script.Parent.Sim.World)
 local Arena = require(script.Parent.Arena)
 local Profile = require(script.Parent.Profile)
+local Hub = require(script.Parent.Hub)
 
 Players.CharacterAutoLoads = false
 
@@ -62,6 +63,7 @@ local function buildArena(mapId: string)
 	end
 end
 buildArena(Ops.get(lobby.op).map)
+Hub.build()
 
 -- Helpers ---------------------------------------------------------------------------------------------
 local function finite(n): boolean
@@ -172,6 +174,7 @@ local function startRun()
 				s01 = data ~= nil and data.s01 == true,
 				form = Profile.equippedForm(player, weapon),
 				tech = if data then table.clone(data.tech) else {},
+				loadout = Profile.loadoutFor(player, weapon),
 			})
 			participants[player.UserId] = player
 		end
@@ -217,6 +220,15 @@ local function settle()
 	end
 end
 
+-- Between operations every player walks in Узел-7 (the quick menu stays one tap away).
+local function toHub(player: Player)
+	if mode ~= "LOBBY" or not player.Parent then
+		return
+	end
+	local s = Hub.Spawn
+	prepareCharacter(player, s.X + (math.random() - 0.5) * 6, s.Z + (math.random() - 0.5) * 4)
+end
+
 local function backToLobby()
 	settle()
 	-- «Продолжить»: after a first win the lobby pre-selects the next story operation. Nothing starts
@@ -238,7 +250,18 @@ local function backToLobby()
 	table.clear(tracking)
 	for _, player in Players:GetPlayers() do
 		clearCharacter(player)
+		task.spawn(toHub, player)
 	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	task.wait(1)
+	if mode == "LOBBY" then
+		toHub(player)
+	end
+end)
+for _, player in Players:GetPlayers() do
+	task.spawn(toHub, player)
 end
 
 -- Input -----------------------------------------------------------------------------------------------
@@ -317,6 +340,14 @@ end
 
 function handlers.buyWeapon(player: Player, id)
 	return lobbyOnly() and type(id) == "string" and Profile.buyWeapon(player, id)
+end
+
+function handlers.craftModule(player: Player, id)
+	return lobbyOnly() and type(id) == "string" and Profile.craftModule(player, id)
+end
+
+function handlers.equipModule(player: Player, weaponId, slot, id)
+	return lobbyOnly() and type(weaponId) == "string" and type(slot) == "string" and type(id) == "string" and Profile.equipModule(player, weaponId, slot, id)
 end
 
 function handlers.buyTech(player: Player, id)
@@ -490,10 +521,17 @@ local function syncCharacters(dt: number)
 		local hum = player.Character:FindFirstChildOfClass("Humanoid")
 		if hum then
 			if not p.alive then
-				if hum.Health > 0 then
+				if p.downedUntil then
+					-- Downed: stays on the floor where the squad can reach them.
+					hum.WalkSpeed = 0
+					hum.Health = 1
+				elseif hum.Health > 0 then
 					hum.Health = 0
 				end
 				continue
+			end
+			if hum.WalkSpeed ~= Defs.Player.Speed then
+				hum.WalkSpeed = Defs.Player.Speed
 			end
 			hum.MaxHealth = p.maxHp
 			hum.Health = math.max(1, p.hp)
@@ -610,6 +648,13 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 	if world and participants[player.UserId] == player then
 		participants[player.UserId] = nil
+		-- Settle what this player earned before they go (Profile saves on removal afterwards).
+		if world.phase ~= "RESULTS" then
+			local partial = world:leaveResult(player.UserId)
+			if partial then
+				pcall(Profile.grantRun, player, runId, partial, world.op.id, world.threat)
+			end
+		end
 		world:removePlayer(player.UserId)
 		if next(participants) == nil then
 			backToLobby()

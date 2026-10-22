@@ -12,6 +12,7 @@ local Rng = require(script.Parent.Rng)
 local Combat = require(script.Parent.Combat)
 local AI = require(script.Parent.AI)
 local Mission = require(script.Parent.Mission)
+local Modules = require(Shared:WaitForChild("Modules"))
 
 local E, C = Codec.E, Codec.C
 local ST = Codec.State
@@ -78,6 +79,10 @@ local function newPlayer(map, info, index: number, count: number)
 		hammerEmergency = false,
 		s01Stats = { casts = 0, hits = 0, kills = 0, crowds = 0, best = 0 },
 		tech = info.tech or {}, -- owned starter technologies (Defs.Tech)
+		-- Equipped modules (validated by the server before the run): virtual card ranks + stat tweaks.
+		modRanks = if info.loadout then Modules.ranksFor(info.loadout.core, info.loadout.adapter) else nil,
+		modMods = nil,
+		loadout = info.loadout,
 		weaponKills = 0, -- personal lethal kills credited to this run's weapon (mastery M1–M20)
 		lineShots = 0, -- railgun trial shots (>= 2 normal enemies in one line)
 		species = {}, -- personal confirmed kills per species (research)
@@ -103,6 +108,22 @@ local function newPlayer(map, info, index: number, count: number)
 		beamFxT = 0,
 		hitsTaken = 0,
 	}
+	if info.loadout then
+		local mods = {}
+		for _, id in { info.loadout.core, info.loadout.adapter } do
+			local m = Modules.get(id)
+			if m and m.weapon == weapon.id then
+				for k, v in m.mods do
+					if k:sub(-4) == "Mult" then
+						mods[k] = (mods[k] or 1) * v
+					else
+						mods[k] = (mods[k] or 0) + v
+					end
+				end
+			end
+		end
+		p.modMods = mods
+	end
 	Combat.recompute(p)
 	return p
 end
@@ -409,12 +430,103 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number): bool
 		p.firing = false
 		p.offer = nil
 		p.pending = 0
-		self:banner(if self.solo then "СИГНАЛ ПОТЕРЯН" else (p.name .. " ПОВЕРЖЕН"), "", C.RED, 2.5, "skull")
+		if self.solo then
+			self:banner("СИГНАЛ ПОТЕРЯН", "", C.RED, 2.5, "skull")
+		else
+			p.downedUntil = self.t + Defs.Coop.BleedOut
+			p.reviveT = 0
+			self:banner(p.name .. " РАНЕН", "Встань рядом, чтобы поднять", C.RED, 2.5, "skull")
+		end
 		if self:alivePlayers() == 0 then
 			self:finish(false, "РОЙ ПРОРВАЛСЯ")
 		end
 	end
 	return true
+end
+
+-- Squad revives (DD-012).
+function World:updateRevives(dt: number)
+	local C2 = Defs.Coop
+	for _, p in self.playerList do
+		if not p.alive and p.downedUntil then
+			local helper = false
+			for _, o in self.playerList do
+				if o ~= p and o.alive and (o.x - p.x) ^ 2 + (o.z - p.z) ^ 2 <= C2.ReviveRadius ^ 2 then
+					helper = true
+					break
+				end
+			end
+			if helper then
+				p.reviveT += dt
+			else
+				p.reviveT = math.max(0, p.reviveT - dt * C2.Drain)
+			end
+			if p.reviveT >= C2.ReviveTime then
+				p.alive = true
+				p.downedUntil = nil
+				p.reviveT = 0
+				p.hp = math.ceil(p.maxHp * C2.ReviveHp)
+				p.iframeUntil = self.t + C2.ReviveIFrames
+				p.revives = (p.revives or 0) + 1
+				self:emit(E.HEAL, p.id, p.hp)
+				self:banner(p.name .. " В СТРОЮ", "", C.LIME, 2, "plus")
+			elseif self.t >= p.downedUntil then
+				p.downedUntil = nil
+				self:banner(p.name .. " ВЫБЫЛ", "До конца операции наблюдает за отрядом", C.RED, 2.5, "skull")
+			end
+		end
+	end
+end
+
+-- Result entry for one player (shared by finish and an early leave).
+function World:playerResult(p)
+	local upgrades = {}
+	for _, id in Defs.UpgradeOrder do
+		if p.ranks[id] then
+			table.insert(upgrades, { id, p.ranks[id] })
+		end
+	end
+	return {
+		id = p.id,
+		name = p.name,
+		kills = p.kills,
+		damage = math.floor(p.damage),
+		weapon = p.weaponDef.id,
+		evolved = p.evolved or "",
+		upgrades = upgrades,
+		bestCombo = p.bestCombo,
+		alive = p.alive,
+		s01 = table.clone(p.s01Stats),
+		s01Unlocked = p.s01,
+		weaponKills = p.weaponKills,
+		lineShots = p.lineShots,
+		species = table.clone(p.species),
+		level = self.level,
+		revives = p.revives or 0,
+	}
+end
+
+-- A player leaving mid-operation keeps what they personally earned (D03: progress is never lost), but
+-- the operation counts as a defeat for them.
+function World:leaveResult(id: number)
+	local p = self.players[id]
+	if not p then
+		return nil
+	end
+	return {
+		victory = false,
+		reason = "ПОКИНУЛ БОЙ",
+		time = self.t,
+		level = self.level,
+		kills = self.teamKills,
+		players = { self:playerResult(p) },
+		hive = "idle",
+		map = self.map.id,
+		op = self.op.id,
+		threat = self.threat,
+		components = table.clone(self.mission.components),
+		eliteKilled = self.mission.eliteKilled,
+	}
 end
 
 function World:heal(p, amount: number)
@@ -1105,29 +1217,7 @@ function World:finish(victory: boolean, reason: string)
 	self.paused = nil
 	local list = {}
 	for _, p in self.playerList do
-		local upgrades = {}
-		for _, id in Defs.UpgradeOrder do
-			if p.ranks[id] then
-				table.insert(upgrades, { id, p.ranks[id] })
-			end
-		end
-		table.insert(list, {
-			id = p.id,
-			name = p.name,
-			kills = p.kills,
-			damage = math.floor(p.damage),
-			weapon = p.weaponDef.id,
-			evolved = p.evolved or "",
-			upgrades = upgrades,
-			bestCombo = p.bestCombo,
-			alive = p.alive,
-			s01 = table.clone(p.s01Stats),
-			s01Unlocked = p.s01,
-			weaponKills = p.weaponKills,
-			lineShots = p.lineShots,
-			species = table.clone(p.species),
-			level = self.level,
-		})
+		table.insert(list, self:playerResult(p))
 	end
 	local hiveState = self.hive.state
 	if self.op.objective == "nests" and #self.mission.targets > 0 and self.mission:targetsLeft() == 0 then
@@ -1229,6 +1319,9 @@ function World:tick(dt: number)
 		end
 	end
 	AI.update(self, dt)
+	if not self.solo then
+		self:updateRevives(dt)
+	end
 	self:updateHazards()
 	self:updateOrbs()
 	self:updateCoils()
@@ -1315,6 +1408,9 @@ function World:publicState()
 			s01Cd = p.s01Cd,
 			s01Casting = p.hammerAt ~= nil,
 			s01Tutorial = self.paused == "S01" and self.s01Tutee == p.id,
+			downed = p.downedUntil ~= nil,
+			bleed = if p.downedUntil then math.max(0, math.ceil(p.downedUntil - self.t)) else nil,
+			revive = if p.downedUntil then math.floor(p.reviveT / Defs.Coop.ReviveTime * 100) else nil,
 			ranks = p.ranks,
 			offer = p.offer,
 			pending = p.pending,

@@ -220,7 +220,6 @@ end
 
 function Mission:relayLost()
 	local w = self.w
-	local cfg = self.op.relay
 	if self.relay.charge >= self.relay.need then
 		return -- a charged relay stays done (D02 §5.1)
 	end
@@ -398,7 +397,7 @@ function Mission:ring(beat)
 	local n = math.floor((beat.count or 24) * (1 + 0.4 * (#w.playerList - 1)))
 	for i = 1, n do
 		local a = i / n * math.pi * 2
-		local rr = 24 + (i % 3) * 3
+		local rr = 11 + (i % 3) * 2 -- inside the emergency strike (14 + body radius)
 		local x, z = p.x + math.cos(a) * rr, p.z + math.sin(a) * rr
 		if w.nav.free(x, z, 1.6) then
 			w:spawnEnemy("EN_RUNNER", x, z, 1.1)
@@ -415,6 +414,8 @@ function Mission:elite()
 	end
 	e.objective = nil
 	e.carrier = true
+	e.hp *= self.op.eliteHpMult or 1
+	e.maxHp = e.hp
 	self.eliteSpawned = true
 	self.goal = "Убей " .. (self.op.eliteName or "элиту")
 	w:banner(self.op.eliteName or "ЭЛИТА", "Убей его — он несёт Ядро Бури", C.GOLD, 4, "@" .. e.def.index)
@@ -464,8 +465,8 @@ function Mission:runBeat(beat)
 	elseif t == "ring" then
 		self:ring(beat)
 		if self.op.s01Event then
-			-- Teach S01 when the ring has closed in (~10–15 studs), not while it is still forming.
-			self.s01At = w.t + 2.0
+			-- Teach S01 once the ring has actually closed in (see update), not while it is forming.
+			self.s01At = w.t + 0.5 -- the ring is emerging around the player: the moment to teach S01
 		end
 	elseif t == "elite" then
 		if self.op.objective == "carrier" then
@@ -521,8 +522,24 @@ function Mission:update(dt: number)
 		end
 	end
 	if self.s01At and w.t >= self.s01At then
-		self.s01At = nil
-		w:s01Event()
+		-- Trigger when >= 10 enemies are within 16 studs of a player who still lacks S01, or after a
+		-- 3 s fallback (teach on a smaller group rather than wait for an impossible ring, S01 §3).
+		local crowded = false
+		for _, p in w.playerList do
+			if p.alive and not p.s01 then
+				local n = 0
+				for _, e in w:query(p.x, p.z, 16, {}) do
+					if e.alive then
+						n += 1
+					end
+				end
+				crowded = crowded or n >= 10
+			end
+		end
+		if crowded or w.t >= self.s01At + 3 then
+			self.s01At = nil
+			w:s01Event()
+		end
 	end
 	for _, e in self.targets do
 		if e.alive and e.acidSource then

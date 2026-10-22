@@ -47,7 +47,7 @@ function Bot.run(weapon: string, players: number, runSeed: number, verbose: bool
 	local bytes = 0
 	local orbit = 1
 
-	while w.phase ~= "RESULTS" and clock < 700 do
+	while w.phase ~= "RESULTS" and clock < (opts.stopAt or 700) do
 		clock += dt
 		-- Bot brains
 		for _, p in w.playerList do

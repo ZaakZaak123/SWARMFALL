@@ -490,7 +490,7 @@ Defs.S01 = {
 	BossMult = 0.35,
 	BigKnock = 2,
 	CrowdHits = 8, -- "массовый удар" for mastery
-	Emergency = { Radius = 12, Outer = 16.5, Damage = 160, Targets = 26, Knock = 14, OuterSlow = 0.5 },
+	Emergency = { Radius = 14, Outer = 18, Damage = 160, Targets = 28, Knock = 14, OuterSlow = 0.5 }, -- catches the scripted ring
 	PerkCut = 0.06, -- PK_OVERDRIVE rank: −6% cooldown each
 }
 
@@ -575,11 +575,19 @@ Defs.LineTrial = { Shots = 60, MinHits = 2 }
 -- Story blueprints (D03 §1): O02 → Вулкан, O03 → Разлом, O04 → Рельсотрон. Blueprint ≠ owned.
 Defs.Blueprints = { W_SCATTERGUN = "O02", W_PLASMA_BEAM = "O03", W_RAILGUN = "O04" }
 
+-- Squad rules (DD-012): a player at 0 HP is downed, not dead. A teammate standing close fills the revive
+-- ring; nobody close = it slowly drains. Bleed-out ends the operation for that player (spectate).
+Defs.Coop = { ReviveRadius = 6.5, ReviveTime = 3, ReviveHp = 0.4, ReviveIFrames = 2, BleedOut = 30, Drain = 0.5 }
+
+-- Squad rules (DD-012): a player at 0 HP is downed, not dead. A teammate standing close fills the revive
+-- ring; nobody close = it slowly drains. Bleed-out ends the operation for that player (spectate).
+Defs.Coop = { ReviveRadius = 6.5, ReviveTime = 3, ReviveHp = 0.4, ReviveIFrames = 2, BleedOut = 30, Drain = 0.5 }
+
 -- Reactor (DD-004): a defendable objective. HP per operation (Ops), scaled for squads.
 Defs.Reactor = {
 	Radius = 7,
 	Warnings = { 0.5, 0.25 },
-	AcidMult = 1.0,
+	AcidMult = 0.6, -- spitter acid vs the hull (a spitter strike is a threat, not a wipe)
 	ContactMult = 0.5, -- melee contact damage vs the hull (a strike group must be stopped, not one runner)
 	hpScale = function(_threat: number, players: number): number
 		return 1 + 0.25 * math.max(0, players - 1)

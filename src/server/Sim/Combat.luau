@@ -16,10 +16,18 @@ local band, bor = bit32.band, bit32.bor
 local Combat = {}
 
 
+-- Effective rank of a card family: cards picked this run + virtual ranks from equipped modules, capped
+-- at the shared limit (DD-010). Offers and slots use cardRank (only what was picked in this run).
 function Combat.rank(p, id: string): number
-	return p.ranks[id] or 0
+	local m = p.modRanks and p.modRanks[id] or 0
+	return math.min(Defs.Run.MaxRank, (p.ranks[id] or 0) + m)
 end
 local rank = Combat.rank
+
+function Combat.cardRank(p, id: string): number
+	return p.ranks[id] or 0
+end
+local cardRank = Combat.cardRank
 
 local function rv(p, id: string, values)
 	local r = rank(p, id)
@@ -78,6 +86,22 @@ function Combat.recompute(p)
 		s.rate *= 1 + Defs.Overdrive.RateBonus
 		s.pierce += Defs.Overdrive.Pierce
 	end
+	-- Equipped module stat tweaks (Modules.luau).
+	local mods = p.modMods
+	if mods then
+		s.damage *= mods.damageMult or 1
+		s.rate *= mods.rateMult or 1
+		s.range *= mods.rangeMult or 1
+		s.pierce += mods.pierceAdd or 0
+		s.pellets += mods.pelletsAdd or 0
+		s.falloff = math.min(1, s.falloff + (mods.falloffAdd or 0))
+		s.knock *= mods.knockMult or 1
+		local sm = mods.spreadMult or 1
+		s.spread *= sm
+		s.spreadMin *= sm
+		s.spreadMax *= sm
+	end
+	s.heatMult = if mods then mods.heatMult or 1 else 1
 end
 
 -- Tactical reload (rounds left) is a quick cell swap; an empty magazine also needs the bolt racked.
@@ -543,7 +567,7 @@ function Combat.updatePlayer(w, p, dt: number)
 			end
 			p.cool = 0
 		elseif p.firing then
-			local heatRate = Defs.Beam.HeatPerSecond * (if od then 0.5 else 1) * (if p.evolved then 0.8 else 1)
+			local heatRate = Defs.Beam.HeatPerSecond * (if od then 0.5 else 1) * (if p.evolved then 0.8 else 1) * (s.heatMult or 1)
 			p.heat += heatRate * dt
 			p.cool -= dt
 			local guard = 0
@@ -606,7 +630,7 @@ function Combat.makeOffer(w, p)
 	if legacyEvo then
 		for _, k in evo.keys do
 			isKey[k] = true
-			if rank(p, k) == 0 then
+			if cardRank(p, k) == 0 then
 				missingKeys += 1
 			end
 		end
@@ -615,8 +639,8 @@ function Combat.makeOffer(w, p)
 	local weights = {}
 	local pool = {}
 	for _, id in Defs.UpgradeOrder do
-		local r = rank(p, id)
-		local eligible = r < Defs.Run.MaxRank and (r > 0 or freeSlots > 0) and not p.banished[id]
+		local r = cardRank(p, id)
+		local eligible = rank(p, id) < Defs.Run.MaxRank and (r > 0 or freeSlots > 0) and not p.banished[id]
 		-- Never let filler upgrades lock the player out of their evolution.
 		if r == 0 and not isKey[id] and freeSlots <= missingKeys then
 			eligible = false
@@ -646,7 +670,7 @@ function Combat.makeOffer(w, p)
 	-- Guarantees: the first offer and every post-core offer contain a missing evolution key.
 	if legacyEvo and (p.offersMade == 0 or p.hasCore) then
 		for _, k in evo.keys do
-			if rank(p, k) == 0 and not table.find(choices, k) and (freeSlots > 0) then
+			if cardRank(p, k) == 0 and not table.find(choices, k) and (freeSlots > 0) then
 				if #choices < cards then
 					table.insert(choices, k)
 				else
@@ -681,7 +705,7 @@ function Combat.applyChoice(w, p, choice: string)
 	elseif choice == "FB_CHARGE" then
 		p.s01Ready = w.t
 	elseif Defs.Upgrades[choice] then
-		local r = rank(p, choice)
+		local r = cardRank(p, choice)
 		if r == 0 then
 			if p.slots >= Defs.Run.MaxSlots then
 				return

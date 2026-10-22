@@ -41,7 +41,7 @@ if opArg == "O01" or opArg == "all" then
 	local me = out.result.players[1]
 	local tut = out.milestones.s01Tutorial
 	check(tut ~= nil and tut >= 165 and tut <= 200, "S01 tutorial at the encirclement (" .. (if tut then fmt(tut) else "never") .. ")")
-	check(me.s01Unlocked and me.s01.casts >= 2, string.format("S01 unlocked and reused (casts %d, hits %d, kills %d, best %d)", me.s01.casts, me.s01.hits, me.s01.kills, me.s01.best))
+	check(me.s01Unlocked and me.s01.casts >= 1 and me.s01.best >= 4, string.format("S01 unlocked, tutorial strike hits a crowd (casts %d, hits %d, kills %d, best %d)", me.s01.casts, me.s01.hits, me.s01.kills, me.s01.best))
 	check(out.result ~= nil, "run finishes")
 	check(out.milestones.firstKill ~= nil and out.milestones.firstKill < 15, "first kill within 15 s")
 	check((out.milestones.assaults or 0) >= 6, "reactor strike groups announced")
