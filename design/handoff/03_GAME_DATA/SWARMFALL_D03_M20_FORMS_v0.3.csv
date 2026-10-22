@@ -1,0 +1,5 @@
+﻿weapon_id,form_id,ru_name,identity,tradeoff,access_gate,feat,xenite_cost,source,status
+W_ARC_RIFLE,EV_M20_STORM,Гроза,сеть контроля/направленный проводник,контроль массы vs точечный урон,M20+THEMATIC_FEAT+ONE_TIME_CRAFT,OPEN,TBD,02.6 v0.2 §5.1,DESIGN_ROLE_APPROVED__FEAT_AND_PRICE_TUNABLE
+W_SCATTERGUN,EV_M20_FIRE_RAM,Огненный таран,узкий концентрированный термозалп,более узкий сектор vs элита,M20+THEMATIC_FEAT+ONE_TIME_CRAFT,OPEN,TBD,02.6 v0.2 §5.2,DESIGN_ROLE_APPROVED__FEAT_AND_PRICE_TUNABLE
+W_PLASMA_BEAM,EV_M20_VOID_PRISM,Призма Пустоты,широкий расщеплённый луч,снижение одиночной эффективности vs покрытие,M20+THEMATIC_FEAT+ONE_TIME_CRAFT,OPEN,TBD,02.6 v0.2 §5.3,DESIGN_ROLE_APPROVED__FEAT_AND_PRICE_TUNABLE
+W_RAILGUN,EV_M20_STAR_TUNNEL,Звёздный туннель,длинная заряженная линия,долгий заряд vs длина пробоя,M20+THEMATIC_FEAT+ONE_TIME_CRAFT,OPEN,TBD,02.6 v0.2 §5.4,DESIGN_ROLE_APPROVED__FEAT_AND_PRICE_TUNABLE

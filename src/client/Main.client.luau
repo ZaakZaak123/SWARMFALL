@@ -213,8 +213,10 @@ Controls.actions.dash = function()
 	end
 end
 Controls.actions.overdrive = function()
-	if playing() and me.od >= 100 then
-		send("overdrive")
+	-- S01 Gravihammer (the Q / Y / touch skill button). The tutorial pause accepts only this press.
+	local ready = playing() and me.s01 and me.s01Left <= 0 and not me.s01Casting
+	if (me and me.s01Tutorial) or ready then
+		send("s01")
 	end
 end
 Controls.actions.evolve = function()
@@ -271,7 +273,13 @@ Controls.actions.menuClosed = function()
 		setPause(false)
 	end
 end
-Hud.ui.evolve.Activated:Connect(Controls.actions.evolve)
+Hud.ui.evolve.Activated:Connect(function()
+	if me and me.s01Tutorial then
+		Controls.actions.overdrive()
+	else
+		Controls.actions.evolve()
+	end
+end)
 
 -- Camera view cycling: top -> third person -> first person -> top, with a cinematic parameter blend.
 Controls.actions.view = function()
@@ -286,6 +294,52 @@ Hud.ui.view.Activated:Connect(function()
 	Controls.actions.view()
 end)
 
+-- Objective markers (relay zone ring, beacons over nests / nodes / acid sources) --------------------
+local objectiveFolder = Instance.new("Folder")
+objectiveFolder.Name = "Objectives"
+objectiveFolder.Parent = workspace
+local relayRing = nil
+
+local function clearObjectives()
+	objectiveFolder:ClearAllChildren()
+	relayRing = nil
+end
+
+local function zoneRing(x: number, z: number, radius: number, color: Color3)
+	local ring = Instance.new("Part")
+	ring.Name = "RelayZone"
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Material = Enum.Material.Neon
+	ring.Color = color
+	ring.Transparency = 0.82
+	ring.Size = Vector3.new(0.15, radius * 2, radius * 2)
+	ring.CFrame = CFrame.new(x, 0.12, z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Parent = objectiveFolder
+	return ring
+end
+
+local function beacon(x: number, z: number, color: Color3)
+	local p = Instance.new("Part")
+	p.Name = "Beacon"
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Material = Enum.Material.Neon
+	p.Color = color
+	p.Transparency = 0.55
+	p.Size = Vector3.new(1.2, 60, 1.2)
+	p.CFrame = CFrame.new(x, 30, z)
+	p.Parent = objectiveFolder
+	return p
+end
+
 -- Remotes -----------------------------------------------------------------------------------------
 local function enterRun()
 	inRun = true
@@ -294,6 +348,7 @@ local function enterRun()
 	Hud.setVisible(true)
 	EnemyView.clear()
 	Fx.clear()
+	clearObjectives()
 	CameraRig.reset()
 	table.clear(lastCoilState)
 end
@@ -307,6 +362,7 @@ local function leaveRun()
 	Menus.note(nil)
 	EnemyView.clear()
 	Fx.clear()
+	clearObjectives()
 	table.clear(remoteBeams)
 	Shots.beamStop("local", player.Character)
 	Audio.loop("beam", Audio.Ids.whoosh, 0, 1)
@@ -537,6 +593,39 @@ handlers[E.DASH] = function(pid, x, z, dx, dz)
 		end
 	end
 end
+handlers[E.HAMMER] = function(pid, x, z, radius, phase, emergency, hits)
+	local pos = Vector3.new(x, 1, z)
+	local big = emergency == 1
+	if phase == 0 then
+		-- Granted: a reactor beam lances into the player.
+		Fx.lightning(Vector3.new(0, 14, 0), pos + Vector3.yAxis * 3, C.cyan, 0.6, 0.6)
+		Audio.play("coil", 1, 0.8)
+		return
+	end
+	local char = characterOf(pid)
+	if phase == 1 then
+		if char then
+			Rig.flinch(char, 0, 1, 0.6)
+		end
+		Fx.telegraph(Codec.Shape.CIRCLE, x, z, 0, 1, radius, 0, Defs.S01.Windup, C.cyan, 0)
+		Fx.light(pos + Vector3.yAxis * 10, C.violet, 30, Defs.S01.Windup + 0.2)
+		Audio.at("railCharge", pos, 1, if big then 0.7 else 0.9)
+		return
+	end
+	Fx.boom(pos, radius, C.cyan)
+	Fx.shockwave(pos, radius * 1.15, C.cyan, 0.45)
+	Fx.shockwave(pos, radius * (if big then 1.45 else 1.25), C.violet, 0.75)
+	Fx.emit("sparkCyan", pos + Vector3.yAxis, if big then 90 else 45)
+	Fx.light(pos + Vector3.yAxis * 6, C.cyan, radius * 4, 0.5)
+	Audio.at("overdrive", pos, 1, if big then 0.75 else 0.9)
+	if pid == myId then
+		CameraRig.punch(if big then 18 else 10)
+		CameraRig.shake(if big then 0.9 else 0.5)
+		if big then
+			Menus.whiteFlash(0.3)
+		end
+	end
+end
 handlers[E.OVERDRIVE] = function(pid, x, z)
 	local pos = Vector3.new(x, 1, z)
 	Fx.shockwave(pos, Defs.Overdrive.BlastRadius, C.gold, 0.5)
@@ -568,6 +657,95 @@ handlers[E.CORE] = function(x, z, pid)
 	local pos = Vector3.new(x, 2, z)
 	Fx.emit("sparkGold", pos, 50)
 	Fx.shockwave(pos, 14, C.gold, 0.6)
+end
+local reactorHitClock = 0
+handlers[E.REACTOR] = function(action, amount, fx, fz)
+	local centre = Vector3.new(0, 6, 0)
+	if action == 1 then
+		local now = os.clock()
+		if now - reactorHitClock > 0.25 then
+			reactorHitClock = now
+			local dir = Vector3.new((fx or 0), 0, (fz or 1))
+			dir = if dir.Magnitude > 1e-3 then dir.Unit else Vector3.zAxis
+			local rim = centre + dir * (Defs.Reactor.Radius + 0.5)
+			Fx.emit("sparkGold", rim, 10, dir)
+			Fx.number(rim + Vector3.yAxis * 3, amount, C.orange, false)
+			Audio.at("hurt", rim, 0.6)
+		end
+	elseif action == 2 then
+		Audio.play("crit", 1, 0.5)
+		Fx.shockwave(Vector3.new(0, 1, 0), 18, C.red, 0.5)
+	elseif action == 4 then
+		-- Relay coil under attack.
+		local now = os.clock()
+		if now - reactorHitClock > 0.3 then
+			reactorHitClock = now
+			local pos = Vector3.new(fx or 0, 4, fz or 0)
+			Fx.emit("sparkGold", pos, 8)
+		end
+	elseif action == 3 then
+		Fx.boom(centre, 26, C.red)
+		Fx.shockwave(Vector3.new(0, 1, 0), 40, C.red, 0.8)
+		CameraRig.shake(1)
+		Menus.whiteFlash(0.5)
+	end
+end
+handlers[E.ASSAULT] = function(sx, sz, count, eta, tx, tz)
+	if count == 0 then
+		-- Objective ping (e.g. the relay coming online): a light column, no lane.
+		Fx.light(Vector3.new(sx, 10, sz), C.cyan, 70, 2)
+		Fx.shockwave(Vector3.new(sx, 1, sz), 30, C.cyan, 0.8)
+		return
+	end
+	-- Ground lane from the breach toward the target: readable in every camera before contact.
+	local dx, dz = (tx or 0) - sx, (tz or 0) - sz
+	local len = math.sqrt(dx * dx + dz * dz)
+	if len < 1 then
+		return
+	end
+	Fx.telegraph(Codec.Shape.LINE, sx, sz, dx / len, dz / len, len - Defs.Reactor.Radius - 4, 6, math.max(2, eta or 6), C.orange, 0)
+	Fx.light(Vector3.new(sx, 8, sz), C.orange, 50, 1.2)
+	Audio.play("roar", 0.5, 0.7)
+end
+handlers[E.OBJECTIVE] = function(action, x, z, a)
+	local pos = Vector3.new(x, 1, z)
+	if action == 1 then
+		if relayRing then
+			relayRing:Destroy()
+		end
+		relayRing = zoneRing(x, z, a, C.cyan)
+		beacon(x, z, C.cyan).Name = "RelayBeacon"
+		Fx.shockwave(pos, a, C.cyan, 0.8)
+		Audio.play("coil", 1, 0.9)
+	elseif action == 2 then
+		local b = beacon(x, z, C.lime)
+		b.Name = "Target" .. tostring(a)
+		Fx.shockwave(pos, 12, C.lime, 0.6)
+	elseif action == 3 then
+		if relayRing then
+			relayRing.Color = C.gold
+			relayRing.Transparency = 0.7
+		end
+		Fx.shockwave(pos, 34, C.gold, 1)
+		Fx.light(pos + Vector3.yAxis * 12, C.gold, 80, 1.5)
+		Audio.play("evolve")
+	elseif action == 4 then
+		local b = objectiveFolder:FindFirstChild("Target" .. tostring(a))
+		if b then
+			b:Destroy()
+		end
+		Fx.boom(Vector3.new(x, 3, z), 14, C.lime)
+		Fx.shockwave(pos, 22, C.lime, 0.7)
+		CameraRig.shake(0.5)
+	end
+end
+handlers[E.COMPONENT] = function(x, z)
+	local pos = Vector3.new(x, 2, z)
+	Fx.emit("sparkGold", pos, 80)
+	Fx.shockwave(pos, 18, C.gold, 0.8)
+	Fx.light(pos + Vector3.yAxis * 6, C.gold, 40, 1.2)
+	Audio.play("evolve")
+	CameraRig.shake(0.4)
 end
 handlers[E.COIL] = function(index)
 	local c = Maps.get(run and run.map).coils[index]
@@ -966,7 +1144,7 @@ local function frame(dt: number)
 			if char then
 				local rig = Gear.ensure(char, p.weapon, p.evolved ~= "", p.id == myId)
 				if rig then
-					Gear.update(rig, p.odT > 0, p.shield, not p.alive)
+					Gear.update(rig, p.s01Casting, p.shield, not p.alive)
 					local beamKind = Defs.Weapons[p.weapon].kind == "beam"
 					Rig.setState(char, p.alive, if p.reload > 0 then p.reload elseif beamKind and p.overheated then 0.5 else 0, p.ammo / math.max(1, p.mag), p.reloadEmpty)
 					if p.id == myId then
@@ -1036,7 +1214,7 @@ local function frame(dt: number)
 	-- Overdrive grade
 	local grade = Lighting:FindFirstChild("Grade")
 	if grade then
-		local od = me and me.odT > 0
+		local od = me and me.s01Casting
 		local low = me and me.alive and me.hp / me.maxHp < 0.3
 		grade.Saturation = if od then 0.45 elseif low then -0.25 else 0.12
 		grade.TintColor = if od then Color3.fromRGB(255, 240, 215) else Color3.fromRGB(232, 244, 255)
@@ -1072,7 +1250,7 @@ local function frame(dt: number)
 		Controls.setViewIcon(CameraRig.ModeIcons[CameraRig.mode()])
 		-- Touch buttons
 		Controls.setButton("dash", true, me.dash / Defs.Player.DashCooldown, if me.dash > 0 then string.format("%.1f", me.dash) else "", me.dash <= 0)
-		Controls.setButton("overdrive", true, 1 - me.od / 100, if me.odT > 0 then string.format("%.0f", me.odT) else me.od .. "%", me.od >= 100)
+		Controls.setButton("overdrive", me.s01, me.s01Left / math.max(1, me.s01Cd), if me.s01Left > 0 then string.format("%.0f", me.s01Left) else "", me.s01Left <= 0 or me.s01Tutorial)
 		Controls.setButton("evolve", me.canEvolve, 0, "READY", true)
 		Controls.setButton("reload", Defs.Weapons[me.weapon].kind ~= "beam", 0, "", false)
 	elseif run then

@@ -1,0 +1,109 @@
+﻿id,system,scenario,steps,expected,verification,source,rule_status,current_result
+CT-001,RunFSM,Solo first start,New profile; press Play,"O01 starts with W01, no mandatory HUB tour",runtime+playtest,GDD §3;D01 §3,canon,NOT_RUN
+CT-002,RunFSM,No auto next operation,Complete or fail O01; click Continue,"Shows selected next mission/retry, does not start combat until explicit Play",runtime,HUB01 §2;D01 §3,canon,NOT_RUN
+CT-003,RunFSM,One outcome,Kill boss while multiple victory conditions are reached,Exactly one terminal outcome; no duplicate rewards,automated,D01 §3,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-004,RunFSM,Simultaneous fatal objective and kill,In same simulation step kill required elite and destroy reactor,"Proposed LOSS, kill is still recorded; no victory unlock",automated,D01 §3;DEC-01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-005,RunFSM,Simultaneous player death and victory,Player HP hits zero on required boss-kill tick,Proposed LOSS; no success credit; KillEvent counted,automated,D01 §3;DEC-01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-006,RunFSM,Timeout on incomplete goal,Expire hard deadline before mandatory goal,"LOSS, no WIN unlock",automated,D01 §3;D02,canon,NOT_RUN
+CT-007,RunFSM,Boss dead but reactor already destroyed,Cause reactor destruction then boss death,No WIN; session stops accepting damage after final state,automated,D01 §3,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-008,RunFSM,Solo death,Lower player HP to zero,Proposed LOSS; never auto-pay or resurrect without approved rule,automated,DEC-01;D01 §3,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-009,Pause,Draft pausing entire world,Trigger XP draft with enemy attack in wind-up,NPC/attack/timer/DoT/cooldowns do not advance until chosen,automated+runtime,D01 §3;Cards v0.3,canon,NOT_RUN
+CT-010,Pause,S01 tutorial pauses entire world,Trigger first scripted ability unlock,Player chooses when to activate; no enemy hits during pause,runtime,D01 §3;S01 v0.2,canon,NOT_RUN
+CT-011,Pause,Resuming after pause,Stay in solo draft then choose card,No time jump or retroactive damage burst,automated+runtime,D01 §3,proposed,NOT_RUN
+CT-012,RunFSM,No events after resolution,Hit targets/send input after RESULTS transition,No additional damage/XP/KillEvents/WIN,automated,D01 §3,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-013,Controls,Move while firing,Hold movement and aim/fire,"Movement and fire continue, no forced stationary mode",runtime,D01 §4,proposed,NOT_RUN
+CT-014,Controls,Dash cooldown,Dash twice before cooldown ends,One valid dash only; no doubled travel due to retransmits,automated+runtime,D01 §4,proposed,NOT_RUN
+CT-015,Controls,Three camera equivalence,Fire same gun/angle at same target across camera modes,"Identical hit rules, cooldown, damage, ability radius",automated+runtime,GDD §4.4;D01 §4,canon,NOT_RUN
+CT-016,Controls,TPS readability,Block sight with swarm; watch dangerous tells,Can perceive real incoming danger in TPS,playtest,D01 §4,canon,NOT_RUN
+CT-017,Controls,FPS offscreen threat,Enemy threats behind camera toward reactor,Alert provides direction before reactor is critically harmed,playtest,D01 §4;§7,canon,NOT_RUN
+CT-018,Controls,Top-down targets,Aim while many targets occlude,"Selected aim follows world-space aim, no unintended aim bonus",runtime,D01 §4,canon,NOT_RUN
+CT-019,Controls,Touch input,Run O01 on real smartphone,"Able to move, aim, fire, dash, choose card, use S01",device_playtest,D01 §4,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-020,Controls,Controller input,Run O01 using supported controller,All combat verbs accessible; no compulsory mouse click,device_playtest,D01 §4,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-021,Controls,Ability independent of cameras,"Cast S01 in Top-down,TPS,FPS",Same actual target set and damage in same positions,automated+runtime,D01 §4;S01 v0.2,canon,NOT_RUN
+CT-022,Damage,Server-true hit vs VFX,Client effects show hit but true hit check misses,No actual damage/kill for visual-only contact,automated,D01 §5,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-023,Damage,Duplicate fire intent,Replay same fire event packet/ID,No duplicated damage for a single authorized action,automated,D01 §5,proposed,NOT_RUN
+CT-024,Damage,Chain proc budget,Proc chain and ricochet repeatedly,No infinite recursive secondary damage/kill generation,automated,Cards v0.3;D01 §5,canon,NOT_RUN
+CT-025,Damage,Burn attribution,Enemy dies from weapon-caused burning,One kill attributed to original weapon family,automated,Evolutions v0.2;D01 §5,canon,NOT_RUN
+CT-026,Damage,S01 attribution,Enemy dies to S01 and also shot by gun,Only one S01 lethal kill; weapon gets no kill,automated,D01 §5;S01 v0.2,canon,NOT_RUN
+CT-027,Damage,Environment kill,Enemy dies with no valid player damage owner,No counterfeit weapon kill; unresolved research policy flagged,automated,D01 §5;D03,proposed,NOT_RUN
+CT-028,Damage,Shield and HP,Hit player with shield active,Shield resolves before HP; no duplicated shield/HP loss,automated,D01 §5;D03,proposed,NOT_RUN
+CT-029,Damage,No duplicate boss kill,Boss death triggers WIN and KillEvent,One boss KillEvent before terminal result,automated,D01 §5;D03,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-030,Damage,Reactor friendly fire,Fire weapon at own reactor,No damage by own weapon absent explicitly approved rule,automated,D01 §7,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-031,Enemies,O01 roster whitelist,Record all spawned types in first new-player O01,Only Runner/Spitter/one final Core Carrier elite,automated,O01;D01 §6;§9,canon,NOT_RUN
+CT-032,Enemies,Acid telegraph,First Spitter encounter with player in range,Visible/aural tell and meaningful escape before damage,playtest,D01 §6,canon,NOT_RUN
+CT-033,Enemies,Stalker jump,O02 first Stalker attack,Recognizable pre-jump and recovery opportunity,playtest,D01 §6,proposed,NOT_RUN
+CT-034,Enemies,Bulwark counterplay,O03 with starter weapon,Viable way to progress without unbounded sponge HP,playtest,D01 §6,proposed,NOT_RUN
+CT-035,Enemies,Bomber blast radius,O05 detonation adjacent to crowd,Telegraph matches true damage area; controlled chain possible,automated+playtest,D01 §6,proposed,NOT_RUN
+CT-036,Enemies,Enemy death uniqueness,Apply lethal damage twice in same step,"One enemy death, one XP drop policy, one KillEvent",automated,D01 §6,proposed,NOT_RUN
+CT-037,Enemies,Spawn fair distance,Trigger danger while hero/reactor is in view,No untelegraphed instant melee spawn inside hero/objective,runtime,D01 §6;§8,canon,NOT_RUN
+CT-038,Enemies,Boss phase transition,Trigger boss phase threshold,"Transition with telegraph, no involuntary unavoidable hit",runtime+playtest,D01 §6;D02,proposed,NOT_RUN
+CT-039,Enemies,Elite two moves,First Core Carrier,Exactly two understandable primary move concepts; one elite,runtime,D01 §9;O01,canon,NOT_RUN
+CT-040,Reactor,Reactor has actual HP,Allow assault role enemy to reach reactor,HP decreases only by allowed objective attacks,automated+runtime,D01 §7,canon,NOT_RUN
+CT-041,Reactor,No invisible objective damage,Send player to side objective,Warning and return/counterplay before fatal damage,playtest,D01 §7;D02,canon,NOT_RUN
+CT-042,Reactor,Player target vs objective target,Simulate mixed role wave,"Some hunt player, some advance on reactor; behavior readable",runtime,D01 §7,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-043,Reactor,All-way objective loss,Destroy defended core mid-mission,LOSS; no completed-objective WIN,automated,D01 §7,canon,NOT_RUN
+CT-044,Reactor,No hidden repair,"Deal partial damage, wait",No unannounced HP regeneration or currency repair,automated,D01 §7,canon,NOT_RUN
+CT-045,Reactor,Pause stops reactor attacks,Open draft when damage imminent,All time-derived reactor damage paused,automated,D01 §7,canon,NOT_RUN
+CT-046,Reactor,Camera communication,Inspect reactor alert from each camera,Approach direction can be recognized without special combat modifier,device_playtest,D01 §7,canon,NOT_RUN
+CT-047,Horde,Not equal spawned and killed,Observe attack rates at living cap,"Spawn attempts/cap/kills counted separately, no fake 1000 concurrent NPC",automated+runtime,D01 §8,canon,NOT_RUN
+CT-048,Horde,No empty downtime,"Run full mission, mark enemy-free stretches",Recovery has combat targets; long empty interval flagged,playtest+telemetry,D01 §8,canon,NOT_RUN
+CT-049,Horde,Tunable enemy mix,Test multiple allowed configurations,Only allowed species/attack roles for chosen mission,automated,D01 §8;D02,canon,NOT_RUN
+CT-050,Horde,Repeat variant stable,Replay seed/config in test harness,Same scripted encounter choices (physics tolerance allowed),automated,D01 §8,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-051,Horde,Device stress,Weak real phone and desktop at dense wave,"No invalid input, lost attacks, stuck controls; FPS/memory reported",device_playtest,D01 §8,canon,NOT_RUN
+CT-052,Horde,No FPS cheating,Degrade effects/network load while replaying same encounter,"Damage, enemy speed, objective failure conditions unchanged",automated+device_playtest,D01 §8,canon,NOT_RUN
+CT-053,O01,First S01 permanently granted,Cast scripted S01 then intentionally fail,Skill remains in profile and works in next attempt,runtime+persistence,D01 §9–10,canon,NOT_RUN
+CT-054,O01,S01 not unlocked before first cast,"Die early without scripted cast, restart",S01 remains locked until successful first cast,runtime,D01 §9–10,canon,NOT_RUN
+CT-055,O01,No instant evolved gun,Kill core carrier in first run,Unique component is earned; no immediate permanent Thunderlord,runtime,D01 §9;Evolutions v0.2,canon,NOT_RUN
+CT-056,O01,Final wave after elite,Kill core carrier while reactor alive,Final mass surge occurs; not instant victory,runtime,D01 §9,canon,NOT_RUN
+CT-057,O01,Progress retained on failure,"Earn weapon kills and research, lose final reactor",Earned personal progress retained; no O02 unlock,runtime+persistence,D01 §9,canon,NOT_RUN
+CT-058,O01,XP choices never forced,Reach first two XP offers,Multishot offered early; alternative cards remain valid,runtime,D01 §11,canon,NOT_RUN
+CT-059,Experience,No early pay-to-revive,Die during first solo run,No purchase demanded to preserve earned mastery or continue in next attempt,playtest,D01 §12;DEC-01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-060,Experience,Fight still enjoyable without meta,Blind trial baseline gun with progression hidden,Player reports shooting impact and desire to keep engaging; measured not assumed,playtest,GDD §14;D01 §1,canon,NOT_RUN
+CT-061,Experience,Different card-driven styles,Play 3 intentionally different W01 builds,"Movement/target priorities visibly different, not only raw DPS",playtest,GDD §14;D01 §11,canon,NOT_RUN
+CT-062,Experience,End-to-end newbie run,New player completes/fails first attempt on PC or phone,"Understands reason, sees truthful outcome, chooses voluntary next action",playtest,D01 §15,canon,NOT_RUN
+CT-063,Pause,Tutorial S01 input accepted,Pause in S01 tutorial; press S01,Exactly one valid skill cast; pause ends; no deadlock,runtime+automated,D01 v0.2 RV-01,proposed,NOT_RUN
+CT-064,Pause,Duplicate S01 input,Press tutorial skill twice rapidly,Only one cast/kill/cooldown transition,automated,D01 v0.2 RV-01,proposed,NOT_RUN
+CT-065,Pause,No command replay after draft,While card menu up send fire/dash intents; choose card,No buffered shot/dash on next ACTIVE step,automated,D01 v0.2 RV-01,proposed,NOT_RUN
+CT-066,Pause,No catchup damage/ticks,Pause with projectile and active DoT; resume,Timers resume from paused moment without burst,automated,D01 v0.2 RV-01,proposed,NOT_RUN
+CT-067,RunFSM,Fatal and boss kill same authoritative tick,Queue enemy death and reactor destruction in one sim step,One result with proposed LOSS; boss KillEvent remains,automated,D01 v0.2 RV-02;D01-R01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-068,RunFSM,Late hit after RESOLVING,Send valid hit input after terminal state,"No extra damage, kills, change of result",automated,D01 v0.2 RV-02,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-069,RunFSM,Duplicate outcome event,Replay boss death and resolve event,Only one final result and one award transaction request,automated,D01 v0.2 RV-02,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-070,Damage,Pellets unique subhits,"Fire scattergun into one enemy, verify multiple valid pellet hits","Allowed distinct pellet hits, no duplicate per pellet",automated,D01 v0.2 RV-03,proposed,NOT_RUN
+CT-071,Damage,Beam tick uniqueness,"Beam stays on one enemy, repeat one network tick",One hit per valid beam interval,automated,D01 v0.2 RV-03,proposed,NOT_RUN
+CT-072,Damage,Simultaneous final hits deterministic,Two weapon sources fatally hit same enemy in one step,Exactly one KillEvent; defined stable owner,automated,D01 v0.2 RV-04,proposed,NOT_RUN
+CT-073,Damage,Burn lethal attribution,Weapon-initiated burn applies lethal DoT after shooter moves,"Kill owner=source weapon, no S01 attribution",automated,D01 v0.2 RV-04,canon,NOT_RUN
+CT-074,Enemies,Objective unreachable,Put assault enemy behind blocked path,Cannot damage reactor from inaccessible location,automated+runtime,D01 v0.2 RV-05,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-075,Enemies,No spawned inside target,Force high rate near player and reactor,"Spawn respects safe region, no instant attack",automated+runtime,D01 v0.2 RV-05,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-076,Reactor,Attack geometry,Attempt attack while attacker outside legal range,No objective HP lost until valid range/hit,automated,D01 v0.2 RV-05,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-077,Reactor,Threat warning is real,Alert assault wave prior to potential lethal reactor attack,Player can identify and intercept; warning matches actual NPC,runtime+playtest,D01 v0.2 RV-06,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-078,Reactor,No arbitrary invulnerable event,Move player to far mandatory objective,Real risk maintained; no hidden regeneration/disable,runtime+playtest,D01 v0.2 RV-06,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-079,O01,Elite death not win,Kill final elite before final phase,Core event saved; mission still ACTIVE for final wave,automated,D01 v0.2 RV-08,canon,NOT_RUN
+CT-080,O01,Completion independent leftover,Finish final scripted wave while one isolated runner remains,D02 rule defines completion without infinite softlock,automated,D01 v0.2 RV-08;D02,proposed,NOT_RUN
+CT-081,RunFSM,Unique core record exactly once,"Kill elite, end LOSS, repeat UI and save result",Core recorded once; no story WIN unlock,automated,D01 v0.2 RV-10;D04,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-082,RunFSM,Result snapshot idempotence,Call Resolve twice from same attempt,One immutable snapshot and one reward-transaction request,automated,D01 v0.2 RV-10,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-083,Horde,No infinite spawn debt,"Stay at alive cap for extended period, clear wave",No old backlog spawn burst after opening slots,automated+runtime,D01 v0.2 RV-07,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-084,Horde,No false wave end under cap,Keep many alive until scheduled phase switches,Phase end not mistaken for enemy count zero,automated,D01 v0.2 RV-07,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-085,Experience,Magnet creates multiple offers,Acquire XP enough for 3 pending levelups,Offers resolved sequentially while sim paused,automated,D01 v0.2 RV-09,proposed,NOT_RUN
+CT-086,Experience,Card duplicate select,Send same card accept twice,"One rank/slot change, no lost pending offer",automated,D01 v0.2 RV-09,proposed,NOT_RUN
+CT-087,Controls,Cross-camera same world target,Fire identical direction and equipment in FPS TPS TD,Same true world hit/damage; VFX can differ,runtime+automated,D01 v0.2 RV-11,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-088,Controls,Touch aim no hidden double hits,Compare touch aiming with same world ray input,"One validated action, no doubled assist damage",runtime,D01 v0.2 RV-11,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-089,RunFSM,S01 after results,Queue skill cast after RESULTS,No new cast or skill kills,automated,D01 v0.2 RV-12,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+CT-090,RunFSM,No postresolving healing,Trigger heal on reactor after fatal LOSS,No reopening or change of result,automated,D01 v0.2 RV-12,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+DEC-01-A,ApprovedD01Decision,DEC-01,Execute decision-specific test,Solo HP zero after active combat yields exactly one LOSS,automated,D01_APPROVAL v0.3; DEC-01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+DEC-01-B,ApprovedD01Decision,DEC-01,Execute decision-specific test,No auto-respawn and no paid revive in solo; earned progress persists after loss,runtime,D01_APPROVAL v0.3; DEC-01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+DEC-08-A,ApprovedD01Decision,DEC-08,Execute decision-specific test,Agent may not change LOCKED game rules through config tuning,document-review,D01_APPROVAL v0.3; DEC-08,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+DEC-08-B,ApprovedD01Decision,DEC-08,Execute decision-specific test,"Bounded candidate change has config version, evidence and rollback",document-review,D01_APPROVAL v0.3; DEC-08,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+DEC-08-C,ApprovedD01Decision,DEC-08,Execute decision-specific test,Missing numeric bounds do not auto-authorize final balance tuning,document-review,D01_APPROVAL v0.3; DEC-08,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R01-A,ApprovedD01Decision,D01-R01,Execute decision-specific test,Same-tick lethal boss and hero yields LOSS with one attributed KillEvent,automated,D01_APPROVAL v0.3; D01-R01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R01-B,ApprovedD01Decision,D01-R01,Execute decision-specific test,"Same-tick core carrier dead and reactor destroyed yields LOSS, core saved, no O02 unlock",automated,D01_APPROVAL v0.3; D01-R01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R01-C,ApprovedD01Decision,D01-R01,Execute decision-specific test,Outcome already committed on previous tick cannot be retroactively overturned,automated,D01_APPROVAL v0.3; D01-R01,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R02-A,ApprovedD01Decision,D01-R02,Execute decision-specific test,Enemies cannot damage reactor outside legal range/path or through occluder,runtime,D01_APPROVAL v0.3; D01-R02,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R02-B,ApprovedD01Decision,D01-R02,Execute decision-specific test,Normal T1 player has viable response window to actual reactor threat,playtest,D01_APPROVAL v0.3; D01-R02,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R02-C,ApprovedD01Decision,D01-R02,Execute decision-specific test,Pausing solo card selection prevents all world damage and DoT,automated,D01_APPROVAL v0.3; D01-R02,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R03-A,ApprovedD01Decision,D01-R03,Execute decision-specific test,"Camera switch cannot change weapon damage, cooldown or target hit rules",automated,D01_APPROVAL v0.3; D01-R03,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R03-B,ApprovedD01Decision,D01-R03,Execute decision-specific test,Touch aim assist never shoots behind solid obstructions,runtime,D01_APPROVAL v0.3; D01-R03,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R03-C,ApprovedD01Decision,D01-R03,Execute decision-specific test,All three camera modes retain usable threat telegraphs,playtest,D01_APPROVAL v0.3; D01-R03,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R04-A,ApprovedD01Decision,D01-R04,Execute decision-specific test,First O01 contains only Runner/Spitter/one core elite,automated,D01_APPROVAL v0.3; D01-R04,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R04-B,ApprovedD01Decision,D01-R04,Execute decision-specific test,Repeat variant changes encounter situation but not mission contract or story loot,runtime,D01_APPROVAL v0.3; D01-R04,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R04-C,ApprovedD01Decision,D01-R04,Execute decision-specific test,No mass backlog-burst after alive cap releases,loadtest,D01_APPROVAL v0.3; D01-R04,APPROVED_DESIGN_NOT_RUN,NOT_RUN
+D01-R04-D,ApprovedD01Decision,D01-R04,Execute decision-specific test,Run seed and config version reproduce scripted encounter choices,automated,D01_APPROVAL v0.3; D01-R04,APPROVED_DESIGN_NOT_RUN,NOT_RUN

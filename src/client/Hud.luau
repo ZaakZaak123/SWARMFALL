@@ -137,6 +137,14 @@ function Hud.init(playerGui: PlayerGui)
 	icon("timer", 20, C.text, { Position = UDim2.fromOffset(120, 7), Parent = ui.hive })
 	ui.hiveTime = label("", { Position = UDim2.fromOffset(146, 0), Size = UDim2.new(0, 60, 1, 0), FontFace = F.num, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.hive })
 
+	-- Reactor + objective (top-centre, operations with a reactor)
+	ui.reactor = Theme.panel({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 94), Size = UDim2.fromOffset(320, 46), Visible = false, Parent = root }, C.cyan)
+	ui.reactorStroke = ui.reactor:FindFirstChildOfClass("UIStroke")
+	ui.reactorIcon = icon("reactor", 28, C.cyan, { Position = UDim2.fromOffset(8, 9), Parent = ui.reactor })
+	ui.goal = label("", { Position = UDim2.fromOffset(44, 3), Size = UDim2.new(1, -52, 0, 18), FontFace = F.title, TextSize = 13, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.reactor })
+	ui.reactorBack, ui.reactorFill = bar(ui.reactor, { Position = UDim2.fromOffset(44, 25), Size = UDim2.new(1, -110, 0, 12) }, C.cyan)
+	ui.reactorPct = label("", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 19), Size = UDim2.fromOffset(56, 24), FontFace = F.num, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Right, Parent = ui.reactor })
+
 	-- Combo (right) -------------------------------------------------------------------------------------
 	ui.combo = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.38, 0), Size = UDim2.fromOffset(200, 80), Parent = root })
 	ui.comboIcon = icon("boom", 34, C.gold, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 62), Parent = ui.combo })
@@ -150,7 +158,7 @@ function Hud.init(playerGui: PlayerGui)
 	ui.magBack, ui.magFill = bar(wp, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 44), Size = UDim2.fromOffset(230, 6) }, C.cyan)
 	ui.reloadText = label("", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 51), Size = UDim2.fromOffset(230, 14), FontFace = F.title, TextSize = 12, TextColor3 = C.gold, Parent = wp })
 	ui.dash = tile(wp, "dash", C.cyan, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(0.5, -140, 0, 4), Size = UDim2.fromOffset(62, 58) })
-	ui.od = tile(wp, "sun", C.gold, { Position = UDim2.new(0.5, 140, 0, 4), Size = UDim2.fromOffset(62, 58) })
+	ui.od = tile(wp, "hammer", C.cyan, { Position = UDim2.new(0.5, 140, 0, 4), Size = UDim2.fromOffset(62, 58) })
 	ui.reroll = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(0.5, -210, 0, 18), Size = UDim2.fromOffset(60, 40), Parent = wp })
 
 	-- Evolve prompt
@@ -347,6 +355,33 @@ function Hud.update(run, me, extra, dt: number)
 		ui.bossTag.Text = if run.boss.invulnerable then "НЕУЯЗВИМ" elseif run.boss.exposed then "УЯЗВИМ  ×1.8" elseif run.boss.enraged then "ЯРОСТЬ" else ""
 		ui.bossTag.TextColor3 = if run.boss.exposed then C.lime else C.red
 	end
+	local mission = run.mission
+	local rc = mission and mission.reactor
+	ui.reactor.Visible = rc ~= nil and run.boss == nil
+	if rc then
+		local frac = math.clamp(rc.hp / math.max(1, rc.max), 0, 1)
+		local col = if frac < 0.25 then C.red elseif frac < 0.5 then C.orange else C.cyan
+		local hitAgo = run.t - (rc.hitT or -99)
+		local flash = hitAgo < 0.35
+		ui.reactorFill.Size = UDim2.fromScale(frac, 1)
+		ui.reactorFill.BackgroundColor3 = if flash then C.red else col
+		ui.reactorPct.Text = math.ceil(frac * 100) .. "%"
+		ui.reactorPct.TextColor3 = col
+		ui.reactorStroke.Color = if hitAgo < 2 then C.red else col
+		Icons.recolor(ui.reactorIcon, if flash then C.red else col)
+		local goal = mission.goal or ""
+		if mission.finaleLeft then
+			goal = goal .. "  ·  " .. mission.finaleLeft .. " с"
+		elseif mission.deadlineLeft and mission.deadlineLeft <= 120 then
+			goal = goal .. "  ·  СРОК " .. Theme.fmtTime(mission.deadlineLeft)
+		end
+		local relay = mission.relay
+		if relay and relay.alive and mission.state == "FIGHT" then
+			goal = goal .. string.format("  ·  КАТУШКА %d%%", math.ceil(relay.hp / math.max(1, relay.max) * 100))
+		end
+		ui.goal.Text = string.upper(goal)
+		ui.goal.TextColor3 = if mission.deadlineLeft and mission.deadlineLeft <= 60 then C.red else C.text
+	end
 	if run.hive then
 		ui.hiveText.Text = string.format("%d/3", run.hive)
 		ui.hiveTime.Text = tostring(math.ceil(run.hiveEnds or 0))
@@ -381,8 +416,10 @@ function Hud.update(run, me, extra, dt: number)
 		ui.coreBadge.Visible = me.core and not evolved
 		-- Evolution recipe: lit icons for owned keys / the core; pulses gold when ready, hides once evolved
 		local recipe = Defs.Evolutions[wdef.evolution]
-		ui.evoTrack.Visible = not evolved
-		if not evolved then
+		-- Only legacy runs still evolve from cards + core; permanent forms are crafted in the arsenal.
+		local runEvo = run.runEvolution == true and not evolved
+		ui.evoTrack.Visible = runEvo
+		if runEvo then
 			if ui.evoTrackFor ~= wdef.id then
 				ui.evoTrackFor = wdef.id
 				for _, ic in ui.evoIcons do
@@ -470,21 +507,21 @@ function Hud.update(run, me, extra, dt: number)
 		ui.dash.fill.Size = UDim2.fromScale(1, 1 - math.clamp(me.dash / dashMax, 0, 1))
 		ui.dash.key.Text = if me.dash > 0 then string.format("%.1f", me.dash) else keyLabel(extra.device, "SPACE", "B")
 		ui.dash.fill.BackgroundTransparency = if me.dash > 0 then 0.85 else 0.6
-		-- Overdrive tile
-		local odReady = me.od >= 100
-		if me.odT > 0 then
-			ui.od.fill.Size = UDim2.fromScale(1, me.odT / Defs.Player.OverdriveDuration)
-			ui.od.key.Text = string.format("%.0f", me.odT)
-		else
-			ui.od.fill.Size = UDim2.fromScale(1, me.od / 100)
-			ui.od.key.Text = if odReady then keyLabel(extra.device, "Q", "Y") else me.od .. "%"
-		end
-		ui.od.fill.BackgroundTransparency = if odReady or me.odT > 0 then 0.45 else 0.8
-		ui.od.stroke.Transparency = if odReady then 0.05 + math.sin(now * 8) * 0.1 else 0.45
-		ui.od.stroke.Thickness = if odReady then 2 else 1
+		-- S01 Gravihammer tile (hidden until the skill is known)
+		ui.od.frame.Visible = me.s01
+		local odReady = me.s01 and (me.s01Left <= 0 or me.s01Tutorial)
+		ui.od.fill.Size = UDim2.fromScale(1, 1 - math.clamp(me.s01Left / math.max(1, me.s01Cd), 0, 1))
+		ui.od.key.Text = if odReady then keyLabel(extra.device, "Q", "Y") else string.format("%.0f", me.s01Left)
+		ui.od.fill.BackgroundTransparency = if odReady then 0.45 else 0.8
+		local pulse = if me.s01Tutorial then 10 else 8
+		ui.od.stroke.Transparency = if odReady then 0.05 + math.sin(now * pulse) * 0.1 else 0.45
+		ui.od.stroke.Thickness = if me.s01Tutorial then 4 elseif odReady then 2 else 1
 		-- Evolve
-		ui.evolve.Visible = me.canEvolve and extra.device ~= "touch"
-		if me.canEvolve then
+		ui.evolve.Visible = (me.canEvolve or me.s01Tutorial) and extra.device ~= "touch"
+		if me.s01Tutorial then
+			ui.evolveScale.Scale = 1 + math.sin(now * 8) * 0.06
+			ui.evolveText.Text = "ГРАВИМОЛОТ: УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")
+		elseif me.canEvolve then
 			ui.evolveScale.Scale = 1 + math.sin(now * 6) * 0.04
 			ui.evolveText.Text = "ЭВОЛЮЦИЯ: " .. Defs.Evolutions[wdef.evolution].name .. "  " .. keyLabel(extra.device, "[F]", "[X]")
 		end

@@ -36,6 +36,12 @@ Codec.E = {
 	BEAM = 21, -- pid, ox, oz, ex, ez, evolved
 	BOSS = 23, -- action: 1 roar/enter, 2 exposed, 3 enrage, 4 death, 5 burrow
 	SPIT = 24, -- fromX, fromZ, toX, toZ, flightTime
+	REACTOR = 25, -- action: 1 hit (amount, fromX, fromZ), 2 warning (hpPercent), 3 destroyed, 4 relay hit (amount, fromX, fromZ, x, z)
+	ASSAULT = 26, -- spawnX, spawnZ, count, etaSeconds, targetX, targetZ (strike group announced)
+	COMPONENT = 27, -- x, z, componentId (permanent component dropped — e.g. Ядро Бури)
+	HAMMER = 28, -- pid, x, z, radius, phase (0 granted, 1 windup, 2 impact), emergency 0/1, hits
+	OBJECTIVE = 29, -- action, x, z, a, b, c: 1 relay active (radius, charge, need), 2 target revealed (index),
+	--                 3 relay charged, 4 target destroyed (index, destroyed, total)
 }
 
 -- Color codes shared by FX.
@@ -59,7 +65,11 @@ Codec.State = {
 Codec.Flag = { BURN = 1, SLOW = 2, CORRODE = 4, EXPOSED = 8, HIT = 16 }
 
 -- Damage flags
-Codec.DF = { CRIT = 1, BURN = 2, ARC = 4, BLAST = 8, ARMOR = 16 }
+-- GRAV: S01 Gravihammer. CARD: an independent card ability (shock dash). ENV: environment the player
+-- triggered (coils, bomber chain blasts). Kill credit: see Combat.onKill / D03 §2.
+Codec.DF = { CRIT = 1, BURN = 2, ARC = 4, BLAST = 8, ARMOR = 16, GRAV = 32, CARD = 64, ENV = 128 }
+-- Kill causes (KILL event + attribution): 0 shot, 1 arc, 2 blast, 3 burn, 4 S01, 5 card ability, 6 environment
+Codec.Cause = { SHOT = 0, ARC = 1, BLAST = 2, BURN = 3, S01 = 4, CARD = 5, ENV = 6 }
 
 local RECORD = 11
 local SCALE = 32

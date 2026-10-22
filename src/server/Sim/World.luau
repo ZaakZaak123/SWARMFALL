@@ -5,11 +5,13 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Maps = require(Shared:WaitForChild("Maps"))
+local Ops = require(Shared:WaitForChild("Ops"))
 local Codec = require(Shared:WaitForChild("Codec"))
 local Nav = require(script.Parent.Nav)
 local Rng = require(script.Parent.Rng)
 local Combat = require(script.Parent.Combat)
 local AI = require(script.Parent.AI)
+local Mission = require(script.Parent.Mission)
 
 local E, C = Codec.E, Codec.C
 local ST = Codec.State
@@ -43,7 +45,8 @@ local function newPlayer(map, info, index: number, count: number)
 		cards = if perk(info, "PK_INSIGHT") > 0 then 4 else 3,
 		shield = 0,
 		weaponDef = weapon,
-		evolved = nil,
+		-- A crafted, equipped permanent form is active from the first shot (no in-run recipe).
+		evolved = if info.form and Defs.Evolutions[info.form] and Defs.Evolutions[info.form].weapon == weapon.id then info.form else nil,
 		hasCore = false,
 		canEvolve = false,
 		ammo = weapon.magazine,
@@ -64,8 +67,19 @@ local function newPlayer(map, info, index: number, count: number)
 		dashHit = {},
 		iframeUntil = 0,
 		graceUntil = 0,
-		od = math.min(100, 25 * perk(info, "PK_OVERDRIVE")),
+		od = 0, -- legacy overdrive (retired by S01, DD-006)
 		odUntil = -1,
+		-- S01 Gravihammer: unlocked forever after the first own cast (O01 event); locked profiles
+		-- get it at the O01 encirclement. Tests/legacy callers default to unlocked.
+		s01 = info.s01 ~= false,
+		s01Ready = 0,
+		s01Cd = Defs.S01.Cooldown * (1 - Defs.S01.PerkCut * perk(info, "PK_OVERDRIVE")),
+		hammerAt = nil,
+		hammerEmergency = false,
+		s01Stats = { casts = 0, hits = 0, kills = 0, crowds = 0, best = 0 },
+		weaponKills = 0, -- personal lethal kills credited to this run's weapon (mastery M1–M20)
+		lineShots = 0, -- railgun trial shots (>= 2 normal enemies in one line)
+		species = {}, -- personal confirmed kills per species (research)
 		ranks = {},
 		slots = 0,
 		offer = nil,
@@ -94,6 +108,7 @@ end
 
 export type Options = {
 	seed: number?,
+	op: string?, -- operation id (Ops); defaults from map for legacy callers
 	map: string?,
 	threat: number?,
 	players: { { id: number, name: string?, weapon: string?, perks: { [string]: number }? } },
@@ -104,7 +119,12 @@ function World.new(opts: Options)
 	local self = setmetatable({}, World)
 	self.seed = seed
 	self.rng = Rng.new(seed)
-	self.map = Maps.get(opts.map)
+	local opId = opts.op
+	if not opId then
+		opId = if opts.map == "MAP_HIVE_DEPTHS" then "O06" else "O04"
+	end
+	self.op = Ops.get(opId)
+	self.map = Maps.get(self.op.map)
 	self.nav = Nav.new(self.map)
 	self.threat = math.clamp(math.floor(opts.threat or 1), 1, Defs.Threat.Max)
 	self.phase = "COUNTDOWN"
@@ -154,6 +174,7 @@ function World.new(opts: Options)
 	self.hitBuf = {}
 	self.dead = {}
 	self.teamKills = 0
+	self.mission = Mission.new(self, self.op)
 	return self
 end
 
@@ -247,20 +268,122 @@ function World:dash(id: number, dx: number, dz: number): boolean
 	return true
 end
 
-function World:overdrive(id: number): boolean
+-- S01 Gravihammer ----------------------------------------------------------------------------------
+function World:gravihammer(id: number): boolean
 	local p = self.players[id]
-	if not p or not p.alive or self.phase ~= "ACTIVE" or self.paused or p.od < 100 or self.t < p.odUntil then
+	if not p or not p.alive or self.phase ~= "ACTIVE" or not p.s01 or p.hammerAt then
 		return false
 	end
-	p.od = 0
-	p.odUntil = self.t + Defs.Player.OverdriveDuration
-	Combat.recompute(p)
-	self:emit(E.OVERDRIVE, p.id, p.x, p.z)
-	Combat.blast(self, p, p.x, p.z, Defs.Overdrive.BlastRadius, Defs.Overdrive.BlastDamage, C.GOLD, 6)
+	local tutorial = self.paused == "S01" and self.s01Tutee == id
+	if self.paused and not tutorial then
+		return false
+	end
+	if not tutorial and self.t < p.s01Ready then
+		return false
+	end
+	if tutorial then
+		-- The world resumes exactly as the player's own strike begins (GDD §5, S01 §3).
+		self.paused = nil
+		self.s01Tutee = nil
+		p.hammerEmergency = true
+	end
+	p.hammerAt = self.t + Defs.S01.Windup
+	p.iframeUntil = math.max(p.iframeUntil, self.t + Defs.S01.IFrames)
+	p.s01Ready = self.t + p.s01Cd
+	p.s01Stats.casts += 1
+	local radius = if p.hammerEmergency then Defs.S01.Emergency.Radius else Defs.S01.Radius
+	self:emit(E.HAMMER, p.id, p.x, p.z, radius, 1, if p.hammerEmergency then 1 else 0, 0)
 	return true
 end
 
+function World:hammerImpact(p)
+	local S = Defs.S01
+	local emergency = p.hammerEmergency
+	p.hammerAt = nil
+	p.hammerEmergency = false
+	local radius = if emergency then S.Emergency.Radius else S.Radius
+	local reach = if emergency then S.Emergency.Outer else radius
+	local cap = if emergency then S.Emergency.Targets else S.Targets
+	local dmg = if emergency then S.Emergency.Damage else S.Damage
+	local knock = if emergency then S.Emergency.Knock else S.Knock
+	local list = self:query(p.x, p.z, reach + 4, {})
+	local px, pz = p.x, p.z
+	table.sort(list, function(a, b)
+		return (a.x - px) ^ 2 + (a.z - pz) ^ 2 < (b.x - px) ^ 2 + (b.z - pz) ^ 2
+	end)
+	local hits = 0
+	for _, e in list do
+		if not e.alive or e.kind == "HIVE" then
+			continue
+		end
+		local dx, dz = e.x - px, e.z - pz
+		local d = math.sqrt(dx * dx + dz * dz)
+		local edge = d - e.def.radius
+		if edge > reach then
+			continue
+		end
+		if d < 1e-3 then
+			dx, dz, d = 0, 1, 1
+		end
+		local inner = edge <= radius
+		if inner and hits >= cap then
+			continue
+		end
+		local big = e.def.big
+		local push = if big then S.BigKnock elseif inner then knock else knock * 0.6
+		if not e.def.boss then
+			e.x, e.z = self.nav.resolve(e.x + dx / d * push, e.z + dz / d * push, e.def.radius)
+		end
+		if inner then
+			hits += 1
+			if not big then
+				e.stunUntil = math.max(e.stunUntil, self.t + S.Stun)
+			elseif not e.def.boss and e.state == ST.WINDUP then
+				-- Heavy enemies only lose a windup (no boss stun-lock).
+				e.state = ST.RECOVER
+				e.stateUntil = self.t + 0.5
+			end
+			local mult = if e.def.boss then S.BossMult elseif big then S.BigMult else 1
+			Combat.damage(self, p, e, dmg * mult, 1, bit32.bor(Codec.DF.BLAST, Codec.DF.GRAV), px, pz)
+		elseif emergency then
+			e.slow = math.max(if self.t < e.slowUntil then e.slow else 0, S.Emergency.OuterSlow)
+			e.slowUntil = math.max(e.slowUntil, self.t + 2)
+		end
+	end
+	local st = p.s01Stats
+	st.hits += hits
+	st.best = math.max(st.best, hits)
+	if hits >= S.CrowdHits then
+		st.crowds += 1
+	end
+	self:emit(E.HAMMER, p.id, px, pz, radius, 2, if emergency then 1 else 0, hits)
+	if emergency then
+		self:banner("АВАРИЙНАЯ ПЕРЕГРУЗКА", "Гравимолот S01 открыт навсегда · поражено " .. hits, C.CYAN, 3.5, "hammer")
+	end
+end
+
+-- O01 encirclement: a profile without S01 receives it here. Solo gets a safe tutorial pause that the
+-- player's own button press ends. Squads never pause the server (S01 §3).
+function World:s01Event()
+	for _, p in self.playerList do
+		if p.alive and not p.s01 then
+			p.s01 = true
+			p.s01Ready = 0
+			if self.solo and not self.paused then
+				self.paused = "S01"
+				self.pauseClock = 0
+				self.s01Tutee = p.id
+			end
+			self:emit(E.HAMMER, p.id, p.x, p.z, Defs.S01.Emergency.Radius, 0, 1, 0)
+			self:banner("ГРАВИМОЛОТ", "Враги окружили — нанеси гравитационный удар", C.CYAN, 4, "hammer")
+		end
+	end
+end
+
 function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number): boolean
+	if p.isReactor then
+		return self.mission:hurtReactor(amount, fromX, fromZ, false, p)
+	end
 	if not p.alive or self.t < Defs.Run.SafeSeconds or self.t < p.graceUntil or self.t < p.iframeUntil then
 		return false
 	end
@@ -380,6 +503,27 @@ function World:spawnEnemy(kind: string, x: number, z: number, spawnTime: number?
 	return e
 end
 
+-- Spawns near a point (e.g. a breach), scattered within `spread`, never on top of a player.
+function World:spawnAtPoint(kind: string, cx: number, cz: number, spread: number, spawnTime: number?)
+	local def = Defs.Enemies[kind]
+	for _ = 1, 6 do
+		local x, z = self.nav.resolve(cx + self.rng:range(-spread, spread), cz + self.rng:range(-spread, spread), def.radius)
+		if self.nav.free(x, z, def.radius) then
+			local ok = true
+			for _, p in self.playerList do
+				if p.alive and (p.x - x) ^ 2 + (p.z - z) ^ 2 < 30 * 30 then
+					ok = false
+					break
+				end
+			end
+			if ok then
+				return self:spawnEnemy(kind, x, z, spawnTime)
+			end
+		end
+	end
+	return nil
+end
+
 function World:damage(p, e, amount: number, depth: number, flags: number, fromX: number, fromZ: number)
 	return Combat.damage(self, p, e, amount, depth, flags, fromX, fromZ)
 end
@@ -397,6 +541,7 @@ function World:kill(e, p, depth: number, cause: number)
 	end
 	self:emit(E.KILL, e.id, e.def.index, e.x, e.z, if p then p.id else 0, cause, q(e.dmgFromX), q(e.dmgFromZ))
 	self.stats.killed += 1
+	self.mission:onKill(e, p)
 	local kind = e.kind
 	if e.def.boss then
 		self.boss = nil
@@ -415,7 +560,11 @@ function World:kill(e, p, depth: number, cause: number)
 			local a = i / 8 * math.pi * 2
 			self:dropOrb(e.x + math.cos(a) * 5, e.z + math.sin(a) * 5, 0, math.ceil(xp / 8))
 		end
-		self:grantCores(e.x, e.z)
+		if e.carrier then
+			self.mission:onEliteKilled(e)
+		elseif self.op.runEvolution then
+			self:grantCores(e.x, e.z)
+		end
 	elseif xp > 0 then
 		self:dropOrb(e.x, e.z, 0, xp)
 	end
@@ -426,7 +575,7 @@ function World:kill(e, p, depth: number, cause: number)
 			self:dropOrb(e.x - 1.5, e.z, 2, 0)
 		end
 	end
-	if kind == "HIVE" then
+	if kind == "HIVE" and not e.objective then
 		self.hive.remaining -= 1
 		if self.hive.remaining <= 0 and self.hive.state == "active" then
 			self.hive.state = "cleared"
@@ -642,7 +791,11 @@ end
 
 -- Director ------------------------------------------------------------------------------------------
 function World:currentPhaseDef()
-	local phases = self.map.phases
+	local override = self.mission and self.mission:phaseOverride()
+	if override then
+		return 1000, override
+	end
+	local phases = self.op.phases
 	local i = 1
 	for k = 1, #phases do
 		if phases[k].at <= self.t then
@@ -654,13 +807,22 @@ end
 
 local KIND_ORDER = { "EN_RUNNER", "EN_STALKER", "EN_SPITTER", "EN_BULWARK", "EN_BOMBER" }
 
+local function beatAt(op, at: number): boolean
+	for _, b in op.beats do
+		if b.at == at and b.type ~= "assault" and b.type ~= "banner" then
+			return true
+		end
+	end
+	return false
+end
+
 function World:director(dt: number)
 	local index, ph = self:currentPhaseDef()
 	if index ~= self.phaseIndex then
 		self.phaseIndex = index
 		self.phaseLabel = ph.label
-		local scripted = ph.at == Defs.Run.BossAt or ph.at == Defs.Run.EnrageAt or ph.at == self.map.events.hiveStart or table.find(self.map.events.elites, ph.at)
-		if index > 1 and not scripted then
+		local scripted = ph.quiet or beatAt(self.op, ph.at)
+		if index > 1 and index < 1000 and not scripted then
 			local calm = ph.rate < 2
 			self:banner(ph.label, if calm then "Затишье — подлечись и соберись" else "Прорывы: " .. #ph.dirs .. " направлений", if calm then C.CYAN else C.ORANGE, 2.6, if calm then "timer" else "threat")
 		end
@@ -696,25 +858,12 @@ function World:director(dt: number)
 			end
 		end
 	end
-	-- Scripted beats
-	for i, at in self.map.events.elites do
-		if not self.elitesDone[i] and self.t >= at then
-			self.elitesDone[i] = true
-			local e = self:spawnAtBreach(self.map.elite, self.map.spawnOrder, 1.6)
-			if e then
-				self:banner(if i == 1 then "ЭЛИТА НА ПОДХОДЕ" else "ВТОРАЯ ЭЛИТА", "Убей элиту — она несёт ядро эволюции", C.GOLD, 3.5, "@" .. e.def.index)
-			end
-		end
+	-- Scripted beats and the objective
+	self.mission:update(dt)
+	if self.phase ~= "ACTIVE" then
+		return
 	end
-	if self.hive.state == "idle" and self.t >= self.map.events.hiveStart then
-		self.hive.state = "active"
-		self.hive.total = #self.map.hiveSites
-		self.hive.remaining = #self.map.hiveSites
-		for _, s in self.map.hiveSites do
-			self:spawnEnemy("HIVE", s.x, s.z, 1.5)
-		end
-		self:banner("ПРОРЫВ УЛЬЯ", "Уничтожь 3 гнезда, пока они не ушли под землю", C.LIME, 3.5, "@6")
-	elseif self.hive.state == "active" and self.t >= self.map.events.hiveEnd then
+	if self.hive.state == "active" and self.t >= self.hive.endsAt then
 		self.hive.state = "failed"
 		for _, e in self.enemies do
 			if e.alive and e.kind == "HIVE" then
@@ -725,28 +874,63 @@ function World:director(dt: number)
 		end
 		self:banner("ГНЁЗДА УШЛИ", "Рой становится сильнее", C.RED, 2.5, "hive")
 	end
-	if not self.bossSpawned and self.t >= Defs.Run.BossAt then
-		self.bossSpawned = true
-		local b = self:spawnEnemy(self.map.boss, self.map.bossEntry.x, self.map.bossEntry.z, 0.1)
-		b.state = ST.ENTER
-		b.stateUntil = self.t + 3.5
-		b.invulnerable = true
-		self.boss = b
-		self:emit(E.BOSS, 1)
-		self:banner(b.def.name, if b.kind == "BOSS_DEVOURER" then "Земля дрожит. Он идёт снизу." else "Королева роя прорвалась через северные ворота", C.RED, 4, "@" .. b.def.index)
-	end
-	if self.boss and not self.enraged and self.t >= Defs.Run.EnrageAt then
-		self.enraged = true
-		self:emit(E.BOSS, 3)
-		self:banner("ЯРОСТЬ", "Убей босса до 9:00", C.RED, 3, "skull")
-	end
-	if self.t >= Defs.Run.HardLimit and self.phase == "ACTIVE" then
+	local limit = self.op.hardLimit or Defs.Run.HardLimit
+	if self.t >= limit and self.phase == "ACTIVE" then
 		self:finish(false, "ВРЕМЯ ВЫШЛО — РОЙ ПОБЕДИЛ")
 	end
-	if self.t >= 385 and not self.breatherHeal then
+	if self.op.objective == "boss" and self.t >= 385 and not self.breatherHeal then
 		self.breatherHeal = true
 		self:dropOrb(8, -4, 1, 40)
 		self:dropOrb(-8, -4, 1, 40)
+	end
+end
+
+-- Legacy scripted beats (boss operations) ----------------------------------------------------------
+function World:legacyElite()
+	self.legacyElites = (self.legacyElites or 0) + 1
+	local e = self:spawnAtBreach(self.map.elite, self.map.spawnOrder, 1.6)
+	if e then
+		self:banner(
+			if self.legacyElites == 1 then "ЭЛИТА НА ПОДХОДЕ" else "ВТОРАЯ ЭЛИТА",
+			if self.op.runEvolution then "Убей элиту — она несёт ядро эволюции" else "Опасная цель — сосредоточь огонь",
+			C.GOLD, 3.5, "@" .. e.def.index
+		)
+	end
+end
+
+function World:startHive()
+	if self.hive.state ~= "idle" then
+		return
+	end
+	self.hive.state = "active"
+	self.hive.total = #self.map.hiveSites
+	self.hive.remaining = #self.map.hiveSites
+	self.hive.endsAt = self.t + 55
+	for _, s in self.map.hiveSites do
+		self:spawnEnemy("HIVE", s.x, s.z, 1.5)
+	end
+	self:banner("ПРОРЫВ УЛЬЯ", "Уничтожь 3 гнезда, пока они не ушли под землю", C.LIME, 3.5, "@6")
+end
+
+function World:spawnBoss()
+	if self.bossSpawned then
+		return
+	end
+	self.bossSpawned = true
+	local b = self:spawnEnemy(self.map.boss, self.map.bossEntry.x, self.map.bossEntry.z, 0.1)
+	b.state = ST.ENTER
+	b.stateUntil = self.t + 3.5
+	b.invulnerable = true
+	self.boss = b
+	self:emit(E.BOSS, 1)
+	self:banner(b.def.name, if b.kind == "BOSS_DEVOURER" then "Земля дрожит. Он идёт снизу." else "Королева роя прорвалась через северные ворота", C.RED, 4, "@" .. b.def.index)
+end
+
+function World:enrageBoss()
+	if self.boss and not self.enraged then
+		self.enraged = true
+		self:emit(E.BOSS, 3)
+		self:banner("ЯРОСТЬ", "Убей босса до 9:00", C.RED, 3, "skull")
 	end
 end
 
@@ -857,6 +1041,7 @@ function World:updateHazards()
 						self:hurtPlayer(p, h.damage, h.x, h.z)
 					end
 				end
+				self.mission:hazardTick(h, inShape)
 			end
 			i += 1
 		end
@@ -890,7 +1075,7 @@ function World:updateCoils()
 						self:emit(E.ARC, c.x, c.z, e.x, e.z, C.CYAN)
 						local dmg = if e.def.big then Defs.Coil.Damage * 0.6 else Defs.Coil.Damage
 						e.stunUntil = math.max(e.stunUntil, self.t + 0.8)
-						self:damage(p, e, dmg, 1, Codec.DF.ARC, c.x, c.z)
+						self:damage(p, e, dmg, 1, bit32.bor(Codec.DF.ARC, Codec.DF.ENV), c.x, c.z)
 					end
 					break
 				end
@@ -924,7 +1109,17 @@ function World:finish(victory: boolean, reason: string)
 			upgrades = upgrades,
 			bestCombo = p.bestCombo,
 			alive = p.alive,
+			s01 = table.clone(p.s01Stats),
+			s01Unlocked = p.s01,
+			weaponKills = p.weaponKills,
+			lineShots = p.lineShots,
+			species = table.clone(p.species),
+			level = self.level,
 		})
+	end
+	local hiveState = self.hive.state
+	if self.op.objective == "nests" and #self.mission.targets > 0 and self.mission:targetsLeft() == 0 then
+		hiveState = "cleared"
 	end
 	self.result = {
 		victory = victory,
@@ -933,9 +1128,15 @@ function World:finish(victory: boolean, reason: string)
 		level = self.level,
 		kills = self.teamKills,
 		players = list,
-		hive = self.hive.state,
+		hive = hiveState,
 		map = self.map.id,
+		op = self.op.id,
 		threat = self.threat,
+		components = table.clone(self.mission.components),
+		objectives = self.mission.destroyed,
+		chapterEnd = self.op.chapterEnd == true,
+		eliteKilled = self.mission.eliteKilled,
+		reactor = if self.mission.reactor then self.mission.reactor.hp / self.mission.reactor.maxHp else nil,
 	}
 	for _, p in self.playerList do
 		p.firing = false
@@ -963,7 +1164,7 @@ function World:step(dt: number)
 		self.countdown -= dt
 		if self.countdown <= 0 then
 			self.phase = "ACTIVE"
-			self:banner(self.map.name, "Держись. Эволюционируй. Убей босса.", C.CYAN, 3, "pin")
+			self:banner(self.op.code .. " · " .. self.op.name, self.op.goal, C.CYAN, 3, "pin")
 		end
 		return
 	end
@@ -1009,6 +1210,9 @@ function World:tick(dt: number)
 	self:rebuildGrid()
 	for _, p in self.playerList do
 		if p.alive then
+			if p.hammerAt and self.t >= p.hammerAt then
+				self:hammerImpact(p)
+			end
 			Combat.updatePlayer(self, p, dt)
 		end
 	end
@@ -1094,8 +1298,11 @@ function World:publicState()
 			overheated = p.overheatT > 0,
 			rate = s.rate,
 			dash = math.max(0, p.dashReady - self.t),
-			od = math.floor(p.od),
-			odT = math.max(0, p.odUntil - self.t),
+			s01 = p.s01,
+			s01Left = math.max(0, p.s01Ready - self.t),
+			s01Cd = p.s01Cd,
+			s01Casting = p.hammerAt ~= nil,
+			s01Tutorial = self.paused == "S01" and self.s01Tutee == p.id,
 			ranks = p.ranks,
 			offer = p.offer,
 			pending = p.pending,
@@ -1133,10 +1340,13 @@ function World:publicState()
 		label = self.phaseLabel,
 		boss = boss,
 		hive = if self.hive.state == "active" then self.hive.remaining else nil,
-		hiveEnds = if self.hive.state == "active" then self.map.events.hiveEnd - self.t else nil,
+		hiveEnds = if self.hive.state == "active" then self.hive.endsAt - self.t else nil,
 		coils = coils,
 		players = players,
 		map = self.map.id,
+		op = self.op.id,
+		runEvolution = self.op.runEvolution,
+		mission = self.mission:publicState(),
 		threat = self.threat,
 		result = self.result,
 		kills = self.teamKills,

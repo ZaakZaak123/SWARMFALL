@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Codec = require(Shared:WaitForChild("Codec"))
 local Maps = require(Shared:WaitForChild("Maps"))
+local Ops = require(Shared:WaitForChild("Ops"))
 local World = require(script.Parent.Sim.World)
 local Arena = require(script.Parent.Arena)
 local Profile = require(script.Parent.Profile)
@@ -38,7 +39,7 @@ local RESULTS_TIMEOUT = 60
 
 -- Server state ----------------------------------------------------------------------------------------
 local mode = "LOBBY" -- LOBBY | RUN
-local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, map = "MAP_REACTOR_YARD", threat = 1 }
+local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1 }
 local joinOrder: { Player } = {}
 local world = nil
 local runId = ""
@@ -60,7 +61,7 @@ local function buildArena(mapId: string)
 		Arena.build(Maps.get(mapId))
 	end
 end
-buildArena(lobby.map)
+buildArena(Ops.get(lobby.op).map)
 
 -- Helpers ---------------------------------------------------------------------------------------------
 local function finite(n): boolean
@@ -163,17 +164,24 @@ local function startRun()
 					perks[id] = r
 				end
 			end
-			table.insert(infos, { id = player.UserId, name = player.DisplayName, weapon = weapon, perks = perks })
+			table.insert(infos, {
+				id = player.UserId,
+				name = player.DisplayName,
+				weapon = weapon,
+				perks = perks,
+				s01 = data ~= nil and data.s01 == true,
+				form = Profile.equippedForm(player, weapon),
+			})
 			participants[player.UserId] = player
 		end
 	end
 	if #infos == 0 then
 		return
 	end
-	buildArena(lobby.map)
+	buildArena(Ops.get(lobby.op).map)
 	seedCounter += 1
 	runId = HttpService:GenerateGUID(false)
-	world = World.new({ seed = seedCounter * 7919 + 13, players = infos, map = lobby.map, threat = lobby.threat })
+	world = World.new({ seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat })
 	mode = "RUN"
 	lobby.countdown = nil
 	table.clear(lobby.ready)
@@ -187,7 +195,7 @@ local function startRun()
 			task.spawn(prepareCharacter, player, p.x, p.z)
 		end
 	end
-	print(string.format("[SWARMFALL] run start %s threat=%d seed=%d players=%d", lobby.map, lobby.threat, world.seed, #infos))
+	print(string.format("[SWARMFALL] run start %s threat=%d seed=%d players=%d", lobby.op, lobby.threat, world.seed, #infos))
 end
 
 local function settle()
@@ -199,7 +207,7 @@ local function settle()
 	print(string.format("[SWARMFALL] run end %s %s t=%.1f kills=%d", if r.victory then "VICTORY" else "DEFEAT", r.reason, r.time, r.kills))
 	for userId, player in participants do
 		if player.Parent then
-			rewards[userId] = Profile.grantRun(player, runId, r, world.map.id, world.threat)
+			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat)
 		end
 	end
 end
@@ -261,16 +269,16 @@ function handlers.weapon(player: Player, weapon)
 	return true
 end
 
-function handlers.map(player: Player, mapId)
-	if not lobbyOnly() or player ~= host() or type(mapId) ~= "string" or not Maps[mapId] then
+function handlers.op(player: Player, opId)
+	if not lobbyOnly() or player ~= host() or type(opId) ~= "string" or not table.find(Ops.Order, opId) then
 		return false
 	end
-	if Profile.maxThreat(player, mapId) < 1 then
+	if Profile.maxThreat(player, opId) < 1 then
 		return false
 	end
-	lobby.map = mapId
-	lobby.threat = math.min(lobby.threat, Profile.maxThreat(player, mapId))
-	buildArena(mapId)
+	lobby.op = opId
+	lobby.threat = math.min(lobby.threat, Profile.maxThreat(player, opId))
+	buildArena(Ops.get(opId).map)
 	return true
 end
 
@@ -278,7 +286,7 @@ function handlers.threat(player: Player, level)
 	if not lobbyOnly() or player ~= host() or not finite(level) or level % 1 ~= 0 then
 		return false
 	end
-	if level < 1 or level > Profile.maxThreat(player, lobby.map) then
+	if level < 1 or level > Profile.maxThreat(player, lobby.op) then
 		return false
 	end
 	lobby.threat = level
@@ -291,6 +299,14 @@ end
 
 function handlers.buyWeapon(player: Player, id)
 	return lobbyOnly() and type(id) == "string" and Profile.buyWeapon(player, id)
+end
+
+function handlers.craftForm(player: Player, evoId)
+	return lobbyOnly() and type(evoId) == "string" and Profile.craftForm(player, evoId)
+end
+
+function handlers.equipForm(player: Player, weaponId, evoId)
+	return lobbyOnly() and type(weaponId) == "string" and type(evoId) == "string" and Profile.equipForm(player, weaponId, evoId)
 end
 
 local function participant(player: Player)
@@ -322,9 +338,9 @@ function handlers.reload(player: Player)
 	return p ~= nil
 end
 
-function handlers.overdrive(player: Player)
+function handlers.s01(player: Player)
 	local p = participant(player)
-	return p ~= nil and world:overdrive(p.id)
+	return p ~= nil and world:gravihammer(p.id)
 end
 
 function handlers.evolve(player: Player)
@@ -384,8 +400,8 @@ if RunService:IsStudio() then
 			return false
 		end
 		d.scrap += 5000
-		for _, id in Maps.Order do
-			d.threat[id] = math.max(d.threat[id] or 0, 3)
+		for _, id in Ops.Order do
+			d.ops[id] = math.max(d.ops[id] or 0, 3)
 		end
 		pushProfile(player)
 		return true
@@ -492,7 +508,7 @@ local function lobbyInfo()
 		})
 	end
 	local h = host()
-	return { players = list, countdown = lobby.countdown, map = lobby.map, threat = lobby.threat, host = h and h.UserId or 0 }
+	return { players = list, countdown = lobby.countdown, op = lobby.op, map = Ops.get(lobby.op).map, threat = lobby.threat, host = h and h.UserId or 0 }
 end
 
 local function publish()

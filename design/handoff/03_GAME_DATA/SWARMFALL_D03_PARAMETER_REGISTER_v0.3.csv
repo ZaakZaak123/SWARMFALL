@@ -1,0 +1,44 @@
+﻿id,candidate_value,unit,status,source
+reward.kill_divisor,12,units per credited kills,TUNABLE_CANDIDATE,02.7 §2
+reward.level_factor,3,per combat level above one,TUNABLE_CANDIDATE,02.7 §2
+reward.win_add,120,Xenite,TUNABLE_CANDIDATE,02.7 §2
+reward.loss_long,35,Xenite,TUNABLE_CANDIDATE,02.7 §2
+reward.loss_early,10,Xenite,TUNABLE_CANDIDATE,02.7 §2
+reward.loss_time_threshold_sec,180,sec,TUNABLE_CANDIDATE,02.7 §2
+reward.optional_nest_add,20,Xenite,TUNABLE_CANDIDATE,02.7 §2
+reward.tier_step,0.35,multiplier per tier,TUNABLE_CANDIDATE,02.7 §2
+reward.salvage_step,0.12,multiplier per perk rank,TUNABLE_CANDIDATE,02.7 §2
+research.grant_first_win_tech_price,180,Xenite target floor,TUNABLE_CANDIDATE,02.7 §4
+mastery.arc.M10,6400,lethal kills,TUNABLE_CANDIDATE,02.6 §3
+mastery.arc.M20,42000,lethal kills,TUNABLE_CANDIDATE,02.6 §3
+shield.base.regen_delay,5,sec,TUNABLE_CANDIDATE,02.1 §4
+shield.base.regen_per_sec,3,SH/sec,TUNABLE_CANDIDATE,02.1 §4
+shield.card.rankI_kills,22,weapon/skill kills? global solo kills,TUNABLE_CANDIDATE,02.4 §2
+card.families_limit,6,distinct family slots,INHERITED_DESIGN,02.4 §3
+card.ranks_limit,3,tiers each,INHERITED_DESIGN,02.4 §3
+card.offer_count,3,choices unless insight,INHERITED_DESIGN,02.4 §3
+card.offer_count_insight,4,choices with perk,INHERITED_DESIGN,02.4 §3
+card.first_multishot_offer,2,second valid offer; only first FTUE,INHERITED_DESIGN,02.4 §4
+weapon.equipped_cores_limit,1,CORE,PROPOSED_DETAIL,02.6 §4
+weapon.equipped_adapters_limit,1,ADAPTER,PROPOSED_DETAIL,02.6 §4
+weapon.adapter_max_tier,2,ranks,PROPOSED_DETAIL,02.6 §4
+source.proc_chain_budget,TBD,events per tick,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,D01/D03
+source.status_dot_budget,TBD,ticks/target,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,D01/D03
+shield.temporary_barrier_cap_policy,TBD,capacity and refill,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,D03-DEC-05
+skill.S01.mastery_thresholds,TBD,unique lethal kills,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,S01 v0.2
+research.stalker_thresholds,TBD,kills,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,02.5
+research.bulwark_thresholds,TBD,kills,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,02.5
+research.bomber_thresholds,TBD,kills,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,02.5
+evolution.starbreaker.component_source,OPTIONAL_LINE_TRIAL_AFTER_W04,story drop/challenge,APPROVED_DESIGN,D03-DEC-04
+item.tech_impact_piercing,TBD,damage attenuation,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,First Run
+item.tech_emergency_cooldown,1 activation/run,reactor effect,PROPOSED_DETAIL,First Run
+evolution.starbreaker.trial_charged_lines,N_TUNABLE_EACH_HITS_AT_LEAST_2_NORMAL,qualified shots hitting >=2 normal foes,DESIGN_APPROVED_COUNT_TUNABLE,DEC-04
+research.weapon_w03.spitter_gate,NONE,research requirement for W03,APPROVED_DESIGN,DEC-09
+card.draft.exhausted_fallback,TBD,bounded in-run benefit,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,RV-07
+shield.temp_cap_add_rankI_II_III,TBD,SH max delta,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,DEC-05
+module.tierIII.price,TBD,Xenite,BALANCE_CANDIDATE_MISSING,RV-04
+skill.S01.specialization_prices,TBD,Xenite,BALANCE_CANDIDATE_MISSING,DEC-08
+evolution.m20.craft_price,TBD,Xenite,BALANCE_CANDIDATE_MISSING,DEC-07
+reward.optional_nest_eligible_ids,TBD,objective ids per mission,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,RV-14
+status.ignite_dot_nonrecursive,TBD,per target / tick,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,DEC-06
+skill.S01.specializations_effects,TBD,behavior contract,DELEGATED_TUNABLE_OR_IMPLEMENTATION_DETAIL__NOT_RELEASE_VALIDATED,DEC-08

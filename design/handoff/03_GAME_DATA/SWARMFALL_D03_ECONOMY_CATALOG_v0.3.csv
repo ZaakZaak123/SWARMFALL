@@ -1,0 +1,34 @@
+﻿item_id,category,ru_label,xenite_cost_candidate,prerequisite,effect_or_constraint,starter_shortlist,status,source
+TECH_PIERCE_CORE,Стартовая технология,Пробивной сердечник,180,O01_FIRST_WIN_UNLOCK;STARTER_GRANT_POLICY_D03_DEC_01,pierces first target; weaker downstream,TRUE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+TECH_EMERGENCY_CAP,Стартовая технология,Аварийный конденсатор,180,O01_FIRST_WIN_UNLOCK;STARTER_GRANT_POLICY_D03_DEC_01,once/mission emergency reactor impulse,TRUE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+W_SCATTERGUN,Оружие,Вулкан,650,O02_FIRST_WIN_BLUEPRINT,owned after craft; choose before run,TRUE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+W_PLASMA_BEAM,Оружие,Разлом,1150,O03_FIRST_WIN_BLUEPRINT+XENITE;NO_SPITTER_RESEARCH_GATE,owned after craft,TRUE,DESIGN_PREREQUISITE_APPROVED__PRICE_TUNABLE,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+W_RAILGUN,Оружие,Рельсотрон,1750,O04_FIRST_WIN_BLUEPRINT,owned after craft,TRUE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+MOD_T1,Модуль оружия,Узел I,160,WEAPON_M2,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+MOD_DOUBLE_COIL,Модуль оружия,Двойная катушка,260,ARC_M4,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+MOD_T2,Модуль оружия,Узел II,400,WEAPON_M8,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+EV_THUNDERLORD,Эволюция,Громовержец,900,ARC_M10+STORM_CORE,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+EV_INFERNO_GRINDER,Эволюция,Адская мельница,1050,VOLCANO_M10+O05_COMPONENT,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+EV_VOID_LANCE,Эволюция,Копьё Пустоты,1200,RIFT_M10+O06_COMPONENT,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+EV_STARBREAKER,Эволюция,Звездолом,1450,OWN_W04+W04_M10+XENITE+ONE_TIME_COMPONENT_FROM_OPTIONAL_LINE_TRIAL,N qualified charged shots each hitting >=2 normal enemies; N tuning candidate,FALSE,DESIGN_PREREQUISITE_APPROVED__PRICE_N_TUNABLE,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+RESEARCH_ACID_FILTER,Исследование,Кислотный фильтр,260,SPITTER_RESEARCH_II,crafted once,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+RESEARCH_ARMOR,Исследование,Адаптер брони,320,BULWARK_RESEARCH_GATE_TUNABLE_NOT_STORY_GATE,crafted once,FALSE,OPTIONAL_RESEARCH_UNLOCK__DELEGATED_TUNABLE_GATE_C,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+RESEARCH_CHAIN,Исследование,Цепной инициатор,340,RESEARCH_GATE_TUNABLE_NOT_STORY_GATE,crafted once,FALSE,OPTIONAL_RESEARCH_UNLOCK__DELEGATED_TUNABLE_GATE_C,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+RESEARCH_SWARM,Исследование,Контроль роя,220,RUNNER_RESEARCH_GATE_TUNABLE_NOT_STORY_GATE,crafted once,FALSE,OPTIONAL_RESEARCH_UNLOCK__DELEGATED_TUNABLE_GATE_C,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_HP_1,PvE-статы,HP 1,140,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_DMG_1,PvE-статы,PvE-урон 1,170,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_SH_1,PvE-статы,Щит 1,170,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_HP_2,PvE-статы,HP 2,260,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_DMG_2,PvE-статы,PvE-урон 2,300,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_SH_2,PvE-статы,Щит 2,300,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_HP_3,PvE-статы,HP 3,420,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_DMG_3,PvE-статы,PvE-урон 3,480,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_SH_3,PvE-статы,Щит 3,460,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_HP_4,PvE-статы,HP 4,640,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_DMG_4,PvE-статы,PvE-урон 4,720,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+PVE_SH_4,PvE-статы,Щит 4,680,PREVIOUS_RANK_OR_ZERO,purchased in order; avoid parallel duplicate PK_VITALITY,FALSE,BALANCE_CANDIDATE_NOT_TESTED,02.7 v0.3 §5; specific effects 02.1 and First Run v0.5
+MOD_T3,Модуль оружия,Узел III,,WEAPON_M15_AND_TIER_II_OWNED,Tier III price TBD; no duplication,FALSE,OPEN_PRODUCT_AND_BALANCE,D03 REVIEW v0.2 RV-04/11/15/17
+S01_BRANCH_I,Специализация навыка,S01 I,,S01_MASTERY_GATE_OPEN,Skill tree specification OPEN,FALSE,OPEN_PRODUCT_AND_BALANCE,D03 REVIEW v0.2 RV-04/11/15/17
+S01_BRANCH_II,Специализация навыка,S01 II,,S01_MASTERY_GATE_OPEN,Skill tree specification OPEN,FALSE,OPEN_PRODUCT_AND_BALANCE,D03 REVIEW v0.2 RV-04/11/15/17
+S01_BRANCH_III,Специализация навыка,S01 III,,S01_MASTERY_GATE_OPEN,Skill tree specification OPEN,FALSE,OPEN_PRODUCT_AND_BALANCE,D03 REVIEW v0.2 RV-04/11/15/17
+M20_ALT_CRAFT,Высшая форма,Альтернативная форма M20,,WEAPON_M20+FEAT_OPEN,One craft per form; cost TBD,FALSE,OPEN_PRODUCT_AND_BALANCE,D03 REVIEW v0.2 RV-04/11/15/17

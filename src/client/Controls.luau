@@ -84,7 +84,7 @@ function Controls.init(playerGui: PlayerGui)
 	})
 	buttons = {
 		dash = makeButton("Dash", "dash", "", UDim2.new(1, -300, 1, -90), 84, C.cyan),
-		overdrive = makeButton("Overdrive", "sun", "", UDim2.new(1, -290, 1, -195), 70, C.gold),
+		overdrive = makeButton("Gravihammer", "hammer", "", UDim2.new(1, -290, 1, -195), 70, C.cyan),
 		evolve = makeButton("Evolve", "evolve", "", UDim2.new(1, -150, 1, -300), 76, C.gold),
 		reload = makeButton("Reload", "reload", "", UDim2.new(1, -60, 1, -290), 54, C.dim),
 		view = makeButton("View", "topdown", "", UDim2.new(1, -60, 1, -370), 54, C.cyan),

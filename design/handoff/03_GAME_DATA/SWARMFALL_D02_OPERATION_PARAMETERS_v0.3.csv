@@ -1,0 +1,54 @@
+﻿mission_id,parameter,unit,value_or_constraint,status,decision_ref
+ALL,missionActiveTime,seconds,exclude paused-card/tutorial/deploy,APPROVED_SEMANTICS_NONNUMERIC,D02-DEC-01
+ALL,hardDeadline,seconds,per mission ~6-9 min examples,TUNABLE_NOT_APPROVED,D02-DEC-01
+ALL,spawnBudget,enemy spawn weight,no accumulated spawn debt,TUNABLE_NOT_APPROVED,D01-R04
+ALL,maxActiveEnemies,count,must profile on mobile,TUNABLE_NOT_APPROVED,D01-R04
+ALL,objectiveAttackShare,ratio,preserve meaningful player pressure,TUNABLE_NOT_APPROVED,D01-R02
+ALL,warningReactionWindow,seconds,reaction physically possible,TUNABLE_NOT_APPROVED,D01-R02
+ALL,finalResolveWindow,seconds,avoid last bugged enemy softlock,TUNABLE_NOT_APPROVED,D02-DEC-01
+ALL,finalSpawnBudget,enemy spawn weight,different from time limit,TUNABLE_NOT_APPROVED,D02-DEC-01
+ALL,repeatVariantCount,count,1–2 allowed whitelist context variants,APPROVED_LOCKED_RULE,D02-DEC-05
+ALL,threatTiers,T1-T5,T1 always for new story mission,CANON,D02-DEC-04
+ALL,threatScalingHP,multiplier,source prototype not final,TUNABLE_NOT_APPROVED,D03
+ALL,threatScalingDmg,multiplier,source prototype not final,TUNABLE_NOT_APPROVED,D03
+ALL,threatScalingSpawn,multiplier,load profile required,TUNABLE_NOT_APPROVED,D03
+O01,spitterFirstAt,s,1:45 illustrative,TUNABLE_NOT_APPROVED,D02
+O01,S01TutorialAt,s,2:40-3:20 illustrative,TUNABLE_NOT_APPROVED,D01
+O01,carrierSpawnAt,s,~6:20 illustrative,TUNABLE_NOT_APPROVED,D02-DEC-01
+O01,finalPressureAfterCarrier,s,40-60 candidate,TUNABLE_NOT_APPROVED,D02-DEC-01
+O01,carrierKillGrace,s,deadline interaction unsettled,OPEN,D02-DEC-01
+O02,relayChargeTarget,charge,60 example,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayChargeRadius,studs,30 example,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayChargeRunner,charge/kill,1 example,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayChargeSpitter,charge/kill,2 example,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayChargeStalker,charge/kill,3 example,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayBackupFraction,ratio,"1.0 (100% of confirmed accumulated charge, LOCKED)",APPROVED_LOCKED_RULE,D02-DEC-02
+O03,requiredNests,count,2 of 3,CANON,OPS 02.8
+O03,thirdNestBonus,Xenite before multiplier,20 candidate formula not signed,TUNABLE_NOT_APPROVED,D03
+O04,bossSpawnAt,s,~7:00 candidate,TUNABLE_NOT_APPROVED,D02
+O04,bossPhaseChangeAt,HP fraction,not approved,TUNABLE_NOT_APPROVED,D02-DEC-03
+O04,bossWeakspotMultiplier,multiplier,not sole damage path,TUNABLE_NOT_APPROVED,D02-DEC-03
+O05,requiredNodes,count,2,CANON,OPS 02.8
+O05,nodeHP,HP,must be beatable by W01,TUNABLE_NOT_APPROVED,D03
+O05,bomberNodeBlastMultiplier,multiplier,not mandatory for completion,TUNABLE_NOT_APPROVED,D02
+O06,bossSpawnAt,s,~7:00 candidate,TUNABLE_NOT_APPROVED,D02
+O06,bossPhaseChangeAt,HP fraction,not approved,TUNABLE_NOT_APPROVED,D02-DEC-03
+C-A01,requiredAcidSources,count,2,CANON,OPS 02.8
+C-A01,acidHitsChallengeMax,hits,2 optional candidate,PROPOSED,D02-DEC-06
+ALL,objectiveDeadline,s,public; before final-phase; <= cap-minus-finals,OPEN,D02-DEC-01
+ALL,absoluteTerminalCap,s,>= objectiveDeadline + finalPressureDuration + resolveWindow,OPEN,D02-DEC-01
+ALL,minimumFinalThreatWindow,s,must actually appear in run; prevent fake clear,OPEN,D02-DEC-01
+ALL,finalThreatResolutionMode,enum,threat-aware resolve; not last npc,APPROVED_SEMANTICS_NONNUMERIC,D02-DEC-01
+O01,carrierMustDieBy,s,public objective deadline after spawn with credible window,OPEN,D02-DEC-01
+O02,relayMaxHP,HP,damage only from valid enemy combat; cannot fail invisibly,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayEnemyAttackTelegraph,s,reactable from player zone,TUNABLE_NOT_APPROVED,D02-DEC-02
+O02,relayBackupRoundPolicy,enum,bounded transfer no duplicate grant,PROPOSED,D02-DEC-02
+O04,minimumViableBossWindow,s,derived from W01 DPS incl. boss recover,OPEN,D02-DEC-03
+O06,minimumViableBossWindow,s,derived from W01 DPS incl. core defense,OPEN,D02-DEC-03
+O04,bossAttackRecovery,s,must permit counterfire no instant chain,TUNABLE_NOT_APPROVED,D02-DEC-03
+O06,corePressureWarnTime,s,physically interceptable and visible,TUNABLE_NOT_APPROVED,D02-DEC-03
+O05,nodeVulnerabilityVisibility,enum,attackable shown only if authoritative vulnerable,PROPOSED,D02-DEC-01
+C-A01,acidGeneratorShutdown,enum,no new hazards after death; existing expire normally,PROPOSED,D02-DEC-06
+O02,confirmedChargeTransferRatio,ratio,"1.0 (100% preserved, LOCKED)",APPROVED_LOCKED_RULE,D02-DEC-02
+ALL,highestUnlockedThreatTier,tier enum T1..T5,"global progression, no map/region reset, no LOSS unlock",APPROVED_LOCKED_RULE,D02-DEC-04
+ALL_REPEAT,allowedContextVariantCount,integer count,"1–2, whitelist-only, seed+content version",APPROVED_LOCKED_RULE,D02-DEC-05

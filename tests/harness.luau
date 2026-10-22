@@ -42,10 +42,22 @@ nodeMeta.__index = function(self, key)
 	return child(path, key)
 end
 
+-- Optional stand-ins for engine services (tests that load server modules like Profile).
+Harness.stubs = {} :: { [string]: any }
+Harness.task = {
+	spawn = function() end, -- background loops never run under tests
+	defer = function() end,
+	wait = function() end,
+}
+
 local game = {
 	GetService = function(_, name)
+		if Harness.stubs[name] then
+			return Harness.stubs[name]
+		end
 		return node(assert(SERVICE_DIR[name], "service " .. tostring(name)))
 	end,
+	BindToClose = function() end,
 }
 
 local requireModule
@@ -86,6 +98,7 @@ local function load(path: string)
 		rawset = rawset,
 		pcall = pcall,
 		unpack = table.unpack,
+		task = Harness.task,
 	}, {})
 	local fn = luau.load(fs.readFile(file), { debugName = file, environment = env })
 	return fn()

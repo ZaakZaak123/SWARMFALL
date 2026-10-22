@@ -1,0 +1,177 @@
+﻿test_id,scope,priority,expected_behavior,verification_method,test_status,spec_version,notes
+D02-CT-001,COMMON,P0,Only one terminal outcome per run,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-002,COMMON,P0,Loss on hero HP zero,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-003,COMMON,P0,Loss on protected anchor destroyed,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-004,COMMON,P0,Fatal and boss killed in same authoritative tick is LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-005,COMMON,P0,Fatal and objective complete in same authoritative tick is LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-006,COMMON,P0,Earned KillEvent retained after terminal loss,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-007,COMMON,P0,Unique component retained after confirmed kill plus loss,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-008,COMMON,P0,No false first-clear on loss,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-009,COMMON,P0,Repeat clear never duplicates one-time entitlements,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-010,COMMON,P0,Mission can only start when unlocked,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-011,COMMON,P0,T1 offered on newly unlocked story mission,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-012,COMMON,P1,Active combat time excludes tutorial pause,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-013,COMMON,P1,Active combat time excludes card-choice pause,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-014,COMMON,P0,One objective completion even after repeated damage callbacks,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-015,COMMON,P0,Correct loss at deadline before completion,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-016,COMMON,P0,No win for UI-only client message,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-017,COMMON,P0,No objective damage through wall/path-block,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-018,COMMON,P0,No orphan enemy permanently blocks final stage,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-019,COMMON,P0,Starter Arc Rifle can finish T1 mission,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-020,COMMON,P1,No coop assumption in solo objective design,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-021,COMMON,P1,No prototype-only flag silently required,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-022,O01,P0,Initial onboarding spawns Runner first,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-023,O01,P0,Only Runner and Spitter as normal enemies,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-024,O01,P0,No early additional elite,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-025,O01,P0,No other boss / mid boss,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-026,O01,P1,First Spitter telegraph readable,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-027,O01,P0,Manual S01 activation resolves paused tutorial,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-028,O01,P0,S01 stays owned on death after acquisition,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-029,O01,P1,S01 not granted if tutorial never completed,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-030,O01,P0,Single elite carrier spawned,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-031,O01,P1,Carrier two attacks telegraphed,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-032,O01,P0,Carrier kill grants one StormCore only,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-033,O01,P0,Carrier death alone not mission victory,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-034,O01,P0,"Carrier kill plus death preserves component, yields loss",Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-035,O01,P0,A distinct final pressure occurs after carrier,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-036,O01,P0,No immediate Thunderlord evolution,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-037,O01,P1,Second run skips tutorial when S01 owned,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-038,O01,P0,No repeat unique component on second kill,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-039,O01,P0,No possible late-carrier impossible deadline,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-040,O01,P0,No blocking isolated Runner at end,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-041,O01,P0,O02 only unlocked on WIN,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-042,O02,P0,Stalker introduced not during O01,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-043,O02,P0,Relay cannot charge by standing alone,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-044,O02,P0,Kill inside active zone increases charge once,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-045,O02,P0,Kill outside active zone gives zero charge,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-046,O02,P1,"Only dead enemy location used, not hero location",Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-047,O02,P0,Kill charge not duplicated by multiple damage callbacks,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-048,O02,P1,S01 kill contributes one mission kill charge,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-049,O02,P0,No extra weapon mastery kill for relay credit,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-050,O02,P0,One target relay active at a time,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-051,O02,P0,Charged relay immutable completed,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-052,O02,P0,Backup available at reachable place,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-053,O02,P1,Backup preserves agreed charge fraction,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-054,O02,P0,Both relays failed before charge leads to LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-055,O02,P1,Lost charged relay does not arbitrarily revert mission progress,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-056,O02,P0,No hidden early charging deadline,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-057,O02,P0,O03 and Volcano blueprint and C-A01 after win,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-058,O02,P0,Volcano blueprint not crafted weapon,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-059,O03,P0,Three nests available in visible reachable areas,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-060,O03,P0,Bulwark first appears after introduction,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-061,O03,P0,Exactly two of three count as objective complete,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-062,O03,P0,Nest duplicate destruction only counts once,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-063,O03,P0,Objective completion at 2 does not abruptly stop combat,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-064,O03,P0,Third nest optional,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-065,O03,P1,Third nest bonus one time not per nest,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-066,O03,P0,Reactor threat gives time to return from nest,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-067,O03,P0,Arc Rifle can defeat first Bulwark,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-068,O03,P0,Rift blueprint first-clear distinct from ownership,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-069,O03,P1,Rift research gate not reapplied to blueprint unlock,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-070,O04,P1,Two elite encounters before boss,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-071,O04,P0,Optional nests never gate boss victory,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-072,O04,P0,Broodmother alone is final boss,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-073,O04,P0,Boss intro has no hidden unavoidable damage,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-074,O04,P1,Boss telegraphs acid fan,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-075,O04,P0,Boss summons do not exceed spawn budget,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-076,O04,P1,Boss melee slam has warning and recovery,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-077,O04,P0,Boss damage not weak-spot exclusive,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-078,O04,P0,Boss killed before time limit gives immediate WIN,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-079,O04,P0,Boss kill and reactor death same step gives LOSS plus kill credit,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-080,O04,P0,No obligatory weak-point accuracy achievement for railgun,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-081,O04,P0,First WIN unlocks new map plus O05 and Railgun blueprint,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-082,O05,P0,No hive depths entry before O04 first-clear for new profile,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-083,O05,P0,Bomber telegraph before hazardous explosion,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-084,O05,P0,Two nodes shootable with Arc Rifle,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-085,O05,P0,Nodes damageable without Bomber explosion,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-086,O05,P1,Bomber chain can damage nodes with real overlap,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-087,O05,P0,No visual-only explosion damage,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-088,O05,P0,Each node destroy event idempotent,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-089,O05,P0,Destroy 2 nodes does not win before final pressure,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-090,O05,P0,Core dies leads to LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-091,O05,P0,First clear unlocks O06 and Inferno component,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-092,O05,P0,Component owned without Volcano purchase,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-093,O06,P0,Protected heart active,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-094,O06,P1,Two elite encounters before Devourer,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-095,O06,P0,Nests remain optional,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-096,O06,P1,Boss lunge has visible preparation,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-097,O06,P0,Energy sweep matches attack geometry,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-098,O06,P0,Core targeted attack allows counterplay,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-099,O06,P0,Defeating boss before 9-minute clock immediately WINS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-100,O06,P0,Boss and player die same tick yields LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-101,O06,P0,Chapter complete flag only on WIN,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-102,O06,P0,Void component not duplicated on later win,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-103,O06,P0,Cannot require Railgun for story victory,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-104,C-A01,P0,Contract not required for O03,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-105,C-A01,P0,Acid dangers visibly avoidable,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-106,C-A01,P0,Both acid sources vulnerable to direct attacks,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-107,C-A01,P0,Exactly two sources required,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-108,C-A01,P0,Extra enemy species not introduced,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-109,C-A01,P0,No unique campaign gate for optional clear,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-110,C-A01,P0,Optional acid challenge cannot gate WIN,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-111,REPLAY,P0,Replay preserves main objective and mission identity,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-112,REPLAY,P0,O01 replay never introduces unrelated new species,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-113,REPLAY,P1,Seed determines encounter variant selection,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-114,REPLAY,P0,1-2 variations do not create impossible map state,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-115,REPLAY,P0,Main mission does not require daily contract,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-116,REPLAY,P0,Threat tier does not bypass locked story gate,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-117,REPLAY,P1,Higher threat optional and visible before launch,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-118,REPLAY,P0,No requirement of paid or M10 weapon to win T1,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-119,REPLAY,P0,Late replay does not reissue first-clear component,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Owner-approved solo design v0.3; D02-DEC-01..06 OWNER APPROVED
+D02-CT-120,O01,P0,Elite killed one tick before objective deadline triggers full final wave with visible remaining time,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-121,O01,P0,Elite killed on objective deadline tick with no fatal event can initiate full final pressure,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-122,O01,P0,Elite alive after announced objective deadline is LOSS with no fake final completion,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-123,COMMON,P0,Final pressure does not count nonexistent enemies when performance cap blocks intended spawn,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-124,COMMON,P0,One stuck unpathable NPC does not softlock final wave or grant fake XP,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-125,COMMON,P0,Reactor damage registered in finishing tick applies fatal LOSS before WIN,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-126,COMMON,P0,Complete victory predicate on deadline tick without fatal event is WIN exactly once,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-127,O02,P0,Relay cannot be destroyed by invisible scripted hit or unreachable enemy,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-128,O02,P0,Backup relay active before charged carries nonduplicate bounded candidate progress,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-129,O02,P0,Relay destroyed after CHARGED does not reverse objective or create retroactive failure,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-130,O02,P0,Relay and reactor pressure can be intercepted with starter weapon and real return window,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-131,O03,P0,At least two nests have fair reachable attack and reactor-defense windows,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-132,O04,P0,Boss fights allow W01 T1 kill within terminal window under credible combat pacing,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-133,O06,P0,Devourer telegraphs core attack and W01 T1 can counter and finish within window,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-134,O05,P0,Both node vulnerability states visually match authoritative damage acceptance,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-135,O05,P0,Direct weapon fire can destroy both nodes independent of bomber availability,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-136,O04,P0,Failed boss spawn is classified technical incident and not silent ordinary LOSS,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-137,O03,P1,Final pressure cannot complete before second nest is confirmed destroyed,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-138,O04,P1,Boss repeated attacks always have telegraph and recovery even after phase shift,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-139,O06,P1,Core pressure cannot hit through wall or mandatory noninteractive intro,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-140,O01,P1,Kill-earned Storm Core survives same-tick hero death without granting O02,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-141,O06,P1,Simultaneous fatal and boss kill retains boss credit but does not grant first-win component,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-142,O03,P1,Third nest optional bonus triggers once if third nest destroyed during final phase,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-143,C-A01,P1,Destroyed acid generator stops new hazards but does not cancel already fired visible acid,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-144,REPLAY,P1,First-ever O01 has no random major invasion side and S01 unlock remains possible,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-145,REPLAY,P1,T2 T5 unlock alternatives are evaluated for replay grind independent of story T1,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-146,COMMON,P1,Player can read objective countdown and separate final countdown before risk of fail,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-147,O06,P2,Performance telemetry covers boss attacks and group effects on mobile target devices,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-148,REPLAY,P2,Time to second map includes failures and paused time not just perfect streak,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-149,COMMON,P2,All six D02 decision statuses remain OPEN in shared D00 until explicit approval,Functional / Scripted test / Playtest (future),NOT_RUN,D02_v0.3,REVIEW addition; design contract PROPOSED until D02 DECISIONS
+D02-CT-150,D02-DEC-01,P0,O01 kills elite in last allowed tick; full visible final phase plays,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-151,D02-DEC-01,P0,Goal incomplete at objective deadline leads to one LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-152,D02-DEC-01,P0,Stuck enemy does not block victory or award XP; real anchor attack resolved,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-153,D02-DEC-01,P0,Boss dead before nominal end causes immediate WIN if no fatal event,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-154,D02-DEC-02,P0,O02 valid kill in active relay zone increments charge once,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-155,D02-DEC-02,P0,O02 main relay dies at 37/60; backup starts 37/60,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-156,D02-DEC-02,P0,O02 backup relay destroyed before CHARGED; one LOSS,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-157,D02-DEC-02,P0,O02 relay destroyed after CHARGED does not revert objective,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-158,D02-DEC-02,P0,O02 relay attacks need valid geometry and timely warning,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-159,D02-DEC-03,P0,"O04 three attacks telegraph, dodgeable in TPS/top-down/FPS",Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-160,D02-DEC-03,P0,O06 three attacks incl CORE_PRESSURE allow reachable counterplay,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-161,D02-DEC-03,P0,Boss phase B changes behavior and allows recovery windows,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-162,D02-DEC-03,P0,W01 on T1 with ordinary run pickups can defeat boss within feasible window,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-163,D02-DEC-03,P0,Boss spawn error is detected and not counted as player mistake,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-164,D02-DEC-03,P0,Boss lethal in same tick as anchor death gives LOSS but confirmed kill,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-165,D02-DEC-04,P1,"First O01 T1 win globally unlocks T2, no mandatory grind",Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-166,D02-DEC-04,P1,First T2 win on any unlocked operation unlocks T3 globally,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-167,D02-DEC-04,P1,Unlocking O05 preserves previously attained T2–T5; T1 available,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-168,D02-DEC-04,P1,Loss and optional achievement do not unlock next T,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-169,D02-DEC-05,P1,First O01 has exactly two ordinary species and one elite,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-170,D02-DEC-05,P1,Repeated O03 picks no more than two allowed variants,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-171,D02-DEC-05,P1,Same mission+seed+content version+tier gives same event plan,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-172,D02-DEC-05,P1,Inaccessible objective/reaction window variation is rejected,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-173,D02-DEC-06,P1,O03 2/3 nests finishes story without 3/3,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-174,D02-DEC-06,P1,O04 weakspot challenge does not block railgun blueprint,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-175,D02-DEC-06,P1,C-A01 not required to open O03–O06,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result
+D02-CT-176,D02-DEC-06,P1,No extra Xenite credited before economy bonus signed off,Functional / Integration Playtest,NOT_RUN,D02_v0.3,Approved design behavior; future verification; not test result

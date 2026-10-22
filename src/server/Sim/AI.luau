@@ -57,7 +57,7 @@ local function steer(w, e, p, dist: number, dt: number, standoff: number, turnRa
 		if e.los and dist > 0.01 then
 			mx, mz = dx / dist, dz / dist
 		else
-			mx, mz = w.nav.flow(w.field, e.x, e.z)
+			mx, mz = w.nav.flow(e.flow or w.field, e.x, e.z)
 		end
 	end
 	-- Separation
@@ -310,7 +310,8 @@ function B.HIVE(w, e, p, dist, dt)
 	if e.state == ST.MOVE or e.state == ST.IDLE then
 		e.state = ST.IDLE
 		turnToward(e, math.cos(w.t * 0.5), math.sin(w.t * 0.5), 0, dt)
-		if w.t >= e.cd then
+		-- Power nodes and acid sources are structures: they never hatch runners.
+		if w.t >= e.cd and not e.noSpawn then
 			e.cd = w.t + Defs.Enemies.HIVE.cooldown
 			if #w.enemies < Defs.Run.MaxActive * (1 + 0.45 * (#w.playerList - 1)) + 12 then
 				local a = w.rng:range(0, math.pi * 2)
@@ -460,7 +461,7 @@ function AI.bomberBlast(w, e, killer, hurtPlayers: boolean)
 	end
 	for _, o in w:query(e.x, e.z, K.Radius, {}) do
 		if o ~= e and o.alive then
-			Combat.damage(w, killer, o, K.EnemyDamage * (if o.def.boss then 0.3 else 1), 1, Codec.DF.BLAST, e.x, e.z)
+			Combat.damage(w, killer, o, K.EnemyDamage * (if o.def.boss then 0.3 else 1), 1, bit32.bor(Codec.DF.BLAST, Codec.DF.ENV), e.x, e.z)
 		end
 	end
 end
@@ -612,6 +613,9 @@ function AI.update(w, dt: number)
 			end
 		end
 		local p, dist = w:nearestPlayer(e.x, e.z)
+		if e.role then
+			p, dist = w.mission:targetFor(e, p, dist)
+		end
 		if not p then
 			continue
 		end

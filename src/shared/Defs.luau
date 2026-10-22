@@ -112,7 +112,7 @@ Defs.Weapons = {
 		knockback = 2.2,
 		color = rgb(255, 150, 60),
 		evolution = "EV_INFERNO_GRINDER",
-		cost = 0,
+		cost = 650,
 		stats = { power = 0.95, rate = 0.3, range = 0.35, control = 0.9 },
 	},
 	W_PLASMA_BEAM = {
@@ -134,7 +134,7 @@ Defs.Weapons = {
 		knockback = 0,
 		color = rgb(196, 110, 255),
 		evolution = "EV_VOID_LANCE",
-		cost = 0,
+		cost = 1150,
 		stats = { power = 0.65, rate = 1, range = 0.65, control = 0.6 },
 	},
 	W_RAILGUN = {
@@ -156,7 +156,7 @@ Defs.Weapons = {
 		knockback = 1.6,
 		color = rgb(255, 220, 110),
 		evolution = "EV_STARBREAKER",
-		cost = 350,
+		cost = 1750,
 		stats = { power = 1, rate = 0.15, range = 1, control = 0.55 },
 	},
 } :: { [string]: WeaponDef }
@@ -176,6 +176,8 @@ Defs.Evolutions = {
 		weapon = "W_ARC_RIFLE",
 		keys = { "UPG_CHAIN", "UPG_RICOCHET" },
 		coreName = "ЯДРО БУРИ",
+		component = "CMP_STORM_CORE",
+		cost = 900,
 		color = rgb(140, 220, 255),
 		text = "Каждое попадание бьёт молнией ещё по 3 целям. +15% скорострельность, ячейка на 60.",
 		-- Single source for the server rule (Combat) and the dossier UI.
@@ -187,6 +189,8 @@ Defs.Evolutions = {
 		weapon = "W_SCATTERGUN",
 		keys = { "UPG_IGNITE", "UPG_DETONATE" },
 		coreName = "ЯДРО ПЛАМЕНИ",
+		component = "CMP_FLAME_HEART",
+		cost = 1050,
 		color = rgb(255, 110, 40),
 		text = "+4 дробины, двойной поджог. Горящие враги взрываются при смерти.",
 	},
@@ -196,6 +200,8 @@ Defs.Evolutions = {
 		weapon = "W_PLASMA_BEAM",
 		keys = { "UPG_PIERCE", "UPG_CORRODE" },
 		coreName = "ЯДРО ПУСТОТЫ",
+		component = "CMP_VOID_HEART",
+		cost = 1200,
 		color = rgb(150, 70, 255),
 		text = "Пробивает всех. +40% дальность, +30% урон. Импульсы пустоты вдоль луча.",
 	},
@@ -205,6 +211,8 @@ Defs.Evolutions = {
 		weapon = "W_RAILGUN",
 		keys = { "UPG_CRIT", "UPG_DETONATE" },
 		coreName = "ЗВЁЗДНОЕ ЯДРО",
+		component = "CMP_LINE_BREACH",
+		cost = 1450,
 		color = rgb(255, 230, 120),
 		text = "Пробивает всех. Каждое попадание взрывается. +20% скорострельность.",
 	},
@@ -399,7 +407,7 @@ Defs.UpgradeOrder = {
 
 Defs.Fallbacks = {
 	FB_REPAIR = { id = "FB_REPAIR", name = "ПОЛЕВОЙ РЕМОНТ", icon = "plus", color = rgb(110, 255, 140), text = "+35 здоровья" },
-	FB_CHARGE = { id = "FB_CHARGE", name = "ЭНЕРГОЯЧЕЙКА", icon = "battery", color = rgb(255, 200, 60), text = "+60 перегрузки" },
+	FB_CHARGE = { id = "FB_CHARGE", name = "ГРАВИЗАРЯД", icon = "battery", color = rgb(84, 238, 255), text = "Гравимолот готов сразу" },
 }
 
 Defs.Synergies = {
@@ -467,6 +475,117 @@ function Defs.xpToNext(level: number): number
 	return math.floor(7 + level * 5 + level ^ 1.75)
 end
 
+-- S01 «ГРАВИМОЛОТ» (DD-006): the one active skill. 360° gravity strike around the player, separate from
+-- weapons and cards. The first cast in O01 is the reactor-fed Emergency Overload (bigger, two waves).
+Defs.S01 = {
+	Windup = 0.3, -- stable window before impact (brief i-frames cover it)
+	IFrames = 0.4,
+	Cooldown = 32,
+	Radius = 9.5,
+	Damage = 75,
+	Targets = 12,
+	Knock = 9,
+	Stun = 0.7,
+	BigMult = 0.5, -- damage vs heavy / elite
+	BossMult = 0.35,
+	BigKnock = 2,
+	CrowdHits = 8, -- "массовый удар" for mastery
+	Emergency = { Radius = 12, Outer = 16.5, Damage = 160, Targets = 26, Knock = 14, OuterSlow = 0.5 },
+	PerkCut = 0.06, -- PK_OVERDRIVE rank: −6% cooldown each
+}
+
+-- Permanent unique components ("КОМПОНЕНТЫ"): earned by deeds in operations, spent on crafting forms.
+Defs.Components = {
+	CMP_STORM_CORE = { id = "CMP_STORM_CORE", name = "ЯДРО БУРИ", icon = "core", text = "Сердце Громовержца. Добыто с Носителя ядра (O01)." },
+	CMP_FLAME_HEART = { id = "CMP_FLAME_HEART", name = "СЕРДЦЕ ПЛАМЕНИ", icon = "core", text = "Сердце Адской мельницы. Первая победа в O05." },
+	CMP_VOID_HEART = { id = "CMP_VOID_HEART", name = "СЕРДЦЕ ПУСТОТЫ", icon = "core", text = "Сердце Копья Пустоты. Первая победа в O06." },
+	CMP_LINE_BREACH = { id = "CMP_LINE_BREACH", name = "ПРОБОЙ ЛИНИИ", icon = "core", text = "Сердце Звездолома. Испытание рельсотрона: выстрелы, пробившие 2+ врагов." },
+}
+
+-- Weapon mastery M1–M20 (D03 §3, 03_GAME_DATA mastery thresholds, BALANCE_CANDIDATE). Personal lethal
+-- kills with that weapon. Other weapons scale the arc-rifle ladder by their kill rate.
+Defs.Mastery = {
+	Ladder = { 0, 150, 400, 800, 1300, 2000, 2800, 3800, 5000, 6400, 8000, 9800, 12000, 14500, 17000, 20500, 24500, 29400, 35000, 42000 },
+	Scale = { W_ARC_RIFLE = 1, W_SCATTERGUN = 0.6, W_PLASMA_BEAM = 0.7, W_RAILGUN = 0.4 },
+	Milestones = { [2] = "Модуль I", [4] = "Характерный узел", [8] = "Модуль II", [10] = "Постоянная форма", [15] = "Модуль III", [20] = "Высшая форма" },
+}
+
+function Defs.masteryNeed(weaponId: string, rank: number): number
+	local ladder = Defs.Mastery.Ladder
+	local r = math.clamp(rank, 1, #ladder)
+	return math.floor(ladder[r] * (Defs.Mastery.Scale[weaponId] or 1) + 0.5)
+end
+
+-- Returns rank (1..20), kills into the current rank, kills needed for the next (nil at M20).
+function Defs.masteryRank(weaponId: string, kills: number): (number, number, number?)
+	local rank = 1
+	for r = 2, #Defs.Mastery.Ladder do
+		if kills >= Defs.masteryNeed(weaponId, r) then
+			rank = r
+		end
+	end
+	if rank >= #Defs.Mastery.Ladder then
+		return rank, 0, nil
+	end
+	local lo, hi = Defs.masteryNeed(weaponId, rank), Defs.masteryNeed(weaponId, rank + 1)
+	return rank, kills - lo, hi - lo
+end
+
+-- Research ("ИССЛЕДОВАНИЕ ВИДОВ", D03 §2): personal confirmed kills per species. Common species have
+-- higher thresholds. Stage I reveals the species card, II unlocks its lab item, III completes it.
+Defs.Research = {
+	EN_RUNNER = { 200, 1200, 5000 },
+	EN_SPITTER = { 30, 140, 600 },
+	EN_STALKER = { 40, 200, 800 },
+	EN_BULWARK = { 15, 80, 300 },
+	EN_BOMBER = { 40, 200, 800 },
+	ELITE_BULWARK = { 1, 5, 20 },
+	HIVE = { 3, 15, 50 },
+	BOSS_BROODMOTHER = { 1, 3, 10 },
+	BOSS_DEVOURER = { 1, 3, 10 },
+}
+
+function Defs.researchStage(kind: string, kills: number): number
+	local t = Defs.Research[kind]
+	if not t then
+		return 0
+	end
+	local s = 0
+	for i, need in t do
+		if kills >= need then
+			s = i
+		end
+	end
+	return s
+end
+
+-- Starter technologies (O01 first win). Grant tops the balance up to one of them (D03 §6).
+Defs.Tech = {
+	TECH_PIERCE_CORE = { id = "TECH_PIERCE_CORE", name = "ПРОБИВНОЙ СЕРДЕЧНИК", cost = 180, text = "Первое попадание каждого выстрела пробивает цель" },
+	TECH_EMERGENCY_CAP = { id = "TECH_EMERGENCY_CAP", name = "АВАРИЙНЫЙ КОНДЕНСАТОР", cost = 180, text = "Раз за операцию: импульс реактора отбрасывает штурм" },
+}
+Defs.TechOrder = { "TECH_PIERCE_CORE", "TECH_EMERGENCY_CAP" }
+Defs.FirstWinGrant = 180
+Defs.FormMastery = 10 -- M10 opens the permanent form craft
+
+-- Railgun trial «Пробой линии» (D03 §3): N charged shots that each damage >= 2 normal enemies in one
+-- line. Counted across runs once the railgun is owned; the first completion grants the component.
+Defs.LineTrial = { Shots = 60, MinHits = 2 }
+
+-- Story blueprints (D03 §1): O02 → Вулкан, O03 → Разлом, O04 → Рельсотрон. Blueprint ≠ owned.
+Defs.Blueprints = { W_SCATTERGUN = "O02", W_PLASMA_BEAM = "O03", W_RAILGUN = "O04" }
+
+-- Reactor (DD-004): a defendable objective. HP per operation (Ops), scaled for squads.
+Defs.Reactor = {
+	Radius = 7,
+	Warnings = { 0.5, 0.25 },
+	AcidMult = 1.0,
+	ContactMult = 0.5, -- melee contact damage vs the hull (a strike group must be stopped, not one runner)
+	hpScale = function(_threat: number, players: number): number
+		return 1 + 0.25 * math.max(0, players - 1)
+	end,
+}
+
 Defs.Overdrive = { PerKill = 0.65, PerElite = 20, RateBonus = 0.3, DamageBonus = 0.15, Pierce = 1, BlastRadius = 15, BlastDamage = 45 }
 Defs.Coil = { Radius = 7, Range = 34, Damage = 160, Targets = 14, Cooldown = 40, FirstReady = 45 }
 Defs.Drops = { HealChance = 0.012, MagnetChance = 0.004, HealAmount = 25, OrbCap = 220 }
@@ -488,23 +607,25 @@ Defs.Threat = {
 	end,
 }
 
--- Meta progression ("МАСТЕРСКАЯ"): small, choice-widening perks bought with СКРАП.
+-- Meta progression ("МАСТЕРСКАЯ"): small, choice-widening perks bought with Ксенит (stored as `scrap`).
 Defs.Perks = {
 	PK_VITALITY = { id = "PK_VITALITY", name = "ЖИВУЧЕСТЬ", icon = "heart", color = rgb(255, 90, 110), max = 5, costs = { 60, 110, 170, 240, 320 }, stat = function(r: number): string return `+{r * 8} здоровья` end },
 	PK_MAGNET = { id = "PK_MAGNET", name = "МАГНИТ", icon = "magnet", color = rgb(84, 238, 255), max = 3, costs = { 50, 100, 160 }, stat = function(r: number): string return `+{r * 20}% радиус сбора` end },
 	PK_REROLL = { id = "PK_REROLL", name = "ПЕРЕБРОС", icon = "reroll", color = rgb(255, 200, 60), max = 3, costs = { 80, 150, 240 }, stat = function(r: number): string return `{r} переброс карт за забег` end },
 	PK_BANISH = { id = "PK_BANISH", name = "ИЗГНАНИЕ", icon = "banish", color = rgb(255, 80, 80), max = 2, costs = { 120, 220 }, stat = function(r: number): string return `{r} изгнание карт за забег` end },
 	PK_DASH = { id = "PK_DASH", name = "ФОРСАЖ", icon = "dash", color = rgb(110, 255, 210), max = 3, costs = { 70, 130, 200 }, stat = function(r: number): string return `−{r * 8}% перезарядка рывка` end },
-	PK_OVERDRIVE = { id = "PK_OVERDRIVE", name = "РЕАКТОР", icon = "sun", color = rgb(255, 180, 60), max = 3, costs = { 70, 130, 200 }, stat = function(r: number): string return `+{r * 25} перегрузки на старте` end },
+	PK_OVERDRIVE = { id = "PK_OVERDRIVE", name = "ГРАВИТАЦИЯ", icon = "hammer", color = rgb(84, 238, 255), max = 3, costs = { 70, 130, 200 }, stat = function(r: number): string return `−{r * 6}% перезарядка Гравимолота` end },
 	PK_INSIGHT = { id = "PK_INSIGHT", name = "ПРОЗРЕНИЕ", icon = "eye", color = rgb(190, 120, 255), max = 1, costs = { 400 }, stat = function(r: number): string return "4 карты на выбор" end },
-	PK_SALVAGE = { id = "PK_SALVAGE", name = "УТИЛЬ", icon = "gear", color = rgb(200, 210, 220), max = 3, costs = { 90, 160, 250 }, stat = function(r: number): string return `+{r * 12}% скрапа` end },
+	PK_SALVAGE = { id = "PK_SALVAGE", name = "УТИЛЬ", icon = "gear", color = rgb(200, 210, 220), max = 3, costs = { 90, 160, 250 }, stat = function(r: number): string return `+{r * 12}% Ксенита` end },
 }
 Defs.PerkOrder = { "PK_VITALITY", "PK_MAGNET", "PK_REROLL", "PK_BANISH", "PK_DASH", "PK_OVERDRIVE", "PK_INSIGHT", "PK_SALVAGE" }
 
 -- Scrap reward for a finished run. lines = { {icon, amount}, ... } for the results screen.
-function Defs.runReward(result: any, threat: number, salvageRank: number)
+-- Ксенит for a run (D03 §6): personal credited kills / 12 + 3 per combat level + outcome (+ nests),
+-- × threat × salvage. `kills` is the player's own kill count (team kills only as a fallback).
+function Defs.runReward(result: any, threat: number, salvageRank: number, kills: number?)
 	local lines = {}
-	local base = math.floor(result.kills / 12)
+	local base = math.floor((kills or result.kills) / 12)
 	table.insert(lines, { "skull", base })
 	local levels = (result.level - 1) * 3
 	table.insert(lines, { "level", levels })

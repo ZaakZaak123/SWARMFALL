@@ -118,6 +118,7 @@ local function trace(w, p, ox: number, oz: number, dx: number, dz: number, dmg: 
 	local endT = wall
 	local remaining = pierce + 1
 	local scale = 1
+	local normals = 0
 	while remaining > 0 and n > 0 do
 		local bi, bt = 1, hitT[1]
 		for i = 2, n do
@@ -135,6 +136,9 @@ local function trace(w, p, ox: number, oz: number, dx: number, dz: number, dmg: 
 			break
 		end
 		Combat.hit(w, p, e, dmg * scale, dx, dz)
+		if not e.def.big then
+			normals += 1
+		end
 		remaining -= 1
 		scale *= p.stats.falloff
 		if remaining == 0 then
@@ -143,6 +147,10 @@ local function trace(w, p, ox: number, oz: number, dx: number, dz: number, dmg: 
 	end
 	for i = 1, n do
 		hitE[i] = nil
+	end
+	-- Railgun trial «Пробой линии»: one shot damaging >= 2 normal enemies in a line.
+	if normals >= Defs.LineTrial.MinHits and p.weaponDef.id == "W_RAILGUN" then
+		p.lineShots += 1
 	end
 	return endT
 end
@@ -430,7 +438,11 @@ function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fr
 		p.damage += amount
 	end
 	if e.hp <= 0 then
-		local cause = if band(flags, DF.BLAST) ~= 0 then 2 elseif band(flags, DF.BURN) ~= 0 then 3 elseif band(flags, DF.ARC) ~= 0 then 1 else 0
+		local cause = if band(flags, DF.GRAV) ~= 0 then 4
+			elseif band(flags, DF.ENV) ~= 0 then 6
+			elseif band(flags, DF.CARD) ~= 0 then 5
+			elseif band(flags, DF.BLAST) ~= 0 then 2
+			elseif band(flags, DF.BURN) ~= 0 then 3 elseif band(flags, DF.ARC) ~= 0 then 1 else 0
 		w:kill(e, p, depth, cause)
 		return true
 	end
@@ -453,8 +465,12 @@ function Combat.onKill(w, p, e, depth: number, cause: number)
 	if p.combo > p.bestCombo then
 		p.bestCombo = p.combo
 	end
-	if t >= p.odUntil then
-		p.od = math.min(100, p.od + (if e.kind == "ELITE_BULWARK" then Defs.Overdrive.PerElite else Defs.Overdrive.PerKill))
+	-- Attribution: exactly one credited kill per death (World:kill guards e.alive).
+	p.species[e.kind] = (p.species[e.kind] or 0) + 1
+	if cause == 4 then
+		p.s01Stats.kills += 1
+	elseif cause <= 3 then
+		p.weaponKills += 1
 	end
 	local sh = rank(p, "UPG_SHIELD")
 	if sh > 0 then
@@ -511,7 +527,7 @@ function Combat.updatePlayer(w, p, dt: number)
 				p.dashHit[e] = true
 				e.stunUntil = math.max(e.stunUntil, t + UV.UPG_DASH_SHOCK.stun)
 				w:emit(E.ARC, p.x, p.z, e.x, e.z, C.LIME)
-				Combat.damage(w, p, e, pick(sd, UV.UPG_DASH_SHOCK.damage), 1, DF.ARC, p.x, p.z)
+				Combat.damage(w, p, e, pick(sd, UV.UPG_DASH_SHOCK.damage), 1, bor(DF.ARC, DF.CARD), p.x, p.z)
 			end
 		end
 	end
@@ -584,7 +600,9 @@ function Combat.makeOffer(w, p)
 	local evo = Defs.Evolutions[p.weaponDef.evolution]
 	local isKey = {}
 	local missingKeys = 0
-	if not p.evolved then
+	-- Card keys only matter in legacy runs that still evolve from an elite core.
+	local legacyEvo = w.op.runEvolution and not p.evolved
+	if legacyEvo then
 		for _, k in evo.keys do
 			isKey[k] = true
 			if rank(p, k) == 0 then
@@ -625,7 +643,7 @@ function Combat.makeOffer(w, p)
 		table.insert(choices, id)
 	end
 	-- Guarantees: the first offer and every post-core offer contain a missing evolution key.
-	if not p.evolved and (p.offersMade == 0 or p.hasCore) then
+	if legacyEvo and (p.offersMade == 0 or p.hasCore) then
 		for _, k in evo.keys do
 			if rank(p, k) == 0 and not table.find(choices, k) and (freeSlots > 0) then
 				if #choices < cards then
@@ -660,7 +678,7 @@ function Combat.applyChoice(w, p, choice: string)
 	if choice == "FB_REPAIR" then
 		w:heal(p, 35)
 	elseif choice == "FB_CHARGE" then
-		p.od = math.min(100, p.od + 60)
+		p.s01Ready = w.t
 	elseif Defs.Upgrades[choice] then
 		local r = rank(p, choice)
 		if r == 0 then
