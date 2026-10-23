@@ -15,7 +15,6 @@ local band, bor = bit32.band, bit32.bor
 
 local Combat = {}
 
-
 -- Effective rank of a card family: cards picked this run + virtual ranks from equipped modules, capped
 -- at the shared limit (DD-010). Offers and slots use cardRank (only what was picked in this run).
 function Combat.rank(p, id: string): number
@@ -49,7 +48,9 @@ function Combat.recompute(p)
 	s.reload = wd.reload / (1 + 0.6 * fireBonus)
 	s.reloadEmpty = (wd.reloadEmpty or wd.reload) / (1 + 0.6 * fireBonus)
 	-- TECH_PIERCE_CORE: one extra pierce (downstream hits keep the weapon falloff).
-	s.pierce = wd.pierce + rv(p, "UPG_PIERCE", UV.UPG_PIERCE.extra) + (if p.tech and p.tech.TECH_PIERCE_CORE then 1 else 0)
+	s.pierce = wd.pierce
+		+ rv(p, "UPG_PIERCE", UV.UPG_PIERCE.extra)
+		+ (if p.tech and p.tech.TECH_PIERCE_CORE then 1 else 0)
 	s.pellets = wd.pellets
 	s.spread = wd.spread
 	s.spreadMin = wd.spreadMin or wd.spread
@@ -105,6 +106,17 @@ function Combat.recompute(p)
 		s.spreadMax *= sm
 	end
 	s.heatMult = if mods then mods.heatMult or 1 else 1
+	-- Style synergies (DD-017); module virtual ranks count, like every other card effect.
+	s.lineFire = rank(p, "UPG_PIERCE") > 0 and rank(p, "UPG_CRIT") > 0
+	s.frostShell = rank(p, "UPG_FREEZE") > 0 and rank(p, "UPG_SHIELD") > 0
+	s.iceBreak = rank(p, "UPG_FREEZE") > 0 and rank(p, "UPG_DASH_SHOCK") > 0
+	s.sidePierce = if rank(p, "UPG_MULTISHOT") >= 3 then 1 else 0
+	s.brittle = rank(p, "UPG_FREEZE") > 0 and rank(p, "UPG_CORRODE") > 0
+end
+
+function Combat.synergyActive(p, id: string): boolean
+	local keys = Defs.Synergies[id].keys
+	return rank(p, keys[1]) > 0 and rank(p, keys[2]) > 0
 end
 
 -- Tactical reload (rounds left) is a quick cell swap; an empty magazine also needs the bolt racked.
@@ -147,6 +159,8 @@ local function trace(w, p, ox: number, oz: number, dx: number, dz: number, dmg: 
 	local remaining = pierce + 1
 	local scale = 1
 	local normals = 0
+	local k = 0
+	local lineFire = p.stats.lineFire
 	while remaining > 0 and n > 0 do
 		local bi, bt = 1, hitT[1]
 		for i = 2, n do
@@ -163,12 +177,16 @@ local function trace(w, p, ox: number, oz: number, dx: number, dz: number, dmg: 
 			remaining = 0
 			break
 		end
-		Combat.hit(w, p, e, dmg * scale, dx, dz)
+		k += 1
+		-- ЛИНИЯ ОГНЯ: from the 3rd target on, every pierced enemy takes a crit and the falloff stops.
+		Combat.hit(w, p, e, dmg * scale, dx, dz, lineFire and k >= 3)
 		if not e.def.big then
 			normals += 1
 		end
 		remaining -= 1
-		scale *= p.stats.falloff
+		if not (lineFire and k >= 2) then
+			scale *= p.stats.falloff
+		end
 		if remaining == 0 then
 			endT = math.max(0, bt)
 		end
@@ -207,7 +225,14 @@ function Combat.fire(w, p)
 			local side = if k % 2 == 1 then 1 else -1
 			local center = base + side * (half + math.rad(6))
 			for _ = 1, 3 do
-				shoot(w, p, center + rng:range(-0.12, 0.12), s.damage * s.multiMult, s.pierce, s.range * 0.9)
+				shoot(
+					w,
+					p,
+					center + rng:range(-0.12, 0.12),
+					s.damage * s.multiMult,
+					s.pierce + s.sidePierce,
+					s.range * 0.9
+				)
 			end
 		end
 	else
@@ -219,7 +244,14 @@ function Combat.fire(w, p)
 		shoot(w, p, base + rng:range(-half, half), s.damage, s.pierce, s.range)
 		for k = 1, s.multi do
 			local side = if k % 2 == 1 then 1 else -1
-			shoot(w, p, base + side * math.rad(9) * math.ceil(k / 2), s.damage * s.multiMult, s.pierce, s.range * 0.9)
+			shoot(
+				w,
+				p,
+				base + side * math.rad(9) * math.ceil(k / 2),
+				s.damage * s.multiMult,
+				s.pierce + s.sidePierce,
+				s.range * 0.9
+			)
 		end
 	end
 end
@@ -288,11 +320,11 @@ end
 
 local visited = {}
 
-function Combat.hit(w, p, e, dmg: number, dx: number, dz: number)
+function Combat.hit(w, p, e, dmg: number, dx: number, dz: number, forceCrit: boolean?)
 	local s = p.stats
 	local t = w.t
 	local flags = 0
-	if s.critChance > 0 and w.rng:next() < s.critChance then
+	if forceCrit or (s.critChance > 0 and w.rng:next() < s.critChance) then
 		dmg *= s.critMult
 		flags = DF.CRIT
 	end
@@ -304,7 +336,8 @@ function Combat.hit(w, p, e, dmg: number, dx: number, dz: number)
 		end
 		local ig = rank(p, "UPG_IGNITE")
 		if ig > 0 or p.evolved == "EV_INFERNO_GRINDER" then
-			local dps = (if ig > 0 then pick(ig, UV.UPG_IGNITE.dps) else 6) * (if p.evolved == "EV_INFERNO_GRINDER" then 2 else 1)
+			local dps = (if ig > 0 then pick(ig, UV.UPG_IGNITE.dps) else 6)
+				* (if p.evolved == "EV_INFERNO_GRINDER" then 2 else 1)
 			if dps >= e.burnDps or t >= e.burnUntil then
 				e.burnDps = dps
 				e.burnOwner = p
@@ -317,10 +350,16 @@ function Combat.hit(w, p, e, dmg: number, dx: number, dz: number)
 			if p.evolved == "EV_VOID_LANCE" then
 				cap += 0.12
 			end
+			local per = UV.UPG_CORRODE.perHit
+			-- ХРУПКОСТЬ: slowed enemies corrode twice as fast and deeper.
+			if s.brittle and t < e.slowUntil and e.slow > 0 then
+				per *= Defs.Brittle.RateMult
+				cap += Defs.Brittle.CapAdd
+			end
 			if t >= e.vulnUntil then
 				e.vuln = 0
 			end
-			e.vuln = math.min(cap, e.vuln + UV.UPG_CORRODE.perHit)
+			e.vuln = math.min(cap, e.vuln + per)
 			e.vulnUntil = t + UV.UPG_CORRODE.duration
 		end
 		local fr = rank(p, "UPG_FREEZE")
@@ -331,6 +370,8 @@ function Combat.hit(w, p, e, dmg: number, dx: number, dz: number)
 			end
 			e.slow = math.max(if t < e.slowUntil then e.slow else 0, slow)
 			e.slowUntil = t + UV.UPG_FREEZE.duration
+			e.chill = math.max(e.chill, pick(fr, UV.UPG_FREEZE.weaken))
+			e.frail = math.max(e.frail, pick(fr, UV.UPG_FREEZE.frail))
 		end
 	end
 	if p.evolved == "EV_STARBREAKER" and spend(p, 1) then
@@ -431,6 +472,61 @@ function Combat.blast(w, p, x: number, z: number, radius: number, dmg: number, c
 	end
 end
 
+-- Крио-патроны: a slowed enemy killed by the weapon shatters; shards strike and chill its neighbours.
+-- Shard kills are depth 1, so they never shatter again (no cascades).
+local shardBuf = {}
+function Combat.shatter(w, p, x: number, z: number, fr: number, skip)
+	local count = pick(fr, UV.UPG_FREEZE.shards)
+	local list = w:query(x, z, UV.UPG_FREEZE.shardRadius, shardBuf)
+	local t = w.t
+	for _ = 1, count do
+		local best, bd, bi = nil, math.huge, 0
+		for i, e in list do
+			if e.alive and e ~= skip and not e.invulnerable and not e.def.static then
+				local d = (e.x - x) ^ 2 + (e.z - z) ^ 2
+				if d < bd then
+					best, bd, bi = e, d, i
+				end
+			end
+		end
+		if not best or not spend(p, 1) then
+			break
+		end
+		list[bi] = list[#list]
+		list[#list] = nil
+		w:emit(E.ARC, x, z, best.x, best.z, C.BLUE)
+		local slow = if best.def.boss then UV.UPG_FREEZE.bossCap else pick(fr, UV.UPG_FREEZE.slow)
+		best.slow = math.max(if t < best.slowUntil then best.slow else 0, slow)
+		best.slowUntil = math.max(best.slowUntil, t + UV.UPG_FREEZE.duration)
+		best.chill = math.max(best.chill, pick(fr, UV.UPG_FREEZE.weaken))
+		best.frail = math.max(best.frail, pick(fr, UV.UPG_FREEZE.frail))
+		Combat.damage(w, p, best, p.stats.damage * UV.UPG_FREEZE.shardMult, 1, 0, x, z)
+	end
+end
+
+-- ЛЕДЯНОЙ ПАНЦИРЬ: a frost burst around the player when the shield takes a hit or is refilled.
+function Combat.frostNova(w, p)
+	if not p.stats.frostShell or w.t < p.novaReady then
+		return
+	end
+	local F = Defs.FrostShell
+	local t = w.t
+	p.novaReady = t + F.Cooldown
+	w:emit(E.BOOM, p.x, p.z, F.Radius, C.BLUE)
+	for _, e in w:query(p.x, p.z, F.Radius, nearBuf) do
+		if e.alive and not e.def.static then
+			if not e.def.big then
+				e.stunUntil = math.max(e.stunUntil, t + F.Stun)
+			end
+			local slow = if e.def.boss then UV.UPG_FREEZE.bossCap else F.Slow
+			e.slow = math.max(if t < e.slowUntil then e.slow else 0, slow)
+			e.slowUntil = math.max(e.slowUntil, t + F.SlowTime)
+			e.chill = math.max(e.chill, UV.UPG_FREEZE.weaken[1])
+			Combat.damage(w, p, e, F.Damage, 1, DF.CARD, p.x, p.z)
+		end
+	end
+end
+
 -- Damage ----------------------------------------------------------------------------------------------
 function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fromX: number, fromZ: number): boolean
 	if not e.alive or e.invulnerable then
@@ -443,6 +539,10 @@ function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fr
 	end
 	local vuln = if t < e.vulnUntil then e.vuln else 0
 	mult *= 1 + vuln
+	-- Крио-патроны: a slowed enemy is brittle for the whole squad.
+	if e.frail > 0 and t < e.slowUntil then
+		mult *= 1 + e.frail
+	end
 	local kind = e.kind
 	if (kind == "EN_BULWARK" or e.def.elite) and vuln <= 0 and band(flags, DF.BURN) == 0 then
 		local ax, az = fromX - e.x, fromZ - e.z
@@ -469,11 +569,14 @@ function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fr
 		p.damage += amount
 	end
 	if e.hp <= 0 then
-		local cause = if band(flags, DF.GRAV) ~= 0 then 4
+		local cause = if band(flags, DF.GRAV) ~= 0
+			then 4
 			elseif band(flags, DF.ENV) ~= 0 then 6
 			elseif band(flags, DF.CARD) ~= 0 then 5
 			elseif band(flags, DF.BLAST) ~= 0 then 2
-			elseif band(flags, DF.BURN) ~= 0 then 3 elseif band(flags, DF.ARC) ~= 0 then 1 else 0
+			elseif band(flags, DF.BURN) ~= 0 then 3
+			elseif band(flags, DF.ARC) ~= 0 then 1
+			else 0
 		w:kill(e, p, depth, cause)
 		return true
 	end
@@ -498,6 +601,7 @@ function Combat.onKill(w, p, e, depth: number, cause: number)
 	end
 	-- Attribution: exactly one credited kill per death (World:kill guards e.alive).
 	p.species[e.kind] = (p.species[e.kind] or 0) + 1
+	p.causeKills[cause] = (p.causeKills[cause] or 0) + 1
 	if cause == 4 then
 		p.s01Stats.kills += 1
 	elseif cause <= 3 then
@@ -522,7 +626,15 @@ function Combat.onKill(w, p, e, depth: number, cause: number)
 				p.shield = amount
 				w:emit(E.SHIELD, p.id, amount)
 			end
+			Combat.frostNova(w, p)
+			if w.mission then
+				w.mission:shieldReactor(pick(sh, UV.UPG_SHIELD.reactor))
+			end
 		end
+	end
+	local fz = rank(p, "UPG_FREEZE")
+	if fz > 0 and depth == 0 and cause <= 1 and t < e.slowUntil and e.slow > 0 then
+		Combat.shatter(w, p, e.x, e.z, fz, e)
 	end
 	local dt = rank(p, "UPG_DETONATE")
 	if dt > 0 and depth == 0 then
@@ -566,8 +678,11 @@ function Combat.updatePlayer(w, p, dt: number)
 			if not p.dashHit[e] then
 				p.dashHit[e] = true
 				e.stunUntil = math.max(e.stunUntil, t + UV.UPG_DASH_SHOCK.stun)
-				w:emit(E.ARC, p.x, p.z, e.x, e.z, C.LIME)
-				Combat.damage(w, p, e, pick(sd, UV.UPG_DASH_SHOCK.damage), 1, bor(DF.ARC, DF.CARD), p.x, p.z)
+				-- ЛЕДОЛОМ: slowed enemies shatter for double damage.
+				local shatter = s.iceBreak and t < e.slowUntil and e.slow > 0
+				w:emit(E.ARC, p.x, p.z, e.x, e.z, if shatter then C.BLUE else C.LIME)
+				local dmg = pick(sd, UV.UPG_DASH_SHOCK.damage) * (if shatter then Defs.IceBreakMult else 1)
+				Combat.damage(w, p, e, dmg, 1, bor(DF.ARC, DF.CARD, if shatter then DF.CRIT else 0), p.x, p.z)
 			end
 		end
 	end
@@ -582,7 +697,10 @@ function Combat.updatePlayer(w, p, dt: number)
 			end
 			p.cool = 0
 		elseif p.firing then
-			local heatRate = Defs.Beam.HeatPerSecond * (if od then 0.5 else 1) * (if p.evolved then 0.8 else 1) * (s.heatMult or 1)
+			local heatRate = Defs.Beam.HeatPerSecond
+				* (if od then 0.5 else 1)
+				* (if p.evolved then 0.8 else 1)
+				* (s.heatMult or 1)
 			p.heat += heatRate * dt
 			p.cool -= dt
 			local guard = 0
@@ -668,19 +786,55 @@ function Combat.makeOffer(w, p)
 			if r > 0 then
 				weight *= 1.25
 			end
+			-- Lean towards finishing a synergy the player has started (DD-017).
+			if r == 0 then
+				for _, sid in Defs.SynergyOrder do
+					local keys = Defs.Synergies[sid].keys
+					local other = if keys[1] == id then keys[2] elseif keys[2] == id then keys[1] else nil
+					if other and rank(p, other) > 0 then
+						weight *= 1.8
+						break
+					end
+				end
+			end
 			weights[id] = weight
 			table.insert(pool, id)
 		end
 	end
 	local choices = {}
 	local cards = p.cards or 3
-	for _ = 1, cards do
+	-- First offer of a run: one card of each style, so the choice is between ways of fighting.
+	if p.offersMade == 0 and not legacyEvo then
+		for _, style in Defs.StyleOrder do
+			local sw, sp = {}, {}
+			for _, id in pool do
+				if weights[id] and Defs.Upgrades[id].style == style then
+					sw[id] = weights[id]
+					table.insert(sp, id)
+				end
+			end
+			local id = w.rng:weighted(sw, sp)
+			if id then
+				weights[id] = nil
+				table.insert(choices, id)
+			end
+		end
+	end
+	-- 02.4 §4.2: a new profile's second offer in O01 shows «Расщепление» (shown, never forced).
+	if p.newbie and p.offersMade == 1 and w.op.id == "O01" and weights.UPG_MULTISHOT and not p.seenMulti then
+		weights.UPG_MULTISHOT = nil
+		table.insert(choices, "UPG_MULTISHOT")
+	end
+	while #choices < cards do
 		local id = w.rng:weighted(weights, pool)
 		if not id then
 			break
 		end
 		weights[id] = nil
 		table.insert(choices, id)
+	end
+	if table.find(choices, "UPG_MULTISHOT") then
+		p.seenMulti = true
 	end
 	-- Guarantees: the first offer and every post-core offer contain a missing evolution key.
 	if legacyEvo and (p.offersMade == 0 or p.hasCore) then
@@ -730,6 +884,19 @@ function Combat.applyChoice(w, p, choice: string)
 		p.ranks[choice] = math.min(Defs.Run.MaxRank, r + 1)
 		Combat.recompute(p)
 		Combat.checkEvolve(w, p)
+		for _, sid in Defs.SynergyOrder do
+			if not p.synergies[sid] and Combat.synergyActive(p, sid) then
+				p.synergies[sid] = true
+				local syn = Defs.Synergies[sid]
+				w:banner(
+					"СИНЕРГИЯ: " .. syn.name,
+					(if w.solo then "" else p.name .. " · ") .. syn.text,
+					C.VIOLET,
+					3,
+					"evolve"
+				)
+			end
+		end
 	end
 end
 
@@ -744,7 +911,13 @@ function Combat.checkEvolve(w, p)
 		end
 	end
 	p.canEvolve = true
-	w:banner("ЭВОЛЮЦИЯ ГОТОВА", evo.name .. " — нажми F или кнопку ЭВО", C.GOLD, 4, "evolve")
+	w:banner(
+		"ЭВОЛЮЦИЯ ГОТОВА",
+		evo.name .. " — нажми F или кнопку ЭВО",
+		C.GOLD,
+		4,
+		"evolve"
+	)
 end
 
 return Combat

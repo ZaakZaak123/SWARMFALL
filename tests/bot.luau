@@ -2,6 +2,7 @@
 -- Bot.run(weapon, players, seed, verbose, mapId?, threat?, perks?, opts?)
 --   opts.op      operation id (default: from map, legacy)
 --   opts.anchor  {x, z} the bot orbits (default reactor/centre); far away = "does not defend"
+--   opts.style   "CROWD" | "LINE" | "CONTROL": draft cards of that build style (DD-017)
 
 local H = require("./harness")
 
@@ -16,7 +17,16 @@ local function fmt(t: number): string
 end
 Bot.fmt = fmt
 
-function Bot.run(weapon: string, players: number, runSeed: number, verbose: boolean, mapId: string?, threat: number?, perks: any?, opts: any?)
+function Bot.run(
+	weapon: string,
+	players: number,
+	runSeed: number,
+	verbose: boolean,
+	mapId: string?,
+	threat: number?,
+	perks: any?,
+	opts: any?
+)
 	opts = opts or {}
 	local infos = {}
 	for i = 1, players do
@@ -59,10 +69,22 @@ function Bot.run(weapon: string, players: number, runSeed: number, verbose: bool
 				if p.offer then
 					local evo = Defs.Evolutions[p.weaponDef.evolution]
 					local pickIndex = 1
-					for i, c in p.offer.choices do
-						if table.find(evo.keys, c) then
-							pickIndex = i
-							break
+					if opts.style then
+						-- Style bot: a card of its style (an upgrade before a new slot), else the first.
+						local best = 0
+						for i, c in p.offer.choices do
+							local def = Defs.Upgrades[c]
+							local score = if def and def.style == opts.style then (if p.ranks[c] then 2 else 1) else 0
+							if score > best then
+								best, pickIndex = score, i
+							end
+						end
+					else
+						for i, c in p.offer.choices do
+							if table.find(evo.keys, c) then
+								pickIndex = i
+								break
+							end
 						end
 					end
 					local ok = w:choose(p.id, p.offer.id, pickIndex)
@@ -226,11 +248,21 @@ function Bot.run(weapon: string, players: number, runSeed: number, verbose: bool
 				table.insert(ups, id:sub(5, 8) .. r)
 			end
 			table.sort(ups)
-			print(string.format(
-				"  %s  lvl %2d  enemies %3d  kills %4d  hp %3d  od %3d  dmg %7d  %s%s",
-				fmt(w.t), w.level, #w.enemies, w.teamKills, math.floor(p.hp), p.s01Stats.casts, math.floor(p.damage),
-				table.concat(ups, " "), if p.evolved then "  [" .. p.evolved .. "]" else ""
-			))
+			print(
+				string.format(
+					"  %s  lvl %2d  enemies %3d  kills %4d  hp %3d  reactor %4s  od %3d  dmg %7d  %s%s",
+					fmt(w.t),
+					w.level,
+					#w.enemies,
+					w.teamKills,
+					math.floor(p.hp),
+					if w.mission and w.mission.reactor then tostring(math.floor(w.mission.reactor.hp)) else "-",
+					p.s01Stats.casts,
+					math.floor(p.damage),
+					table.concat(ups, " "),
+					if p.evolved then "  [" .. p.evolved .. "]" else ""
+				)
+			)
 		end
 	end
 	local r = w.result

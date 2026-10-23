@@ -13,8 +13,8 @@ local rgb = Color3.fromRGB
 local M = Enum.Material
 
 local PAL = {
-	floor = rgb(30, 38, 48),
-	floorAlt = rgb(36, 45, 56),
+	floor = rgb(46, 56, 70),
+	floorAlt = rgb(54, 64, 78),
 	seam = rgb(18, 23, 30),
 	steel = rgb(52, 62, 74),
 	steelDark = rgb(26, 32, 40),
@@ -115,14 +115,21 @@ function BUILD.container(o, solidF, decor)
 	for i = 1, ribs - 1 do
 		local off = -long / 2 + i * long / ribs
 		part(decor, {
-			Size = if alongX then Vector3.new(0.25, o.h - 0.4, o.d + 0.12) else Vector3.new(o.w + 0.12, o.h - 0.4, 0.25),
+			Size = if alongX
+				then Vector3.new(0.25, o.h - 0.4, o.d + 0.12)
+				else Vector3.new(o.w + 0.12, o.h - 0.4, 0.25),
 			CFrame = CFrame.new(o.x + (if alongX then off else 0), o.h / 2, o.z + (if alongX then 0 else off)),
 			Color = color:Lerp(Color3.new(0, 0, 0), 0.35),
 			Material = M.Metal,
 		})
 	end
 	-- Top trim + small beacon
-	part(decor, { Size = Vector3.new(o.w + 0.2, 0.3, o.d + 0.2), CFrame = CFrame.new(o.x, o.h + 0.15, o.z), Color = PAL.steelDark, Material = M.Metal })
+	part(decor, {
+		Size = Vector3.new(o.w + 0.2, 0.3, o.d + 0.2),
+		CFrame = CFrame.new(o.x, o.h + 0.15, o.z),
+		Color = PAL.steelDark,
+		Material = M.Metal,
+	})
 	part(decor, {
 		Size = Vector3.new(0.6, 0.4, 0.6),
 		CFrame = CFrame.new(o.x + o.w / 2 - 0.8, o.h + 0.5, o.z + o.d / 2 - 0.8),
@@ -142,7 +149,8 @@ function BUILD.crate(o, solidF, decor)
 	local top = solid(solidF, {
 		Name = o.name .. "Top",
 		Size = Vector3.new(o.w * 0.62, o.h * 0.45, o.d * 0.62),
-		CFrame = CFrame.new(o.x - o.w * 0.12, o.h * 0.55 + o.h * 0.225, o.z + o.d * 0.1) * CFrame.Angles(0, math.rad(12), 0),
+		CFrame = CFrame.new(o.x - o.w * 0.12, o.h * 0.55 + o.h * 0.225, o.z + o.d * 0.1)
+			* CFrame.Angles(0, math.rad(12), 0),
 		Color = PAL.steel,
 		Material = M.DiamondPlate,
 	})
@@ -182,14 +190,25 @@ function BUILD.railcar(o, solidF, decor)
 		Color = rgb(60, 66, 74),
 		Material = M.Metal,
 	})
-	part(decor, { Size = Vector3.new(o.w + 0.1, 0.6, o.d + 0.1), CFrame = CFrame.new(o.x, o.h * 0.6, o.z), Color = PAL.hazard, Material = M.Metal })
-	part(decor, { Size = Vector3.new(o.w - 2, 0.2, o.d - 2), CFrame = CFrame.new(o.x, o.h + 0.1, o.z), Color = PAL.steelDark, Material = M.Metal })
+	part(decor, {
+		Size = Vector3.new(o.w + 0.1, 0.6, o.d + 0.1),
+		CFrame = CFrame.new(o.x, o.h * 0.6, o.z),
+		Color = PAL.hazard,
+		Material = M.Metal,
+	})
+	part(decor, {
+		Size = Vector3.new(o.w - 2, 0.2, o.d - 2),
+		CFrame = CFrame.new(o.x, o.h + 0.1, o.z),
+		Color = PAL.steelDark,
+		Material = M.Metal,
+	})
 	for _, sx in { -1, 1 } do
 		for _, sz in { -1, 1 } do
 			local wheel = part(decor, {
 				Shape = Enum.PartType.Cylinder,
 				Size = Vector3.new(0.6, 2, 2),
-				CFrame = CFrame.new(o.x + sx * (o.w / 2 - 3), 1, o.z + sz * (o.d / 2 + 0.3)) * CFrame.Angles(0, math.pi / 2, 0),
+				CFrame = CFrame.new(o.x + sx * (o.w / 2 - 3), 1, o.z + sz * (o.d / 2 + 0.3))
+					* CFrame.Angles(0, math.pi / 2, 0),
 				Color = PAL.steelDark,
 				Material = M.Metal,
 			})
@@ -206,7 +225,12 @@ function BUILD.tank(o, solidF, decor)
 	vcyl(decor, o.x, o.h * 0.3, o.z, 0.9, o.w + 0.1, PAL.hazard, M.Metal)
 	-- Ladder
 	for i = 1, math.floor(o.h / 1.2) do
-		part(decor, { Size = Vector3.new(1.4, 0.15, 0.15), CFrame = CFrame.new(o.x, i * 1.2, o.z - r - 0.15), Color = PAL.steelDark, Material = M.Metal })
+		part(decor, {
+			Size = Vector3.new(1.4, 0.15, 0.15),
+			CFrame = CFrame.new(o.x, i * 1.2, o.z - r - 0.15),
+			Color = PAL.steelDark,
+			Material = M.Metal,
+		})
 	end
 	-- Acid spill decal ring for refinery tanks
 	if o.name:find("Refinery") then
@@ -235,7 +259,14 @@ function BUILD.coil(o, solidF, decor, index)
 		local ring = vcyl(model, o.x, 1.5 + i * 1.35, o.z, 0.45, o.w + 1.4 - i * 0.12, PAL.cyan, M.Neon)
 		ring.Name = "Ring"
 	end
-	local orb = part(model, { Name = "Orb", Shape = Enum.PartType.Ball, Size = Vector3.one * 2.4, CFrame = CFrame.new(o.x, o.h + 1.4, o.z), Color = PAL.cyan, Material = M.Neon })
+	local orb = part(model, {
+		Name = "Orb",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 2.4,
+		CFrame = CFrame.new(o.x, o.h + 1.4, o.z),
+		Color = PAL.cyan,
+		Material = M.Neon,
+	})
 	local l = Instance.new("PointLight")
 	l.Name = "Glow"
 	l.Color = PAL.cyan
@@ -286,7 +317,16 @@ function BUILD.reactor(o, solidF, decor)
 	light(model, Vector3.new(o.x, o.h + 4, o.z), PAL.cyan, 40, 2.4)
 	-- Floor halo
 	for i, size in { 34, 30, 22 } do
-		local ring = vcyl(decor, o.x, 0.02 + i * 0.005, o.z, 0.04, size, if i == 2 then PAL.floor else PAL.cyanDim, if i == 2 then M.SmoothPlastic else M.Neon)
+		local ring = vcyl(
+			decor,
+			o.x,
+			0.02 + i * 0.005,
+			o.z,
+			0.04,
+			size,
+			if i == 2 then PAL.floor else PAL.cyanDim,
+			if i == 2 then M.SmoothPlastic else M.Neon
+		)
 		ring.Transparency = if i == 2 then 0 else 0.7
 	end
 end
@@ -303,9 +343,16 @@ local function buildFloor(root)
 		CFrame = CFrame.new(0, -1, 0),
 		Color = PAL.floor,
 		Material = M.Concrete,
-	}).CastShadow = false
+	}).CastShadow =
+		false
 	-- Outer ground so the camera never sees the void
-	part(floor, { Name = "Outer", Size = Vector3.new(2048, 2, 2048), CFrame = CFrame.new(0, -1.6, 0), Color = rgb(14, 17, 22), Material = M.Ground })
+	part(floor, {
+		Name = "Outer",
+		Size = Vector3.new(2048, 2, 2048),
+		CFrame = CFrame.new(0, -1.6, 0),
+		Color = rgb(14, 17, 22),
+		Material = M.Ground,
+	})
 	-- Panel seams
 	for x = -hx + 20, hx - 20, 20 do
 		part(floor, { Size = Vector3.new(0.2, 0.04, hz * 2 - 8), CFrame = CFrame.new(x, 0.02, 0), Color = PAL.seam })
@@ -316,20 +363,44 @@ local function buildFloor(root)
 	-- Alternating panel tint for a checker of large slabs
 	for x = -hx + 10, hx - 10, 40 do
 		for z = -hz + 10, hz - 10, 40 do
-			part(floor, { Size = Vector3.new(19.6, 0.03, 19.6), CFrame = CFrame.new(x, 0.015, z), Color = PAL.floorAlt, Material = M.Concrete })
+			part(floor, {
+				Size = Vector3.new(19.6, 0.03, 19.6),
+				CFrame = CFrame.new(x, 0.015, z),
+				Color = PAL.floorAlt,
+				Material = M.Concrete,
+			})
 		end
 	end
 	-- North conduit grating + cable runs
-	part(floor, { Size = Vector3.new(84, 0.05, 86), CFrame = CFrame.new(0, 0.03, 88), Color = rgb(44, 52, 62), Material = M.DiamondPlate })
+	part(floor, {
+		Size = Vector3.new(84, 0.05, 86),
+		CFrame = CFrame.new(0, 0.03, 88),
+		Color = rgb(44, 52, 62),
+		Material = M.DiamondPlate,
+	})
 	for _, x in { -40, 40 } do
-		part(floor, { Size = Vector3.new(1, 0.2, 86), CFrame = CFrame.new(x, 0.1, 88), Color = PAL.cyan, Material = M.Neon }).Transparency = 0.2
+		part(
+			floor,
+			{ Size = Vector3.new(1, 0.2, 86), CFrame = CFrame.new(x, 0.1, 88), Color = PAL.cyan, Material = M.Neon }
+		).Transparency =
+			0.2
 	end
 	-- East rails
 	for _, z in { -6, 6 } do
-		part(floor, { Size = Vector3.new(124, 0.35, 0.8), CFrame = CFrame.new(108, 0.18, z), Color = rgb(150, 160, 170), Material = M.Metal })
+		part(floor, {
+			Size = Vector3.new(124, 0.35, 0.8),
+			CFrame = CFrame.new(108, 0.18, z),
+			Color = rgb(150, 160, 170),
+			Material = M.Metal,
+		})
 	end
 	for x = 50, 168, 6 do
-		part(floor, { Size = Vector3.new(1.4, 0.15, 17), CFrame = CFrame.new(x, 0.07, 0), Color = rgb(40, 34, 30), Material = M.Wood })
+		part(floor, {
+			Size = Vector3.new(1.4, 0.15, 17),
+			CFrame = CFrame.new(x, 0.07, 0),
+			Color = rgb(40, 34, 30),
+			Material = M.Wood,
+		})
 	end
 	-- South refinery: hazard border
 	hazardStripes(floor, 0, 0.04, -46, 104, true, 1.2)
@@ -340,8 +411,20 @@ local function buildFloor(root)
 	-- Two loop rings (readable routes)
 	for _, span in { 46, 140 } do
 		for _, s in { -1, 1 } do
-			part(floor, { Size = Vector3.new(span * 2, 0.04, 0.5), CFrame = CFrame.new(0, 0.035, s * span), Color = PAL.cyanDim, Material = M.Neon }).Transparency = 0.55
-			part(floor, { Size = Vector3.new(0.5, 0.04, span * 2), CFrame = CFrame.new(s * span, 0.035, 0), Color = PAL.cyanDim, Material = M.Neon }).Transparency = 0.55
+			part(floor, {
+				Size = Vector3.new(span * 2, 0.04, 0.5),
+				CFrame = CFrame.new(0, 0.035, s * span),
+				Color = PAL.cyanDim,
+				Material = M.Neon,
+			}).Transparency =
+				0.55
+			part(floor, {
+				Size = Vector3.new(0.5, 0.04, span * 2),
+				CFrame = CFrame.new(s * span, 0.035, 0),
+				Color = PAL.cyanDim,
+				Material = M.Neon,
+			}).Transparency =
+				0.55
 		end
 	end
 end
@@ -359,21 +442,53 @@ local function buildWalls(root, solidF)
 		{ "SouthWall", 0, -hz + t / 2, hx * 2, t },
 	}
 	for _, s in sides do
-		local w = solid(solidF, { Name = s[1], Size = Vector3.new(s[4], H, s[5]), CFrame = CFrame.new(s[2], H / 2, s[3]), Color = PAL.steelDark, Material = M.Metal })
+		local w = solid(solidF, {
+			Name = s[1],
+			Size = Vector3.new(s[4], H, s[5]),
+			CFrame = CFrame.new(s[2], H / 2, s[3]),
+			Color = PAL.steelDark,
+			Material = M.Metal,
+		})
 		w.CastShadow = false
-		part(walls, { Size = Vector3.new(s[4] + 0.2, 0.5, s[5] + 0.2), CFrame = CFrame.new(s[2], H - 1.5, s[3]), Color = PAL.cyan, Material = M.Neon }).Transparency = 0.1
-		part(walls, { Size = Vector3.new(s[4] + 0.3, 1, s[5] + 0.3), CFrame = CFrame.new(s[2], H + 0.5, s[3]), Color = PAL.steel, Material = M.Metal })
-		part(walls, { Size = Vector3.new(s[4] + 0.15, 1.2, s[5] + 0.15), CFrame = CFrame.new(s[2], 0.6, s[3]), Color = PAL.hazard, Material = M.Metal })
+		part(walls, {
+			Size = Vector3.new(s[4] + 0.2, 0.5, s[5] + 0.2),
+			CFrame = CFrame.new(s[2], H - 1.5, s[3]),
+			Color = PAL.cyan,
+			Material = M.Neon,
+		}).Transparency =
+			0.1
+		part(walls, {
+			Size = Vector3.new(s[4] + 0.3, 1, s[5] + 0.3),
+			CFrame = CFrame.new(s[2], H + 0.5, s[3]),
+			Color = PAL.steel,
+			Material = M.Metal,
+		})
+		part(walls, {
+			Size = Vector3.new(s[4] + 0.15, 1.2, s[5] + 0.15),
+			CFrame = CFrame.new(s[2], 0.6, s[3]),
+			Color = PAL.hazard,
+			Material = M.Metal,
+		})
 	end
 	-- Wall buttresses
 	for x = -hx + 20, hx - 20, 30 do
 		for _, z in { -hz + t + 0.8, hz - t - 0.8 } do
-			part(walls, { Size = Vector3.new(2.5, 13, 1.6), CFrame = CFrame.new(x, 6.5, z), Color = PAL.steel, Material = M.Metal })
+			part(walls, {
+				Size = Vector3.new(2.5, 13, 1.6),
+				CFrame = CFrame.new(x, 6.5, z),
+				Color = PAL.steel,
+				Material = M.Metal,
+			})
 		end
 	end
 	for z = -hz + 20, hz - 20, 30 do
 		for _, x in { -hx + t + 0.8, hx - t - 0.8 } do
-			part(walls, { Size = Vector3.new(1.6, 13, 2.5), CFrame = CFrame.new(x, 6.5, z), Color = PAL.steel, Material = M.Metal })
+			part(walls, {
+				Size = Vector3.new(1.6, 13, 2.5),
+				CFrame = CFrame.new(x, 6.5, z),
+				Color = PAL.steel,
+				Material = M.Metal,
+			})
 		end
 	end
 	-- Breach vents at every spawn: red-lit torn openings in the wall face
@@ -401,11 +516,13 @@ local function buildWalls(root, solidF)
 			CFrame = CFrame.new(wx, 4, wz),
 			Color = PAL.red,
 			Material = M.Neon,
-		}).Transparency = 0.25
+		}).Transparency =
+			0.25
 		for i = -2, 2 do
 			part(vent, {
 				Size = if alongX then Vector3.new(1.2, 9, 0.8) else Vector3.new(0.8, 9, 1.2),
-				CFrame = CFrame.new(wx + (if alongX then i * 3 else 0), 4.5, wz + (if alongX then 0 else i * 3)) * CFrame.Angles(0, 0, if alongX then math.rad(i * 4) else 0),
+				CFrame = CFrame.new(wx + (if alongX then i * 3 else 0), 4.5, wz + (if alongX then 0 else i * 3))
+					* CFrame.Angles(0, 0, if alongX then math.rad(i * 4) else 0),
 				Color = PAL.steelDark,
 				Material = M.Metal,
 			})
@@ -434,13 +551,28 @@ local function buildSkyline(root)
 		local x, z = math.cos(rad) * dist * 1.1, math.sin(rad) * dist
 		local w = rng:NextNumber(14, 34)
 		local h = rng:NextNumber(30, 110)
-		part(sky, { Size = Vector3.new(w, h, rng:NextNumber(14, 30)), CFrame = CFrame.new(x, h / 2 - 2, z) * CFrame.Angles(0, rad, 0), Color = rgb(18, 22, 29), Material = M.Metal })
+		part(sky, {
+			Size = Vector3.new(w, h, rng:NextNumber(14, 30)),
+			CFrame = CFrame.new(x, h / 2 - 2, z) * CFrame.Angles(0, rad, 0),
+			Color = rgb(18, 22, 29),
+			Material = M.Metal,
+		})
 		if rng:NextNumber() < 0.6 then
-			part(sky, { Size = Vector3.new(1.4, 1.4, 1.4), CFrame = CFrame.new(x, h + 0.5, z), Color = PAL.red, Material = M.Neon })
+			part(sky, {
+				Size = Vector3.new(1.4, 1.4, 1.4),
+				CFrame = CFrame.new(x, h + 0.5, z),
+				Color = PAL.red,
+				Material = M.Neon,
+			})
 		end
 		if rng:NextNumber() < 0.35 then
 			-- lit windows strip
-			part(sky, { Size = Vector3.new(w * 0.7, 0.6, 0.2), CFrame = CFrame.new(x, h * 0.6, z) * CFrame.Angles(0, rad + math.pi / 2, 0), Color = PAL.cyanDim, Material = M.Neon })
+			part(sky, {
+				Size = Vector3.new(w * 0.7, 0.6, 0.2),
+				CFrame = CFrame.new(x, h * 0.6, z) * CFrame.Angles(0, rad + math.pi / 2, 0),
+				Color = PAL.cyanDim,
+				Material = M.Neon,
+			})
 		end
 		towers += 1
 	end
@@ -452,22 +584,165 @@ local function buildSkyline(root)
 	end
 end
 
+-- Floor detail (stage 11): the gameplay camera mostly sees the floor, so it carries the mood — wear
+-- patches, reflective puddles, lit grates, painted approach arrows and loose debris. Pure decor (no
+-- collision / query), fixed seed so every server builds the same yard. ~300 parts.
+local function buildDetail(root)
+	local d = Instance.new("Folder")
+	d.Name = "Detail"
+	d.Parent = root
+	local rng = Random.new(1977)
+	local hx, hz = L.halfX - L.wall - 4, L.halfZ - L.wall - 4
+	local function spot()
+		return rng:NextNumber(-hx, hx), rng:NextNumber(-hz, hz)
+	end
+	-- Wear patches: darker oil and lighter scuffed concrete break up the slab grid.
+	for _ = 1, 90 do
+		local x, z = spot()
+		local dark = rng:NextNumber() < 0.6
+		local s = rng:NextNumber(5, 15)
+		part(d, {
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.02, s, s * rng:NextNumber(0.5, 1)),
+			CFrame = CFrame.new(x, 0.045, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), math.pi / 2),
+			Color = if dark then rgb(32, 40, 50) else rgb(62, 72, 86),
+			Material = if dark then M.Slate else M.Concrete,
+			Transparency = rng:NextNumber(0.5, 0.75),
+		})
+	end
+	-- Puddles: glass reflects the neon and the sky.
+	for _ = 1, 14 do
+		local x, z = spot()
+		local s = rng:NextNumber(4, 9)
+		local p = part(d, {
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.02, s, s * rng:NextNumber(0.6, 1)),
+			CFrame = CFrame.new(x, 0.06, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), math.pi / 2),
+			Color = rgb(30, 50, 70),
+			Material = M.Glass,
+			Reflectance = 0.35,
+		})
+		p.Transparency = 0.25
+	end
+	-- Lit service grates: a cyan glow under diamond plate, every ~50 studs.
+	for gx = -hx + 30, hx - 30, 52 do
+		for gz = -hz + 30, hz - 30, 52 do
+			if math.abs(gx) > 20 or math.abs(gz) > 20 then
+				local x, z = gx + rng:NextNumber(-8, 8), gz + rng:NextNumber(-8, 8)
+				part(d, {
+					Size = Vector3.new(6, 0.05, 3),
+					CFrame = CFrame.new(x, 0.05, z),
+					Color = PAL.cyanDim,
+					Material = M.Neon,
+					Transparency = 0.45,
+				})
+				for k = -1, 1 do
+					part(d, {
+						Size = Vector3.new(6.4, 0.12, 0.35),
+						CFrame = CFrame.new(x, 0.09, z + k * 1.1),
+						Color = PAL.steelDark,
+						Material = M.DiamondPlate,
+					})
+				end
+			end
+		end
+	end
+	-- Painted approach chevrons: every main lane points at the reactor.
+	for _, dir in { { 0, 1 }, { 0, -1 }, { 1, 0 }, { -1, 0 } } do
+		for k = 0, 3 do
+			local dist = 20 + k * 6
+			local x, z = dir[1] * dist, dir[2] * dist
+			local yaw = math.atan2(-dir[1], -dir[2])
+			for side = -1, 1, 2 do
+				part(d, {
+					Size = Vector3.new(0.9, 0.03, 4.2),
+					CFrame = CFrame.new(x, 0.05, z)
+						* CFrame.Angles(0, yaw, 0)
+						* CFrame.new(side * 1.4, 0, 0)
+						* CFrame.Angles(0, side * math.rad(40), 0),
+					Color = PAL.hazard,
+					Material = M.SmoothPlastic,
+					Transparency = 0.55 + k * 0.1,
+				})
+			end
+		end
+	end
+	-- Loose debris: plates, bolts, cut pipe.
+	for _ = 1, 110 do
+		local x, z = spot()
+		local kind = rng:NextInteger(1, 3)
+		local yaw = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+		if kind == 1 then
+			part(d, {
+				Size = Vector3.new(rng:NextNumber(1, 2.6), 0.12, rng:NextNumber(0.8, 1.8)),
+				CFrame = CFrame.new(x, 0.1, z) * yaw * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, 0),
+				Color = PAL.steel,
+				Material = M.Metal,
+			})
+		elseif kind == 2 then
+			part(d, {
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(rng:NextNumber(1.5, 3.5), 0.45, 0.45),
+				CFrame = CFrame.new(x, 0.25, z) * yaw,
+				Color = if rng:NextNumber() < 0.3 then PAL.orange else rgb(70, 76, 84),
+				Material = M.Metal,
+			})
+		else
+			part(d, {
+				Size = Vector3.new(0.5, 0.35, 0.5),
+				CFrame = CFrame.new(x, 0.18, z) * yaw,
+				Color = rgb(60, 64, 70),
+				Material = M.Metal,
+			})
+		end
+	end
+end
+
 local function buildProps(root)
 	local props = Instance.new("Folder")
 	props.Name = "Props"
 	props.Parent = root
 	-- Lamp posts along the loop
-	local lamps = { { 46, 46 }, { -46, 46 }, { 46, -46 }, { -46, -46 }, { 140, 100 }, { -140, 100 }, { 140, -100 }, { -140, -100 } }
+	local lamps = {
+		{ 46, 46 },
+		{ -46, 46 },
+		{ 46, -46 },
+		{ -46, -46 },
+		{ 140, 100 },
+		{ -140, 100 },
+		{ 140, -100 },
+		{ -140, -100 },
+	}
 	for _, l in lamps do
 		vcyl(props, l[1], 6, l[2], 12, 0.8, PAL.steel, M.Metal)
-		part(props, { Size = Vector3.new(3, 0.5, 1.2), CFrame = CFrame.new(l[1], 12, l[2]), Color = PAL.steelDark, Material = M.Metal })
-		part(props, { Size = Vector3.new(2.6, 0.2, 0.9), CFrame = CFrame.new(l[1], 11.7, l[2]), Color = rgb(255, 230, 190), Material = M.Neon })
+		part(props, {
+			Size = Vector3.new(3, 0.5, 1.2),
+			CFrame = CFrame.new(l[1], 12, l[2]),
+			Color = PAL.steelDark,
+			Material = M.Metal,
+		})
+		part(props, {
+			Size = Vector3.new(2.6, 0.2, 0.9),
+			CFrame = CFrame.new(l[1], 11.7, l[2]),
+			Color = rgb(255, 230, 190),
+			Material = M.Neon,
+		})
 		light(props, Vector3.new(l[1], 11, l[2]), rgb(255, 220, 180), 30, 0.9)
 	end
 	-- Cable bundles hanging between conduit containers (decor, high and non-colliding)
 	for _, z in { 66, 110 } do
-		part(props, { Size = Vector3.new(52, 0.5, 0.5), CFrame = CFrame.new(0, 7.5, z + 5), Color = rgb(20, 20, 24), Material = M.Rubber })
-		part(props, { Size = Vector3.new(52, 0.3, 0.3), CFrame = CFrame.new(0, 7.2, z - 4), Color = PAL.cyan, Material = M.Neon })
+		part(props, {
+			Size = Vector3.new(52, 0.5, 0.5),
+			CFrame = CFrame.new(0, 7.5, z + 5),
+			Color = rgb(20, 20, 24),
+			Material = M.Rubber,
+		})
+		part(props, {
+			Size = Vector3.new(52, 0.3, 0.3),
+			CFrame = CFrame.new(0, 7.2, z - 4),
+			Color = PAL.cyan,
+			Material = M.Neon,
+		})
 	end
 	-- Hive sites: scorched organic stains so players learn the locations
 	for _, h in L.hiveSites do
@@ -490,9 +765,9 @@ end
 
 -- Depths theme ----------------------------------------------------------------------------------------
 local DP = {
-	floor = rgb(30, 22, 36),
-	floorAlt = rgb(38, 27, 44),
-	rock = rgb(44, 34, 50),
+	floor = rgb(64, 48, 76),
+	floorAlt = rgb(76, 56, 88),
+	rock = rgb(62, 48, 70),
 	rockDark = rgb(24, 18, 28),
 	flesh = rgb(110, 46, 90),
 	fleshDark = rgb(64, 24, 54),
@@ -500,6 +775,30 @@ local DP = {
 	vein = rgb(255, 70, 190),
 	metal = rgb(70, 74, 82),
 }
+
+-- A cluster of glowing fungus caps on short stems (replaces flat glow discs: reads as life, not paint).
+local function fungus(parent, x, z, spread: number, count: number, rng, color)
+	for _ = 1, count do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(0, spread)
+		local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
+		local h = rng:NextNumber(0.3, 1.1)
+		local cap = rng:NextNumber(0.8, 1.8)
+		part(parent, {
+			Size = Vector3.new(0.18, h, 0.18),
+			CFrame = CFrame.new(px, h / 2, pz),
+			Color = DP.rock,
+			Material = M.SmoothPlastic,
+		})
+		part(parent, {
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(cap, cap * 0.45, cap),
+			CFrame = CFrame.new(px, h, pz),
+			Color = color or DP.moss,
+			Material = M.Neon,
+		})
+	end
+end
 
 local function taper(parent, x, z, baseD, h, segments, color, material, solidF)
 	if solidF then
@@ -509,43 +808,86 @@ local function taper(parent, x, z, baseD, h, segments, color, material, solidF)
 		local k = i / segments
 		local d = baseD * (1 - k * 0.75)
 		local seg = h / segments
-		local c = vcyl(parent, x + math.sin(i * 1.7) * 0.4, seg * (i + 0.5), z + math.cos(i * 1.3) * 0.4, seg + 0.2, d, color:Lerp(Color3.new(0, 0, 0), k * 0.25), material)
+		local c = vcyl(
+			parent,
+			x + math.sin(i * 1.7) * 0.4,
+			seg * (i + 0.5),
+			z + math.cos(i * 1.3) * 0.4,
+			seg + 0.2,
+			d,
+			color:Lerp(Color3.new(0, 0, 0), k * 0.25),
+			material
+		)
 		c.CastShadow = i == 0
 	end
 end
 
 function BUILD.spire(o, solidF, decor)
 	taper(decor, o.x, o.z, o.w, o.h, 6, DP.rock, M.Rock, solidF)
-	local heart = part(decor, { Name = "Heart", Shape = Enum.PartType.Ball, Size = Vector3.one * 5, CFrame = CFrame.new(o.x, o.h + 2.5, o.z), Color = DP.vein, Material = M.Neon })
+	local heart = part(decor, {
+		Name = "Heart",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 5,
+		CFrame = CFrame.new(o.x, o.h + 2.5, o.z),
+		Color = DP.vein,
+		Material = M.Neon,
+	})
 	heart.Transparency = 0.1
 	for i = 1, 6 do
 		local a = i / 6 * math.pi * 2
 		part(decor, {
 			Size = Vector3.new(0.4, o.h * 0.8, 0.4),
-			CFrame = CFrame.new(o.x + math.cos(a) * o.w * 0.42, o.h * 0.42, o.z + math.sin(a) * o.w * 0.42) * CFrame.Angles(math.sin(a) * 0.12, 0, math.cos(a) * 0.12),
+			CFrame = CFrame.new(o.x + math.cos(a) * o.w * 0.42, o.h * 0.42, o.z + math.sin(a) * o.w * 0.42)
+				* CFrame.Angles(math.sin(a) * 0.12, 0, math.cos(a) * 0.12),
 			Color = DP.vein,
 			Material = M.Neon,
 		})
 	end
 	light(decor, Vector3.new(o.x, o.h + 4, o.z), DP.vein, 46, 2.2)
 	for i, size in { 30, 26 } do
-		local ring = vcyl(decor, o.x, 0.03 + i * 0.005, o.z, 0.04, size, if i == 1 then DP.vein else DP.floor, if i == 1 then M.Neon else M.Slate)
+		local ring = vcyl(
+			decor,
+			o.x,
+			0.03 + i * 0.005,
+			o.z,
+			0.04,
+			size,
+			if i == 1 then DP.vein else DP.floor,
+			if i == 1 then M.Neon else M.Slate
+		)
 		ring.Transparency = if i == 1 then 0.5 else 0
 	end
 end
 
 function BUILD.stalagmite(o, solidF, decor)
 	taper(decor, o.x, o.z, o.w, o.h, 5, DP.rock, M.Rock, solidF)
-	part(decor, { Shape = Enum.PartType.Ball, Size = Vector3.one * 1.6, CFrame = CFrame.new(o.x, o.h + 0.4, o.z), Color = DP.moss, Material = M.Neon })
-	local glow = vcyl(decor, o.x, 0.04, o.z, 0.05, o.w + 6, DP.moss, M.Neon)
-	glow.Transparency = 0.8
+	part(decor, {
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 1.6,
+		CFrame = CFrame.new(o.x, o.h + 0.4, o.z),
+		Color = DP.moss,
+		Material = M.Neon,
+	})
+	fungus(decor, o.x, o.z, o.w * 0.5 + 3, 7, Random.new(math.floor(o.x * 31 + o.z)))
 end
 
 function BUILD.mound(o, solidF, decor)
 	vcyl(solidF, o.x, o.h / 2, o.z, o.h, o.w, DP.flesh, M.Slate, true).Transparency = 1
-	local main = part(decor, { Shape = Enum.PartType.Ball, Size = Vector3.one * o.w * 1.15, CFrame = CFrame.new(o.x, o.h - o.w * 0.5, o.z), Color = DP.fleshDark, Material = M.Slate })
+	local main = part(decor, {
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * o.w * 1.15,
+		CFrame = CFrame.new(o.x, o.h - o.w * 0.5, o.z),
+		Color = DP.fleshDark,
+		Material = M.Slate,
+	})
 	main.CastShadow = true
-	part(decor, { Shape = Enum.PartType.Ball, Size = Vector3.one * o.w * 0.7, CFrame = CFrame.new(o.x + o.w * 0.15, o.h - o.w * 0.15, o.z - o.w * 0.1), Color = DP.flesh, Material = M.SmoothPlastic })
+	part(decor, {
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * o.w * 0.7,
+		CFrame = CFrame.new(o.x + o.w * 0.15, o.h - o.w * 0.15, o.z - o.w * 0.1),
+		Color = DP.flesh,
+		Material = M.SmoothPlastic,
+	})
 	for i = 1, 5 do
 		local a = i / 5 * math.pi * 2 + o.x
 		part(decor, {
@@ -559,23 +901,46 @@ function BUILD.mound(o, solidF, decor)
 end
 
 function BUILD.rig(o, solidF, decor)
-	solid(solidF, { Name = o.name, Size = Vector3.new(o.w, 2.5, o.d), CFrame = CFrame.new(o.x, 1.25, o.z), Color = DP.metal, Material = M.CorrodedMetal })
-	local col = solid(solidF, { Name = o.name .. "Mast", Size = Vector3.new(o.w * 0.6, o.h, o.d * 0.6), CFrame = CFrame.new(o.x, o.h / 2, o.z), Color = DP.metal, Material = M.CorrodedMetal })
+	solid(solidF, {
+		Name = o.name,
+		Size = Vector3.new(o.w, 2.5, o.d),
+		CFrame = CFrame.new(o.x, 1.25, o.z),
+		Color = DP.metal,
+		Material = M.CorrodedMetal,
+	})
+	local col = solid(solidF, {
+		Name = o.name .. "Mast",
+		Size = Vector3.new(o.w * 0.6, o.h, o.d * 0.6),
+		CFrame = CFrame.new(o.x, o.h / 2, o.z),
+		Color = DP.metal,
+		Material = M.CorrodedMetal,
+	})
 	col.Transparency = 1
 	for _, sx in { -1, 1 } do
 		for _, sz in { -1, 1 } do
 			part(decor, {
 				Size = Vector3.new(0.5, o.h + 6, 0.5),
-				CFrame = CFrame.new(o.x + sx * o.w * 0.25, (o.h + 6) / 2, o.z + sz * o.d * 0.25) * CFrame.Angles(sz * 0.08, 0, -sx * 0.08),
+				CFrame = CFrame.new(o.x + sx * o.w * 0.25, (o.h + 6) / 2, o.z + sz * o.d * 0.25)
+					* CFrame.Angles(sz * 0.08, 0, -sx * 0.08),
 				Color = rgb(150, 110, 40),
 				Material = M.Metal,
 			})
 		end
 	end
-	part(decor, { Size = Vector3.new(o.w * 0.7, 0.6, o.d * 0.7), CFrame = CFrame.new(o.x, o.h + 6, o.z), Color = rgb(150, 110, 40), Material = M.Metal })
+	part(decor, {
+		Size = Vector3.new(o.w * 0.7, 0.6, o.d * 0.7),
+		CFrame = CFrame.new(o.x, o.h + 6, o.z),
+		Color = rgb(150, 110, 40),
+		Material = M.Metal,
+	})
 	vcyl(decor, o.x, o.h * 0.5, o.z, o.h + 4, 1.2, rgb(90, 90, 96), M.Metal)
 	hazardStripes(decor, o.x, 2.55, o.z, math.max(o.w, o.d), o.w >= o.d, math.min(o.w, o.d))
-	part(decor, { Size = Vector3.new(0.8, 0.8, 0.8), CFrame = CFrame.new(o.x, o.h + 6.8, o.z), Color = rgb(255, 60, 50), Material = M.Neon })
+	part(decor, {
+		Size = Vector3.new(0.8, 0.8, 0.8),
+		CFrame = CFrame.new(o.x, o.h + 6.8, o.z),
+		Color = rgb(255, 60, 50),
+		Material = M.Neon,
+	})
 end
 
 local function buildDepths(root, solidF)
@@ -583,29 +948,102 @@ local function buildDepths(root, solidF)
 	floor.Name = "Floor"
 	floor.Parent = root
 	local hx, hz, t = L.halfX, L.halfZ, L.wall
-	solid(floor, { Name = "ArenaFloor", Size = Vector3.new(hx * 2, 2, hz * 2), CFrame = CFrame.new(0, -1, 0), Color = DP.floor, Material = M.Slate }).CastShadow = false
-	part(floor, { Name = "Outer", Size = Vector3.new(2048, 2, 2048), CFrame = CFrame.new(0, -1.6, 0), Color = rgb(12, 8, 14), Material = M.Ground })
+	solid(floor, {
+		Name = "ArenaFloor",
+		Size = Vector3.new(hx * 2, 2, hz * 2),
+		CFrame = CFrame.new(0, -1, 0),
+		Color = DP.floor,
+		Material = M.Slate,
+	}).CastShadow =
+		false
+	part(floor, {
+		Name = "Outer",
+		Size = Vector3.new(2048, 2, 2048),
+		CFrame = CFrame.new(0, -1.6, 0),
+		Color = rgb(12, 8, 14),
+		Material = M.Ground,
+	})
 	local rng = Random.new(7)
 	for _ = 1, 26 do
 		local x, z = rng:NextNumber(-hx + 10, hx - 10), rng:NextNumber(-hz + 10, hz - 10)
 		vcyl(floor, x, 0.02, z, 0.03, rng:NextNumber(12, 30), DP.floorAlt, M.Slate)
 	end
-	for _ = 1, 34 do
+	-- Fungus clusters instead of flat glow discs.
+	for _ = 1, 30 do
 		local x, z = rng:NextNumber(-hx + 8, hx - 8), rng:NextNumber(-hz + 8, hz - 8)
-		local m = vcyl(floor, x, 0.04, z, 0.03, rng:NextNumber(3, 8), DP.moss, M.Neon)
-		m.Transparency = 0.75
+		fungus(
+			floor,
+			x,
+			z,
+			rng:NextNumber(1.5, 4),
+			rng:NextInteger(3, 6),
+			rng,
+			if rng:NextNumber() < 0.25 then DP.vein else DP.moss
+		)
 	end
-	for _ = 1, 22 do
+	-- Branching bio-veins: short bent segments that fork, pulsing pink against the slate.
+	for _ = 1, 26 do
 		local x, z = rng:NextNumber(-hx + 10, hx - 10), rng:NextNumber(-hz + 10, hz - 10)
-		local len = rng:NextNumber(10, 28)
-		part(floor, { Size = Vector3.new(0.35, 0.04, len), CFrame = CFrame.new(x, 0.05, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), Color = DP.vein, Material = M.Neon }).Transparency = 0.45
+		local heading = rng:NextNumber(0, math.pi * 2)
+		local width = 0.45
+		for seg = 1, 5 do
+			local len = rng:NextNumber(4, 9)
+			local nx, nz = x + math.sin(heading) * len, z + math.cos(heading) * len
+			part(floor, {
+				Size = Vector3.new(width, 0.04, len),
+				CFrame = CFrame.new((x + nx) / 2, 0.05 + seg * 0.002, (z + nz) / 2) * CFrame.Angles(0, heading, 0),
+				Color = DP.vein,
+				Material = M.Neon,
+				Transparency = 0.35 + seg * 0.08,
+			})
+			if seg == 2 then
+				local fh = heading + (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(0.5, 1)
+				local fl = rng:NextNumber(4, 7)
+				part(floor, {
+					Size = Vector3.new(width * 0.6, 0.04, fl),
+					CFrame = CFrame.new(nx + math.sin(fh) * fl / 2, 0.052, nz + math.cos(fh) * fl / 2)
+						* CFrame.Angles(0, fh, 0),
+					Color = DP.vein,
+					Material = M.Neon,
+					Transparency = 0.6,
+				})
+			end
+			x, z = nx, nz
+			heading += rng:NextNumber(-0.6, 0.6)
+			width *= 0.85
+		end
+	end
+	-- Rubble: loose rocks so the cavern floor is not a flat sheet.
+	for _ = 1, 70 do
+		local x, z = rng:NextNumber(-hx + 8, hx - 8), rng:NextNumber(-hz + 8, hz - 8)
+		local s = rng:NextNumber(0.6, 2.2)
+		part(floor, {
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(s, s * 0.6, s * rng:NextNumber(0.7, 1.2)),
+			CFrame = CFrame.new(x, s * 0.15, z),
+			Color = DP.rock:Lerp(DP.rockDark, rng:NextNumber()),
+			Material = M.Rock,
+		})
 	end
 	local walls = Instance.new("Folder")
 	walls.Name = "Walls"
 	walls.Parent = root
 	local H = 16
-	for _, sd in { { -hx + t / 2, 0, t, hz * 2 }, { hx - t / 2, 0, t, hz * 2 }, { 0, hz - t / 2, hx * 2, t }, { 0, -hz + t / 2, hx * 2, t } } do
-		solid(solidF, { Size = Vector3.new(sd[3], H, sd[4]), CFrame = CFrame.new(sd[1], H / 2, sd[2]), Color = DP.rockDark, Material = M.Rock }).CastShadow = false
+	for _, sd in
+		{
+			{ -hx + t / 2, 0, t, hz * 2 },
+			{ hx - t / 2, 0, t, hz * 2 },
+			{ 0, hz - t / 2, hx * 2, t },
+			{ 0, -hz + t / 2, hx * 2, t },
+		}
+	do
+		solid(solidF, {
+			Size = Vector3.new(sd[3], H, sd[4]),
+			CFrame = CFrame.new(sd[1], H / 2, sd[2]),
+			Color = DP.rockDark,
+			Material = M.Rock,
+		}).CastShadow =
+			false
 	end
 	local perimeter = 4 * (hx + hz)
 	for i = 0, math.floor(perimeter / 9) do
@@ -639,7 +1077,13 @@ local function buildDepths(root, solidF)
 		rim.Transparency = 0.5
 		for k = 1, 5 do
 			local a = k / 5 * math.pi * 2
-			part(hole, { Shape = Enum.PartType.Ball, Size = Vector3.one * 2.5, CFrame = CFrame.new(sp.x + math.cos(a) * 8, 0.4, sp.z + math.sin(a) * 8), Color = DP.rock, Material = M.Rock })
+			part(hole, {
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.one * 2.5,
+				CFrame = CFrame.new(sp.x + math.cos(a) * 8, 0.4, sp.z + math.sin(a) * 8),
+				Color = DP.rock,
+				Material = M.Rock,
+			})
 		end
 		light(hole, Vector3.new(sp.x, 3, sp.z), DP.moss, 20, 1.2)
 	end
@@ -655,7 +1099,13 @@ local function buildDepths(root, solidF)
 		local x, z = math.cos(r) * dist, math.sin(r) * dist * 0.95
 		taper(sky, x, z, rng:NextNumber(20, 40), rng:NextNumber(40, 120), 4, DP.rockDark, M.Rock)
 		if rng:NextNumber() < 0.3 then
-			part(sky, { Shape = Enum.PartType.Ball, Size = Vector3.one * 3, CFrame = CFrame.new(x, rng:NextNumber(20, 60), z), Color = DP.moss, Material = M.Neon })
+			part(sky, {
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.one * 3,
+				CFrame = CFrame.new(x, rng:NextNumber(20, 60), z),
+				Color = DP.moss,
+				Material = M.Neon,
+			})
 		end
 	end
 end
@@ -663,12 +1113,12 @@ end
 function Arena.lighting(theme: string)
 	local depths = theme == "depths"
 	Lighting.ClockTime = if depths then 0 else 0.4
-	Lighting.Brightness = if depths then 1.2 else 1.6
-	Lighting.Ambient = if depths then rgb(70, 50, 84) else rgb(66, 76, 98)
-	Lighting.OutdoorAmbient = if depths then rgb(96, 72, 116) else rgb(112, 124, 150)
+	Lighting.Brightness = if depths then 1.6 else 2
+	Lighting.Ambient = if depths then rgb(112, 84, 132) else rgb(92, 104, 132)
+	Lighting.OutdoorAmbient = if depths then rgb(140, 108, 160) else rgb(130, 145, 175)
 	Lighting.EnvironmentDiffuseScale = 0.45
 	Lighting.EnvironmentSpecularScale = 0.7
-	Lighting.ExposureCompensation = if depths then 0.4 else 0.25
+	Lighting.ExposureCompensation = 0.4
 	Lighting.GlobalShadows = true
 	Lighting.ShadowSoftness = 0.25
 	Lighting.GeographicLatitude = 30
@@ -678,12 +1128,12 @@ function Arena.lighting(theme: string)
 		end
 	end
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = if depths then 0.42 else 0.3
-	atmosphere.Offset = 0.08
-	atmosphere.Color = if depths then rgb(90, 50, 110) else rgb(70, 100, 130)
+	atmosphere.Density = if depths then 0.38 else 0.3
+	atmosphere.Offset = if depths then 0.15 else 0.08
+	atmosphere.Color = if depths then rgb(64, 30, 82) else rgb(70, 100, 130)
 	atmosphere.Decay = if depths then rgb(30, 60, 30) else rgb(40, 28, 60)
 	atmosphere.Glare = 0.15
-	atmosphere.Haze = if depths then 2.2 else 1.4
+	atmosphere.Haze = if depths then 2 else 1.4
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
 	sky.StarCount = if depths then 0 else 4000
@@ -738,6 +1188,7 @@ function Arena.build(map)
 	end
 	if map.theme ~= "depths" then
 		buildProps(root)
+		buildDetail(root)
 		buildSkyline(root)
 	end
 	Arena.lighting(map.theme)

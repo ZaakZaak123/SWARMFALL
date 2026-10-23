@@ -136,7 +136,7 @@ function B.EN_RUNNER(w, e, p, dist, dt)
 		steer(w, e, p, dist, dt, e.def.radius + PLAYER_R + 0.2, 0)
 		if w.t >= e.cd and contact(e, p, 0.7) then
 			e.cd = w.t + e.def.cooldown
-			w:hurtPlayer(p, e.def.damage, e.x, e.z)
+			w:hurtPlayer(p, e.def.damage, e.x, e.z, e)
 		end
 	end
 end
@@ -166,7 +166,7 @@ function B.EN_STALKER(w, e, p, dist, dt)
 			for _, pl in w.playerList do
 				if pl.alive and contact(e, pl, 0.8) then
 					e.struck = true
-					w:hurtPlayer(pl, e.def.damage, e.x, e.z)
+					w:hurtPlayer(pl, e.def.damage, e.x, e.z, e)
 				end
 			end
 		end
@@ -191,7 +191,13 @@ function B.EN_SPITTER(w, e, p, dist, dt)
 			steer(w, e, p, dist, dt, dist + 1, 0)
 			turnToward(e, p.x - e.x, p.z - e.z, 0, dt)
 		end
-		if t >= e.cd and e.los and dist <= S.MaxRange + 4 and dist >= S.MinRange - 10 and w:countHazards("spit") < 6 then
+		if
+			t >= e.cd
+			and e.los
+			and dist <= S.MaxRange + 4
+			and dist >= S.MinRange - 10
+			and w:countHazards("spit") < 6
+		then
 			e.cd = t + e.def.cooldown
 			setState(w, e, ST.WINDUP, S.Windup)
 		end
@@ -225,7 +231,7 @@ end
 local function slam(w, e, reach: number, damage: number)
 	for _, pl in w.playerList do
 		if pl.alive and inCone(e, pl, reach, math.cos(math.rad(55))) then
-			w:hurtPlayer(pl, damage, e.x, e.z)
+			w:hurtPlayer(pl, damage, e.x, e.z, e)
 		end
 	end
 	w:emit(E.BOOM, e.x + e.aimX * reach * 0.5, e.z + e.aimZ * reach * 0.5, reach * 0.6, C.RED)
@@ -271,7 +277,19 @@ function B.ELITE_BULWARK(w, e, p, dist, dt)
 			e.aimX, e.aimZ = (p.x - e.x) / dist, (p.z - e.z) / dist
 			e.fx, e.fz = e.aimX, e.aimZ
 			setState(w, e, ST.WINDUP, L.ChargeWindup)
-			w:emit(E.TELE, SH.LINE, e.x, e.z, e.aimX, e.aimZ, L.ChargeSpeed * L.ChargeTime + 4, e.def.radius * 2 + 2, L.ChargeWindup, C.RED, 0)
+			w:emit(
+				E.TELE,
+				SH.LINE,
+				e.x,
+				e.z,
+				e.aimX,
+				e.aimZ,
+				L.ChargeSpeed * L.ChargeTime + 4,
+				e.def.radius * 2 + 2,
+				L.ChargeWindup,
+				C.RED,
+				0
+			)
 		end
 	elseif e.state == ST.WINDUP then
 		if t >= e.stateUntil then
@@ -291,7 +309,7 @@ function B.ELITE_BULWARK(w, e, p, dist, dt)
 		for _, pl in w.playerList do
 			if pl.alive and not e.hitSet[pl] and contact(e, pl, 1) then
 				e.hitSet[pl] = true
-				w:hurtPlayer(pl, e.def.damage + 4, e.x, e.z)
+				w:hurtPlayer(pl, e.def.damage + 4, e.x, e.z, e)
 			end
 		end
 		local blocked = (e.x - px) ^ 2 + (e.z - pz) ^ 2 < (L.ChargeSpeed * dt * 0.3) ^ 2
@@ -353,7 +371,8 @@ function B.BOSS_BROODMOTHER(w, e, p, dist, dt)
 			local count = 5 + phase * 2
 			for i = 1, count do
 				local a = i / count * math.pi * 2
-				local x, z = w.nav.resolve(e.x + math.cos(a) * (e.def.radius + 4), e.z + math.sin(a) * (e.def.radius + 4), 1.6)
+				local x, z =
+					w.nav.resolve(e.x + math.cos(a) * (e.def.radius + 4), e.z + math.sin(a) * (e.def.radius + 4), 1.6)
 				w:spawnEnemy("EN_RUNNER", x, z, 0.6)
 			end
 			w:emit(E.BOOM, e.x, e.z, e.def.radius + 6, C.LIME)
@@ -365,11 +384,35 @@ function B.BOSS_BROODMOTHER(w, e, p, dist, dt)
 			if dist < K.SweepRadius + 1 and (phase == 1 or roll < 0.5) then
 				e.mode = "sweep"
 				setState(w, e, ST.WINDUP, K.SweepWindup * wind)
-				w:emit(E.TELE, SH.CONE, e.x, e.z, e.aimX, e.aimZ, K.SweepRadius, K.SweepAngle, K.SweepWindup * wind, C.RED, 0)
+				w:emit(
+					E.TELE,
+					SH.CONE,
+					e.x,
+					e.z,
+					e.aimX,
+					e.aimZ,
+					K.SweepRadius,
+					K.SweepAngle,
+					K.SweepWindup * wind,
+					C.RED,
+					0
+				)
 			elseif phase >= 3 and roll < 0.75 and dist > 14 then
 				e.mode = "charge"
 				setState(w, e, ST.WINDUP, K.ChargeWindup * wind)
-				w:emit(E.TELE, SH.LINE, e.x, e.z, e.aimX, e.aimZ, K.ChargeSpeed * K.ChargeTime + 6, e.def.radius * 2 + 2, K.ChargeWindup * wind, C.RED, 0)
+				w:emit(
+					E.TELE,
+					SH.LINE,
+					e.x,
+					e.z,
+					e.aimX,
+					e.aimZ,
+					K.ChargeSpeed * K.ChargeTime + 6,
+					e.def.radius * 2 + 2,
+					K.ChargeWindup * wind,
+					C.RED,
+					0
+				)
 			elseif phase >= 2 then
 				e.mode = "lanes"
 				setState(w, e, ST.WINDUP, K.LaneWindup * wind)
@@ -390,7 +433,19 @@ function B.BOSS_BROODMOTHER(w, e, p, dist, dt)
 						damage = K.LaneDamage,
 						tick = 0.6,
 					})
-					w:emit(E.TELE, SH.LINE, lx, lz, e.aimX, e.aimZ, K.LaneLength, K.LaneWidth, K.LaneWindup * wind, C.LIME, K.LaneActive)
+					w:emit(
+						E.TELE,
+						SH.LINE,
+						lx,
+						lz,
+						e.aimX,
+						e.aimZ,
+						K.LaneLength,
+						K.LaneWidth,
+						K.LaneWindup * wind,
+						C.LIME,
+						K.LaneActive
+					)
 				end
 			else
 				e.cd = t + 0.8 -- approach a bit more
@@ -401,7 +456,7 @@ function B.BOSS_BROODMOTHER(w, e, p, dist, dt)
 			if e.mode == "sweep" then
 				for _, pl in w.playerList do
 					if pl.alive and inCone(e, pl, K.SweepRadius, math.cos(math.rad(K.SweepAngle / 2))) then
-						w:hurtPlayer(pl, K.SweepDamage, e.x, e.z)
+						w:hurtPlayer(pl, K.SweepDamage, e.x, e.z, e)
 					end
 				end
 				w:emit(E.BOOM, e.x + e.aimX * 12, e.z + e.aimZ * 12, 14, C.RED)
@@ -423,7 +478,7 @@ function B.BOSS_BROODMOTHER(w, e, p, dist, dt)
 		for _, pl in w.playerList do
 			if pl.alive and not e.hitSet[pl] and contact(e, pl, 1) then
 				e.hitSet[pl] = true
-				w:hurtPlayer(pl, K.ChargeDamage, e.x, e.z)
+				w:hurtPlayer(pl, K.ChargeDamage, e.x, e.z, e)
 			end
 		end
 		local blocked = (e.x - px) ^ 2 + (e.z - pz) ^ 2 < (K.ChargeSpeed * dt * 0.3) ^ 2
@@ -455,13 +510,22 @@ function AI.bomberBlast(w, e, killer, hurtPlayers: boolean)
 	if hurtPlayers then
 		for _, pl in w.playerList do
 			if pl.alive and (pl.x - e.x) ^ 2 + (pl.z - e.z) ^ 2 < (K.Radius + PLAYER_R) ^ 2 then
-				w:hurtPlayer(pl, e.def.damage, e.x, e.z)
+				w:hurtPlayer(pl, e.def.damage, e.x, e.z, e)
 			end
 		end
 	end
 	for _, o in w:query(e.x, e.z, K.Radius, {}) do
 		if o ~= e and o.alive then
-			Combat.damage(w, killer, o, K.EnemyDamage * (if o.def.boss then 0.3 else 1), 1, bit32.bor(Codec.DF.BLAST, Codec.DF.ENV), e.x, e.z)
+			Combat.damage(
+				w,
+				killer,
+				o,
+				K.EnemyDamage * (if o.def.boss then 0.3 else 1),
+				1,
+				bit32.bor(Codec.DF.BLAST, Codec.DF.ENV),
+				e.x,
+				e.z
+			)
 		end
 	end
 end
@@ -522,7 +586,19 @@ function B.BOSS_DEVOURER(w, e, p, dist, dt)
 			if dist < K.BiteRadius + 1 and roll < 0.6 then
 				e.mode = "bite"
 				setState(w, e, ST.WINDUP, K.BiteWindup * wind)
-				w:emit(E.TELE, SH.CONE, e.x, e.z, e.aimX, e.aimZ, K.BiteRadius, K.BiteAngle, K.BiteWindup * wind, C.RED, 0)
+				w:emit(
+					E.TELE,
+					SH.CONE,
+					e.x,
+					e.z,
+					e.aimX,
+					e.aimZ,
+					K.BiteRadius,
+					K.BiteAngle,
+					K.BiteWindup * wind,
+					C.RED,
+					0
+				)
 			elseif phase >= 2 and roll < (if phase == 3 then 0.75 else 0.5) then
 				e.mode = "burrow"
 				e.invulnerable = true
@@ -559,7 +635,11 @@ function B.BOSS_DEVOURER(w, e, p, dist, dt)
 		-- Burrowed: tunnel toward the target, then telegraph the eruption right under them.
 		local speed = 34
 		local m = math.max(dist, 0.01)
-		e.x, e.z = w.nav.resolve(e.x + (p.x - e.x) / m * math.min(speed * dt, dist), e.z + (p.z - e.z) / m * math.min(speed * dt, dist), e.def.radius)
+		e.x, e.z = w.nav.resolve(
+			e.x + (p.x - e.x) / m * math.min(speed * dt, dist),
+			e.z + (p.z - e.z) / m * math.min(speed * dt, dist),
+			e.def.radius
+		)
 		if t >= e.stateUntil then
 			e.mode = "erupt"
 			setState(w, e, ST.WINDUP, K.EruptWindup * wind)
@@ -570,7 +650,7 @@ function B.BOSS_DEVOURER(w, e, p, dist, dt)
 			if e.mode == "bite" then
 				for _, pl in w.playerList do
 					if pl.alive and inCone(e, pl, K.BiteRadius, math.cos(math.rad(K.BiteAngle / 2))) then
-						w:hurtPlayer(pl, K.BiteDamage, e.x, e.z)
+						w:hurtPlayer(pl, K.BiteDamage, e.x, e.z, e)
 					end
 				end
 				w:emit(E.BOOM, e.x + e.aimX * 8, e.z + e.aimZ * 8, 9, C.RED)
@@ -580,7 +660,7 @@ function B.BOSS_DEVOURER(w, e, p, dist, dt)
 				e.invulnerable = false
 				for _, pl in w.playerList do
 					if pl.alive and (pl.x - e.x) ^ 2 + (pl.z - e.z) ^ 2 < (K.EruptRadius + PLAYER_R) ^ 2 then
-						w:hurtPlayer(pl, K.EruptDamage, e.x, e.z)
+						w:hurtPlayer(pl, K.EruptDamage, e.x, e.z, e)
 					end
 				end
 				w:emit(E.BOOM, e.x, e.z, K.EruptRadius + 3, C.LIME)

@@ -36,7 +36,8 @@ Codec.E = {
 	BEAM = 21, -- pid, ox, oz, ex, ez, evolved
 	BOSS = 23, -- action: 1 roar/enter, 2 exposed, 3 enrage, 4 death, 5 burrow
 	SPIT = 24, -- fromX, fromZ, toX, toZ, flightTime
-	REACTOR = 25, -- action: 1 hit (amount, fromX, fromZ), 2 warning (hpPercent), 3 destroyed, 4 relay hit (amount, fromX, fromZ, x, z)
+	REACTOR = 25, -- action: 1 hit (amount, fromX, fromZ), 2 warning (hpPercent), 3 destroyed, 4 relay hit (amount, fromX, fromZ, x, z),
+	--             5 emergency capacitor, 6 barrier shield (amount, x, z)
 	ASSAULT = 26, -- spawnX, spawnZ, count, etaSeconds, targetX, targetZ (strike group announced)
 	COMPONENT = 27, -- x, z, componentId (permanent component dropped — e.g. Ядро Бури)
 	HAMMER = 28, -- pid, x, z, radius, phase (0 granted, 1 windup, 2 impact), emergency 0/1, hits

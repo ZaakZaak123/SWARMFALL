@@ -47,7 +47,11 @@ local function newPlayer(map, info, index: number, count: number)
 		shield = 0,
 		weaponDef = weapon,
 		-- A crafted, equipped permanent form is active from the first shot (no in-run recipe).
-		evolved = if info.form and Defs.Evolutions[info.form] and Defs.Evolutions[info.form].weapon == weapon.id then info.form else nil,
+		evolved = if info.form
+				and Defs.Evolutions[info.form]
+				and Defs.Evolutions[info.form].weapon == weapon.id
+			then info.form
+			else nil,
 		hasCore = false,
 		canEvolve = false,
 		ammo = weapon.magazine,
@@ -74,7 +78,9 @@ local function newPlayer(map, info, index: number, count: number)
 		-- get it at the O01 encirclement. Tests/legacy callers default to unlocked.
 		s01 = info.s01 ~= false,
 		s01Ready = 0,
-		s01Cd = Defs.S01.Cooldown * (1 - Defs.S01.PerkCut * perk(info, "PK_OVERDRIVE")) * (if info.s01Spec and info.s01Spec.branch == "A" and info.s01Spec.tier >= 3 then 0.85 else 1),
+		s01Cd = Defs.S01.Cooldown
+			* (1 - Defs.S01.PerkCut * perk(info, "PK_OVERDRIVE"))
+			* (if info.s01Spec and info.s01Spec.branch == "A" and info.s01Spec.tier >= 3 then 0.85 else 1),
 		s01Spec = info.s01Spec, -- { branch = "A"|"B"|"C", tier = 1..3 } or nil
 		hammerFollow = nil,
 		hammerAt = nil,
@@ -110,6 +116,11 @@ local function newPlayer(map, info, index: number, count: number)
 		beamEndZ = 0,
 		beamFxT = 0,
 		hitsTaken = 0,
+		causeKills = {}, -- kills per cause (Codec.Cause), for results and the style tests
+		synergies = {}, -- synergies already announced this run
+		novaReady = 0,
+		newbie = info.s01 == false, -- first-ever O01 (soft tutorial draft, 02.4 §4)
+		seenMulti = false,
 	}
 	if info.loadout then
 		local mods = {}
@@ -307,7 +318,9 @@ function World:dash(id: number, dx: number, dz: number): boolean
 		dx, dz, m = p.aimX, p.aimZ, 1
 	end
 	local rank = Combat.rank(p, "UPG_DASH_SHOCK")
-	p.dashReady = self.t + Defs.Player.DashCooldown * p.dashMult - (if rank > 0 then Defs.rankValue(rank, Defs.UpgradeValues.UPG_DASH_SHOCK.cooldown) else 0)
+	p.dashReady = self.t
+		+ Defs.Player.DashCooldown * p.dashMult
+		- (if rank > 0 then Defs.rankValue(rank, Defs.UpgradeValues.UPG_DASH_SHOCK.cooldown) else 0)
 	p.dashUntil = self.t + Defs.Player.DashTime
 	p.iframeUntil = math.max(p.iframeUntil, self.t + Defs.Player.DashIFrames)
 	p.dashX, p.dashZ = dx / m, dz / m
@@ -424,6 +437,7 @@ function World:hammerImpact(p)
 			p.shield = gain
 			self:emit(E.SHIELD, p.id, gain)
 		end
+		Combat.frostNova(self, p)
 	end
 	if br == "B" and tier >= 3 then
 		p.iframeUntil = math.max(p.iframeUntil, self.t + 1)
@@ -439,7 +453,13 @@ function World:hammerImpact(p)
 	end
 	if (br == "A" and tier >= 2) or (br == "C" and tier >= 3) then
 		-- One follow-up wave per cast; it never schedules another (no recursive procs).
-		p.hammerFollow = { at = self.t + (if br == "A" then 0.35 else 0.6), x = px, z = pz, radius = if br == "A" then radius + 3 else radius, dmg = dmg * (if br == "A" then 0.5 else 0.6) }
+		p.hammerFollow = {
+			at = self.t + (if br == "A" then 0.35 else 0.6),
+			x = px,
+			z = pz,
+			radius = if br == "A" then radius + 3 else radius,
+			dmg = dmg * (if br == "A" then 0.5 else 0.6),
+		}
 	end
 	local st = p.s01Stats
 	st.hits += hits
@@ -449,7 +469,13 @@ function World:hammerImpact(p)
 	end
 	self:emit(E.HAMMER, p.id, px, pz, radius, 2, if emergency then 1 else 0, hits)
 	if emergency then
-		self:banner("АВАРИЙНАЯ ПЕРЕГРУЗКА", "Гравимолот S01 открыт навсегда · поражено " .. hits, C.CYAN, 3.5, "hammer")
+		self:banner(
+			"АВАРИЙНАЯ ПЕРЕГРУЗКА",
+			"Гравимолот S01 открыт навсегда · поражено " .. hits,
+			C.CYAN,
+			3.5,
+			"hammer"
+		)
 	end
 end
 
@@ -466,12 +492,22 @@ function World:s01Event()
 				self.s01Tutee = p.id
 			end
 			self:emit(E.HAMMER, p.id, p.x, p.z, Defs.S01.Emergency.Radius, 0, 1, 0)
-			self:banner("ГРАВИМОЛОТ", "Враги окружили — нанеси гравитационный удар", C.CYAN, 4, "hammer")
+			self:banner(
+				"ГРАВИМОЛОТ",
+				"Враги окружили — нанеси гравитационный удар",
+				C.CYAN,
+				4,
+				"hammer"
+			)
 		end
 	end
 end
 
-function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number): boolean
+function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src): boolean
+	-- Крио-патроны: a chilled attacker hits softer — players, the reactor and the relay alike.
+	if src and src.chill > 0 and self.t < src.slowUntil then
+		amount *= 1 - src.chill
+	end
 	if p.isReactor then
 		return self.mission:hurtReactor(amount, fromX, fromZ, false, p)
 	end
@@ -484,6 +520,9 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number): bool
 	local absorbed = math.min(p.shield, amount)
 	p.shield -= absorbed
 	amount -= absorbed
+	if absorbed > 0 then
+		Combat.frostNova(self, p)
+	end
 	p.hp = math.max(0, p.hp - amount)
 	p.combo = 0
 	self:emit(E.HURT, p.id, math.floor(amount + absorbed + 0.5), fromX, fromZ)
@@ -497,7 +536,13 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number): bool
 		else
 			p.downedUntil = self.t + Defs.Coop.BleedOut
 			p.reviveT = 0
-			self:banner(p.name .. " РАНЕН", "Встань рядом, чтобы поднять", C.RED, 2.5, "skull")
+			self:banner(
+				p.name .. " РАНЕН",
+				"Встань рядом, чтобы поднять",
+				C.RED,
+				2.5,
+				"skull"
+			)
 		end
 		if self:alivePlayers() == 0 then
 			self:finish(false, "РОЙ ПРОРВАЛСЯ")
@@ -534,7 +579,13 @@ function World:updateRevives(dt: number)
 				self:banner(p.name .. " В СТРОЮ", "", C.LIME, 2, "plus")
 			elseif self.t >= p.downedUntil then
 				p.downedUntil = nil
-				self:banner(p.name .. " ВЫБЫЛ", "До конца операции наблюдает за отрядом", C.RED, 2.5, "skull")
+				self:banner(
+					p.name .. " ВЫБЫЛ",
+					"До конца операции наблюдает за отрядом",
+					C.RED,
+					2.5,
+					"skull"
+				)
 			end
 		end
 	end
@@ -566,6 +617,8 @@ function World:playerResult(p)
 		level = self.level,
 		revives = p.revives or 0,
 		feats = table.clone(p.feats),
+		causes = table.clone(p.causeKills),
+		hitsTaken = p.hitsTaken,
 	}
 end
 
@@ -649,6 +702,8 @@ function World:spawnEnemy(kind: string, x: number, z: number, spawnTime: number?
 		cd2 = self.t + 3,
 		slow = 0,
 		slowUntil = 0,
+		chill = 0, -- damage reduction while slowed (Крио-патроны)
+		frail = 0, -- extra damage taken while slowed (Крио-патроны)
 		burnDps = 0,
 		burnUntil = 0,
 		burnOwner = nil,
@@ -690,7 +745,8 @@ end
 function World:spawnAtPoint(kind: string, cx: number, cz: number, spread: number, spawnTime: number?)
 	local def = Defs.Enemies[kind]
 	for _ = 1, 6 do
-		local x, z = self.nav.resolve(cx + self.rng:range(-spread, spread), cz + self.rng:range(-spread, spread), def.radius)
+		local x, z =
+			self.nav.resolve(cx + self.rng:range(-spread, spread), cz + self.rng:range(-spread, spread), def.radius)
 		if self.nav.free(x, z, def.radius) then
 			local ok = true
 			for _, p in self.playerList do
@@ -762,7 +818,13 @@ function World:kill(e, p, depth: number, cause: number)
 		self.hive.remaining -= 1
 		if self.hive.remaining <= 0 and self.hive.state == "active" then
 			self.hive.state = "cleared"
-			self:banner("УЛЕЙ ЗАЧИЩЕН", "Гнёзда уничтожены: лечение и опыт", C.LIME, 3, "hive")
+			self:banner(
+				"УЛЕЙ ЗАЧИЩЕН",
+				"Гнёзда уничтожены: лечение и опыт",
+				C.LIME,
+				3,
+				"hive"
+			)
 			for _, pl in self.playerList do
 				self:heal(pl, Defs.Hive.RewardHeal)
 			end
@@ -780,7 +842,13 @@ function World:grantCores(x: number, z: number)
 			p.hasCore = true
 			local evo = Defs.Evolutions[p.weaponDef.evolution]
 			self:emit(E.CORE, x, z, p.id)
-			self:banner(evo.coreName .. " ПОЛУЧЕНО", "Собери оба ключа, чтобы получить " .. evo.name, C.GOLD, 3.5, "core")
+			self:banner(
+				evo.coreName .. " ПОЛУЧЕНО",
+				"Собери оба ключа, чтобы получить " .. evo.name,
+				C.GOLD,
+				3.5,
+				"core"
+			)
 			Combat.checkEvolve(self, p)
 		end
 	end
@@ -1007,7 +1075,15 @@ function World:director(dt: number)
 		local scripted = ph.quiet or beatAt(self.op, ph.at)
 		if index > 1 and index < 1000 and not scripted then
 			local calm = ph.rate < 2
-			self:banner(ph.label, if calm then "Затишье — подлечись и соберись" else "Прорывы: " .. #ph.dirs .. " направлений", if calm then C.CYAN else C.ORANGE, 2.6, if calm then "timer" else "threat")
+			self:banner(
+				ph.label,
+				if calm
+					then "Затишье — подлечись и соберись"
+					else "Прорывы: " .. #ph.dirs .. " направлений",
+				if calm then C.CYAN else C.ORANGE,
+				2.6,
+				if calm then "timer" else "threat"
+			)
 		end
 	end
 	local n = math.max(1, #self.playerList)
@@ -1075,8 +1151,12 @@ function World:legacyElite()
 	if e then
 		self:banner(
 			if self.legacyElites == 1 then "ЭЛИТА НА ПОДХОДЕ" else "ВТОРАЯ ЭЛИТА",
-			if self.op.runEvolution then "Убей элиту — она несёт ядро эволюции" else "Опасная цель — сосредоточь огонь",
-			C.GOLD, 3.5, "@" .. e.def.index
+			if self.op.runEvolution
+				then "Убей элиту — она несёт ядро эволюции"
+				else "Опасная цель — сосредоточь огонь",
+			C.GOLD,
+			3.5,
+			"@" .. e.def.index
 		)
 	end
 end
@@ -1092,7 +1172,13 @@ function World:startHive()
 	for _, s in self.map.hiveSites do
 		self:spawnEnemy("HIVE", s.x, s.z, 1.5)
 	end
-	self:banner("ПРОРЫВ УЛЬЯ", "Уничтожь 3 гнезда, пока они не ушли под землю", C.LIME, 3.5, "@6")
+	self:banner(
+		"ПРОРЫВ УЛЬЯ",
+		"Уничтожь 3 гнезда, пока они не ушли под землю",
+		C.LIME,
+		3.5,
+		"@6"
+	)
 end
 
 function World:spawnBoss()
@@ -1108,7 +1194,15 @@ function World:spawnBoss()
 	b.invulnerable = true
 	self.boss = b
 	self:emit(E.BOSS, 1)
-	self:banner(b.def.name, if b.kind == "BOSS_DEVOURER" then "Земля дрожит. Он идёт снизу." else "Королева роя прорвалась через северные ворота", C.RED, 4, "@" .. b.def.index)
+	self:banner(
+		b.def.name,
+		if b.kind == "BOSS_DEVOURER"
+			then "Земля дрожит. Он идёт снизу."
+			else "Королева роя прорвалась через северные ворота",
+		C.RED,
+		4,
+		"@" .. b.def.index
+	)
 end
 
 function World:enrageBoss()
@@ -1116,7 +1210,13 @@ function World:enrageBoss()
 		self.enraged = true
 		self:emit(E.BOSS, 3)
 		local limit = self.op.hardLimit or Defs.Run.HardLimit
-		self:banner("ЯРОСТЬ", string.format("Убей босса до %d:%02d", limit // 60, limit % 60), C.RED, 3, "skull")
+		self:banner(
+			"ЯРОСТЬ",
+			string.format("Убей босса до %d:%02d", limit // 60, limit % 60),
+			C.RED,
+			3,
+			"skull"
+		)
 	end
 end
 
@@ -1382,8 +1482,21 @@ function World:tick(dt: number)
 			if f and self.t >= f.at then
 				p.hammerFollow = nil
 				for _, e in self:query(f.x, f.z, f.radius + 2, {}) do
-					if e.alive and not e.def.static and (e.x - f.x) ^ 2 + (e.z - f.z) ^ 2 <= (f.radius + e.def.radius) ^ 2 then
-						Combat.damage(self, p, e, f.dmg * (if e.def.boss then Defs.S01.BossMult elseif e.def.big then Defs.S01.BigMult else 1), 1, bit32.bor(Codec.DF.BLAST, Codec.DF.GRAV), f.x, f.z)
+					if
+						e.alive
+						and not e.def.static
+						and (e.x - f.x) ^ 2 + (e.z - f.z) ^ 2 <= (f.radius + e.def.radius) ^ 2
+					then
+						Combat.damage(
+							self,
+							p,
+							e,
+							f.dmg * (if e.def.boss then Defs.S01.BossMult elseif e.def.big then Defs.S01.BigMult else 1),
+							1,
+							bit32.bor(Codec.DF.BLAST, Codec.DF.GRAV),
+							f.x,
+							f.z
+						)
 					end
 				end
 				self:emit(E.HAMMER, p.id, f.x, f.z, f.radius, 3, 0, 0)

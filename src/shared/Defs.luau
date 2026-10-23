@@ -222,34 +222,67 @@ Defs.Evolutions = {
 -- the weapon + a thematic feat (a deterministic personal counter, no RNG) + one Ксенит craft. Effects use the
 -- module path (virtual card ranks capped at III + stat tweaks). Never required for the campaign.
 Defs.Evolutions.EV_M20_STORM = {
-	id = "EV_M20_STORM", name = "ГРОЗА", weapon = "W_ARC_RIFLE", m20 = true, cost = 2400, color = rgb(120, 200, 255),
+	id = "EV_M20_STORM",
+	name = "ГРОЗА",
+	weapon = "W_ARC_RIFLE",
+	m20 = true,
+	cost = 2400,
+	color = rgb(120, 200, 255),
 	text = "Сеть контроля: цепь и замедление на каждом попадании. −20% урона одной цели.",
 	feat = { counter = "arcKills", need = 1500, text = "1500 убийств цепными разрядами" },
-	ranks = { UPG_CHAIN = 3, UPG_FREEZE = 1 }, mods = { damageMult = 0.8, rateMult = 1.1 },
-	keys = {}, coreName = "",
+	ranks = { UPG_CHAIN = 3, UPG_FREEZE = 1 },
+	mods = { damageMult = 0.8, rateMult = 1.1 },
+	keys = {},
+	coreName = "",
 }
 Defs.Evolutions.EV_M20_FIRE_RAM = {
-	id = "EV_M20_FIRE_RAM", name = "ОГНЕННЫЙ ТАРАН", weapon = "W_SCATTERGUN", m20 = true, cost = 2600, color = rgb(255, 120, 50),
+	id = "EV_M20_FIRE_RAM",
+	name = "ОГНЕННЫЙ ТАРАН",
+	weapon = "W_SCATTERGUN",
+	m20 = true,
+	cost = 2600,
+	color = rgb(255, 120, 50),
 	text = "Узкий концентрированный термозалп: +40% урона и поджог, конус вдвое уже, −2 дробины.",
 	feat = { counter = "burnKills", need = 800, text = "800 убийств поджогом из Вулкана" },
-	ranks = { UPG_IGNITE = 3 }, mods = { spreadMult = 0.5, damageMult = 1.4, pelletsAdd = -2 },
-	keys = {}, coreName = "",
+	ranks = { UPG_IGNITE = 3 },
+	mods = { spreadMult = 0.5, damageMult = 1.4, pelletsAdd = -2 },
+	keys = {},
+	coreName = "",
 }
 Defs.Evolutions.EV_M20_VOID_PRISM = {
-	id = "EV_M20_VOID_PRISM", name = "ПРИЗМА ПУСТОТЫ", weapon = "W_PLASMA_BEAM", m20 = true, cost = 2800, color = rgb(170, 90, 255),
+	id = "EV_M20_VOID_PRISM",
+	name = "ПРИЗМА ПУСТОТЫ",
+	weapon = "W_PLASMA_BEAM",
+	m20 = true,
+	cost = 2800,
+	color = rgb(170, 90, 255),
 	text = "Расщеплённый луч: два боковых луча и дальность, −15% урона основного.",
 	feat = { counter = "heavyKills", need = 120, text = "120 тяжёлых целей лучом" },
-	ranks = { UPG_MULTISHOT = 2 }, mods = { damageMult = 0.85, rangeMult = 1.1 },
-	keys = {}, coreName = "",
+	ranks = { UPG_MULTISHOT = 2 },
+	mods = { damageMult = 0.85, rangeMult = 1.1 },
+	keys = {},
+	coreName = "",
 }
 Defs.Evolutions.EV_M20_STAR_TUNNEL = {
-	id = "EV_M20_STAR_TUNNEL", name = "ЗВЁЗДНЫЙ ТУННЕЛЬ", weapon = "W_RAILGUN", m20 = true, cost = 3000, color = rgb(255, 235, 150),
+	id = "EV_M20_STAR_TUNNEL",
+	name = "ЗВЁЗДНЫЙ ТУННЕЛЬ",
+	weapon = "W_RAILGUN",
+	m20 = true,
+	cost = 3000,
+	color = rgb(255, 235, 150),
 	text = "Длинная заряженная линия: +8 пробитий, +30% дальности и +25% урона, но −20% скорострельности.",
 	feat = { counter = "line4", need = 150, text = "150 выстрелов, пробивших 4+ врагов" },
-	ranks = {}, mods = { pierceAdd = 8, falloffAdd = 0.1, rangeMult = 1.3, damageMult = 1.25, rateMult = 0.8 },
-	keys = {}, coreName = "",
+	ranks = {},
+	mods = { pierceAdd = 8, falloffAdd = 0.1, rangeMult = 1.3, damageMult = 1.25, rateMult = 0.8 },
+	keys = {},
+	coreName = "",
 }
-Defs.M20ByWeapon = { W_ARC_RIFLE = "EV_M20_STORM", W_SCATTERGUN = "EV_M20_FIRE_RAM", W_PLASMA_BEAM = "EV_M20_VOID_PRISM", W_RAILGUN = "EV_M20_STAR_TUNNEL" }
+Defs.M20ByWeapon = {
+	W_ARC_RIFLE = "EV_M20_STORM",
+	W_SCATTERGUN = "EV_M20_FIRE_RAM",
+	W_PLASMA_BEAM = "EV_M20_VOID_PRISM",
+	W_RAILGUN = "EV_M20_STAR_TUNNEL",
+}
 
 export type UpgradeDef = {
 	id: string,
@@ -272,12 +305,21 @@ Defs.UpgradeValues = {
 	UPG_IGNITE = { dps = { 5, 8, 12 }, duration = 3 },
 	UPG_DETONATE = { every = { 8, 6, 4 }, damage = { 40, 55, 75 }, radius = 13 },
 	UPG_CORRODE = { perHit = 0.06, cap = { 0.24, 0.36, 0.48 }, duration = 4 },
-	UPG_FREEZE = { slow = { 0.22, 0.32, 0.42 }, duration = 2, bossCap = 0.1 },
+	UPG_FREEZE = {
+		slow = { 0.22, 0.32, 0.42 },
+		weaken = { 0.25, 0.35, 0.45 },
+		frail = { 0.12, 0.18, 0.25 },
+		shards = { 3, 4, 5 },
+		shardMult = 0.7,
+		shardRadius = 10,
+		duration = 2,
+		bossCap = 0.1,
+	},
 	UPG_MULTISHOT = { extra = { 1, 2, 2 }, mult = { 0.45, 0.45, 0.6 } },
 	UPG_FIRERATE = { bonus = { 0.14, 0.27, 0.4 } },
 	UPG_CRIT = { chance = { 0.1, 0.18, 0.26 }, mult = { 1.6, 1.8, 2.1 } },
 	UPG_DASH_SHOCK = { damage = { 35, 60, 90 }, radius = 5, stun = 0.7, cooldown = { 0, 0.4, 0.8 } },
-	UPG_SHIELD = { every = { 22, 17, 12 }, amount = { 20, 30, 40 } },
+	UPG_SHIELD = { every = { 22, 17, 12 }, amount = { 20, 30, 40 }, reactor = { 40, 60, 80 } },
 }
 
 local V = Defs.UpgradeValues
@@ -289,6 +331,7 @@ end
 Defs.Upgrades = {
 	UPG_CHAIN = {
 		id = "UPG_CHAIN",
+		style = "CROWD",
 		name = "ЦЕПНАЯ ДУГА",
 		icon = "chain",
 		color = rgb(84, 238, 255),
@@ -301,6 +344,7 @@ Defs.Upgrades = {
 	},
 	UPG_RICOCHET = {
 		id = "UPG_RICOCHET",
+		style = "CROWD",
 		name = "РИКОШЕТ",
 		icon = "ricochet",
 		color = rgb(120, 200, 255),
@@ -313,6 +357,7 @@ Defs.Upgrades = {
 	},
 	UPG_PIERCE = {
 		id = "UPG_PIERCE",
+		style = "LINE",
 		name = "ПРОБОЙ",
 		icon = "pierce",
 		color = rgb(200, 160, 255),
@@ -325,6 +370,7 @@ Defs.Upgrades = {
 	},
 	UPG_IGNITE = {
 		id = "UPG_IGNITE",
+		style = "CROWD",
 		name = "ПОДЖОГ",
 		icon = "fire",
 		color = rgb(255, 140, 50),
@@ -337,6 +383,7 @@ Defs.Upgrades = {
 	},
 	UPG_DETONATE = {
 		id = "UPG_DETONATE",
+		style = "CROWD",
 		name = "ДЕТОНАТОР",
 		icon = "burst",
 		color = rgb(255, 90, 60),
@@ -349,6 +396,7 @@ Defs.Upgrades = {
 	},
 	UPG_CORRODE = {
 		id = "UPG_CORRODE",
+		style = "CONTROL",
 		name = "КОРРОЗИЯ",
 		icon = "drop",
 		color = rgb(170, 255, 80),
@@ -361,6 +409,7 @@ Defs.Upgrades = {
 	},
 	UPG_FREEZE = {
 		id = "UPG_FREEZE",
+		style = "CONTROL",
 		name = "КРИО-ПАТРОНЫ",
 		icon = "snow",
 		color = rgb(150, 230, 255),
@@ -368,11 +417,14 @@ Defs.Upgrades = {
 			return `−{pct(pick(r, V.UPG_FREEZE.slow))} скорости`
 		end,
 		describe = function(r)
-			return "Попадания замедляют врагов на 2 с."
+			return `Замедленные: +{pct(pick(r, V.UPG_FREEZE.frail))} урона к ним, −{pct(
+				pick(r, V.UPG_FREEZE.weaken)
+			)} их урона. Гибель — {pick(r, V.UPG_FREEZE.shards)} ледяных осколка.`
 		end,
 	},
 	UPG_MULTISHOT = {
 		id = "UPG_MULTISHOT",
+		style = "CROWD",
 		name = "РАСЩЕПЛЕНИЕ",
 		icon = "fan",
 		color = rgb(255, 220, 90),
@@ -381,10 +433,12 @@ Defs.Upgrades = {
 		end,
 		describe = function(r)
 			return `Боковые снаряды, {pct(pick(r, V.UPG_MULTISHOT.mult))} урона.`
+				.. (if r >= 3 then " Боковые пробивают ещё 1 цель." else "")
 		end,
 	},
 	UPG_FIRERATE = {
 		id = "UPG_FIRERATE",
+		style = "LINE",
 		name = "РАЗГОН",
 		icon = "chevrons",
 		color = rgb(255, 240, 160),
@@ -397,18 +451,22 @@ Defs.Upgrades = {
 	},
 	UPG_CRIT = {
 		id = "UPG_CRIT",
-		name = "МЕТКОСТЬ",
+		style = "LINE",
+		name = "ТОЧНЫЙ УДАР",
 		icon = "crosshair",
 		color = rgb(255, 80, 120),
 		stat = function(r)
 			return `{pct(pick(r, V.UPG_CRIT.chance))} · ×{pick(r, V.UPG_CRIT.mult)}`
 		end,
 		describe = function(r)
-			return "Шанс критического попадания."
+			return "Шанс критического попадания: урон ×"
+				.. pick(r, V.UPG_CRIT.mult)
+				.. "."
 		end,
 	},
 	UPG_DASH_SHOCK = {
 		id = "UPG_DASH_SHOCK",
+		style = "CONTROL",
 		name = "ШОКОВЫЙ РЫВОК",
 		icon = "dashbolt",
 		color = rgb(110, 255, 210),
@@ -416,11 +474,13 @@ Defs.Upgrades = {
 			return `{pick(r, V.UPG_DASH_SHOCK.damage)} урона`
 		end,
 		describe = function(r)
-			return "Рывок бьёт током и оглушает." .. (if r >= 2 then " Рывок чаще." else "")
+			return "Рывок бьёт током и оглушает."
+				.. (if r >= 2 then " Рывок чаще." else "")
 		end,
 	},
 	UPG_SHIELD = {
 		id = "UPG_SHIELD",
+		style = "CONTROL",
 		name = "БАРЬЕР",
 		icon = "shield",
 		color = rgb(120, 160, 255),
@@ -428,25 +488,110 @@ Defs.Upgrades = {
 			return `щит {pick(r, V.UPG_SHIELD.amount)}`
 		end,
 		describe = function(r)
-			return `Каждые {pick(r, V.UPG_SHIELD.every)} убийств — энергощит.`
+			return `Каждые {pick(r, V.UPG_SHIELD.every)} убийств — энергощит тебе и реактору.`
 		end,
 	},
 } :: { [string]: UpgradeDef }
 
 Defs.UpgradeOrder = {
-	"UPG_CHAIN", "UPG_RICOCHET", "UPG_PIERCE", "UPG_IGNITE", "UPG_DETONATE", "UPG_CORRODE",
-	"UPG_FREEZE", "UPG_MULTISHOT", "UPG_FIRERATE", "UPG_CRIT", "UPG_DASH_SHOCK", "UPG_SHIELD",
+	"UPG_CHAIN",
+	"UPG_RICOCHET",
+	"UPG_PIERCE",
+	"UPG_IGNITE",
+	"UPG_DETONATE",
+	"UPG_CORRODE",
+	"UPG_FREEZE",
+	"UPG_MULTISHOT",
+	"UPG_FIRERATE",
+	"UPG_CRIT",
+	"UPG_DASH_SHOCK",
+	"UPG_SHIELD",
 }
 
 Defs.Fallbacks = {
-	FB_REPAIR = { id = "FB_REPAIR", name = "ПОЛЕВОЙ РЕМОНТ", icon = "plus", color = rgb(110, 255, 140), text = "+35 здоровья" },
-	FB_CHARGE = { id = "FB_CHARGE", name = "ГРАВИЗАРЯД", icon = "battery", color = rgb(84, 238, 255), text = "Гравимолот готов сразу" },
+	FB_REPAIR = {
+		id = "FB_REPAIR",
+		name = "ПОЛЕВОЙ РЕМОНТ",
+		icon = "plus",
+		color = rgb(110, 255, 140),
+		text = "+35 здоровья",
+	},
+	FB_CHARGE = {
+		id = "FB_CHARGE",
+		name = "ГРАВИЗАРЯД",
+		icon = "battery",
+		color = rgb(84, 238, 255),
+		text = "Гравимолот готов сразу",
+	},
 }
 
-Defs.Synergies = {
-	SYN_CHAIN_RICOCHET = { keys = { "UPG_CHAIN", "UPG_RICOCHET" }, name = "ДВОЙНАЯ ДУГА" },
-	SYN_IGNITE_DETONATE = { keys = { "UPG_IGNITE", "UPG_DETONATE" }, name = "ПОГРЕБАЛЬНЫЙ КОСТЁР" },
+-- Build styles (DD-017): every card belongs to one way of fighting. The first offer of a run shows one
+-- card of each style, and the draft leans towards finishing a synergy you started.
+Defs.Styles = {
+	CROWD = {
+		name = "РАЗГРОМ",
+		color = rgb(255, 150, 60),
+		icon = "burst",
+		text = "Зачистка толпы: цепи, отскоки, взрывы",
+	},
+	LINE = {
+		name = "ЛИНИЯ",
+		color = rgb(200, 160, 255),
+		icon = "pierce",
+		text = "Пробой колонн, криты и темп",
+	},
+	CONTROL = {
+		name = "КОНТРОЛЬ",
+		color = rgb(130, 220, 255),
+		icon = "shield",
+		text = "Замедление, коррозия, щит: держи позицию",
+	},
 }
+Defs.StyleOrder = { "CROWD", "LINE", "CONTROL" }
+
+Defs.Synergies = {
+	SYN_CHAIN_RICOCHET = {
+		keys = { "UPG_CHAIN", "UPG_RICOCHET" },
+		name = "ДВОЙНАЯ ДУГА",
+		text = "Рикошеты заряжают цепную дугу.",
+	},
+	SYN_IGNITE_DETONATE = {
+		keys = { "UPG_IGNITE", "UPG_DETONATE" },
+		name = "ПОГРЕБАЛЬНЫЙ КОСТЁР",
+		text = "Горящие враги взрываются при гибели.",
+	},
+	SYN_PIERCE_CRIT = {
+		keys = { "UPG_PIERCE", "UPG_CRIT" },
+		name = "ЛИНИЯ ОГНЯ",
+		text = "С 3-й цели пробоя — крит без ослабления.",
+	},
+	SYN_FREEZE_SHIELD = {
+		keys = { "UPG_FREEZE", "UPG_SHIELD" },
+		name = "ЛЕДЯНОЙ ПАНЦИРЬ",
+		text = "Щит при ударе и пополнении замораживает всех рядом.",
+	},
+	SYN_DASH_FREEZE = {
+		keys = { "UPG_DASH_SHOCK", "UPG_FREEZE" },
+		name = "ЛЕДОЛОМ",
+		text = "Рывок раскалывает замедленных: ×2 урона.",
+	},
+	SYN_FREEZE_CORRODE = {
+		keys = { "UPG_FREEZE", "UPG_CORRODE" },
+		name = "ХРУПКОСТЬ",
+		text = "Замедленные разъедаются вдвое быстрее, предел +15%.",
+	},
+}
+Defs.SynergyOrder = {
+	"SYN_CHAIN_RICOCHET",
+	"SYN_IGNITE_DETONATE",
+	"SYN_PIERCE_CRIT",
+	"SYN_FREEZE_SHIELD",
+	"SYN_DASH_FREEZE",
+	"SYN_FREEZE_CORRODE",
+}
+Defs.Brittle = { RateMult = 2, CapAdd = 0.15 }
+Defs.FrostShell = { Radius = 9, Stun = 0.8, Slow = 0.45, SlowTime = 2.2, Damage = 12, Cooldown = 2 }
+Defs.IceBreakMult = 2
 
 export type EnemyDef = {
 	id: string,
@@ -464,19 +609,180 @@ export type EnemyDef = {
 }
 
 Defs.Enemies = {
-	EN_RUNNER = { id = "EN_RUNNER", index = 1, name = "БЕГУН", hp = 24, speed = 15.5, radius = 1.6, damage = 7, cooldown = 1.0, xp = 1, big = false, boss = false, scaleHp = true },
-	EN_STALKER = { id = "EN_STALKER", index = 2, name = "ПРЫГУН", hp = 40, speed = 17, radius = 1.8, damage = 12, cooldown = 2.8, xp = 2, big = false, boss = false, scaleHp = true },
-	EN_SPITTER = { id = "EN_SPITTER", index = 3, name = "ПЛЕВУН", hp = 60, speed = 9, radius = 2.2, damage = 7, cooldown = 4.2, xp = 3, big = false, boss = false, scaleHp = true },
-	EN_BULWARK = { id = "EN_BULWARK", index = 4, name = "БРОНЕНОСЕЦ", hp = 210, speed = 7.5, radius = 3.2, damage = 16, cooldown = 2.4, xp = 6, big = true, boss = false, scaleHp = true },
-	ELITE_BULWARK = { id = "ELITE_BULWARK", index = 5, name = "ЭЛИТНЫЙ БРОНЕНОСЕЦ", hp = 1150, speed = 9.5, radius = 4.3, damage = 22, cooldown = 2.2, xp = 45, big = true, boss = false, scaleHp = true, elite = true },
-	HIVE = { id = "HIVE", index = 6, name = "ГНЕЗДО", hp = 480, speed = 0, radius = 5, damage = 0, cooldown = 2.4, xp = 20, big = true, boss = false, scaleHp = true, static = true },
-	BOSS_BROODMOTHER = { id = "BOSS_BROODMOTHER", index = 7, name = "МАТКА РАЗЛОМА", hp = 7200, speed = 7, radius = 8.5, damage = 26, cooldown = 0, xp = 0, big = true, boss = true, scaleHp = false },
-	EN_BOMBER = { id = "EN_BOMBER", index = 8, name = "ВЗРЫВУН", hp = 30, speed = 17.5, radius = 1.7, damage = 18, cooldown = 0, xp = 2, big = false, boss = false, scaleHp = true },
+	EN_RUNNER = {
+		id = "EN_RUNNER",
+		index = 1,
+		name = "БЕГУН",
+		hp = 24,
+		speed = 15.5,
+		radius = 1.6,
+		damage = 7,
+		cooldown = 1.0,
+		xp = 1,
+		big = false,
+		boss = false,
+		scaleHp = true,
+	},
+	EN_STALKER = {
+		id = "EN_STALKER",
+		index = 2,
+		name = "ПРЫГУН",
+		hp = 40,
+		speed = 17,
+		radius = 1.8,
+		damage = 12,
+		cooldown = 2.8,
+		xp = 2,
+		big = false,
+		boss = false,
+		scaleHp = true,
+	},
+	EN_SPITTER = {
+		id = "EN_SPITTER",
+		index = 3,
+		name = "ПЛЕВУН",
+		hp = 60,
+		speed = 9,
+		radius = 2.2,
+		damage = 7,
+		cooldown = 4.2,
+		xp = 3,
+		big = false,
+		boss = false,
+		scaleHp = true,
+	},
+	EN_BULWARK = {
+		id = "EN_BULWARK",
+		index = 4,
+		name = "БРОНЕНОСЕЦ",
+		hp = 210,
+		speed = 7.5,
+		radius = 3.2,
+		damage = 16,
+		cooldown = 2.4,
+		xp = 6,
+		big = true,
+		boss = false,
+		scaleHp = true,
+	},
+	ELITE_BULWARK = {
+		id = "ELITE_BULWARK",
+		index = 5,
+		name = "ЭЛИТНЫЙ БРОНЕНОСЕЦ",
+		hp = 1150,
+		speed = 9.5,
+		radius = 4.3,
+		damage = 22,
+		cooldown = 2.2,
+		xp = 45,
+		big = true,
+		boss = false,
+		scaleHp = true,
+		elite = true,
+	},
+	HIVE = {
+		id = "HIVE",
+		index = 6,
+		name = "ГНЕЗДО",
+		hp = 480,
+		speed = 0,
+		radius = 5,
+		damage = 0,
+		cooldown = 2.4,
+		xp = 20,
+		big = true,
+		boss = false,
+		scaleHp = true,
+		static = true,
+	},
+	BOSS_BROODMOTHER = {
+		id = "BOSS_BROODMOTHER",
+		index = 7,
+		name = "МАТКА РАЗЛОМА",
+		hp = 7200,
+		speed = 7,
+		radius = 8.5,
+		damage = 26,
+		cooldown = 0,
+		xp = 0,
+		big = true,
+		boss = true,
+		scaleHp = false,
+	},
+	EN_BOMBER = {
+		id = "EN_BOMBER",
+		index = 8,
+		name = "ВЗРЫВУН",
+		hp = 30,
+		speed = 17.5,
+		radius = 1.7,
+		damage = 18,
+		cooldown = 0,
+		xp = 2,
+		big = false,
+		boss = false,
+		scaleHp = true,
+	},
 	-- Objective kinds (stage 8): the O01 elite and the O05 / C-A01 structures get their own bodies.
-	ELITE_CARRIER = { id = "ELITE_CARRIER", index = 10, name = "НОСИТЕЛЬ ЯДРА", hp = 1150, speed = 9.5, radius = 4.3, damage = 22, cooldown = 2.2, xp = 45, big = true, boss = false, scaleHp = true, elite = true },
-	NODE = { id = "NODE", index = 11, name = "ПИТАЮЩИЙ УЗЕЛ", hp = 1000, speed = 0, radius = 4.5, damage = 0, cooldown = 99, xp = 30, big = true, boss = false, scaleHp = false, static = true },
-	ACID_SOURCE = { id = "ACID_SOURCE", index = 12, name = "КИСЛОТНЫЙ ИСТОЧНИК", hp = 900, speed = 0, radius = 4.5, damage = 0, cooldown = 99, xp = 30, big = true, boss = false, scaleHp = false, static = true },
-	BOSS_DEVOURER = { id = "BOSS_DEVOURER", index = 9, name = "ПОЖИРАТЕЛЬ", hp = 6600, speed = 9.5, radius = 7, damage = 28, cooldown = 0, xp = 0, big = true, boss = true, scaleHp = false },
+	ELITE_CARRIER = {
+		id = "ELITE_CARRIER",
+		index = 10,
+		name = "НОСИТЕЛЬ ЯДРА",
+		hp = 1150,
+		speed = 9.5,
+		radius = 4.3,
+		damage = 22,
+		cooldown = 2.2,
+		xp = 45,
+		big = true,
+		boss = false,
+		scaleHp = true,
+		elite = true,
+	},
+	NODE = {
+		id = "NODE",
+		index = 11,
+		name = "ПИТАЮЩИЙ УЗЕЛ",
+		hp = 1000,
+		speed = 0,
+		radius = 4.5,
+		damage = 0,
+		cooldown = 99,
+		xp = 30,
+		big = true,
+		boss = false,
+		scaleHp = false,
+		static = true,
+	},
+	ACID_SOURCE = {
+		id = "ACID_SOURCE",
+		index = 12,
+		name = "КИСЛОТНЫЙ ИСТОЧНИК",
+		hp = 900,
+		speed = 0,
+		radius = 4.5,
+		damage = 0,
+		cooldown = 99,
+		xp = 30,
+		big = true,
+		boss = false,
+		scaleHp = false,
+		static = true,
+	},
+	BOSS_DEVOURER = {
+		id = "BOSS_DEVOURER",
+		index = 9,
+		name = "ПОЖИРАТЕЛЬ",
+		hp = 6600,
+		speed = 9.5,
+		radius = 7,
+		damage = 28,
+		cooldown = 0,
+		xp = 0,
+		big = true,
+		boss = true,
+		scaleHp = false,
+	},
 } :: { [string]: EnemyDef }
 
 Defs.EnemyByIndex = {} :: { [number]: EnemyDef }
@@ -491,16 +797,42 @@ Defs.Elite = { ChargeWindup = 1.0, ChargeSpeed = 48, ChargeTime = 0.85, ChargeCo
 Defs.Bomber = { Trigger = 6, Fuse = 0.75, Radius = 7, EnemyDamage = 70 }
 Defs.Hive = { SpawnEvery = 2.4, RewardHeal = 40, RewardXp = 60 }
 Defs.Boss = {
-	SweepWindup = 1.1, SweepRadius = 26, SweepAngle = 110, SweepDamage = 24,
-	LaneWindup = 1.5, LaneLength = 95, LaneWidth = 7, LaneDamage = 18, LaneActive = 1.6,
-	ChargeWindup = 1.3, ChargeSpeed = 62, ChargeTime = 1.0, ChargeDamage = 30,
-	ExposedTime = 3.2, ExposedMult = 1.75, SummonEvery = 13, Recover = 1.6,
+	SweepWindup = 1.1,
+	SweepRadius = 26,
+	SweepAngle = 110,
+	SweepDamage = 24,
+	LaneWindup = 1.5,
+	LaneLength = 95,
+	LaneWidth = 7,
+	LaneDamage = 18,
+	LaneActive = 1.6,
+	ChargeWindup = 1.3,
+	ChargeSpeed = 62,
+	ChargeTime = 1.0,
+	ChargeDamage = 30,
+	ExposedTime = 3.2,
+	ExposedMult = 1.75,
+	SummonEvery = 13,
+	Recover = 1.6,
 }
 Defs.Devourer = {
-	BiteWindup = 0.9, BiteRadius = 17, BiteAngle = 90, BiteDamage = 22,
-	BurrowTime = 1.6, EruptWindup = 1.3, EruptRadius = 11, EruptDamage = 30,
-	RingWindup = 1.1, RingCount = 10, RingDistance = 17, RingRadius = 5, RingActive = 2.2, RingDamage = 14,
-	ExposedTime = 3.0, ExposedMult = 1.8, SummonEvery = 15,
+	BiteWindup = 0.9,
+	BiteRadius = 17,
+	BiteAngle = 90,
+	BiteDamage = 22,
+	BurrowTime = 1.6,
+	EruptWindup = 1.3,
+	EruptRadius = 11,
+	EruptDamage = 30,
+	RingWindup = 1.1,
+	RingCount = 10,
+	RingDistance = 17,
+	RingRadius = 5,
+	RingActive = 2.2,
+	RingDamage = 14,
+	ExposedTime = 3.0,
+	ExposedMult = 1.8,
+	SummonEvery = 15,
 }
 
 -- Enemy HP scales with run time; DPS scales with your build.
@@ -534,26 +866,62 @@ Defs.S01 = {
 -- S01 mastery and specializations (DD-013, Gravihammer doc §6). Points = hits + 2×kills + 10×crowd strikes
 -- (never weapon kills). A branch is chosen from M5; its tiers open at M5 / M8 / M12. One branch active.
 Defs.S01Mastery = {
-	Ladder = { 0, 100, 200, 350, 550, 800, 1100, 1500, 2000, 2600, 3300, 4100, 5000, 6000, 7100, 8300, 9600, 11000, 12500, 15000 },
+	Ladder = {
+		0,
+		100,
+		200,
+		350,
+		550,
+		800,
+		1100,
+		1500,
+		2000,
+		2600,
+		3300,
+		4100,
+		5000,
+		6000,
+		7100,
+		8300,
+		9600,
+		11000,
+		12500,
+		15000,
+	},
 	BranchAt = 5,
 	TierAt = { 5, 8, 12 },
 }
 Defs.S01Branches = {
-	A = { id = "A", name = "КАТАКЛИЗМ", color = rgb(255, 140, 50), tiers = {
-		"Расширенный фронт: радиус +15%",
-		"Сейсмический отклик: вторая волна 50% урона",
-		"Грозовой разлом: урон +30%, перезарядка −15%",
-	} },
-	B = { id = "B", name = "БАСТИОН", color = rgb(84, 238, 255), tiers = {
-		"Отражающий импульс: отброс ×1.4, оглушение +0.5 с",
-		"Обратная зарядка: +4 щита за цель (до 30)",
-		"Неприступный шаг: +1 с неуязвимости и +10 HP",
-	} },
-	C = { id = "C", name = "СИНГУЛЯРНОСТЬ", color = rgb(190, 120, 255), tiers = {
-		"Гравитационный след: замедление 40% вокруг",
-		"Сжатие: враги стягиваются к тебе, а не разлетаются",
-		"Коллапс: через 0.6 с повторный удар 60%",
-	} },
+	A = {
+		id = "A",
+		name = "КАТАКЛИЗМ",
+		color = rgb(255, 140, 50),
+		tiers = {
+			"Расширенный фронт: радиус +15%",
+			"Сейсмический отклик: вторая волна 50% урона",
+			"Грозовой разлом: урон +30%, перезарядка −15%",
+		},
+	},
+	B = {
+		id = "B",
+		name = "БАСТИОН",
+		color = rgb(84, 238, 255),
+		tiers = {
+			"Отражающий импульс: отброс ×1.4, оглушение +0.5 с",
+			"Обратная зарядка: +4 щита за цель (до 30)",
+			"Неприступный шаг: +1 с неуязвимости и +10 HP",
+		},
+	},
+	C = {
+		id = "C",
+		name = "СИНГУЛЯРНОСТЬ",
+		color = rgb(190, 120, 255),
+		tiers = {
+			"Гравитационный след: замедление 40% вокруг",
+			"Сжатие: враги стягиваются к тебе, а не разлетаются",
+			"Коллапс: через 0.6 с повторный удар 60%",
+		},
+	},
 }
 
 function Defs.s01Points(stats: any): number
@@ -585,18 +953,66 @@ end
 
 -- Permanent unique components ("КОМПОНЕНТЫ"): earned by deeds in operations, spent on crafting forms.
 Defs.Components = {
-	CMP_STORM_CORE = { id = "CMP_STORM_CORE", name = "ЯДРО БУРИ", icon = "core", text = "Сердце Громовержца. Добыто с Носителя ядра (O01)." },
-	CMP_FLAME_HEART = { id = "CMP_FLAME_HEART", name = "СЕРДЦЕ ПЛАМЕНИ", icon = "core", text = "Сердце Адской мельницы. Первая победа в O05." },
-	CMP_VOID_HEART = { id = "CMP_VOID_HEART", name = "СЕРДЦЕ ПУСТОТЫ", icon = "core", text = "Сердце Копья Пустоты. Первая победа в O06." },
-	CMP_LINE_BREACH = { id = "CMP_LINE_BREACH", name = "ПРОБОЙ ЛИНИИ", icon = "core", text = "Сердце Звездолома. Испытание рельсотрона: выстрелы, пробившие 2+ врагов." },
+	CMP_STORM_CORE = {
+		id = "CMP_STORM_CORE",
+		name = "ЯДРО БУРИ",
+		icon = "core",
+		text = "Сердце Громовержца. Добыто с Носителя ядра (O01).",
+	},
+	CMP_FLAME_HEART = {
+		id = "CMP_FLAME_HEART",
+		name = "СЕРДЦЕ ПЛАМЕНИ",
+		icon = "core",
+		text = "Сердце Адской мельницы. Первая победа в O05.",
+	},
+	CMP_VOID_HEART = {
+		id = "CMP_VOID_HEART",
+		name = "СЕРДЦЕ ПУСТОТЫ",
+		icon = "core",
+		text = "Сердце Копья Пустоты. Первая победа в O06.",
+	},
+	CMP_LINE_BREACH = {
+		id = "CMP_LINE_BREACH",
+		name = "ПРОБОЙ ЛИНИИ",
+		icon = "core",
+		text = "Сердце Звездолома. Испытание рельсотрона: выстрелы, пробившие 2+ врагов.",
+	},
 }
 
 -- Weapon mastery M1–M20 (D03 §3, 03_GAME_DATA mastery thresholds, BALANCE_CANDIDATE). Personal lethal
 -- kills with that weapon. Other weapons scale the arc-rifle ladder by their kill rate.
 Defs.Mastery = {
-	Ladder = { 0, 150, 400, 800, 1300, 2000, 2800, 3800, 5000, 6400, 8000, 9800, 12000, 14500, 17000, 20500, 24500, 29400, 35000, 42000 },
+	Ladder = {
+		0,
+		150,
+		400,
+		800,
+		1300,
+		2000,
+		2800,
+		3800,
+		5000,
+		6400,
+		8000,
+		9800,
+		12000,
+		14500,
+		17000,
+		20500,
+		24500,
+		29400,
+		35000,
+		42000,
+	},
 	Scale = { W_ARC_RIFLE = 1, W_SCATTERGUN = 0.6, W_PLASMA_BEAM = 0.7, W_RAILGUN = 0.4 },
-	Milestones = { [2] = "Модуль I", [4] = "Характерный узел", [8] = "Модуль II", [10] = "Постоянная форма", [15] = "Модуль III", [20] = "Высшая форма" },
+	Milestones = {
+		[2] = "Модуль I",
+		[4] = "Характерный узел",
+		[8] = "Модуль II",
+		[10] = "Постоянная форма",
+		[15] = "Модуль III",
+		[20] = "Высшая форма",
+	},
 }
 
 function Defs.masteryNeed(weaponId: string, rank: number): number
@@ -651,8 +1067,21 @@ end
 
 -- Starter technologies (O01 first win). Grant tops the balance up to one of them (D03 §6).
 Defs.Tech = {
-	TECH_PIERCE_CORE = { id = "TECH_PIERCE_CORE", name = "ПРОБИВНОЙ СЕРДЕЧНИК", cost = 180, text = "Первое попадание каждого выстрела пробивает цель" },
-	TECH_EMERGENCY_CAP = { id = "TECH_EMERGENCY_CAP", name = "АВАРИЙНЫЙ КОНДЕНСАТОР", cost = 180, text = "Раз за операцию: при 50% реактор бьёт импульсом", radius = 22, damage = 90, knock = 12 },
+	TECH_PIERCE_CORE = {
+		id = "TECH_PIERCE_CORE",
+		name = "ПРОБИВНОЙ СЕРДЕЧНИК",
+		cost = 180,
+		text = "Первое попадание каждого выстрела пробивает цель",
+	},
+	TECH_EMERGENCY_CAP = {
+		id = "TECH_EMERGENCY_CAP",
+		name = "АВАРИЙНЫЙ КОНДЕНСАТОР",
+		cost = 180,
+		text = "Раз за операцию: при 50% реактор бьёт импульсом",
+		radius = 22,
+		damage = 90,
+		knock = 12,
+	},
 }
 Defs.TechOrder = { "TECH_PIERCE_CORE", "TECH_EMERGENCY_CAP" }
 Defs.FirstWinGrant = 180
@@ -684,7 +1113,15 @@ Defs.Reactor = {
 	end,
 }
 
-Defs.Overdrive = { PerKill = 0.65, PerElite = 20, RateBonus = 0.3, DamageBonus = 0.15, Pierce = 1, BlastRadius = 15, BlastDamage = 45 }
+Defs.Overdrive = {
+	PerKill = 0.65,
+	PerElite = 20,
+	RateBonus = 0.3,
+	DamageBonus = 0.15,
+	Pierce = 1,
+	BlastRadius = 15,
+	BlastDamage = 45,
+}
 Defs.Coil = { Radius = 7, Range = 34, Damage = 160, Targets = 14, Cooldown = 40, FirstReady = 45 }
 Defs.Drops = { HealChance = 0.012, MagnetChance = 0.004, HealAmount = 25, OrbCap = 220 }
 
@@ -707,16 +1144,97 @@ Defs.Threat = {
 
 -- Meta progression ("МАСТЕРСКАЯ"): small, choice-widening perks bought with Ксенит (stored as `scrap`).
 Defs.Perks = {
-	PK_VITALITY = { id = "PK_VITALITY", name = "ЖИВУЧЕСТЬ", icon = "heart", color = rgb(255, 90, 110), max = 5, costs = { 60, 110, 170, 240, 320 }, stat = function(r: number): string return `+{r * 8} здоровья` end },
-	PK_MAGNET = { id = "PK_MAGNET", name = "МАГНИТ", icon = "magnet", color = rgb(84, 238, 255), max = 3, costs = { 50, 100, 160 }, stat = function(r: number): string return `+{r * 20}% радиус сбора` end },
-	PK_REROLL = { id = "PK_REROLL", name = "ПЕРЕБРОС", icon = "reroll", color = rgb(255, 200, 60), max = 3, costs = { 80, 150, 240 }, stat = function(r: number): string return `{r} переброс карт за забег` end },
-	PK_BANISH = { id = "PK_BANISH", name = "ИЗГНАНИЕ", icon = "banish", color = rgb(255, 80, 80), max = 2, costs = { 120, 220 }, stat = function(r: number): string return `{r} изгнание карт за забег` end },
-	PK_DASH = { id = "PK_DASH", name = "ФОРСАЖ", icon = "dash", color = rgb(110, 255, 210), max = 3, costs = { 70, 130, 200 }, stat = function(r: number): string return `−{r * 8}% перезарядка рывка` end },
-	PK_OVERDRIVE = { id = "PK_OVERDRIVE", name = "ГРАВИТАЦИЯ", icon = "hammer", color = rgb(84, 238, 255), max = 3, costs = { 70, 130, 200 }, stat = function(r: number): string return `−{r * 6}% перезарядка Гравимолота` end },
-	PK_INSIGHT = { id = "PK_INSIGHT", name = "ПРОЗРЕНИЕ", icon = "eye", color = rgb(190, 120, 255), max = 1, costs = { 400 }, stat = function(r: number): string return "4 карты на выбор" end },
-	PK_SALVAGE = { id = "PK_SALVAGE", name = "УТИЛЬ", icon = "gear", color = rgb(200, 210, 220), max = 3, costs = { 90, 160, 250 }, stat = function(r: number): string return `+{r * 12}% Ксенита` end },
+	PK_VITALITY = {
+		id = "PK_VITALITY",
+		name = "ЖИВУЧЕСТЬ",
+		icon = "heart",
+		color = rgb(255, 90, 110),
+		max = 5,
+		costs = { 60, 110, 170, 240, 320 },
+		stat = function(r: number): string
+			return `+{r * 8} здоровья`
+		end,
+	},
+	PK_MAGNET = {
+		id = "PK_MAGNET",
+		name = "МАГНИТ",
+		icon = "magnet",
+		color = rgb(84, 238, 255),
+		max = 3,
+		costs = { 50, 100, 160 },
+		stat = function(r: number): string
+			return `+{r * 20}% радиус сбора`
+		end,
+	},
+	PK_REROLL = {
+		id = "PK_REROLL",
+		name = "ПЕРЕБРОС",
+		icon = "reroll",
+		color = rgb(255, 200, 60),
+		max = 3,
+		costs = { 80, 150, 240 },
+		stat = function(r: number): string
+			return `{r} переброс карт за забег`
+		end,
+	},
+	PK_BANISH = {
+		id = "PK_BANISH",
+		name = "ИЗГНАНИЕ",
+		icon = "banish",
+		color = rgb(255, 80, 80),
+		max = 2,
+		costs = { 120, 220 },
+		stat = function(r: number): string
+			return `{r} изгнание карт за забег`
+		end,
+	},
+	PK_DASH = {
+		id = "PK_DASH",
+		name = "ФОРСАЖ",
+		icon = "dash",
+		color = rgb(110, 255, 210),
+		max = 3,
+		costs = { 70, 130, 200 },
+		stat = function(r: number): string
+			return `−{r * 8}% перезарядка рывка`
+		end,
+	},
+	PK_OVERDRIVE = {
+		id = "PK_OVERDRIVE",
+		name = "ГРАВИТАЦИЯ",
+		icon = "hammer",
+		color = rgb(84, 238, 255),
+		max = 3,
+		costs = { 70, 130, 200 },
+		stat = function(r: number): string
+			return `−{r * 6}% перезарядка Гравимолота`
+		end,
+	},
+	PK_INSIGHT = {
+		id = "PK_INSIGHT",
+		name = "ПРОЗРЕНИЕ",
+		icon = "eye",
+		color = rgb(190, 120, 255),
+		max = 1,
+		costs = { 400 },
+		stat = function(r: number): string
+			return "4 карты на выбор"
+		end,
+	},
+	PK_SALVAGE = {
+		id = "PK_SALVAGE",
+		name = "УТИЛЬ",
+		icon = "gear",
+		color = rgb(200, 210, 220),
+		max = 3,
+		costs = { 90, 160, 250 },
+		stat = function(r: number): string
+			return `+{r * 12}% Ксенита`
+		end,
+	},
 }
-Defs.PerkOrder = { "PK_VITALITY", "PK_MAGNET", "PK_REROLL", "PK_BANISH", "PK_DASH", "PK_OVERDRIVE", "PK_INSIGHT", "PK_SALVAGE" }
+Defs.PerkOrder =
+	{ "PK_VITALITY", "PK_MAGNET", "PK_REROLL", "PK_BANISH", "PK_DASH", "PK_OVERDRIVE", "PK_INSIGHT", "PK_SALVAGE" }
 
 -- Scrap reward for a finished run. lines = { {icon, amount}, ... } for the results screen.
 -- Ксенит for a run (D03 §6): personal credited kills / 12 + 3 per combat level + outcome (+ nests),

@@ -94,14 +94,24 @@ local function motorInfo(m)
 end
 
 local function isJoint(m): boolean
-	return m ~= nil and (m:IsA("Motor6D") or (m:IsA("AnimationConstraint") and m.Attachment0 ~= nil and m.Attachment1 ~= nil))
+	return m ~= nil
+		and (m:IsA("Motor6D") or (m:IsA("AnimationConstraint") and m.Attachment0 ~= nil and m.Attachment1 ~= nil))
 end
 
 -- Two-bone IK. base = world CFrame of joint A's frame (Part0 * C0) before its Transform.
 -- Joint B sits on A's Part1; endLocal is the effector in B's Part1 space. Hinge axis is in B's frame;
 -- bendSign picks the natural bend (+1 elbows forward, -1 knees back). pole = world direction the
 -- middle joint should point to. Returns TA, TB.
-local function solve2(base: CFrame, a, b, endLocal: Vector3, target: Vector3, pole: Vector3, hinge: Vector3, bendSign: number)
+local function solve2(
+	base: CFrame,
+	a,
+	b,
+	endLocal: Vector3,
+	target: Vector3,
+	pole: Vector3,
+	hinge: Vector3,
+	bendSign: number
+)
 	local AB = a.C1inv * b.C0
 	local v1 = AB.Position
 	local v2 = b.C1inv * endLocal
@@ -258,7 +268,11 @@ local function valid(st): boolean
 	end
 	-- avatar re-applied (scaling / appearance): joint frames changed, rebuild
 	local probe = st.j.rShoulder
-	if probe.motor:IsA("AnimationConstraint") and probe.motor.Attachment0 and probe.motor.Attachment0.CFrame ~= probe.C0 then
+	if
+		probe.motor:IsA("AnimationConstraint")
+		and probe.motor.Attachment0
+		and probe.motor.Attachment0.CFrame ~= probe.C0
+	then
 		return false
 	end
 	return st.hrp.Parent ~= nil
@@ -334,7 +348,11 @@ function Rig.setWeapon(character: Model, gun: Model, meta, feel)
 		charge = gun:FindFirstChild("Charge", true),
 		groupParts = groupParts,
 		pivots = pivots,
-		cells = { gun:FindFirstChild("Cell1", true), gun:FindFirstChild("Cell2", true), gun:FindFirstChild("Cell3", true) },
+		cells = {
+			gun:FindFirstChild("Cell1", true),
+			gun:FindFirstChild("Cell2", true),
+			gun:FindFirstChild("Cell3", true),
+		},
 		heatPart = gun:FindFirstChild("Heat", true),
 		core = gun:FindFirstChild("Core", true),
 	}
@@ -384,7 +402,9 @@ function Rig.fire(character: Model, strength: number?)
 	local w = r.freq * 2 * math.pi
 	st.kickPos:impulse(Vector3.new(rnd() * r.side, r.rise * 0.4, r.back) * (w * k))
 	st.kickRot:impulse(Vector3.new(r.rise, rnd() * r.side, rnd() * r.roll) * (w * k))
-	st.torso:impulse(Vector3.new(r.torso, rnd() * r.torso * 0.4, rnd() * r.torso * 0.3) * (st.torso.f * 2 * math.pi * 1.6 * k))
+	st.torso:impulse(
+		Vector3.new(r.torso, rnd() * r.torso * 0.4, rnd() * r.torso * 0.3) * (st.torso.f * 2 * math.pi * 1.6 * k)
+	)
 	st.lastShot = os.clock()
 	st.actionT = os.clock()
 	st.ready.target = 1
@@ -544,7 +564,10 @@ local function reloadPose(st, r: number, style: string, s: number)
 			groupCF.bolt = CFrame.new(0, 0, 0.32 * s * rack)
 			local boltBlend = window(r, 0.76, 0.84) * (1 - window(r, 0.94, 0.99))
 			if boltBlend > 0 then
-				handGun = (handGun or magHand):Lerp(st.gun.boltHandle + Vector3.new(0.05 * s, 0, 0.32 * s * rack), boltBlend)
+				handGun = (handGun or magHand):Lerp(
+					st.gun.boltHandle + Vector3.new(0.05 * s, 0, 0.32 * s * rack),
+					boltBlend
+				)
 				handBlend = math.max(handBlend, boltBlend)
 			end
 			if r >= 0.92 and not st.beats.bolt then
@@ -654,7 +677,8 @@ local function step(st, dt: number, now: number)
 	-- Bladed shooting stance: left shoulder toward the target so both hands reach the gun.
 	local blade = if st.gun then -0.5 * (1 - dead) * (1 - dashK * 0.5) else 0
 	local rootTwist = if st.r15 then blade * 0.3 else blade * 0.7
-	local rootBody = CFrame.new(0, -drop, 0) * CFrame.Angles(leanP - dead * 0.35, rootTwist, leanR + math.sin(ph) * 0.03 * moving)
+	local rootBody = CFrame.new(0, -drop, 0)
+		* CFrame.Angles(leanP - dead * 0.35, rootTwist, leanR + math.sin(ph) * 0.03 * moving)
 	local Troot = toJoint(j.root, rootBody)
 
 	-- FK down the spine.
@@ -662,7 +686,11 @@ local function step(st, dt: number, now: number)
 	local upper = rootPart
 	if st.r15 then
 		local breathe = math.sin(now * 1.6) * 0.012
-		local waistBody = CFrame.Angles(torso.X * 0.6 + breathe - dead * 0.25, blade * 0.7 - math.sin(ph) * 0.06 * moving + torso.Y * 0.5, torso.Z * 0.5)
+		local waistBody = CFrame.Angles(
+			torso.X * 0.6 + breathe - dead * 0.25,
+			blade * 0.7 - math.sin(ph) * 0.06 * moving + torso.Y * 0.5,
+			torso.Z * 0.5
+		)
 		local Twaist = toJoint(j.waist, waistBody)
 		j.waist.motor.Transform = Twaist
 		upper = fk(rootPart, j.waist, Twaist)
@@ -826,7 +854,16 @@ local function step(st, dt: number, now: number)
 				local handCF = CFrame.new(target) * handRot * CFrame.new(-grip)
 				local wristJ = handCF * wr.C1
 				local base = upper * sh.C0
-				local TA, TB = solve2(base, sh, el, wr.C0.Position, wristJ.Position, if side == "r" then poleR else poleL, X_AXIS, 1)
+				local TA, TB = solve2(
+					base,
+					sh,
+					el,
+					wr.C0.Position,
+					wristJ.Position,
+					if side == "r" then poleR else poleL,
+					X_AXIS,
+					1
+				)
 				sh.motor.Transform = TA
 				el.motor.Transform = TB
 				local upperArm = base * TA * sh.C1inv
@@ -847,7 +884,8 @@ local function step(st, dt: number, now: number)
 			if target then
 				sh.motor.Transform = aim1(rootPart * sh.C0, sh, Vector3.new(0, -0.9, 0), target)
 			else
-				sh.motor.Transform = toJoint(sh, CFrame.Angles(math.sin(ph + (if side == "r" then math.pi else 0)) * 0.6 * moving, 0, 0))
+				sh.motor.Transform =
+					toJoint(sh, CFrame.Angles(math.sin(ph + (if side == "r" then math.pi else 0)) * 0.6 * moving, 0, 0))
 			end
 		end
 	end
@@ -862,7 +900,12 @@ local function step(st, dt: number, now: number)
 		local foot = rest + Vector3.new(stride.X, lift, stride.Z)
 		if dashK > 0 then
 			local dl = hrpCF:VectorToObjectSpace(st.dashDir)
-			foot = foot:Lerp(rest - Vector3.new(dl.X, 0, dl.Z) * legLen * (if i == 1 then 0.35 else 0.1) + Vector3.new(0, legLen * (if i == 1 then 0.35 else 0.15), 0), dashK)
+			foot = foot:Lerp(
+				rest
+					- Vector3.new(dl.X, 0, dl.Z) * legLen * (if i == 1 then 0.35 else 0.1)
+					+ Vector3.new(0, legLen * (if i == 1 then 0.35 else 0.15), 0),
+				dashK
+			)
 		end
 		if dead > 0 then
 			-- kneel: one foot forward, the other knee to the ground
@@ -890,9 +933,7 @@ end
 function Rig.update(dt: number)
 	local now = os.clock()
 	for character, st in rigs do
-		if not character.Parent then
-			rigs[character] = nil
-		elseif st and valid(st) then
+		if character.Parent and st and valid(st) then
 			local ok, err = pcall(step, st, dt, now)
 			if not ok and RunService:IsStudio() and not st.warned then
 				st.warned = true

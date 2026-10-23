@@ -72,6 +72,7 @@ function Mission.new(w, op)
 			warned = {},
 			lastHitT = -99,
 			damageTaken = 0,
+			shield = 0, -- «Барьер» covers the reactor too (DD-017); refilled, never stacked
 		}
 		self.reactor.field = ringField(w, 0, 0, radius + 3)
 	end
@@ -123,6 +124,15 @@ function Mission:hurtObject(obj, amount: number, fromX: number, fromZ: number, a
 		return false
 	end
 	amount *= Defs.Threat.damage(w.threat) * (if acid then 1 else Defs.Reactor.ContactMult)
+	if (obj.shield or 0) > 0 then
+		local absorbed = math.min(obj.shield, amount)
+		obj.shield -= absorbed
+		amount -= absorbed
+		if amount <= 0 then
+			obj.lastShieldT = w.t
+			return true
+		end
+	end
 	obj.hp = math.max(0, obj.hp - amount)
 	obj.lastHitT = w.t
 	if obj.obj == "relay" then
@@ -140,7 +150,13 @@ function Mission:hurtObject(obj, amount: number, fromX: number, fromZ: number, a
 		if pct <= mark and not obj.warned[mark] then
 			obj.warned[mark] = true
 			w:emit(E.REACTOR, 2, math.floor(mark * 100))
-			w:banner(`{obj.name} {math.floor(mark * 100)}%`, "Вернись и перехвати штурм", C.RED, 3, "reactor")
+			w:banner(
+				`{obj.name} {math.floor(mark * 100)}%`,
+				"Вернись и перехвати штурм",
+				C.RED,
+				3,
+				"reactor"
+			)
 		end
 	end
 	-- TECH_EMERGENCY_CAP: once per operation, the hull discharges when it first drops below half.
@@ -150,7 +166,13 @@ function Mission:hurtObject(obj, amount: number, fromX: number, fromZ: number, a
 				self.capUsed = true
 				local T = Defs.Tech.TECH_EMERGENCY_CAP
 				w:emit(E.REACTOR, 5, 0, obj.x, obj.z)
-				w:banner("АВАРИЙНЫЙ КОНДЕНСАТОР", "Импульс корпуса отбросил штурм", C.CYAN, 2.5, "reactor")
+				w:banner(
+					"АВАРИЙНЫЙ КОНДЕНСАТОР",
+					"Импульс корпуса отбросил штурм",
+					C.CYAN,
+					2.5,
+					"reactor"
+				)
 				for _, e in w:query(obj.x, obj.z, T.radius, {}) do
 					if e.alive and not e.def.boss then
 						local dx, dz = e.x - obj.x, e.z - obj.z
@@ -172,6 +194,15 @@ function Mission:hurtObject(obj, amount: number, fromX: number, fromZ: number, a
 		w:finish(false, obj.name .. " УНИЧТОЖЕН" .. (if obj.name == "СЕРДЦЕВИНА" then "А" else ""))
 	end
 	return true
+end
+
+-- «Барьер»: a refill tops the reactor's shield up to `amount` (no stacking across players or refills).
+function Mission:shieldReactor(amount: number)
+	local rc = self.reactor
+	if rc and rc.alive and amount > rc.shield then
+		rc.shield = amount
+		self.w:emit(E.REACTOR, 6, amount, rc.x, rc.z)
+	end
 end
 
 function Mission:hurtReactor(amount: number, fromX: number, fromZ: number, acid: boolean?, target): boolean
@@ -207,7 +238,17 @@ function Mission:activateRelay(index: number, carried: number)
 	local cfg = self.op.relay
 	local c = w.map.coils[index]
 	local hp = cfg.hp * Defs.Reactor.hpScale(w.threat, #w.playerList)
-	local coil = { obj = "relay", name = "КАТУШКА", x = c.x, z = c.z, r = 3.5, hp = hp, maxHp = hp, alive = true, lastHitT = -99 }
+	local coil = {
+		obj = "relay",
+		name = "КАТУШКА",
+		x = c.x,
+		z = c.z,
+		r = 3.5,
+		hp = hp,
+		maxHp = hp,
+		alive = true,
+		lastHitT = -99,
+	}
 	coil.field = ringField(w, c.x, c.z, 6)
 	self.relay = self.relay or { charge = 0, need = cfg.need, used = {} }
 	self.relay.coil = coil
@@ -227,7 +268,13 @@ function Mission:relayLost()
 		-- Backup coil takes over with 100% of the confirmed charge.
 		local carried = self.relay.charge
 		self:activateRelay(self.relayBackup, carried)
-		w:banner("КАТУШКА ПОТЕРЯНА", `Запасная катушка активна · заряд сохранён {carried}/{self.relay.need}`, C.ORANGE, 4, "reactor")
+		w:banner(
+			"КАТУШКА ПОТЕРЯНА",
+			`Запасная катушка активна · заряд сохранён {carried}/{self.relay.need}`,
+			C.ORANGE,
+			4,
+			"reactor"
+		)
 		return
 	end
 	w:finish(false, "ОБЕ КАТУШКИ ПОТЕРЯНЫ")
@@ -286,7 +333,10 @@ function Mission:onKill(e, p)
 			self.relay.charge = math.min(self.relay.need, before + (RELAY_CHARGE[e.kind] or 1))
 			if self.relay.charge >= self.relay.need and before < self.relay.need then
 				w:emit(E.OBJECTIVE, 3, c.x, c.z, 0, self.relay.charge, self.relay.need)
-				self:objectiveDone("КАТУШКА ЗАРЯЖЕНА", "Периметр закрыт. Вернись к реактору и удержи его!")
+				self:objectiveDone(
+					"КАТУШКА ЗАРЯЖЕНА",
+					"Периметр закрыт. Вернись к реактору и удержи его!"
+				)
 			end
 		end
 	end
@@ -297,14 +347,29 @@ function Mission:onKill(e, p)
 		local names = { nest = "ГНЕЗДО", node = "УЗЕЛ", acid = "ИСТОЧНИК" }
 		if self.destroyed >= need and self.state == "FIGHT" then
 			if e.objective == "nest" then
-				self:objectiveDone("ПРОРЫВ ОСТАНОВЛЕН", "Два гнезда уничтожены. Третье — по желанию. Держись!")
+				self:objectiveDone(
+					"ПРОРЫВ ОСТАНОВЛЕН",
+					"Два гнезда уничтожены. Третье — по желанию. Держись!"
+				)
 			elseif e.objective == "node" then
-				self:objectiveDone("УЗЛЫ РАЗРУШЕНЫ", "Улей теряет питание. Удержи сердцевину!")
+				self:objectiveDone(
+					"УЗЛЫ РАЗРУШЕНЫ",
+					"Улей теряет питание. Удержи сердцевину!"
+				)
 			else
-				self:objectiveDone("ИСТОЧНИКИ УНИЧТОЖЕНЫ", "Новая кислота не появится. Удержи периметр!")
+				self:objectiveDone(
+					"ИСТОЧНИКИ УНИЧТОЖЕНЫ",
+					"Новая кислота не появится. Удержи периметр!"
+				)
 			end
 		elseif self.state == "FIGHT" then
-			w:banner(names[e.objective] .. " УНИЧТОЖЕН" .. (if e.objective == "nest" then "О" else ""), `{self.destroyed}/{need}`, C.LIME, 2.5, "hive")
+			w:banner(
+				names[e.objective] .. " УНИЧТОЖЕН" .. (if e.objective == "nest" then "О" else ""),
+				`{self.destroyed}/{need}`,
+				C.LIME,
+				2.5,
+				"hive"
+			)
 		elseif e.objective == "nest" and self.destroyed == #self.targets then
 			w:banner("ВСЕ ГНЁЗДА", "3/3 — бонус Ксенита", C.LIME, 2.5, "hive")
 		end
@@ -384,9 +449,21 @@ function Mission:assault(beat)
 	local eta = dist / Defs.Enemies.EN_RUNNER.speed
 	w:emit(E.ASSAULT, s.x, s.z, spawned, math.floor(eta + 0.5), obj.x, obj.z)
 	if toRelay then
-		w:banner("АТАКА НА КАТУШКУ", `Прыгуны идут с направления {DIR_NAME[key] or key} — защити заряд`, C.ORANGE, 3, "reactor")
+		w:banner(
+			"АТАКА НА КАТУШКУ",
+			`Прыгуны идут с направления {DIR_NAME[key] or key} — защити заряд`,
+			C.ORANGE,
+			3,
+			"reactor"
+		)
 	else
-		w:banner("ШТУРМ: " .. obj.name, `Группа идёт с направления {DIR_NAME[key] or key} — перехвати`, C.ORANGE, 3, "reactor")
+		w:banner(
+			"ШТУРМ: " .. obj.name,
+			`Группа идёт с направления {DIR_NAME[key] or key} — перехвати`,
+			C.ORANGE,
+			3,
+			"reactor"
+		)
 	end
 end
 
@@ -420,7 +497,13 @@ function Mission:elite()
 	e.maxHp = e.hp
 	self.eliteSpawned = true
 	self.goal = self.op.eliteGoal or ("Убей " .. (self.op.eliteName or "элиту"))
-	w:banner(self.op.eliteName or "ЭЛИТА", "Убей его — он несёт Ядро Бури", C.GOLD, 4, "@" .. e.def.index)
+	w:banner(
+		self.op.eliteName or "ЭЛИТА",
+		"Убей его — он несёт Ядро Бури",
+		C.GOLD,
+		4,
+		"@" .. e.def.index
+	)
 end
 
 function Mission:onEliteKilled(e)
@@ -432,7 +515,13 @@ function Mission:onEliteKilled(e)
 	-- Permanent component: granted for the kill itself, even if the run is lost afterwards (GDD §5).
 	table.insert(self.components, "CMP_STORM_CORE")
 	w:emit(E.COMPONENT, e.x, e.z, "CMP_STORM_CORE")
-	w:banner("ЯДРО БУРИ ПОЛУЧЕНО", "Постоянный компонент сохранён. Переживи финальный рой!", C.GOLD, 4, "core")
+	w:banner(
+		"ЯДРО БУРИ ПОЛУЧЕНО",
+		"Постоянный компонент сохранён. Переживи финальный рой!",
+		C.GOLD,
+		4,
+		"core"
+	)
 	self.state = "FINALE"
 	self.finaleUntil = w.t + (self.op.finaleTime or 50)
 	self.goal = "Переживи финальный рой"
@@ -468,7 +557,7 @@ function Mission:runBeat(beat)
 		self:ring(beat)
 		if self.op.s01Event then
 			-- Teach S01 once the ring has actually closed in (see update), not while it is forming.
-			self.s01At = w.t + 0.5 -- the ring is emerging around the player: the moment to teach S01
+			self.s01At = w.t + 0.1 -- the ring is emerging around the player: pause before a dash can leave it
 		end
 	elseif t == "elite" then
 		if self.op.objective == "carrier" then
@@ -480,23 +569,47 @@ function Mission:runBeat(beat)
 		self:activateRelay(self.relayPrimary, 0)
 		local c = w.map.coils[self.relayPrimary]
 		w:emit(E.ASSAULT, c.x, c.z, 0, 0, 0, 0)
-		w:banner("ВНЕШНЯЯ КАТУШКА", "Убивай врагов в её зоне, чтобы зарядить ретранслятор", C.CYAN, 4, "reactor")
+		w:banner(
+			"ВНЕШНЯЯ КАТУШКА",
+			"Убивай врагов в её зоне, чтобы зарядить ретранслятор",
+			C.CYAN,
+			4,
+			"reactor"
+		)
 	elseif t == "nests" then
 		self:spawnTargets("nest", w.map.hiveSites, self.op.nests.hp, {})
 		self.goal = "Уничтожь 2 из 3 гнёзд"
-		w:banner("ГНЁЗДА РАСКРЫТЫ", "Уничтожь любые два из трёх. Третье — бонус", C.LIME, 4, "@6")
+		w:banner(
+			"ГНЁЗДА РАСКРЫТЫ",
+			"Уничтожь любые два из трёх. Третье — бонус",
+			C.LIME,
+			4,
+			"@6"
+		)
 	elseif t == "guard" then
 		self:guard(beat)
 	elseif t == "nodes" then
 		local i = beat.index or 1
 		self:spawnTargets("node", { w.map.hiveSites[i] }, self.op.nodes.hp, { noSpawn = true })
 		self.goal = "Разрушь питающие узлы"
-		w:banner(if i == 1 then "ПИТАЮЩИЙ УЗЕЛ" else "ВТОРОЙ УЗЕЛ", "Уязвим для любого оружия. Взрывуны помогают", C.VIOLET, 4, "@6")
+		w:banner(
+			if i == 1 then "ПИТАЮЩИЙ УЗЕЛ" else "ВТОРОЙ УЗЕЛ",
+			"Уязвим для любого оружия. Взрывуны помогают",
+			C.VIOLET,
+			4,
+			"@6"
+		)
 	elseif t == "acid" then
 		local i = beat.index or 1
 		self:spawnTargets("acid", { w.map.hiveSites[i] }, self.op.acid.hp, { noSpawn = true, acidSource = true })
 		self.goal = "Уничтожь кислотные источники"
-		w:banner(if i == 1 then "КИСЛОТНЫЙ ИСТОЧНИК" else "ВТОРОЙ ИСТОЧНИК", "Стреляй по источнику — он травит двор", C.LIME, 4, "@6")
+		w:banner(
+			if i == 1 then "КИСЛОТНЫЙ ИСТОЧНИК" else "ВТОРОЙ ИСТОЧНИК",
+			"Стреляй по источнику — он травит двор",
+			C.LIME,
+			4,
+			"@6"
+		)
 	elseif t == "hive" then
 		w:startHive()
 	elseif t == "boss" then
@@ -504,7 +617,13 @@ function Mission:runBeat(beat)
 	elseif t == "enrage" then
 		w:enrageBoss()
 	elseif t == "banner" then
-		w:banner(beat.title or "", beat.sub or "", C.CYAN, 3.5, if beat.kind then "@" .. Defs.Enemies[beat.kind].index else "")
+		w:banner(
+			beat.title or "",
+			beat.sub or "",
+			C.CYAN,
+			3.5,
+			if beat.kind then "@" .. Defs.Enemies[beat.kind].index else ""
+		)
 	end
 end
 
@@ -590,7 +709,17 @@ function Mission:publicState()
 	local relay = nil
 	if self.relay and self.relay.coil then
 		local c = self.relay.coil
-		relay = { x = c.x, z = c.z, hp = math.ceil(c.hp), max = math.ceil(c.maxHp), charge = self.relay.charge, need = self.relay.need, radius = self.op.relay.radius, alive = c.alive, hitT = c.lastHitT }
+		relay = {
+			x = c.x,
+			z = c.z,
+			hp = math.ceil(c.hp),
+			max = math.ceil(c.maxHp),
+			charge = self.relay.charge,
+			need = self.relay.need,
+			radius = self.op.relay.radius,
+			alive = c.alive,
+			hitT = c.lastHitT,
+		}
 	end
 	local marks = nil
 	if #self.targets > 0 then
@@ -606,7 +735,15 @@ function Mission:publicState()
 		state = self.state,
 		finaleLeft = if self.finaleUntil then math.max(0, math.ceil(self.finaleUntil - w.t)) else nil,
 		deadlineLeft = deadlineLeft,
-		reactor = if rc then { hp = math.ceil(rc.hp), max = math.ceil(rc.maxHp), hitT = rc.lastHitT, name = rc.name } else nil,
+		reactor = if rc
+			then {
+				hp = math.ceil(rc.hp),
+				max = math.ceil(rc.maxHp),
+				hitT = rc.lastHitT,
+				name = rc.name,
+				shield = math.ceil(rc.shield),
+			}
+			else nil,
 		relay = relay,
 		marks = marks,
 	}

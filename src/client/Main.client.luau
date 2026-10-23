@@ -106,6 +106,7 @@ local dashUntil = 0
 local dashDir = Vector3.zAxis
 local linearVelocity: LinearVelocity? = nil
 local orbCombo, orbComboT = 0, 0
+local burstN, burstT, burstShown = 0, 0, 0 -- own kills inside a rolling 0.5 s window
 local fps = 60
 local debugExtra = {}
 local pausedByMenu = false
@@ -121,7 +122,14 @@ local wasReloading = false
 local localSpread = 0 -- predicted accuracy bloom (degrees), reconciled toward the server value
 local dryClicked = false
 -- Forearms and hands stay visible in first person (they hold the gun in front of the camera).
-local FP_KEEP = { RightHand = true, LeftHand = true, RightLowerArm = true, LeftLowerArm = true, ["Right Arm"] = true, ["Left Arm"] = true }
+local FP_KEEP = {
+	RightHand = true,
+	LeftHand = true,
+	RightLowerArm = true,
+	LeftLowerArm = true,
+	["Right Arm"] = true,
+	["Left Arm"] = true,
+}
 
 local function findPlayerState(id: number)
 	if not run then
@@ -506,7 +514,13 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	elseif not me then
 		Menus.note("НАБЛЮДЕНИЕ · ВЫ ВОЙДЁТЕ В СЛЕДУЮЩИЙ ЗАБЕГ")
 	elseif not me.alive and not run.result and me.downed then
-		Menus.note(string.format("ВЫ РАНЕНЫ · НАПАРНИК ПОДНИМЕТ ВАС  ·  %d с  ·  %d%%", me.bleed or 0, me.revive or 0))
+		Menus.note(
+			string.format(
+				"ВЫ РАНЕНЫ · НАПАРНИК ПОДНИМЕТ ВАС  ·  %d с  ·  %d%%",
+				me.bleed or 0,
+				me.revive or 0
+			)
+		)
 	elseif not me.alive and not run.result then
 		Menus.note("ВЫ ПОВЕРЖЕНЫ · НАБЛЮДАЕТЕ ЗА ОТРЯДОМ")
 	elseif run.paused == "MENU" then
@@ -520,7 +534,8 @@ end)
 
 local function nearMe(pos: Vector3, radius: number): boolean
 	local root = myRoot()
-	return root ~= nil and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(pos.X, 0, pos.Z)).Magnitude < radius
+	return root ~= nil
+		and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(pos.X, 0, pos.Z)).Magnitude < radius
 end
 
 local KILL_GOO = { "goo1", "goo2", "goo3", "goo4", "goo5", "goo6", "goo7" }
@@ -608,7 +623,11 @@ handlers[E.KILL] = function(id, kind, x, z, killer, cause, fromX, fromZ)
 	end
 	Fx.splat(pos, SPLAT_COLOR[kind] or SPLAT_COLOR[1], if kind >= 4 then 9 else 4.5)
 	if kind >= 4 then
-		Fx.boom(pos, if kind == 7 then 20 elseif kind == 5 or kind >= 10 then 12 else 7, Theme.Code[if kind == 6 or kind == 12 then 5 elseif kind == 11 then 3 else 2])
+		Fx.boom(
+			pos,
+			if kind == 7 then 20 elseif kind == 5 or kind >= 10 then 12 else 7,
+			Theme.Code[if kind == 6 or kind == 12 then 5 elseif kind == 11 then 3 else 2]
+		)
 		Audio.at("killBig", pos, 1)
 		if nearMe(pos, 60) then
 			CameraRig.shake(if kind >= 5 then 0.6 else 0.3)
@@ -618,6 +637,19 @@ handlers[E.KILL] = function(id, kind, x, z, killer, cause, fromX, fromZ)
 	end
 	if killer == myId then
 		Hud.hitmarker(true)
+		local now = os.clock()
+		burstN = if now - burstT < 0.5 then burstN + 1 else 1
+		burstT = now
+		if burstN == 1 then
+			burstShown = 0
+		end
+		-- A wave of kills at once (chain, blast, hammer, a pierced column): pop once, then grow.
+		if burstN >= 8 and burstN >= burstShown + 4 then
+			burstShown = burstN
+			Hud.burst(burstN)
+			Audio.play("killBig", 0.7, 0.75 + math.min(burstN, 30) * 0.01)
+			CameraRig.punch(math.min(0.6, 0.2 + burstN * 0.015))
+		end
 	end
 end
 handlers[E.ARC] = function(x1, z1, x2, z2, color)
@@ -639,6 +671,15 @@ handlers[E.ARC] = function(x1, z1, x2, z2, color)
 end
 handlers[E.BOOM] = function(x, z, r, color)
 	local pos = Vector3.new(x, 1, z)
+	if color == Codec.C.BLUE then
+		-- «Ледяной панцирь»: a frost ring and ice glints, not a fireball.
+		Fx.shockwave(pos, r, C.cyan, 0.45)
+		Fx.shockwave(pos, r * 0.6, Color3.fromRGB(220, 250, 255), 0.3)
+		Fx.emit("hitCyan", pos + Vector3.yAxis, math.floor(r * 2))
+		Fx.light(pos + Vector3.yAxis * 3, C.cyan, r * 2.5, 0.25)
+		Audio.at("arc", pos, 0.8, 0.6)
+		return
+	end
 	Fx.boom(pos, r, Theme.Code[color] or C.orange)
 	Audio.at("boom", pos, math.clamp(r / 12, 0.4, 1))
 	if nearMe(pos, r + 20) then
@@ -790,6 +831,9 @@ handlers[E.REACTOR] = function(action, amount, fx, fz)
 			local pos = Vector3.new(fx or 0, 4, fz or 0)
 			Fx.emit("sparkGold", pos, 8)
 		end
+	elseif action == 6 then
+		-- «Барьер» shields the reactor: a quick cyan pulse over the hull.
+		Fx.shockwave(Vector3.new(0, 1, 0), Defs.Reactor.Radius + 4, C.cyan, 0.4)
 	elseif action == 3 then
 		Fx.boom(centre, 26, C.red)
 		Fx.shockwave(Vector3.new(0, 1, 0), 40, C.red, 0.8)
@@ -810,7 +854,18 @@ handlers[E.ASSAULT] = function(sx, sz, count, eta, tx, tz)
 	if len < 1 then
 		return
 	end
-	Fx.telegraph(Codec.Shape.LINE, sx, sz, dx / len, dz / len, len - Defs.Reactor.Radius - 4, 6, math.max(2, eta or 6), C.orange, 0)
+	Fx.telegraph(
+		Codec.Shape.LINE,
+		sx,
+		sz,
+		dx / len,
+		dz / len,
+		len - Defs.Reactor.Radius - 4,
+		6,
+		math.max(2, eta or 6),
+		C.orange,
+		0
+	)
 	Fx.light(Vector3.new(sx, 8, sz), C.orange, 50, 1.2)
 	Audio.play("roar", 0.5, 0.7)
 end
@@ -899,7 +954,12 @@ handlers[E.SHIELD] = function(pid)
 end
 handlers[E.BEAM] = function(pid, ox, oz, ex, ez, evolved)
 	if pid ~= myId then
-		remoteBeams[pid] = { untilT = os.clock() + 0.2, to = Vector3.new(ex, 3, ez), from = Vector3.new(ox, 3, oz), evolved = evolved == 1 }
+		remoteBeams[pid] = {
+			untilT = os.clock() + 0.2,
+			to = Vector3.new(ex, 3, ez),
+			from = Vector3.new(ox, 3, oz),
+			evolved = evolved == 1,
+		}
 	end
 end
 handlers[E.BOSS] = function(action)
@@ -1051,7 +1111,10 @@ local function localFire(dt: number)
 			local half = math.rad(wdef.spread) / 2
 			for _ = 1, pellets do
 				local a = base + (math.random() * 2 - 1) * half
-				table.insert(items, predictShot(muzzle, math.sin(a), math.cos(a), range * (0.85 + math.random() * 0.15), 0))
+				table.insert(
+					items,
+					predictShot(muzzle, math.sin(a), math.cos(a), range * (0.85 + math.random() * 0.15), 0)
+				)
 			end
 			for k = 1, multi do
 				-- Расщепление: side clusters just outside the cone (same rule as the server)
@@ -1118,7 +1181,9 @@ local function animateArena(now: number)
 	end
 	for _, ring in animated.rings do
 		local i = ring[3]
-		ring[1].CFrame = ring[2] * CFrame.new(math.sin(now * 1.3 + i) * 0.4, 0, 0) * CFrame.Angles(now * (0.4 + i * 0.25) * (if i % 2 == 0 then -1 else 1), 0, 0)
+		ring[1].CFrame = ring[2]
+			* CFrame.new(math.sin(now * 1.3 + i) * 0.4, 0, 0)
+			* CFrame.Angles(now * (0.4 + i * 0.25) * (if i % 2 == 0 then -1 else 1), 0, 0)
 	end
 	if animated.core then
 		animated.core.Transparency = 0.35 + (math.sin(now * 2.5) + 1) * 0.08
@@ -1173,7 +1238,10 @@ local function computeArrows(cam: Camera)
 			dx, dy = -dx, -dy
 		end
 		local m = math.max(math.abs(dx) / (cx - margin), math.abs(dy) / (cy - margin), 1e-3)
-		table.insert(arrowList, { x = cx + dx / m, y = cy + dy / m, rot = math.deg(math.atan2(dy, dx)) + 90, color = color, text = text })
+		table.insert(
+			arrowList,
+			{ x = cx + dx / m, y = cy + dy / m, rot = math.deg(math.atan2(dy, dx)) + 90, color = color, text = text }
+		)
 	end
 	for _, rec in EnemyView.records do
 		if rec.kind == 7 or rec.kind == 9 then
@@ -1272,7 +1340,8 @@ local function frame(dt: number)
 		local dashing = now < dashUntil and isPlaying
 		linearVelocity.Enabled = dashing
 		if dashing then
-			linearVelocity.PlaneVelocity = Vector2.new(dashDir.X, dashDir.Z) * (Defs.Player.DashDistance / Defs.Player.DashTime)
+			linearVelocity.PlaneVelocity = Vector2.new(dashDir.X, dashDir.Z)
+				* (Defs.Player.DashDistance / Defs.Player.DashTime)
 		end
 	end
 	if root and isPlaying then
@@ -1284,7 +1353,11 @@ local function frame(dt: number)
 	if isPlaying or lastAimSent.firing then
 		local firing = Controls.firing and isPlaying
 		local dot = Controls.aimX * lastAimSent.x + Controls.aimZ * lastAimSent.z
-		if firing ~= lastAimSent.firing or (now - lastAimSent.t > 0.05 and dot < 0.9995) or now - lastAimSent.t > 0.5 then
+		if
+			firing ~= lastAimSent.firing
+			or (now - lastAimSent.t > 0.05 and dot < 0.9995)
+			or now - lastAimSent.t > 0.5
+		then
 			send("aim", Controls.aimX, Controls.aimZ, firing)
 			lastAimSent.x, lastAimSent.z, lastAimSent.firing, lastAimSent.t = Controls.aimX, Controls.aimZ, firing, now
 		end
@@ -1300,7 +1373,13 @@ local function frame(dt: number)
 				if rig then
 					Gear.update(rig, p.s01Casting, p.shield, not p.alive)
 					local beamKind = Defs.Weapons[p.weapon].kind == "beam"
-					Rig.setState(char, p.alive, if p.reload > 0 then p.reload elseif beamKind and p.overheated then 0.5 else 0, p.ammo / math.max(1, p.mag), p.reloadEmpty)
+					Rig.setState(
+						char,
+						p.alive,
+						if p.reload > 0 then p.reload elseif beamKind and p.overheated then 0.5 else 0,
+						p.ammo / math.max(1, p.mag),
+						p.reloadEmpty
+					)
 					if p.id == myId then
 						local reloading = p.reload > 0
 						if reloading and not wasReloading and not WeaponFeel.get(p.weapon, false).beats then
@@ -1402,18 +1481,42 @@ local function frame(dt: number)
 		computeArrows(cam)
 		local extra = {
 			arrows = arrowList,
-			cursor = if immersive then Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2) elseif Controls.device == "pc" then Controls.cursor else nil,
+			cursor = if immersive
+				then Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+				elseif Controls.device == "pc" then Controls.cursor
+				else nil,
 			showReticle = (Controls.device == "pc" or immersive) and isPlaying and not choosing,
 			device = Controls.device,
 			spread = localSpread,
-			debug = if RunService:IsStudio() then string.format("%.0f FPS  ·  %d ENEMIES  ·  SIM %.2fms  ·  REJ %s  ·  FX %d", fps, EnemyView.count(), debugExtra.simMs or 0, tostring(debugExtra.rejected or 0), Fx.stats().live) else nil,
+			debug = if RunService:IsStudio()
+				then string.format(
+					"%.0f FPS  ·  %d ENEMIES  ·  SIM %.2fms  ·  REJ %s  ·  FX %d",
+					fps,
+					EnemyView.count(),
+					debugExtra.simMs or 0,
+					tostring(debugExtra.rejected or 0),
+					Fx.stats().live
+				)
+				else nil,
 		}
 		Hud.update(run, me, extra, dt)
 		Hud.setView(CameraRig.mode(), CameraRig.ModeIcons[CameraRig.mode()], nil, Controls.device)
 		Controls.setViewIcon(CameraRig.ModeIcons[CameraRig.mode()])
 		-- Touch buttons
-		Controls.setButton("dash", true, me.dash / Defs.Player.DashCooldown, if me.dash > 0 then string.format("%.1f", me.dash) else "", me.dash <= 0)
-		Controls.setButton("overdrive", me.s01, me.s01Left / math.max(1, me.s01Cd), if me.s01Left > 0 then string.format("%.0f", me.s01Left) else "", me.s01Left <= 0 or me.s01Tutorial)
+		Controls.setButton(
+			"dash",
+			true,
+			me.dash / Defs.Player.DashCooldown,
+			if me.dash > 0 then string.format("%.1f", me.dash) else "",
+			me.dash <= 0
+		)
+		Controls.setButton(
+			"overdrive",
+			me.s01,
+			me.s01Left / math.max(1, me.s01Cd),
+			if me.s01Left > 0 then string.format("%.0f", me.s01Left) else "",
+			me.s01Left <= 0 or me.s01Tutorial
+		)
 		Controls.setButton("evolve", me.canEvolve, 0, "READY", true)
 		Controls.setButton("reload", Defs.Weapons[me.weapon].kind ~= "beam", 0, "", false)
 	elseif run then
