@@ -26,33 +26,44 @@ local CUES = {
 	wallHit = { PSE .. "9113632278", 0.18, 1.25, 0.12, 10, "sfx", { 0.08, 0.4 } },
 	ricochet = { PSE .. "9113634061", 0.22, 1.2, 0.1, 6, "sfx", { 0.08, 0.5 } },
 	evolveStorm = { PSE .. "9119841013", 0.8, 1.0, 0, 2, "sfx", { 0.3, 3.2 } },
-	rail = { S .. "impact_explosion_03.mp3", 0.5, 0.9, 0.05, 4, "sfx" },
-	shotgun = { S .. "impact_explosion_03.mp3", 0.42, 1.35, 0.08, 6, "sfx" },
+	-- Stage 12: the rest of the arsenal and the world moved to the Pro Sound Effects library too.
+	-- Regions come from measured loudness envelopes (AudioAnalyzer), so each cue plays its hit, not silence.
+	-- W02 «Вулкан»: 12-gauge body + a short close crack; pump clack; brass drop
+	shotgun = { PSE .. "9112912106", 0.5, 1.0, 0.06, 6, "sfx", { 0, 0.85 } },
+	shotgunCrack = { PSE .. "9112913564", 0.35, 1.15, 0.06, 6, "sfx" },
+	pump = { PSE .. "9112910245", 0.45, 1.05, 0.04, 4, "sfx", { 0.78, 1.05 } },
+	shell = { PSE .. "9113105142", 0.14, 1.2, 0.2, 10, "sfx", { 0, 0.6 } },
+	-- W04 rail: laser crack + thruster body; capacitor charge between shots
+	rail = { PSE .. "9116225257", 0.42, 0.85, 0.05, 4, "sfx", { 0.18, 1.2 } },
+	railBody = { PSE .. "9120006514", 0.35, 0.8, 0.05, 4, "sfx", { 0, 1.0 } },
+	railCharge = { PSE .. "9125980435", 0.16, 1.2, 0.05, 4, "sfx", { 0.15, 1.05 } },
 	beamStart = { S .. "action_falling.ogg", 0.0, 1, 0, 4, "sfx" },
-	hit = { S .. "action_jump_land.mp3", 0.2, 1.8, 0.25, 24, "sfx" },
-	crit = { S .. "volume_slider.ogg", 0.3, 1.9, 0.1, 10, "sfx" },
-	kill = { S .. "impact_water.mp3", 0.24, 1.6, 0.35, 18, "sfx" },
-	killBig = { S .. "impact_explosion_03.mp3", 0.55, 0.75, 0.1, 6, "sfx" },
-	boom = { S .. "impact_explosion_03.mp3", 0.4, 1.0, 0.15, 8, "sfx" },
-	arc = { S .. "volume_slider.ogg", 0.1, 3.2, 0.4, 12, "sfx" },
-	hurt = { S .. "action_jump_land.mp3", 0.8, 0.55, 0.05, 6, "sfx" },
-	dash = { S .. "action_falling.ogg", 0.35, 2.4, 0.1, 4, "sfx" },
-	reload = { S .. "action_get_up.mp3", 0.4, 1.5, 0.05, 3, "sfx" },
-	orb = { S .. "volume_slider.ogg", 0.16, 1.6, 0, 24, "ui" },
-	heal = { S .. "volume_slider.ogg", 0.4, 1.2, 0, 4, "ui" },
-	level = { S .. "volume_slider.ogg", 0.5, 1.0, 0, 6, "ui" },
-	ui = { S .. "volume_slider.ogg", 0.35, 1.25, 0, 20, "ui" },
-	uiHover = { S .. "volume_slider.ogg", 0.12, 1.8, 0, 20, "ui" },
-	warn = { S .. "volume_slider.ogg", 0.32, 0.5, 0, 6, "sfx" },
-	spit = { S .. "impact_water.mp3", 0.3, 0.8, 0.1, 6, "sfx" },
-	roar = { S .. "impact_explosion_03.mp3", 1, 0.32, 0, 2, "sfx" },
-	evolve = { S .. "impact_explosion_03.mp3", 0.9, 0.45, 0, 2, "sfx" },
-	coil = { S .. "impact_explosion_03.mp3", 0.6, 1.7, 0.05, 3, "sfx" },
-	overdrive = { S .. "impact_explosion_03.mp3", 0.8, 0.6, 0, 2, "sfx" },
-	banner = { S .. "volume_slider.ogg", 0.4, 0.7, 0, 4, "ui" },
-	shell = { S .. "volume_slider.ogg", 0.1, 2.7, 0.2, 10, "sfx" },
-	pump = { S .. "action_get_up.mp3", 0.3, 2.3, 0.05, 4, "sfx" },
-	railCharge = { S .. "action_falling.ogg", 0.12, 3.2, 0.05, 4, "sfx" },
+	-- Hits and deaths
+	hit = { PSE .. "9113485720", 0.16, 1.35, 0.25, 24, "sfx", { 0, 0.35 } },
+	crit = { PSE .. "9120146668", 0.22, 1.3, 0.1, 10, "sfx" },
+	kill = { PSE .. "9114788214", 0.2, 1.25, 0.3, 18, "sfx", { 0, 0.6 } },
+	killBig = { PSE .. "9119236757", 0.6, 0.85, 0.1, 6, "sfx", { 0.05, 0.7 } },
+	boom = { PSE .. "9119236749", 0.45, 1.0, 0.15, 8, "sfx", { 0, 1.2 } },
+	arc = { PSE .. "9114277757", 0.12, 1.6, 0.25, 12, "sfx", { 0, 0.08 } },
+	ice = { PSE .. "9114856749", 0.4, 1.1, 0.12, 6, "sfx", { 0.38, 0.9 } },
+	-- Player
+	hurt = { PSE .. "9118167124", 0.7, 0.9, 0.08, 6, "sfx", { 0.25, 0.6 } },
+	dash = { PSE .. "9126229255", 0.4, 1.15, 0.1, 4, "sfx", { 0.05, 0.45 } },
+	reload = { PSE .. "9125656958", 0.5, 1.0, 0.05, 3, "sfx", { 0.48, 0.74 } },
+	heal = { PSE .. "9117297453", 0.35, 1.2, 0, 4, "ui", { 0.3, 1.9 } },
+	overdrive = { PSE .. "9113524242", 0.9, 0.7, 0.03, 2, "sfx", { 0.15, 0.6 } },
+	-- Enemies
+	spit = { PSE .. "9119473131", 0.32, 1.0, 0.12, 6, "sfx" },
+	roar = { PSE .. "9113987603", 1, 0.85, 0, 2, "sfx", { 0.5, 3.0 } },
+	-- UI and events
+	orb = { PSE .. "9114381603", 0.18, 1.3, 0, 24, "ui" },
+	level = { PSE .. "9116422179", 0.45, 1.0, 0, 6, "ui", { 0, 0.8 } },
+	ui = { PSE .. "9118138693", 0.4, 1.1, 0, 20, "ui" },
+	uiHover = { PSE .. "9118138906", 0.14, 1.4, 0, 20, "ui" },
+	warn = { PSE .. "9120491370", 0.3, 1.0, 0, 6, "sfx", { 0.08, 0.45 } },
+	evolve = { PSE .. "9116384485", 0.8, 0.9, 0, 2, "sfx", { 0.08, 1.6 } },
+	coil = { PSE .. "9125446705", 0.5, 1.0, 0.05, 3, "sfx" },
+	banner = { PSE .. "9113867372", 0.35, 1.0, 0, 4, "ui" },
 	step = { S .. "action_footsteps_plastic.mp3", 0.0, 1, 0, 1, "sfx" },
 }
 
@@ -182,6 +193,6 @@ function Audio.loop(key: string, id: string, volume: number, pitch: number)
 	end
 end
 
-Audio.Ids = { whoosh = S .. "action_falling.ogg", rumble = S .. "impact_explosion_03.mp3" }
+Audio.Ids = { whoosh = S .. "action_falling.ogg", rumble = S .. "impact_explosion_03.mp3", beam = PSE .. "9114246115" }
 
 return Audio

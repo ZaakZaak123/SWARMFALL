@@ -33,6 +33,7 @@ Theme.Code = {
 	[6] = rgb(255, 250, 230),
 	[7] = Theme.C.gold,
 	[8] = rgb(150, 210, 255),
+	[9] = rgb(200, 245, 255), -- ICE: frost burst, shards, Ледолом
 }
 
 Theme.F = {
@@ -126,7 +127,11 @@ function Theme.new(class: string, props, children)
 end
 
 function Theme.tween(inst: Instance, time: number, props, style: Enum.EasingStyle?, dir: Enum.EasingDirection?)
-	local t = TweenService:Create(inst, TweenInfo.new(time, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
+	local t = TweenService:Create(
+		inst,
+		TweenInfo.new(time, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out),
+		props
+	)
 	t:Play()
 	return t
 end

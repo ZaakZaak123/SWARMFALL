@@ -46,7 +46,7 @@ Codec.E = {
 }
 
 -- Color codes shared by FX.
-Codec.C = { CYAN = 1, ORANGE = 2, VIOLET = 3, RED = 4, LIME = 5, WHITE = 6, GOLD = 7, BLUE = 8 }
+Codec.C = { CYAN = 1, ORANGE = 2, VIOLET = 3, RED = 4, LIME = 5, WHITE = 6, GOLD = 7, BLUE = 8, ICE = 9 }
 
 -- Telegraph shapes
 Codec.Shape = { CIRCLE = 1, LINE = 2, CONE = 3 }

@@ -516,7 +516,7 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 	end
 	p.graceUntil = self.t + Defs.Player.Grace
 	p.hitsTaken += 1
-	amount *= Defs.Threat.damage(self.threat)
+	amount *= Defs.Threat.damage(self.threat) * (1 - (p.weaponDef.guard or 0))
 	local absorbed = math.min(p.shield, amount)
 	p.shield -= absorbed
 	amount -= absorbed

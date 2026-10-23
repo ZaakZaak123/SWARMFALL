@@ -61,7 +61,7 @@ function Combat.recompute(p)
 	s.critMult = if s.critChance > 0 then pick(rank(p, "UPG_CRIT"), UV.UPG_CRIT.mult) else 1
 	s.multi = rv(p, "UPG_MULTISHOT", UV.UPG_MULTISHOT.extra)
 	s.multiMult = if s.multi > 0 then pick(rank(p, "UPG_MULTISHOT"), UV.UPG_MULTISHOT.mult) else 0
-	s.knock = wd.knockback * (if wd.kind == "shotgun" then 0.3 else 1)
+	s.knock = wd.knockback * (if wd.kind == "shotgun" then 0.5 else 1)
 	s.falloff = wd.falloff
 	local evo = p.evolved
 	if evo and Defs.Evolutions[evo] and Defs.Evolutions[evo].m20 then
@@ -329,6 +329,25 @@ function Combat.hit(w, p, e, dmg: number, dx: number, dz: number, forceCrit: boo
 		flags = DF.CRIT
 	end
 	local ex, ez = e.x, e.z
+	-- Крио chills on impact, before the damage: a one-shot kill (rail, Вулкан) still shatters.
+	-- Frailty (+damage taken) lands after the hit, so it never boosts the hit that applied it.
+	local fr = rank(p, "UPG_FREEZE")
+	if fr > 0 then
+		local slow = pick(fr, UV.UPG_FREEZE.slow)
+		if e.def.boss then
+			slow = math.min(slow, UV.UPG_FREEZE.bossCap)
+		end
+		e.slow = math.max(if t < e.slowUntil then e.slow else 0, slow)
+		e.slowUntil = t + UV.UPG_FREEZE.duration
+		e.chill = math.max(e.chill, pick(fr, UV.UPG_FREEZE.weaken))
+		-- Вулкан + Крио: a point-blank volley freezes small enemies in place for a moment.
+		if p.weaponDef.kind == "shotgun" and not e.def.big then
+			local R = UV.UPG_FREEZE.pointBlankRange
+			if (e.x - p.x) ^ 2 + (e.z - p.z) ^ 2 < R * R then
+				e.stunUntil = math.max(e.stunUntil, t + pick(fr, UV.UPG_FREEZE.pointBlank))
+			end
+		end
+	end
 	Combat.damage(w, p, e, dmg, 0, flags, p.x, p.z)
 	if e.alive then
 		if not e.def.big and s.knock > 0 then
@@ -362,15 +381,7 @@ function Combat.hit(w, p, e, dmg: number, dx: number, dz: number, forceCrit: boo
 			e.vuln = math.min(cap, e.vuln + per)
 			e.vulnUntil = t + UV.UPG_CORRODE.duration
 		end
-		local fr = rank(p, "UPG_FREEZE")
 		if fr > 0 then
-			local slow = pick(fr, UV.UPG_FREEZE.slow)
-			if e.def.boss then
-				slow = math.min(slow, UV.UPG_FREEZE.bossCap)
-			end
-			e.slow = math.max(if t < e.slowUntil then e.slow else 0, slow)
-			e.slowUntil = t + UV.UPG_FREEZE.duration
-			e.chill = math.max(e.chill, pick(fr, UV.UPG_FREEZE.weaken))
 			e.frail = math.max(e.frail, pick(fr, UV.UPG_FREEZE.frail))
 		end
 	end
@@ -494,7 +505,7 @@ function Combat.shatter(w, p, x: number, z: number, fr: number, skip)
 		end
 		list[bi] = list[#list]
 		list[#list] = nil
-		w:emit(E.ARC, x, z, best.x, best.z, C.BLUE)
+		w:emit(E.ARC, x, z, best.x, best.z, C.ICE)
 		local slow = if best.def.boss then UV.UPG_FREEZE.bossCap else pick(fr, UV.UPG_FREEZE.slow)
 		best.slow = math.max(if t < best.slowUntil then best.slow else 0, slow)
 		best.slowUntil = math.max(best.slowUntil, t + UV.UPG_FREEZE.duration)
@@ -512,7 +523,7 @@ function Combat.frostNova(w, p)
 	local F = Defs.FrostShell
 	local t = w.t
 	p.novaReady = t + F.Cooldown
-	w:emit(E.BOOM, p.x, p.z, F.Radius, C.BLUE)
+	w:emit(E.BOOM, p.x, p.z, F.Radius, C.ICE)
 	for _, e in w:query(p.x, p.z, F.Radius, nearBuf) do
 		if e.alive and not e.def.static then
 			if not e.def.big then
@@ -680,7 +691,7 @@ function Combat.updatePlayer(w, p, dt: number)
 				e.stunUntil = math.max(e.stunUntil, t + UV.UPG_DASH_SHOCK.stun)
 				-- ЛЕДОЛОМ: slowed enemies shatter for double damage.
 				local shatter = s.iceBreak and t < e.slowUntil and e.slow > 0
-				w:emit(E.ARC, p.x, p.z, e.x, e.z, if shatter then C.BLUE else C.LIME)
+				w:emit(E.ARC, p.x, p.z, e.x, e.z, if shatter then C.ICE else C.LIME)
 				local dmg = pick(sd, UV.UPG_DASH_SHOCK.damage) * (if shatter then Defs.IceBreakMult else 1)
 				Combat.damage(w, p, e, dmg, 1, bor(DF.ARC, DF.CARD, if shatter then DF.CRIT else 0), p.x, p.z)
 			end

@@ -162,8 +162,22 @@ function Bot.run(
 				if not goal and target and target.def.big and target.kind ~= "EN_BULWARK" and close == 0 then
 					goal = target
 				end
+				-- Short-range guns (Вулкан) cannot out-range Spitters: close in on the nearest one in sight,
+				-- the way a player would.
+				if not goal and range < 50 and close <= 1 then
+					local best, bd = nil, (range + 25) ^ 2
+					for _, e in w.enemies do
+						if e.alive and e.kind == "EN_SPITTER" and (e.x - ax) ^ 2 + (e.z - az) ^ 2 < 60 * 60 then
+							local d = (e.x - p.x) ^ 2 + (e.z - p.z) ^ 2
+							if d < bd then
+								best, bd = e, d
+							end
+						end
+					end
+					goal = best
+				end
 				-- Objective awareness: guard the relay while it charges.
-				local gx0, gz0, gr = ax, az, orbitR
+				local gx0, gz0, gr = ax, az, if range < 50 then math.min(orbitR, range * 0.35) else orbitR
 				local mm = w.mission
 				if not opts.anchor and mm.relay and mm.relay.coil and mm.relay.coil.alive and mm.state == "FIGHT" then
 					gx0, gz0, gr = mm.relay.coil.x, mm.relay.coil.z, 16
@@ -173,7 +187,7 @@ function Bot.run(
 				if goal then
 					local gx, gz = goal.x - p.x, goal.z - p.z
 					local gd = math.max(0.1, math.sqrt(gx * gx + gz * gz))
-					local want = if goal.def then 30 else 0
+					local want = if goal.kind == "EN_SPITTER" then range * 0.5 elseif goal.def then 30 else 0
 					mx += gx / gd * math.clamp((gd - want) / 15, -1, 1.2)
 					mz += gz / gd * math.clamp((gd - want) / 15, -1, 1.2)
 				elseif cr > 1 then

@@ -14,7 +14,16 @@ local PROFILES = {
 		hold = Vector3.new(-0.75, -0.36, -1.05), -- grip offset from the right shoulder (aim space)
 		lowReady = 0.3, -- gun dips by this angle (rad) when not firing
 		sway = 0.6,
-		recoil = { back = 0.3, rise = 0.08, side = 0.035, roll = 0.05, freq = 8, damp = 0.45, torso = 0.03, build = 0.6 },
+		recoil = {
+			back = 0.3,
+			rise = 0.08,
+			side = 0.035,
+			roll = 0.05,
+			freq = 8,
+			damp = 0.45,
+			torso = 0.03,
+			build = 0.6,
+		},
 		cam = { kick = 0.6, shake = 0.035, push = 0.2, fov = 0.5, reticle = 4 },
 		flash = { style = "star", size = 1.0, light = 10, life = 0.045, arc = true },
 		tracer = { style = "bolt", speed = 320, length = 8, width = 0.26 },
@@ -44,7 +53,7 @@ local PROFILES = {
 		actionTime = 0.4,
 		actionSound = { "pump", 0.12 },
 		reload = "shells",
-		sound = { "shotgun" },
+		sound = { "shotgun", "shotgunCrack" },
 	},
 	-- Continuous plasma: no per-shot kick, a living vibrating beam and a spinning crystal.
 	W_PLASMA_BEAM = {
@@ -52,7 +61,16 @@ local PROFILES = {
 		hold = Vector3.new(-0.72, -0.45, -1.05),
 		lowReady = 0.3,
 		sway = 0.7,
-		recoil = { back = 0.04, rise = 0.015, side = 0.01, roll = 0.01, freq = 14, damp = 0.3, torso = 0.01, buzz = 0.035 },
+		recoil = {
+			back = 0.04,
+			rise = 0.015,
+			side = 0.01,
+			roll = 0.01,
+			freq = 14,
+			damp = 0.3,
+			torso = 0.01,
+			buzz = 0.035,
+		},
 		cam = { kick = 0, shake = 0.015, push = 0, fov = 0, reticle = 3 },
 		flash = { style = "beam", size = 1.0, light = 12 },
 		beam = { width = 0.9, helix = 0.45, spin = 18 },
@@ -78,7 +96,7 @@ local PROFILES = {
 		actionSound = { "railCharge", 0.3 },
 		charge = true,
 		reload = "breech",
-		sound = { "rail" },
+		sound = { "rail", "railBody" },
 	},
 }
 
@@ -89,7 +107,16 @@ local EVOLVED = {
 		tracer = { style = "lightning", speed = 600, length = 12, width = 0.3 },
 		flash = { style = "star", size = 1.3, light = 14, life = 0.05, arc = true },
 		impact = { style = "shock", size = 1.2, knock = 0.45, wallSound = "wallHit" },
-		recoil = { back = 0.34, rise = 0.1, side = 0.04, roll = 0.06, freq = 7.5, damp = 0.45, torso = 0.04, build = 0.6 },
+		recoil = {
+			back = 0.34,
+			rise = 0.1,
+			side = 0.04,
+			roll = 0.06,
+			freq = 7.5,
+			damp = 0.45,
+			torso = 0.04,
+			build = 0.6,
+		},
 		cam = { kick = 0.75, shake = 0.05, push = 0.25, fov = 0.7, reticle = 5 },
 		sound = { "stormZap", "thunder", "rifleClick" },
 	},

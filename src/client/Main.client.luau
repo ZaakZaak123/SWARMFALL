@@ -374,7 +374,7 @@ local function leaveRun()
 	clearObjectives()
 	table.clear(remoteBeams)
 	Shots.beamStop("local", player.Character)
-	Audio.loop("beam", Audio.Ids.whoosh, 0, 1)
+	Audio.loop("beam", Audio.Ids.beam, 0, 1)
 	Controls.enabled = false
 end
 
@@ -663,21 +663,25 @@ handlers[E.ARC] = function(x1, z1, x2, z2, color)
 		Audio.at("ricochet", a, 0.5)
 	else
 		local c = Theme.Code[color] or C.cyan
-		Fx.lightning(a, b, c, if color == Codec.C.BLUE then 0.32 else 0.22, 0.17)
+		Fx.lightning(a, b, c, if color == Codec.C.BLUE or color == Codec.C.ICE then 0.32 else 0.22, 0.17)
 		Fx.emit("hitCyan", b, 4)
 		Fx.light(b, c, 12, 0.1)
-		Audio.at("arc", a, 0.7)
+		if color == Codec.C.ICE then
+			Audio.at("ice", b, 0.45, 1.3) -- ice shards / shatter (Крио, Ледолом)
+		else
+			Audio.at("arc", a, 0.7)
+		end
 	end
 end
 handlers[E.BOOM] = function(x, z, r, color)
 	local pos = Vector3.new(x, 1, z)
-	if color == Codec.C.BLUE then
+	if color == Codec.C.ICE then
 		-- «Ледяной панцирь»: a frost ring and ice glints, not a fireball.
 		Fx.shockwave(pos, r, C.cyan, 0.45)
 		Fx.shockwave(pos, r * 0.6, Color3.fromRGB(220, 250, 255), 0.3)
 		Fx.emit("hitCyan", pos + Vector3.yAxis, math.floor(r * 2))
 		Fx.light(pos + Vector3.yAxis * 3, C.cyan, r * 2.5, 0.25)
-		Audio.at("arc", pos, 0.8, 0.6)
+		Audio.at("ice", pos, 1)
 		return
 	end
 	Fx.boom(pos, r, Theme.Code[color] or C.orange)
@@ -1070,7 +1074,7 @@ local function localFire(dt: number)
 		else
 			Shots.beamStop("local", char)
 		end
-		Audio.loop("beam", Audio.Ids.whoosh, if active then 0.28 else 0, if evolved then 1.3 else 1.8)
+		Audio.loop("beam", Audio.Ids.beam, if active then 0.3 else 0, if evolved then 0.85 else 1.05)
 		return
 	end
 	local bloomy = wdef.bloom ~= nil
@@ -1390,7 +1394,7 @@ local function frame(dt: number)
 							localFire(dt)
 						else
 							Shots.beamStop("local", char)
-							Audio.loop("beam", Audio.Ids.whoosh, 0, 1)
+							Audio.loop("beam", Audio.Ids.beam, 0, 1)
 						end
 					else
 						local rb = remoteBeams[p.id]

@@ -242,6 +242,60 @@ do -- Крио: a slowed enemy killed by the weapon shatters into shards that ch
 	check(before == after, "an unslowed kill does not shatter")
 end
 
+do -- Крио chills on impact: a one-shot kill (railgun) still shatters
+	local w, p = world("W_RAILGUN")
+	give(w, p, { UPG_FREEZE = 1 })
+	local victim = w:spawnEnemy("EN_RUNNER", p.x, p.z + 12, 0)
+	local around = {}
+	for i = 1, 4 do
+		local a = i / 4 * math.pi * 2
+		local e = w:spawnEnemy("EN_RUNNER", victim.x + math.cos(a) * 4, victim.z + math.sin(a) * 4, 0)
+		e.hp, e.maxHp = 1e6, 1e6
+		table.insert(around, e)
+	end
+	w:rebuildGrid()
+	Combat.hit(w, p, victim, 1e4, 0, 1)
+	local hit = 0
+	for _, e in around do
+		if e.hp < 1e6 then
+			hit += 1
+		end
+	end
+	check(
+		not victim.alive and hit == Defs.UpgradeValues.UPG_FREEZE.shards[1],
+		"one-shot kill with Крио shatters (" .. hit .. ")"
+	)
+end
+
+do -- Вулкан + Крио: point-blank pellets stun small enemies, distant ones only slow
+	local w, p = world("W_SCATTERGUN")
+	give(w, p, { UPG_FREEZE = 2 })
+	local near = w:spawnEnemy("EN_RUNNER", p.x, p.z + 6, 0)
+	local far = w:spawnEnemy("EN_RUNNER", p.x, p.z + 25, 0)
+	for _, e in { near, far } do
+		e.hp, e.maxHp = 1e6, 1e6
+	end
+	Combat.hit(w, p, near, 1, 0, 1)
+	Combat.hit(w, p, far, 1, 0, 1)
+	check(
+		near.stunUntil > w.t and far.stunUntil <= w.t and far.slowUntil > w.t,
+		"point-blank freeze stuns, range only slows"
+	)
+end
+
+do -- Вулкан's heavy frame takes 30% less damage
+	local w = World.new({
+		seed = 3,
+		op = "O01",
+		players = { { id = 1, weapon = "W_SCATTERGUN" }, { id = 2, weapon = "W_ARC_RIFLE" } },
+	})
+	w.t = 120
+	local a, b = w.players[1], w.players[2]
+	w:hurtPlayer(a, 10, a.x + 1, a.z)
+	w:hurtPlayer(b, 10, b.x + 1, b.z)
+	check(math.abs((a.maxHp - a.hp) - (b.maxHp - b.hp) * 0.7) < 1e-6, "Вулкан: −30% incoming damage")
+end
+
 do -- «Барьер» refill also shields the reactor, without stacking
 	local w, p = world()
 	give(w, p, { UPG_SHIELD = 3 })
