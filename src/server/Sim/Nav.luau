@@ -190,6 +190,35 @@ function Nav.new(map: any)
 		return { cost = table.create(n, math.huge), dirX = table.create(n, 0), dirZ = table.create(n, 0) }
 	end
 
+	-- Static neighbour lists (walkability never changes during a run): flat arrays per cell of
+	-- neighbour index, step cost and unit direction. Corner cutting is resolved once here.
+	local nbStart = table.create(NX * NZ + 1, 0)
+	local nbIdx, nbCost, nbDX, nbDZ = {}, {}, {}, {}
+	do
+		local k = 1
+		for i = 1, NX * NZ do
+			nbStart[i] = k
+			if walkable[i] then
+				local cz = (i - 1) // NX
+				local cx = (i - 1) - cz * NX
+				for _, d in DIRS do
+					local x, z = cx + d[1], cz + d[2]
+					if x >= 0 and x < NX and z >= 0 and z < NZ then
+						local j = idx(x, z)
+						if walkable[j] and (d[3] == 10 or (walkable[idx(cx + d[1], cz)] and walkable[idx(cx, cz + d[2])])) then
+							local m = math.sqrt(d[1] * d[1] + d[2] * d[2])
+							nbIdx[k], nbCost[k], nbDX[k], nbDZ[k] = j, d[3], d[1] / m, d[2] / m
+							k += 1
+						end
+					end
+				end
+			end
+		end
+		nbStart[NX * NZ + 1] = k
+	end
+	local buckets: { [number]: { number } } = {}
+	local bucketLen: { [number]: number } = {}
+
 	-- Multi-source Dijkstra on an 8-connected grid (no corner cutting) using a bucket queue.
 	function self.buildField(field: Field, sources: { { number } })
 		local cost, dirX, dirZ = field.cost, field.dirX, field.dirZ
@@ -198,15 +227,17 @@ function Nav.new(map: any)
 			cost[i] = math.huge
 			dirX[i], dirZ[i] = 0, 0
 		end
-		local buckets: { [number]: { number } } = {}
 		local maxBucket = 0
 		local function push(i: number, c: number)
 			local b = buckets[c]
 			if not b then
 				b = {}
 				buckets[c] = b
+				bucketLen[c] = 0
 			end
-			table.insert(b, i)
+			local len = bucketLen[c] + 1
+			bucketLen[c] = len
+			b[len] = i
 			if c > maxBucket then
 				maxBucket = c
 			end
@@ -238,58 +269,34 @@ function Nav.new(map: any)
 		local c = 0
 		while c <= maxBucket do
 			local b = buckets[c]
-			if b then
+			local len = bucketLen[c]
+			if b and len and len > 0 then
 				local k = 1
-				while k <= #b do
+				while k <= bucketLen[c] do
 					local i = b[k]
 					k += 1
 					if cost[i] == c then
-						local cz = (i - 1) // NX
-						local cx = (i - 1) - cz * NX
-						for _, d in DIRS do
-							local x, z = cx + d[1], cz + d[2]
-							if x >= 0 and x < NX and z >= 0 and z < NZ then
-								local j = idx(x, z)
-								if walkable[j] then
-									local diagonalOk = d[3] == 10 or (walkable[idx(cx + d[1], cz)] and walkable[idx(cx, cz + d[2])])
-									if diagonalOk then
-										local nc = c + d[3]
-										if nc < cost[j] then
-											cost[j] = nc
-											push(j, nc)
-										end
-									end
-								end
+						local best, bx, bz = math.huge, 0, 0
+						for q = nbStart[i], nbStart[i + 1] - 1 do
+							local j = nbIdx[q]
+							local nc = c + nbCost[q]
+							local cj = cost[j]
+							if nc < cj then
+								cost[j] = nc
+								push(j, nc)
+							elseif cj < c and cj < best then
+								-- Settled neighbour with a lower cost: candidate downhill direction.
+								best, bx, bz = cj, nbDX[q], nbDZ[q]
 							end
+						end
+						if c > 0 then
+							dirX[i], dirZ[i] = bx, bz
 						end
 					end
 				end
-				buckets[c] = nil
+				bucketLen[c] = 0
 			end
 			c += 1
-		end
-		for i = 1, n do
-			if walkable[i] and cost[i] > 0 and cost[i] < math.huge then
-				local cz = (i - 1) // NX
-				local cx = (i - 1) - cz * NX
-				local best, bx, bz = cost[i], 0, 0
-				for _, d in DIRS do
-					local x, z = cx + d[1], cz + d[2]
-					if x >= 0 and x < NX and z >= 0 and z < NZ then
-						local j = idx(x, z)
-						if cost[j] < best then
-							local diagonalOk = d[3] == 10 or (walkable[idx(cx + d[1], cz)] and walkable[idx(cx, cz + d[2])])
-							if diagonalOk then
-								best, bx, bz = cost[j], d[1], d[2]
-							end
-						end
-					end
-				end
-				local m = math.sqrt(bx * bx + bz * bz)
-				if m > 0 then
-					dirX[i], dirZ[i] = bx / m, bz / m
-				end
-			end
 		end
 	end
 

@@ -202,4 +202,58 @@ BLUEPRINT[9] = function() -- Devourer: armored maw + 7 trailing segments (placed
 	return s, 0.5
 end
 
+BLUEPRINT[10] = function() -- Core Carrier: a steel-blue elite hauling a crackling storm core on its back
+	local s = bulwark(1.05, true)
+	for _, spec in s do
+		if spec.role == "glow" then
+			spec.color = rgb(140, 220, 255)
+			spec.size *= 1.6
+		elseif spec.mat == M.Neon and spec.role ~= "eye" then
+			spec.color = rgb(84, 238, 255)
+		elseif spec.role == "body" and spec.mat ~= M.Metal then
+			spec.color = rgb(70, 92, 120)
+		end
+	end
+	table.insert(s, { size = Vector3.one * 3.2, cf = P(0, 6.4, 1.6), color = rgb(160, 235, 255), mat = M.ForceField, shape = Enum.PartType.Ball, role = "node", transparency = 0.2 })
+	for k = -1, 1, 2 do
+		table.insert(s, blk(Vector3.new(0.35, 3.4, 0.35), P(k * 1.7, 5.6, 1.6) * A(0, 0, k * 0.5), rgb(84, 238, 255), M.Neon))
+	end
+	return s, 0.6
+end
+
+BLUEPRINT[11] = function() -- Power node: a crystal pylon feeding the hive, pulsing violet
+	local base, crystal, core = rgb(40, 30, 54), rgb(150, 90, 255), rgb(220, 170, 255)
+	local s = {
+		blk(Vector3.new(8, 1.2, 8), P(0, 0.6, 0) * A(0, math.rad(45), 0), base, M.Slate, "body"),
+		blk(Vector3.new(5, 1.6, 5), P(0, 1.8, 0), base, M.Slate, "body"),
+		{ size = Vector3.new(1.6, 9, 1.6), cf = P(0, 6.5, 0), color = core, mat = M.Neon, role = "sac", transparency = 0.1 },
+	}
+	for i = 1, 3 do
+		local a = i / 3 * math.pi * 2
+		table.insert(s, blk(Vector3.new(1.4, 6.5, 1.4), P(math.cos(a) * 2.2, 5, math.sin(a) * 2.2) * A(math.sin(a) * 0.35, a, math.cos(a) * 0.35), crystal, M.Glass, "body"))
+	end
+	for i = 1, 4 do
+		local a = i / 4 * math.pi * 2 + 0.4
+		table.insert(s, blk(Vector3.new(0.4, 0.4, 5), P(math.cos(a) * 4.5, 0.4, math.sin(a) * 4.5) * A(0, -a + math.pi / 2, 0), core, M.Neon))
+	end
+	return s, 0
+end
+
+BLUEPRINT[12] = function() -- Acid source: a cracked mound venting a bubbling green pool
+	local rock, slime, acid = rgb(46, 58, 36), rgb(90, 130, 40), rgb(170, 255, 80)
+	local s = {
+		ball(8.5, P(0, 0.8, 0), rock, M.Slate, "body"),
+		ball(5.5, P(1.4, 3.6, -0.8), slime, M.SmoothPlastic, "body"),
+		{ size = Vector3.new(0.3, 6, 6), cf = P(0, 4.7, 0) * A(0, 0, math.rad(90)), color = acid, mat = M.Neon, shape = Enum.PartType.Cylinder, role = "sac", transparency = 0.15 },
+	}
+	for i = 1, 5 do
+		local a = i / 5 * math.pi * 2
+		table.insert(s, { size = Vector3.one * 1.2, cf = P(math.cos(a) * 3.3, 4.2 + (i % 2) * 0.8, math.sin(a) * 3.3), color = acid, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac" })
+	end
+	for k = -1, 1, 2 do
+		table.insert(s, blk(Vector3.new(0.9, 4, 0.9), P(k * 3.2, 3, 1.5) * A(0.3, 0, k * 0.4), rock, M.Slate))
+	end
+	return s, 0
+end
+
 return Creatures

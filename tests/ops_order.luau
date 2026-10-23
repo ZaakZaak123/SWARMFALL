@@ -47,6 +47,34 @@ for _, id in Ops.Order do
 		check(table.find(req.unlocks, id) ~= nil, id .. " is unlocked by its requirement " .. op.requires)
 	end
 end
+-- Flow field: from every breach, following the field reaches the source (no dead ends, no loops).
+local Nav = H.require("src/server/Sim/Nav")
+for _, mapId in Maps.Order do
+	local map = Maps.get(mapId)
+	local nav = Nav.new(map)
+	local field = nav.newField()
+	local sx, sz = map.playerStart.x, map.playerStart.z
+	nav.buildField(field, { { sx, sz } })
+	local ok = true
+	for name, sp in map.spawns do
+		local x, z = sp.x, sp.z
+		local reached = false
+		for _ = 1, 600 do
+			local fx, fz = nav.flow(field, x, z)
+			if (x - sx) ^ 2 + (z - sz) ^ 2 < 8 * 8 then
+				reached = true
+				break
+			end
+			x, z = nav.resolve(x + fx * 1.5, z + fz * 1.5, 1.4)
+		end
+		if not reached then
+			ok = false
+			print("    breach " .. name .. " does not reach the start on " .. mapId)
+		end
+	end
+	check(ok, mapId .. " flow field leads every breach to the source")
+end
+
 if failures > 0 then
 	print(failures .. " FAILURE(S)")
 	process.exit(1)

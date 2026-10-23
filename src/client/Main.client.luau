@@ -608,7 +608,7 @@ handlers[E.KILL] = function(id, kind, x, z, killer, cause, fromX, fromZ)
 	end
 	Fx.splat(pos, SPLAT_COLOR[kind] or SPLAT_COLOR[1], if kind >= 4 then 9 else 4.5)
 	if kind >= 4 then
-		Fx.boom(pos, if kind == 7 then 20 elseif kind == 5 then 12 else 7, Theme.Code[if kind == 6 then 5 else 2])
+		Fx.boom(pos, if kind == 7 then 20 elseif kind == 5 or kind >= 10 then 12 else 7, Theme.Code[if kind == 6 or kind == 12 then 5 elseif kind == 11 then 3 else 2])
 		Audio.at("killBig", pos, 1)
 		if nearMe(pos, 60) then
 			CameraRig.shake(if kind >= 5 then 0.6 else 0.3)
@@ -710,6 +710,13 @@ handlers[E.HAMMER] = function(pid, x, z, radius, phase, emergency, hits)
 		Fx.telegraph(Codec.Shape.CIRCLE, x, z, 0, 1, radius, 0, Defs.S01.Windup, C.cyan, 0)
 		Fx.light(pos + Vector3.yAxis * 10, C.violet, 30, Defs.S01.Windup + 0.2)
 		Audio.at("railCharge", pos, 1, if big then 0.7 else 0.9)
+		return
+	end
+	if phase == 3 then
+		-- Specialization follow-up wave.
+		Fx.shockwave(pos, radius, C.violet, 0.5)
+		Fx.emit("sparkCyan", pos + Vector3.yAxis, 24)
+		Audio.at("overdrive", pos, 0.6, 1.2)
 		return
 	end
 	Fx.boom(pos, radius, C.cyan)
@@ -1171,10 +1178,14 @@ local function computeArrows(cam: Camera)
 	for _, rec in EnemyView.records do
 		if rec.kind == 7 or rec.kind == 9 then
 			add(Vector3.new(rec.dx, 6, rec.dz), C.red, "БОСС")
-		elseif rec.kind == 5 then
-			add(Vector3.new(rec.dx, 4, rec.dz), C.gold, "ЭЛИТА")
+		elseif rec.kind == 5 or rec.kind == 10 then
+			add(Vector3.new(rec.dx, 4, rec.dz), C.gold, if rec.kind == 10 then "НОСИТЕЛЬ" else "ЭЛИТА")
 		elseif rec.kind == 6 then
 			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "ГНЕЗДО")
+		elseif rec.kind == 11 then
+			add(Vector3.new(rec.dx, 4, rec.dz), C.violet, "УЗЕЛ")
+		elseif rec.kind == 12 then
+			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "ИСТОЧНИК")
 		end
 	end
 end
@@ -1190,9 +1201,52 @@ Settings.onChanged(function(key, value)
 	end
 end)
 
+-- Adaptive quality: a sustained low frame rate during a run steps quality down; a long stretch of
+-- headroom steps it back up to where the player (or device default) set it. Hysteresis avoids flapping.
+local perf = { low = 0, high = 0, ceiling = Settings.quality }
+Settings.onChanged(function(key, value)
+	if key == "quality" then
+		if not perf.auto then
+			perf.ceiling = value
+		end
+		Lighting.GlobalShadows = Settings.Budget.shadows[value]
+	end
+end)
+Lighting.GlobalShadows = Settings.Budget.shadows[Settings.quality]
+
+local function adaptQuality(dt: number, measuredFps: number)
+	if not Settings.autoQuality or mode ~= "RUN" then
+		perf.low, perf.high = 0, 0
+		return
+	end
+	if measuredFps < 38 and Settings.quality > 1 then
+		perf.low += dt
+		perf.high = 0
+		if perf.low > 4 then
+			perf.low = 0
+			perf.auto = true
+			Settings.set("quality", Settings.quality - 1)
+			perf.auto = false
+		end
+	elseif measuredFps > 57 and Settings.quality < perf.ceiling then
+		perf.high += dt
+		perf.low = 0
+		if perf.high > 25 then
+			perf.high = 0
+			perf.auto = true
+			Settings.set("quality", Settings.quality + 1)
+			perf.auto = false
+		end
+	else
+		perf.low = math.max(0, perf.low - dt)
+		perf.high = math.max(0, perf.high - dt)
+	end
+end
+
 local function frame(dt: number)
 	local now = os.clock()
 	fps += (1 / math.max(dt, 1e-3) - fps) * 0.05
+	adaptQuality(dt, fps)
 	local cam = workspace.CurrentCamera
 	local root, hum = myRoot()
 	local isPlaying = playing()

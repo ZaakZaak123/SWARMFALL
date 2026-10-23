@@ -234,10 +234,12 @@ function Mission:relayLost()
 end
 
 -- Nests / nodes / acid sources (O03 / O05 / C-A01) --------------------------------------------------
+local TARGET_KIND = { nest = "HIVE", node = "NODE", acid = "ACID_SOURCE" }
+
 function Mission:spawnTargets(kind: string, sites, hp: number, flags)
 	local w = self.w
 	for i, s in sites do
-		local e = w:spawnEnemy("HIVE", s.x, s.z, 1.5)
+		local e = w:spawnEnemy(TARGET_KIND[kind] or "HIVE", s.x, s.z, 1.5)
 		e.objective = kind
 		e.objIndex = i
 		e.hp = hp * Defs.Threat.hp(w.threat) * (1 + 0.5 * (#w.playerList - 1))
@@ -408,7 +410,7 @@ end
 
 function Mission:elite()
 	local w = self.w
-	local e = w:spawnAtBreach("ELITE_BULWARK", w.map.spawnOrder, 1.8)
+	local e = w:spawnAtBreach("ELITE_CARRIER", w.map.spawnOrder, 1.8)
 	if not e then
 		return
 	end
@@ -417,7 +419,7 @@ function Mission:elite()
 	e.hp *= self.op.eliteHpMult or 1
 	e.maxHp = e.hp
 	self.eliteSpawned = true
-	self.goal = "Убей " .. (self.op.eliteName or "элиту")
+	self.goal = self.op.eliteGoal or ("Убей " .. (self.op.eliteName or "элиту"))
 	w:banner(self.op.eliteName or "ЭЛИТА", "Убей его — он несёт Ядро Бури", C.GOLD, 4, "@" .. e.def.index)
 end
 

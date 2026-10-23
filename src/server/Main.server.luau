@@ -175,6 +175,7 @@ local function startRun()
 				form = Profile.equippedForm(player, weapon),
 				tech = if data then table.clone(data.tech) else {},
 				loadout = Profile.loadoutFor(player, weapon),
+				s01Spec = Profile.s01Spec(player),
 			})
 			participants[player.UserId] = player
 		end
@@ -348,6 +349,10 @@ end
 
 function handlers.equipModule(player: Player, weaponId, slot, id)
 	return lobbyOnly() and type(weaponId) == "string" and type(slot) == "string" and type(id) == "string" and Profile.equipModule(player, weaponId, slot, id)
+end
+
+function handlers.s01Branch(player: Player, branch)
+	return lobbyOnly() and type(branch) == "string" and Profile.setS01Branch(player, branch)
 end
 
 function handlers.buyTech(player: Player, id)

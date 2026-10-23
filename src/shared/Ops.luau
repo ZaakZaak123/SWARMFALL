@@ -53,6 +53,7 @@ export type OpDef = {
 	reactor: { hp: number, radius: number?, name: string? }?,
 	eliteName: string?,
 	eliteHpMult: number?,
+	eliteGoal: string?,
 	finale: Phase?, -- final pressure after the objective is done (non-boss operations, D02 §3)
 	finaleTime: number?,
 	deadline: number?, -- objectiveDeadline: the objective must be done by then (D02 §3.1)
@@ -87,6 +88,7 @@ Ops.O01 = {
 	objective = "carrier",
 	reactor = { hp = 1800 }, -- the first operation must be forgiving
 	eliteName = "НОСИТЕЛЬ ЯДРА",
+	eliteGoal = "Убей Носителя ядра",
 	eliteHpMult = 0.7, -- first elite of the game: readable, not a sponge
 	runEvolution = false,
 	s01Event = true, -- the encirclement introduces S01 to profiles that do not have it yet
@@ -327,7 +329,7 @@ Ops.CA01 = {
 	objective = "acid",
 	reactor = { hp = 1500 },
 	runEvolution = false,
-	acid = { hp = 1400, every = 3.4, count = 2 },
+	acid = { hp = 2000, every = 3.4, count = 2 },
 	finaleTime = 50,
 	deadline = 400,
 	hardLimit = 480,

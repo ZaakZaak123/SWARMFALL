@@ -394,9 +394,9 @@ local function buildLobby()
 	-- Research: personal confirmed kills per species (stages I–III)
 	label("ИССЛЕДОВАНИЯ ВИДОВ", { Position = UDim2.fromOffset(852, 180), Size = UDim2.fromOffset(300, 20), FontFace = F.title, TextSize = 13, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
 	ui.researchRows = {}
-	local order = { "EN_RUNNER", "EN_SPITTER", "EN_STALKER", "EN_BULWARK", "EN_BOMBER", "ELITE_BULWARK", "HIVE", "BOSS_BROODMOTHER", "BOSS_DEVOURER" }
+	local order = { "EN_RUNNER", "EN_SPITTER", "EN_STALKER", "EN_BULWARK", "EN_BOMBER", "ELITE_CARRIER", "ELITE_BULWARK", "HIVE", "BOSS_BROODMOTHER", "BOSS_DEVOURER" }
 	for i, kind in order do
-		local row = new("Frame", { Position = UDim2.fromOffset(848, 204 + (i - 1) * 34), Size = UDim2.fromOffset(404, 30), BackgroundColor3 = C.panel, BackgroundTransparency = 0.25, Corner = 4, Parent = shop })
+		local row = new("Frame", { Position = UDim2.fromOffset(848, 204 + (i - 1) * 31), Size = UDim2.fromOffset(404, 28), BackgroundColor3 = C.panel, BackgroundTransparency = 0.25, Corner = 4, Parent = shop })
 		local name = label("", { Position = UDim2.fromOffset(10, 0), Size = UDim2.fromOffset(190, 30), FontFace = F.head, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 		local stage = label("", { Position = UDim2.fromOffset(200, 0), Size = UDim2.fromOffset(40, 30), FontFace = F.num, TextSize = 14, TextColor3 = C.lime, Parent = row })
 		local back = new("Frame", { Position = UDim2.fromOffset(244, 12), Size = UDim2.fromOffset(84, 6), BackgroundTransparency = 0.4, BackgroundColor3 = Color3.new(0, 0, 0), Parent = row })
@@ -404,7 +404,19 @@ local function buildLobby()
 		local count = label("", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 0), Size = UDim2.fromOffset(70, 30), FontFace = F.num, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
 		ui.researchRows[kind] = { name = name, stage = stage, fill = fill, count = count }
 	end
-	ui.s01Line = label("", { Position = UDim2.fromOffset(852, 512), Size = UDim2.fromOffset(400, 40), FontFace = F.bodyBold, TextSize = 13, TextWrapped = true, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
+	ui.s01Branches = {}
+	for i, b in { "A", "B", "C" } do
+		local def = Defs.S01Branches[b]
+		local btn, lbl = button(shop, def.name, { Position = UDim2.fromOffset(848 + (i - 1) * 136, 560), Size = UDim2.fromOffset(130, 34) }, C.panel2)
+		lbl.TextSize = 12
+		btn.Activated:Connect(function()
+			send("s01Branch", b)
+			Audio.play("ui", 1, 1.1)
+		end)
+		ui.s01Branches[b] = { button = btn, label = lbl, def = def }
+	end
+	ui.s01Tier = label("", { Position = UDim2.fromOffset(852, 596), Size = UDim2.fromOffset(400, 18), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
+	ui.s01Line = label("", { Position = UDim2.fromOffset(852, 518), Size = UDim2.fromOffset(400, 40), FontFace = F.bodyBold, TextSize = 13, TextWrapped = true, TextColor3 = C.cyan, TextXAlignment = Enum.TextXAlignment.Left, Parent = shop })
 
 	Menus.selectWeapon(selectedWeapon)
 end
@@ -480,6 +492,24 @@ local function buildDossier()
 	ui.dossierName = label("", { Position = UDim2.fromOffset(506, 14), Size = UDim2.fromOffset(410, 34), FontFace = F.head, TextSize = 30, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22, Parent = box })
 	ui.dossierTag = label("", { Position = UDim2.fromOffset(506, 50), Size = UDim2.fromOffset(410, 40), FontFace = F.body, TextSize = 15, TextWrapped = true, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 22, Parent = box })
 	ui.dossierRows = new("Frame", { Position = UDim2.fromOffset(506, 96), Size = UDim2.fromOffset(410, 330), List = { Padding = UDim.new(0, 4) }, ZIndex = 22, Parent = box })
+	-- M20 alternative form line (evolution tab): progress of its feat, craft or equip on click.
+	ui.dossierM20, ui.dossierM20Label = button(box, "", { Position = UDim2.fromOffset(506, 430), Size = UDim2.fromOffset(410, 32), ZIndex = 22 }, C.panel2)
+	ui.dossierM20Label.TextSize = 12
+	ui.dossierM20Label.TextWrapped = true
+	ui.dossierM20.Activated:Connect(function()
+		local id = ui.dossierWeapon
+		local formId = id and Defs.M20ByWeapon[id]
+		if not formId or not profile then
+			return
+		end
+		if profile.forms and profile.forms[formId] then
+			send("equipForm", id, if profile.equip and profile.equip[id] == formId then "" else formId)
+			Audio.play("ui")
+		else
+			send("craftForm", formId)
+			Audio.play("evolve")
+		end
+	end)
 	-- Modules: 3 branches (columns) × 3 tiers (rows). Click: craft, then cycle CORE → ADAPTER → off.
 	ui.dossierMods = new("Frame", { Position = UDim2.fromOffset(506, 96), Size = UDim2.fromOffset(410, 360), Visible = false, ZIndex = 22, Parent = box })
 	ui.modCells = {}
@@ -612,6 +642,22 @@ function Menus.dossier(id: string, mode: any?)
 	ui.dossierTabs.evo.label.Text = evo.name
 	ui.dossierRows.Visible = mode ~= "mods"
 	ui.dossierMods.Visible = mode == "mods"
+	ui.dossierM20.Visible = mode == "evo"
+	if mode == "evo" then
+		local formId = Defs.M20ByWeapon[id]
+		local form = Defs.Evolutions[formId]
+		local f = profile and profile.feats and profile.feats[id] or {}
+		local have = f[form.feat.counter] or 0
+		local rank = Defs.masteryRank(id, profile and profile.mastery and profile.mastery[id] or 0)
+		local crafted = profile and profile.forms and profile.forms[formId]
+		local equipped = crafted and profile.equip and profile.equip[id] == formId
+		local state = if equipped then "НАДЕТА · нажми, чтобы снять"
+			elseif crafted then "ИЗГОТОВЛЕНА · нажми, чтобы надеть"
+			elseif rank >= 20 and have >= form.feat.need then "ИЗГОТОВИТЬ · " .. Theme.commas(form.cost)
+			else string.format("M%d/20 · %s %s/%s", rank, form.feat.text, Theme.commas(math.min(have, form.feat.need)), Theme.commas(form.feat.need))
+		ui.dossierM20Label.Text = "M20 · " .. form.name .. " — " .. state
+		ui.dossierM20Label.TextColor3 = if equipped then form.color else C.text
+	end
 	if mode == "mods" then
 		ui.dossierName.Text = w.name .. " · МОДУЛИ"
 		ui.dossierTag.Text = "1 CORE + 1 ADAPTER из другой ветки (ADAPTER до II). III — только CORE."
@@ -805,9 +851,23 @@ function Menus.refreshLobby()
 	end
 	if ui.s01Line then
 		local s = profile and profile.s01Stats
+		local points = Defs.s01Points(s)
+		local rank = Defs.s01Rank(points)
+		local nextNeed = Defs.S01Mastery.Ladder[math.min(rank + 1, #Defs.S01Mastery.Ladder)]
 		ui.s01Line.Text = if profile and profile.s01
-			then string.format("ГРАВИМОЛОТ S01 · попаданий %s · убийств %s · массовых ударов %s", Theme.commas(s.hits), Theme.commas(s.kills), Theme.commas(s.crowds))
+			then string.format("ГРАВИМОЛОТ S01 · M%d (%s/%s) · попаданий %s · убийств %s · массовых %s", rank, Theme.commas(points), Theme.commas(nextNeed), Theme.commas(s.hits), Theme.commas(s.kills), Theme.commas(s.crowds))
 			else "ГРАВИМОЛОТ S01 — откроется в O01"
+		local open = profile and profile.s01 and rank >= Defs.S01Mastery.BranchAt
+		local tier = Defs.s01Tier(rank)
+		for b, ub in ui.s01Branches do
+			local on = profile and profile.s01Branch == b
+			ub.button.BackgroundColor3 = if on then ub.def.color elseif open then C.panel2 else C.bg
+			ub.label.TextColor3 = if on then C.bg elseif open then C.text else C.dim
+		end
+		local chosen = profile and profile.s01Branch and Defs.S01Branches[profile.s01Branch]
+		ui.s01Tier.Text = if not open then "Специализация откроется на M" .. Defs.S01Mastery.BranchAt
+			elseif chosen then chosen.name .. " · " .. (if tier > 0 then chosen.tiers[tier] else "") .. (if tier < 3 then "  (след. ступень на M" .. Defs.S01Mastery.TierAt[tier + 1] .. ")" else "")
+			else "Выбери одну главную ветку"
 	end
 	-- perks
 	for id, pc in ui.perkCards do
@@ -1130,6 +1190,7 @@ function Menus.evolveSplash(evoId: string)
 		return
 	end
 	ui.splash.Visible = true
+	ui.splashEvolving = true
 	for _, c in ui.splashModel:GetChildren() do
 		c:Destroy()
 	end
@@ -1154,19 +1215,23 @@ function Menus.evolveSplash(evoId: string)
 		task.wait(0.42)
 		ui.splashModel.Visible = false
 		ui.splash.Visible = false
+		ui.splashEvolving = false
 	end)
 end
 
 function Menus.whiteFlash(amount: number)
 	ui.splash.Visible = true
-	if ui.splashTitle.TextTransparency >= 1 then
-		-- A plain flash: hide the evolution splash caption that shares this layer.
+	if not ui.splashEvolving then
+		-- A plain flash: hide the evolution splash captions that share this layer.
 		ui.splashTag.TextTransparency = 1
+		ui.splashTitle.TextTransparency = 1
+		ui.splashSub.TextTransparency = 1
+		ui.splashModel.Visible = false
 	end
 	ui.flash.BackgroundTransparency = 1 - amount
 	tween(ui.flash, 0.4, { BackgroundTransparency = 1 })
 	task.delay(0.42, function()
-		if ui.splashTitle.TextTransparency >= 1 then
+		if not ui.splashEvolving then
 			ui.splash.Visible = false
 		end
 	end)

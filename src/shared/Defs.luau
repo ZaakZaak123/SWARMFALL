@@ -218,6 +218,39 @@ Defs.Evolutions = {
 	},
 }
 
+-- M20 alternative forms (D03 §3, DD-014): a different style with a trade-off, not more DPS. Gate: M20 with
+-- the weapon + a thematic feat (a deterministic personal counter, no RNG) + one Ксенит craft. Effects use the
+-- module path (virtual card ranks capped at III + stat tweaks). Never required for the campaign.
+Defs.Evolutions.EV_M20_STORM = {
+	id = "EV_M20_STORM", name = "ГРОЗА", weapon = "W_ARC_RIFLE", m20 = true, cost = 2400, color = rgb(120, 200, 255),
+	text = "Сеть контроля: цепь и замедление на каждом попадании. −20% урона одной цели.",
+	feat = { counter = "arcKills", need = 1500, text = "1500 убийств цепными разрядами" },
+	ranks = { UPG_CHAIN = 3, UPG_FREEZE = 1 }, mods = { damageMult = 0.8, rateMult = 1.1 },
+	keys = {}, coreName = "",
+}
+Defs.Evolutions.EV_M20_FIRE_RAM = {
+	id = "EV_M20_FIRE_RAM", name = "ОГНЕННЫЙ ТАРАН", weapon = "W_SCATTERGUN", m20 = true, cost = 2600, color = rgb(255, 120, 50),
+	text = "Узкий концентрированный термозалп: +40% урона и поджог, конус вдвое уже, −2 дробины.",
+	feat = { counter = "burnKills", need = 800, text = "800 убийств поджогом из Вулкана" },
+	ranks = { UPG_IGNITE = 3 }, mods = { spreadMult = 0.5, damageMult = 1.4, pelletsAdd = -2 },
+	keys = {}, coreName = "",
+}
+Defs.Evolutions.EV_M20_VOID_PRISM = {
+	id = "EV_M20_VOID_PRISM", name = "ПРИЗМА ПУСТОТЫ", weapon = "W_PLASMA_BEAM", m20 = true, cost = 2800, color = rgb(170, 90, 255),
+	text = "Расщеплённый луч: два боковых луча и дальность, −15% урона основного.",
+	feat = { counter = "heavyKills", need = 120, text = "120 тяжёлых целей лучом" },
+	ranks = { UPG_MULTISHOT = 2 }, mods = { damageMult = 0.85, rangeMult = 1.1 },
+	keys = {}, coreName = "",
+}
+Defs.Evolutions.EV_M20_STAR_TUNNEL = {
+	id = "EV_M20_STAR_TUNNEL", name = "ЗВЁЗДНЫЙ ТУННЕЛЬ", weapon = "W_RAILGUN", m20 = true, cost = 3000, color = rgb(255, 235, 150),
+	text = "Длинная заряженная линия: +8 пробитий, +30% дальности и +25% урона, но −20% скорострельности.",
+	feat = { counter = "line4", need = 150, text = "150 выстрелов, пробивших 4+ врагов" },
+	ranks = {}, mods = { pierceAdd = 8, falloffAdd = 0.1, rangeMult = 1.3, damageMult = 1.25, rateMult = 0.8 },
+	keys = {}, coreName = "",
+}
+Defs.M20ByWeapon = { W_ARC_RIFLE = "EV_M20_STORM", W_SCATTERGUN = "EV_M20_FIRE_RAM", W_PLASMA_BEAM = "EV_M20_VOID_PRISM", W_RAILGUN = "EV_M20_STAR_TUNNEL" }
+
 export type UpgradeDef = {
 	id: string,
 	name: string,
@@ -435,10 +468,14 @@ Defs.Enemies = {
 	EN_STALKER = { id = "EN_STALKER", index = 2, name = "ПРЫГУН", hp = 40, speed = 17, radius = 1.8, damage = 12, cooldown = 2.8, xp = 2, big = false, boss = false, scaleHp = true },
 	EN_SPITTER = { id = "EN_SPITTER", index = 3, name = "ПЛЕВУН", hp = 60, speed = 9, radius = 2.2, damage = 7, cooldown = 4.2, xp = 3, big = false, boss = false, scaleHp = true },
 	EN_BULWARK = { id = "EN_BULWARK", index = 4, name = "БРОНЕНОСЕЦ", hp = 210, speed = 7.5, radius = 3.2, damage = 16, cooldown = 2.4, xp = 6, big = true, boss = false, scaleHp = true },
-	ELITE_BULWARK = { id = "ELITE_BULWARK", index = 5, name = "ЭЛИТНЫЙ БРОНЕНОСЕЦ", hp = 1150, speed = 9.5, radius = 4.3, damage = 22, cooldown = 2.2, xp = 45, big = true, boss = false, scaleHp = true },
-	HIVE = { id = "HIVE", index = 6, name = "ГНЕЗДО", hp = 480, speed = 0, radius = 5, damage = 0, cooldown = 2.4, xp = 20, big = true, boss = false, scaleHp = true },
+	ELITE_BULWARK = { id = "ELITE_BULWARK", index = 5, name = "ЭЛИТНЫЙ БРОНЕНОСЕЦ", hp = 1150, speed = 9.5, radius = 4.3, damage = 22, cooldown = 2.2, xp = 45, big = true, boss = false, scaleHp = true, elite = true },
+	HIVE = { id = "HIVE", index = 6, name = "ГНЕЗДО", hp = 480, speed = 0, radius = 5, damage = 0, cooldown = 2.4, xp = 20, big = true, boss = false, scaleHp = true, static = true },
 	BOSS_BROODMOTHER = { id = "BOSS_BROODMOTHER", index = 7, name = "МАТКА РАЗЛОМА", hp = 7200, speed = 7, radius = 8.5, damage = 26, cooldown = 0, xp = 0, big = true, boss = true, scaleHp = false },
 	EN_BOMBER = { id = "EN_BOMBER", index = 8, name = "ВЗРЫВУН", hp = 30, speed = 17.5, radius = 1.7, damage = 18, cooldown = 0, xp = 2, big = false, boss = false, scaleHp = true },
+	-- Objective kinds (stage 8): the O01 elite and the O05 / C-A01 structures get their own bodies.
+	ELITE_CARRIER = { id = "ELITE_CARRIER", index = 10, name = "НОСИТЕЛЬ ЯДРА", hp = 1150, speed = 9.5, radius = 4.3, damage = 22, cooldown = 2.2, xp = 45, big = true, boss = false, scaleHp = true, elite = true },
+	NODE = { id = "NODE", index = 11, name = "ПИТАЮЩИЙ УЗЕЛ", hp = 1000, speed = 0, radius = 4.5, damage = 0, cooldown = 99, xp = 30, big = true, boss = false, scaleHp = false, static = true },
+	ACID_SOURCE = { id = "ACID_SOURCE", index = 12, name = "КИСЛОТНЫЙ ИСТОЧНИК", hp = 900, speed = 0, radius = 4.5, damage = 0, cooldown = 99, xp = 30, big = true, boss = false, scaleHp = false, static = true },
 	BOSS_DEVOURER = { id = "BOSS_DEVOURER", index = 9, name = "ПОЖИРАТЕЛЬ", hp = 6600, speed = 9.5, radius = 7, damage = 28, cooldown = 0, xp = 0, big = true, boss = true, scaleHp = false },
 } :: { [string]: EnemyDef }
 
@@ -494,6 +531,58 @@ Defs.S01 = {
 	PerkCut = 0.06, -- PK_OVERDRIVE rank: −6% cooldown each
 }
 
+-- S01 mastery and specializations (DD-013, Gravihammer doc §6). Points = hits + 2×kills + 10×crowd strikes
+-- (never weapon kills). A branch is chosen from M5; its tiers open at M5 / M8 / M12. One branch active.
+Defs.S01Mastery = {
+	Ladder = { 0, 100, 200, 350, 550, 800, 1100, 1500, 2000, 2600, 3300, 4100, 5000, 6000, 7100, 8300, 9600, 11000, 12500, 15000 },
+	BranchAt = 5,
+	TierAt = { 5, 8, 12 },
+}
+Defs.S01Branches = {
+	A = { id = "A", name = "КАТАКЛИЗМ", color = rgb(255, 140, 50), tiers = {
+		"Расширенный фронт: радиус +15%",
+		"Сейсмический отклик: вторая волна 50% урона",
+		"Грозовой разлом: урон +30%, перезарядка −15%",
+	} },
+	B = { id = "B", name = "БАСТИОН", color = rgb(84, 238, 255), tiers = {
+		"Отражающий импульс: отброс ×1.4, оглушение +0.5 с",
+		"Обратная зарядка: +4 щита за цель (до 30)",
+		"Неприступный шаг: +1 с неуязвимости и +10 HP",
+	} },
+	C = { id = "C", name = "СИНГУЛЯРНОСТЬ", color = rgb(190, 120, 255), tiers = {
+		"Гравитационный след: замедление 40% вокруг",
+		"Сжатие: враги стягиваются к тебе, а не разлетаются",
+		"Коллапс: через 0.6 с повторный удар 60%",
+	} },
+}
+
+function Defs.s01Points(stats: any): number
+	if not stats then
+		return 0
+	end
+	return (stats.hits or 0) + 2 * (stats.kills or 0) + 10 * (stats.crowds or 0)
+end
+
+function Defs.s01Rank(points: number): number
+	local rank = 1
+	for r, need in Defs.S01Mastery.Ladder do
+		if points >= need then
+			rank = r
+		end
+	end
+	return rank
+end
+
+function Defs.s01Tier(rank: number): number
+	local tier = 0
+	for i, at in Defs.S01Mastery.TierAt do
+		if rank >= at then
+			tier = i
+		end
+	end
+	return tier
+end
+
 -- Permanent unique components ("КОМПОНЕНТЫ"): earned by deeds in operations, spent on crafting forms.
 Defs.Components = {
 	CMP_STORM_CORE = { id = "CMP_STORM_CORE", name = "ЯДРО БУРИ", icon = "core", text = "Сердце Громовержца. Добыто с Носителя ядра (O01)." },
@@ -540,6 +629,7 @@ Defs.Research = {
 	EN_BULWARK = { 15, 80, 300 },
 	EN_BOMBER = { 40, 200, 800 },
 	ELITE_BULWARK = { 1, 5, 20 },
+	ELITE_CARRIER = { 1, 3, 10 },
 	HIVE = { 3, 15, 50 },
 	BOSS_BROODMOTHER = { 1, 3, 10 },
 	BOSS_DEVOURER = { 1, 3, 10 },

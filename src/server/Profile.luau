@@ -44,12 +44,14 @@ local function defaults()
 		components = {}, -- unique permanent components, e.g. CMP_STORM_CORE = true
 		s01 = false, -- Gravihammer known (first own cast in O01)
 		s01Stats = { hits = 0, kills = 0, crowds = 0 }, -- S01 mastery counters (never weapon kills)
+		s01Branch = nil, -- chosen specialization "A" | "B" | "C" (from S01 M5)
 		mastery = {}, -- weaponId -> personal lethal kills with it (M1–M20)
 		research = {}, -- species -> personal confirmed kills
 		tech = {}, -- owned technologies
 		forms = {}, -- crafted permanent forms (evolution id -> true)
 		equip = {}, -- weapon id -> equipped form id
 		lineTrial = 0, -- railgun «Пробой линии» qualified shots
+		feats = {}, -- M20 feat counters per weapon: { [weaponId] = { arcKills = n, ... } }
 		modules = {}, -- crafted modules (moduleId -> true)
 		loadout = {}, -- weapon id -> { core = moduleId?, adapter = moduleId? }
 		firstWinGrantUsed = false,
@@ -184,6 +186,7 @@ function Profile.public(player: Player)
 		components = d.components,
 		s01 = d.s01,
 		s01Stats = d.s01Stats,
+		s01Branch = d.s01Branch,
 		mastery = d.mastery,
 		research = d.research,
 		tech = d.tech,
@@ -193,6 +196,7 @@ function Profile.public(player: Player)
 		loadout = d.loadout,
 		winsByOp = d.wins_by_op or {},
 		lineTrial = d.lineTrial,
+		feats = d.feats,
 		blueprints = (function()
 			local out = {}
 			for wid in Defs.Blueprints do
@@ -336,6 +340,32 @@ function Profile.loadoutFor(player: Player, weaponId: string)
 	return { core = core, adapter = adapter }
 end
 
+-- S01 specialization: one main branch, free to switch between operations once M5 is reached.
+function Profile.setS01Branch(player: Player, branch: string): boolean
+	local d = Profile.get(player)
+	if not d or not d.s01 or not Defs.S01Branches[branch] then
+		return false
+	end
+	if Defs.s01Rank(Defs.s01Points(d.s01Stats)) < Defs.S01Mastery.BranchAt then
+		return false
+	end
+	d.s01Branch = branch
+	mark(player)
+	return true
+end
+
+function Profile.s01Spec(player: Player)
+	local d = Profile.get(player)
+	if not d or not d.s01 or not d.s01Branch then
+		return nil
+	end
+	local tier = Defs.s01Tier(Defs.s01Rank(Defs.s01Points(d.s01Stats)))
+	if tier < 1 then
+		return nil
+	end
+	return { branch = d.s01Branch, tier = tier }
+end
+
 -- Starter technologies: available after the first O01 win (D03 §6).
 function Profile.buyTech(player: Player, id: string): boolean
 	local d = Profile.get(player)
@@ -362,6 +392,16 @@ function Profile.formStatus(player: Player, evoId: string)
 	end
 	local kills = d.mastery[evo.weapon] or 0
 	local rank = Defs.masteryRank(evo.weapon, kills)
+	if evo.m20 then
+		local f = d.feats[evo.weapon] or {}
+		return {
+			crafted = d.forms[evoId] == true,
+			owned = d.weapons[evo.weapon] == true,
+			mastery = rank >= 20,
+			component = (f[evo.feat.counter] or 0) >= evo.feat.need,
+			afford = d.scrap >= evo.cost,
+		}
+	end
 	return {
 		crafted = d.forms[evoId] == true,
 		owned = d.weapons[evo.weapon] == true,
@@ -447,6 +487,11 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 			table.insert(unlocked, { "mastery", wid, after })
 		end
 		reward.progress = { weapon = wid, added = mine.weaponKills or 0, rank = after, into = into, need = need }
+		local f = d.feats[wid] or {}
+		d.feats[wid] = f
+		for k, v in mine.feats or {} do
+			f[k] = (f[k] or 0) + v
+		end
 		for kind, n in mine.species or {} do
 			local was = Defs.researchStage(kind, d.research[kind] or 0)
 			d.research[kind] = (d.research[kind] or 0) + n

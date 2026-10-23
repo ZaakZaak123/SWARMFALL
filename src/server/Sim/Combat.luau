@@ -63,6 +63,9 @@ function Combat.recompute(p)
 	s.knock = wd.knockback * (if wd.kind == "shotgun" then 0.3 else 1)
 	s.falloff = wd.falloff
 	local evo = p.evolved
+	if evo and Defs.Evolutions[evo] and Defs.Evolutions[evo].m20 then
+		evo = nil -- M20 forms apply through modRanks / modMods (World.newPlayer)
+	end
 	if evo == "EV_THUNDERLORD" then
 		local m = Defs.Evolutions.EV_THUNDERLORD.mods
 		s.damage += m.damageAdd
@@ -176,6 +179,9 @@ local function trace(w, p, ox: number, oz: number, dx: number, dz: number, dmg: 
 	-- Railgun trial «Пробой линии»: one shot damaging >= 2 normal enemies in a line.
 	if normals >= Defs.LineTrial.MinHits and p.weaponDef.id == "W_RAILGUN" then
 		p.lineShots += 1
+		if normals >= 4 then
+			p.feats.line4 += 1
+		end
 	end
 	return endT
 end
@@ -438,7 +444,7 @@ function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fr
 	local vuln = if t < e.vulnUntil then e.vuln else 0
 	mult *= 1 + vuln
 	local kind = e.kind
-	if (kind == "EN_BULWARK" or kind == "ELITE_BULWARK") and vuln <= 0 and band(flags, DF.BURN) == 0 then
+	if (kind == "EN_BULWARK" or e.def.elite) and vuln <= 0 and band(flags, DF.BURN) == 0 then
 		local ax, az = fromX - e.x, fromZ - e.z
 		local m = math.sqrt(ax * ax + az * az)
 		if m > 0.01 and (ax * e.fx + az * e.fz) / m > Defs.Bulwark.FrontCos then
@@ -496,6 +502,15 @@ function Combat.onKill(w, p, e, depth: number, cause: number)
 		p.s01Stats.kills += 1
 	elseif cause <= 3 then
 		p.weaponKills += 1
+		-- M20 feat counters (thematic, deterministic).
+		local wid = p.weaponDef.id
+		if cause == 1 and wid == "W_ARC_RIFLE" then
+			p.feats.arcKills += 1
+		elseif cause == 3 and wid == "W_SCATTERGUN" then
+			p.feats.burnKills += 1
+		elseif wid == "W_PLASMA_BEAM" and e.def.big and not e.def.static then
+			p.feats.heavyKills += 1
+		end
 	end
 	local sh = rank(p, "UPG_SHIELD")
 	if sh > 0 then

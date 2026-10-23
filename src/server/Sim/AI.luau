@@ -64,7 +64,7 @@ local function steer(w, e, p, dist: number, dt: number, standoff: number, turnRa
 	local r = e.def.radius
 	local sx, sz = 0, 0
 	for _, o in w:query(e.x, e.z, r + 3, sepBuf) do
-		if o ~= e and o.kind ~= "HIVE" then
+		if o ~= e and not o.def.static then
 			local ox, oz = e.x - o.x, e.z - o.z
 			local d = math.sqrt(ox * ox + oz * oz)
 			local min = r + o.def.radius
@@ -599,6 +599,11 @@ function B.BOSS_DEVOURER(w, e, p, dist, dt)
 	end
 end
 
+-- Objective kinds reuse proven behaviours: the carrier fights like the elite Bulwark, structures idle.
+B.ELITE_CARRIER = B.ELITE_BULWARK
+B.NODE = B.HIVE
+B.ACID_SOURCE = B.HIVE
+
 -- Update ----------------------------------------------------------------------------------------------
 function AI.update(w, dt: number)
 	local t = w.t
@@ -622,7 +627,7 @@ function AI.update(w, dt: number)
 		dist = math.max(dist, 0.01)
 		if e.state == ST.SPAWN then
 			if t >= e.stateUntil then
-				e.state = if e.kind == "HIVE" then ST.IDLE else ST.MOVE
+				e.state = if e.def.static then ST.IDLE else ST.MOVE
 			end
 			continue
 		end

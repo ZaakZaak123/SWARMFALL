@@ -66,7 +66,7 @@ if opArg == "O01" or opArg == "all" then
 	report("roster", probe)
 	local extra = {}
 	for kind in seen do
-		if kind ~= "EN_RUNNER" and kind ~= "EN_SPITTER" and kind ~= "ELITE_BULWARK" then
+		if kind ~= "EN_RUNNER" and kind ~= "EN_SPITTER" and kind ~= "ELITE_CARRIER" then
 			table.insert(extra, kind)
 		end
 	end

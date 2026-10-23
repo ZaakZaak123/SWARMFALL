@@ -72,9 +72,8 @@ end
 
 -- Pooled parts currently driven by effects. Optional / cosmetic effects check Fx.busy() and skip
 -- themselves under load, so a long burst into a dense swarm never grows the pool without bound.
-local PART_BUDGET = 420
 function Fx.busy(extra: number?): boolean
-	return liveParts + (extra or 0) > PART_BUDGET
+	return liveParts + (extra or 0) > Settings.Budget.fxParts[Settings.quality]
 end
 function Fx.stats()
 	return { live = liveParts, effects = #active, pooled = #pools.block + #pools.cyl + #pools.ball }

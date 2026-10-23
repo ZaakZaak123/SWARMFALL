@@ -135,9 +135,11 @@ end
 -- HP bars for elites & hives
 local function attachBar(rec)
 	local def = Defs.EnemyByIndex[rec.kind]
-	if rec.kind ~= 5 and rec.kind ~= 6 then
+	local BAR = { [5] = "ЭЛИТА", [6] = "ГНЕЗДО", [10] = "НОСИТЕЛЬ ЯДРА", [11] = "ПИТАЮЩИЙ УЗЕЛ", [12] = "КИСЛОТНЫЙ ИСТОЧНИК" }
+	if not BAR[rec.kind] then
 		return
 	end
+	local elite = rec.kind == 5 or rec.kind == 10
 	local anchor = Instance.new("Part")
 	anchor.Anchored = true
 	anchor.CanCollide = false
@@ -147,7 +149,7 @@ local function attachBar(rec)
 	anchor.Parent = folder
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromOffset(120, 14)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, if rec.kind == 5 then 9 else 11, 0)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, if elite then 9 else 11, 0)
 	gui.AlwaysOnTop = true
 	gui.Adornee = anchor
 	gui.Parent = anchor
@@ -159,14 +161,14 @@ local function attachBar(rec)
 	back.Parent = gui
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = if rec.kind == 5 then rgb(255, 200, 60) else rgb(170, 255, 80)
+	fill.BackgroundColor3 = if elite then rgb(255, 200, 60) elseif rec.kind == 11 then rgb(180, 120, 255) else rgb(170, 255, 80)
 	fill.BorderSizePixel = 0
 	fill.Parent = back
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.new(1, 0, 0, 14)
 	label.Position = UDim2.fromOffset(0, -15)
-	label.Text = if rec.kind == 5 then "ЭЛИТА · ЯДРО" else "ГНЕЗДО"
+	label.Text = BAR[rec.kind]
 	label.FontFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
 	label.TextSize = 14
 	label.TextColor3 = fill.BackgroundColor3
@@ -428,8 +430,8 @@ function EnemyView.nearestInCone(ox: number, oz: number, dx: number, dz: number,
 end
 
 -- Gait radians per stud travelled, per enemy kind (small skitterers step fast, giants slow).
-STRIDE = { [1] = 1.35, [2] = 0.9, [3] = 1.1, [4] = 0.75, [5] = 0.6, [6] = 0, [7] = 0.22, [8] = 1.6, [9] = 0.3 }
-HEAVY = { [4] = true, [5] = true, [7] = true }
+STRIDE = { [1] = 1.35, [2] = 0.9, [3] = 1.1, [4] = 0.75, [5] = 0.6, [6] = 0, [7] = 0.22, [8] = 1.6, [9] = 0.3, [10] = 0.6, [11] = 0, [12] = 0 }
+HEAVY = { [4] = true, [5] = true, [7] = true, [10] = true }
 WHITE = Color3.new(1, 1, 1)
 
 local function lerpAngle(a: number, b: number, t: number): number
@@ -441,6 +443,7 @@ function EnemyView.update(dt: number, camPos: Vector3)
 	local now = os.clock()
 	local n = 0
 	local animate = Settings.quality >= 2
+	local farDist = Settings.Budget.animDistance[Settings.quality]
 	for id, rec in records do
 		local alpha = math.clamp((now - rec.t0) / SNAP_DT, 0, 1)
 		rec.dx = rec.px + (rec.cx - rec.px) * alpha
@@ -510,7 +513,7 @@ function EnemyView.update(dt: number, camPos: Vector3)
 		local base = CFrame.new(rec.dx + rec.kx, y, rec.dz + rec.kz) * CFrame.Angles(0, rec.face + math.pi, 0) * CFrame.new(shakeX, 0, pullZ) * CFrame.Angles(tilt + rec.tilt, 0, roll)
 		-- gait
 		local attacking = state == ST.ATTACK
-		local far = (camPos - base.Position).Magnitude > 160
+		local far = (camPos - base.Position).Magnitude > farDist
 		if m.hasSegments then
 			-- Trail of head positions for the Devourer's body.
 			local trail = rec.trail

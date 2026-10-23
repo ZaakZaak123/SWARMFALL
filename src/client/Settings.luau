@@ -9,6 +9,14 @@ local Settings = {
 	numbers = true,
 	touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
 	aimAssist = true,
+	autoQuality = true, -- drop/raise quality from the measured frame rate during runs
+}
+
+-- Per-quality presentation budgets (index = quality 1..3).
+Settings.Budget = {
+	fxParts = { 160, 280, 420 }, -- pooled FX parts alive at once
+	animDistance = { 70, 115, 160 }, -- enemies farther than this skip gait / blink animation
+	shadows = { false, false, true },
 }
 
 Settings.QualityNames = { "LOW", "MEDIUM", "HIGH" }

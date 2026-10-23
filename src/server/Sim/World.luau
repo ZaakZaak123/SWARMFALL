@@ -74,7 +74,9 @@ local function newPlayer(map, info, index: number, count: number)
 		-- get it at the O01 encirclement. Tests/legacy callers default to unlocked.
 		s01 = info.s01 ~= false,
 		s01Ready = 0,
-		s01Cd = Defs.S01.Cooldown * (1 - Defs.S01.PerkCut * perk(info, "PK_OVERDRIVE")),
+		s01Cd = Defs.S01.Cooldown * (1 - Defs.S01.PerkCut * perk(info, "PK_OVERDRIVE")) * (if info.s01Spec and info.s01Spec.branch == "A" and info.s01Spec.tier >= 3 then 0.85 else 1),
+		s01Spec = info.s01Spec, -- { branch = "A"|"B"|"C", tier = 1..3 } or nil
+		hammerFollow = nil,
 		hammerAt = nil,
 		hammerEmergency = false,
 		s01Stats = { casts = 0, hits = 0, kills = 0, crowds = 0, best = 0 },
@@ -84,6 +86,7 @@ local function newPlayer(map, info, index: number, count: number)
 		modMods = nil,
 		loadout = info.loadout,
 		weaponKills = 0, -- personal lethal kills credited to this run's weapon (mastery M1–M20)
+		feats = { arcKills = 0, burnKills = 0, heavyKills = 0, line4 = 0 }, -- M20 feat counters
 		lineShots = 0, -- railgun trial shots (>= 2 normal enemies in one line)
 		species = {}, -- personal confirmed kills per species (research)
 		ranks = {},
@@ -123,6 +126,22 @@ local function newPlayer(map, info, index: number, count: number)
 			end
 		end
 		p.modMods = mods
+	end
+	-- An equipped M20 form works through the same path (its ranks and tweaks stack under the cap).
+	local form = p.evolved and Defs.Evolutions[p.evolved]
+	if form and form.m20 then
+		p.modRanks = p.modRanks or {}
+		for k, v in form.ranks do
+			p.modRanks[k] = (p.modRanks[k] or 0) + v
+		end
+		p.modMods = p.modMods or {}
+		for k, v in form.mods do
+			if k:sub(-4) == "Mult" then
+				p.modMods[k] = (p.modMods[k] or 1) * v
+			else
+				p.modMods[k] = (p.modMods[k] or 0) + v
+			end
+		end
 	end
 	Combat.recompute(p)
 	return p
@@ -335,6 +354,22 @@ function World:hammerImpact(p)
 	local cap = if emergency then S.Emergency.Targets else S.Targets
 	local dmg = if emergency then S.Emergency.Damage else S.Damage
 	local knock = if emergency then S.Emergency.Knock else S.Knock
+	local stun = S.Stun
+	-- Specialization (only on the portable strike, not the one-time emergency overload).
+	local spec = if emergency then nil else p.s01Spec
+	local br, tier = spec and spec.branch, spec and spec.tier or 0
+	if br == "A" then
+		radius *= 1.15
+		reach = radius
+		if tier >= 3 then
+			dmg *= 1.3
+		end
+	elseif br == "B" then
+		knock *= 1.4
+		stun += 0.5
+	elseif br == "C" and tier >= 2 then
+		knock = -knock -- pull toward the player
+	end
 	local list = self:query(p.x, p.z, reach + 4, {})
 	local px, pz = p.x, p.z
 	table.sort(list, function(a, b)
@@ -342,7 +377,7 @@ function World:hammerImpact(p)
 	end)
 	local hits = 0
 	for _, e in list do
-		if not e.alive or e.kind == "HIVE" then
+		if not e.alive or e.def.static then
 			continue
 		end
 		local dx, dz = e.x - px, e.z - pz
@@ -360,13 +395,16 @@ function World:hammerImpact(p)
 		end
 		local big = e.def.big
 		local push = if big then S.BigKnock elseif inner then knock else knock * 0.6
+		if push < 0 then
+			push = math.max(push, -(d - 3)) -- a pull stops short of the player
+		end
 		if not e.def.boss then
 			e.x, e.z = self.nav.resolve(e.x + dx / d * push, e.z + dz / d * push, e.def.radius)
 		end
 		if inner then
 			hits += 1
 			if not big then
-				e.stunUntil = math.max(e.stunUntil, self.t + S.Stun)
+				e.stunUntil = math.max(e.stunUntil, self.t + stun)
 			elseif not e.def.boss and e.state == ST.WINDUP then
 				-- Heavy enemies only lose a windup (no boss stun-lock).
 				e.state = ST.RECOVER
@@ -378,6 +416,30 @@ function World:hammerImpact(p)
 			e.slow = math.max(if self.t < e.slowUntil then e.slow else 0, S.Emergency.OuterSlow)
 			e.slowUntil = math.max(e.slowUntil, self.t + 2)
 		end
+	end
+	-- Specialization follow-ups.
+	if br == "B" and tier >= 2 and hits > 0 then
+		local gain = math.min(30, hits * 4)
+		if gain > p.shield then
+			p.shield = gain
+			self:emit(E.SHIELD, p.id, gain)
+		end
+	end
+	if br == "B" and tier >= 3 then
+		p.iframeUntil = math.max(p.iframeUntil, self.t + 1)
+		self:heal(p, 10)
+	end
+	if br == "C" then
+		for _, e in self:query(px, pz, radius + 6, {}) do
+			if e.alive and not e.def.boss and not e.def.static then
+				e.slow = math.max(if self.t < e.slowUntil then e.slow else 0, 0.4)
+				e.slowUntil = math.max(e.slowUntil, self.t + 3)
+			end
+		end
+	end
+	if (br == "A" and tier >= 2) or (br == "C" and tier >= 3) then
+		-- One follow-up wave per cast; it never schedules another (no recursive procs).
+		p.hammerFollow = { at = self.t + (if br == "A" then 0.35 else 0.6), x = px, z = pz, radius = if br == "A" then radius + 3 else radius, dmg = dmg * (if br == "A" then 0.5 else 0.6) }
 	end
 	local st = p.s01Stats
 	st.hits += hits
@@ -503,6 +565,7 @@ function World:playerResult(p)
 		species = table.clone(p.species),
 		level = self.level,
 		revives = p.revives or 0,
+		feats = table.clone(p.feats),
 	}
 end
 
@@ -564,7 +627,7 @@ function World:spawnEnemy(kind: string, x: number, z: number, spawnTime: number?
 	if def.scaleHp then
 		hp *= Defs.hpScale(self.t)
 	end
-	if def.boss or kind == "ELITE_BULWARK" or kind == "HIVE" then
+	if def.boss or def.elite or def.static then
 		hp *= 1 + 0.5 * math.max(0, n - 1)
 	end
 	hp *= Defs.Threat.hp(self.threat)
@@ -675,7 +738,7 @@ function World:kill(e, p, depth: number, cause: number)
 	end
 	-- XP drops
 	local xp = e.def.xp
-	if kind == "ELITE_BULWARK" then
+	if e.def.elite then
 		for i = 1, 8 do
 			local a = i / 8 * math.pi * 2
 			self:dropOrb(e.x + math.cos(a) * 5, e.z + math.sin(a) * 5, 0, math.ceil(xp / 8))
@@ -688,7 +751,7 @@ function World:kill(e, p, depth: number, cause: number)
 	elseif xp > 0 then
 		self:dropOrb(e.x, e.z, 0, xp)
 	end
-	if kind ~= "HIVE" and kind ~= "ELITE_BULWARK" then
+	if not e.def.static and not e.def.elite then
 		if self.rng:chance(Defs.Drops.HealChance) then
 			self:dropOrb(e.x + 1.5, e.z, 1, Defs.Drops.HealAmount)
 		elseif self.rng:chance(Defs.Drops.MagnetChance) then
@@ -952,7 +1015,7 @@ function World:director(dt: number)
 	self.spawnAcc += ph.rate * (1 + 0.4 * (n - 1)) * Defs.Threat.spawn(self.threat) * (self.op.spawnMult or 1) * dt
 	local active, specials = 0, 0
 	for _, e in self.enemies do
-		if not e.def.boss and e.kind ~= "HIVE" then
+		if not e.def.boss and not e.def.static then
 			active += 1
 			if e.kind ~= "EN_RUNNER" then
 				specials += 1
@@ -1314,6 +1377,16 @@ function World:tick(dt: number)
 		if p.alive then
 			if p.hammerAt and self.t >= p.hammerAt then
 				self:hammerImpact(p)
+			end
+			local f = p.hammerFollow
+			if f and self.t >= f.at then
+				p.hammerFollow = nil
+				for _, e in self:query(f.x, f.z, f.radius + 2, {}) do
+					if e.alive and not e.def.static and (e.x - f.x) ^ 2 + (e.z - f.z) ^ 2 <= (f.radius + e.def.radius) ^ 2 then
+						Combat.damage(self, p, e, f.dmg * (if e.def.boss then Defs.S01.BossMult elseif e.def.big then Defs.S01.BigMult else 1), 1, bit32.bor(Codec.DF.BLAST, Codec.DF.GRAV), f.x, f.z)
+					end
+				end
+				self:emit(E.HAMMER, p.id, f.x, f.z, f.radius, 3, 0, 0)
 			end
 			Combat.updatePlayer(self, p, dt)
 		end

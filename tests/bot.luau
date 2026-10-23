@@ -83,7 +83,7 @@ function Bot.run(weapon: string, players: number, runSeed: number, verbose: bool
 				for _, e in w.enemies do
 					if e.alive and not e.invulnerable then
 						local d = (e.x - p.x) ^ 2 + (e.z - p.z) ^ 2
-						if e.kind == "BOSS_BROODMOTHER" or e.kind == "ELITE_BULWARK" or e.kind == "HIVE" then
+						if e.kind == "BOSS_BROODMOTHER" or e.def.elite or e.def.static then
 							d *= 0.15
 						elseif e.role == "R" and not opts.ignoreReactor then
 							d *= 0.4
