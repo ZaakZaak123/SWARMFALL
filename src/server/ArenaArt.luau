@@ -124,7 +124,7 @@ function ArenaArt.dropship(map, decor, H): boolean
 		sl.Range = 60
 		sl.Brightness = 3
 		sl.Color = rgb(255, 225, 190)
-		sl.Shadows = true
+		sl.Shadows = false
 		sl.Parent = head
 	end
 	H.disc(decor, Vector3.new(0, 0.03, o.z + 14), 30, 0.05, rgb(255, 150, 40), Enum.Material.Neon, 0.85)

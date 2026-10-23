@@ -984,9 +984,11 @@ local SKY = {
 
 function Arena.lighting(theme: string)
 	local night = theme == "night"
-	Lighting.ClockTime = if night then 23.6 else 17.75
+	-- Skyboxes are dimmed by sun elevation, so the night theme keeps a just-set sun (hidden, weak) and
+	-- gets its darkness from the painted night sky and the lighting colours.
+	Lighting.ClockTime = if night then 17.9 else 17.75
 	Lighting.GeographicLatitude = 20
-	Lighting.Brightness = if night then 1.6 else 3
+	Lighting.Brightness = if night then 0.9 else 3
 	Lighting.Ambient = if night then rgb(96, 50, 80) else rgb(110, 90, 150)
 	Lighting.OutdoorAmbient = if night then rgb(160, 90, 130) else rgb(200, 170, 230)
 	Lighting.ColorShift_Top = if night then rgb(255, 120, 140) else rgb(255, 170, 140)
@@ -1018,7 +1020,7 @@ function Arena.lighting(theme: string)
 	end
 	sky.StarCount = 0
 	sky.CelestialBodiesShown = true
-	sky.SunAngularSize = 8
+	sky.SunAngularSize = if night then 0 else 8
 	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
