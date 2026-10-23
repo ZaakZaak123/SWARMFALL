@@ -4,6 +4,7 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
+local Outpost = require(script.Parent.Outpost)
 local Codec = require(Shared:WaitForChild("Codec"))
 local Combat = require(script.Parent.Combat)
 
@@ -34,7 +35,7 @@ local function turnToward(e, tx: number, tz: number, rate: number, dt: number)
 end
 
 local function speedOf(w, e): number
-	local s = e.def.speed
+	local s = e.def.speed * (e.speedMult or 1)
 	if w.t < e.slowUntil then
 		s *= 1 - e.slow
 	end
@@ -681,6 +682,16 @@ end
 
 -- Objective kinds reuse proven behaviours: the carrier fights like the elite Bulwark, structures idle.
 B.ELITE_CARRIER = B.ELITE_BULWARK
+-- Raid outposts: turrets act, the core just stands there.
+B.TUR_STING = function(w, e, _p, _dist, dt)
+	Outpost.hostile(w, e, dt)
+end
+B.TUR_ARC = B.TUR_STING
+B.TUR_MORTAR = B.TUR_STING
+B.TUR_SHIELD = B.TUR_STING
+B.OUTPOST_CORE = function(_w, e)
+	e.state = 8
+end
 B.NODE = B.HIVE
 B.ACID_SOURCE = B.HIVE
 
@@ -716,6 +727,9 @@ function AI.update(w, dt: number)
 			continue
 		elseif e.state == ST.STUN then
 			e.state = ST.MOVE
+		end
+		if e.muts then
+			Outpost.regen(w, e, dt)
 		end
 		local behaviour = B[e.kind]
 		if behaviour then

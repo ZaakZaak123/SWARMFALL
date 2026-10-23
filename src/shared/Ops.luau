@@ -72,6 +72,11 @@ export type OpDef = {
 	unlocks: { string },
 	requires: string?,
 	chapterEnd: boolean?,
+	enemyHpMult: number?,
+	siege: number?, -- siege level (generated op)
+	target: any?, -- raid target snapshot (generated op)
+	mode: string?, -- "siege" | "raid" for generated ops
+	anomaly: any?, -- Meta anomaly applied to this run
 }
 
 local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
@@ -409,6 +414,104 @@ Ops.O04.deadline = 420 -- nests are walked to and shot down: keep a margin over 
 Ops.O04.hardLimit = 420 + Ops.O04.finaleTime + 60
 
 Ops.Order = { "O01", "O02", "O03", "O04", "O05", "O06", "O07", "CA01" }
+
+-- Siege ladder (DD-038): defend the extractor of your own outpost through five waves. Endless levels;
+-- each level is tougher. Generated, not stored: id "SIEGE", the level travels in the op.
+function Ops.makeSiege(level: number): OpDef
+	level = math.max(1, math.floor(level))
+	local hpMult = 1 + 0.14 * (level - 1)
+	local rateMult = 1 + 0.07 * (level - 1)
+	local phases = {}
+	local beats = {}
+	local waveLen, calm = 42, 13
+	for k = 1, 5 do
+		local at = 6 + (k - 1) * (waveLen + calm)
+		local w = { EN_RUNNER = 1 }
+		if k >= 2 or level >= 3 then
+			w.EN_STALKER = 0.12
+		end
+		if k >= 3 or level >= 4 then
+			w.EN_SPITTER = 0.1
+		end
+		if k >= 4 or level >= 6 then
+			w.EN_BOMBER = 0.1
+			w.EN_BULWARK = 0.05
+		end
+		table.insert(phases, {
+			at = at,
+			label = "ВОЛНА " .. k .. "/5",
+			rate = (2.4 + 0.55 * k) * rateMult,
+			cap = math.floor((28 + 9 * k) * math.min(1.6, rateMult)),
+			dirs = if k <= 2 then { "N", "NE", "NW", "E", "W" } else ALL,
+			w = w,
+		})
+		table.insert(phases, { at = at + waveLen, label = "ПЕРЕДЫШКА", rate = 0.5, cap = 8, dirs = { "N" }, w = { EN_RUNNER = 1 } })
+		table.insert(beats, { at = at + 5, type = "assault", count = 5 + 2 * k + math.floor(level / 2) })
+		if k >= 2 then
+			table.insert(beats, { at = at + 24, type = "assault", count = 4 + 2 * k + math.floor(level / 2), kind = if k >= 4 then "EN_STALKER" else nil })
+		end
+	end
+	local last = 6 + 4 * (waveLen + calm)
+	table.insert(beats, { at = last + 10, type = "elite" })
+	table.sort(beats, function(a, b)
+		return a.at < b.at
+	end)
+	return {
+		id = "SIEGE",
+		index = 0,
+		code = "ОСАДА",
+		name = "ОСАДА · УРОВЕНЬ " .. level,
+		map = "MAP_REACTOR_YARD",
+		brief = "Пять волн идут на твой бур. Турели аванпоста стреляют вместе с тобой.",
+		goal = "Защити бур",
+		objective = "carrier",
+		reactor = { hp = math.floor(1700 * (1 + 0.05 * (level - 1))), name = "БУР" },
+		eliteName = "ВОЖАК ОСАДЫ",
+		eliteGoal = "Убей вожака осады",
+		eliteHpMult = 0.6 * hpMult,
+		enemyHpMult = hpMult,
+		runEvolution = false,
+		finaleTime = 20,
+		deadline = last + 90,
+		hardLimit = last + 140,
+		finale = { at = 0, label = "ДОБИТЬ", rate = 6 * rateMult, cap = 70, dirs = ALL, w = { EN_RUNNER = 0.85, EN_STALKER = 0.15 } },
+		phases = phases,
+		beats = beats,
+		unlocks = {},
+		siege = level,
+		mode = "siege",
+	}
+end
+
+-- Raid (DD-039): another player's outpost — their turrets shoot you, their brood comes in waves, the
+-- extractor core is the objective. target = snapshot { uid, name, rating, slots, brood }.
+function Ops.makeRaid(target): OpDef
+	local beats = { { at = 0.2, type = "outpost" } }
+	for _, at in { 14, 42, 72, 102, 132, 160, 186, 212 } do
+		table.insert(beats, { at = at, type = "brood" })
+	end
+	return {
+		id = "RAID",
+		index = 0,
+		code = "ВТОРЖЕНИЕ",
+		name = target.name or "ЧУЖОЙ АВАНПОСТ",
+		map = "MAP_REACTOR_YARD",
+		brief = "Пробейся через турели и рой хозяина и разрушь его бур.",
+		goal = "Разрушь вражеский бур",
+		objective = "core",
+		runEvolution = false,
+		hardLimit = 240,
+		phases = {
+			{ at = 0, label = "ВТОРЖЕНИЕ", rate = 1.3, cap = 16, dirs = ALL, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 }, quiet = true },
+			{ at = 90, label = "ОБОРОНА КРЕПНЕТ", rate = 2.0, cap = 24, dirs = ALL, w = { EN_RUNNER = 0.85, EN_STALKER = 0.15 } },
+			{ at = 170, label = "ПОСЛЕДНИЙ РУБЕЖ", rate = 3.0, cap = 34, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.12, EN_SPITTER = 0.08 } },
+		},
+		beats = beats,
+		unlocks = {},
+		target = target,
+		mode = "raid",
+	}
+end
 
 function Ops.get(id: string?): OpDef
 	return (id and (Ops :: any)[id]) or Ops.O01

@@ -11,11 +11,12 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local Modules = require(Shared:WaitForChild("Modules"))
+local Meta = require(Shared:WaitForChild("Meta"))
 
 local Profile = {}
 
 local STORE_NAME = "SWARMFALL_Profile_v1"
-local VERSION = 2
+local VERSION = 3
 local store = nil
 pcall(function()
 	store = DataStoreService:GetDataStore(STORE_NAME)
@@ -56,6 +57,14 @@ local function defaults()
 		loadout = {}, -- weapon id -> { core = moduleId?, adapter = moduleId? }
 		firstWinGrantUsed = false,
 		lastRun = "",
+		-- v3 meta (DD-037…): outpost, swarm, raids
+		outpost = { slots = {}, siege = 1, best = 0, harvestT = 0 },
+		dnaSpent = {}, -- species -> DNA spent
+		species = { EN_RUNNER = false }, -- unlocked strain species
+		mutations = {}, -- "SPECIES:MUT" -> true (unlocked for that species)
+		brood = {}, -- up to 3 strains { kind, muts }
+		raid = { rating = Meta.StartRating, wins = 0, losses = 0, defWins = 0, defLosses = 0 },
+		lastDay = 0,
 	}
 end
 
@@ -88,6 +97,16 @@ local function reconcile(data)
 			data.ops.O07 = math.max(data.ops.O07 or 1, data.threat.MAP_HIVE_DEPTHS)
 		end
 	end
+	-- v3: nested tables may be missing on older saves
+	for _, key in { "outpost", "raid" } do
+		for k, v in base[key] do
+			if data[key][k] == nil then
+				data[key][k] = v
+			end
+		end
+	end
+	data.outpost.slots = Meta.cleanOutpost(data.outpost.slots)
+	data.brood = Meta.cleanBrood(data.brood)
 	data.v = VERSION
 	return data
 end
@@ -207,6 +226,21 @@ function Profile.public(player: Player)
 		runs = d.runs,
 		wins = d.wins,
 		offline = e.offline,
+		-- meta
+		features = Profile.features(d),
+		outpost = { slots = d.outpost.slots, siege = d.outpost.siege, best = d.outpost.best, harvest = Meta.harvest(d.outpost.slots, d.outpost.harvestT, os.time()), harvestT = d.outpost.harvestT },
+		dna = (function()
+			local out = {}
+			for _, kind in Meta.SpeciesOrder do
+				out[kind] = Meta.dna(d, kind)
+			end
+			return out
+		end)(),
+		species = d.species,
+		mutations = d.mutations,
+		brood = d.brood,
+		raid = d.raid,
+		raidLog = e.raidLog,
 	}
 end
 
@@ -450,6 +484,189 @@ function Profile.equippedForm(player: Player, weaponId: string): string?
 end
 
 -- Idempotent per runId. Returns the reward breakdown for the results screen.
+-- Meta (DD-037…DD-041) -----------------------------------------------------------------------------------
+-- Modes open one at a time with the story (Progressive Discovery).
+function Profile.features(d)
+	local won = d.wins_by_op or {}
+	return {
+		outpost = (won.O02 or 0) > 0,
+		swarm = (won.O03 or 0) > 0,
+		raids = (won.O04 or 0) > 0,
+	}
+end
+
+local function structureUnlocked(d, def): boolean
+	return ((d.wins_by_op or {})[def.unlock] or 0) > 0
+end
+
+local function spend(d, xenite: number, dnaKind: string?, dna: number?): boolean
+	if d.scrap < xenite then
+		return false
+	end
+	if dnaKind and (dna or 0) > 0 and Meta.dna(d, dnaKind) < dna then
+		return false
+	end
+	d.scrap -= xenite
+	if dnaKind and (dna or 0) > 0 then
+		d.dnaSpent[dnaKind] = (d.dnaSpent[dnaKind] or 0) + dna
+	end
+	return true
+end
+
+-- Collect the harvester first: building or upgrading restarts the clock, nothing earned is lost.
+function Profile.collectHarvest(player: Player): number
+	local d = Profile.get(player)
+	if not d then
+		return 0
+	end
+	local amount = Meta.harvest(d.outpost.slots, d.outpost.harvestT, os.time())
+	d.outpost.harvestT = os.time()
+	if amount > 0 then
+		d.scrap += amount
+	end
+	mark(player)
+	return amount
+end
+
+function Profile.build(player: Player, slot: number, id: string): boolean
+	local d = Profile.get(player)
+	local def = Meta.Structures[id]
+	if not d or not def or not Profile.features(d).outpost or not Meta.Sockets[slot] or d.outpost.slots[slot] then
+		return false
+	end
+	if not structureUnlocked(d, def) or not spend(d, def.cost[1], "EN_RUNNER", def.dna[1]) then
+		return false
+	end
+	if id == "HARVEST" then
+		Profile.collectHarvest(player)
+	end
+	d.outpost.slots[slot] = { id = id, lvl = 1 }
+	mark(player)
+	return true
+end
+
+function Profile.upgrade(player: Player, slot: number): boolean
+	local d = Profile.get(player)
+	local s = d and d.outpost.slots[slot]
+	if not s or s.lvl >= 3 then
+		return false
+	end
+	local def = Meta.Structures[s.id]
+	if not spend(d, def.cost[s.lvl + 1], "EN_RUNNER", def.dna[s.lvl + 1]) then
+		return false
+	end
+	if s.id == "HARVEST" then
+		Profile.collectHarvest(player)
+	end
+	s.lvl += 1
+	mark(player)
+	return true
+end
+
+function Profile.sell(player: Player, slot: number): boolean
+	local d = Profile.get(player)
+	local s = d and d.outpost.slots[slot]
+	if not s then
+		return false
+	end
+	if s.id == "HARVEST" then
+		Profile.collectHarvest(player)
+	end
+	local def = Meta.Structures[s.id]
+	local spent = 0
+	for l = 1, s.lvl do
+		spent += def.cost[l]
+	end
+	d.scrap += math.floor(spent * Meta.SellRefund)
+	d.outpost.slots[slot] = nil
+	mark(player)
+	return true
+end
+
+function Profile.unlockSpecies(player: Player, kind: string): boolean
+	local d = Profile.get(player)
+	local sp = Meta.Species[kind]
+	if not d or not sp or not Profile.features(d).swarm or d.species[kind] then
+		return false
+	end
+	if not spend(d, 0, kind, sp.unlock) then
+		return false
+	end
+	d.species[kind] = true
+	mark(player)
+	return true
+end
+
+function Profile.unlockMutation(player: Player, kind: string, mut: string): boolean
+	local d = Profile.get(player)
+	local m = Meta.Mutations[mut]
+	local key = kind .. ":" .. mut
+	if not d or not m or not d.species[kind] or d.mutations[key] then
+		return false
+	end
+	if not spend(d, 0, kind, m.dna) then
+		return false
+	end
+	d.mutations[key] = true
+	mark(player)
+	return true
+end
+
+-- strain = { kind, muts } for slot 1..3; nil clears the slot.
+function Profile.setStrain(player: Player, index: number, kind: string?, muts: { string }?): boolean
+	local d = Profile.get(player)
+	if not d or not Profile.features(d).swarm or index < 1 or index > Meta.MaxStrains then
+		return false
+	end
+	local list = table.clone(d.brood)
+	if kind == nil then
+		table.remove(list, index)
+	else
+		if not d.species[kind] then
+			return false
+		end
+		local ok = {}
+		for _, m in muts or {} do
+			if d.mutations[kind .. ":" .. m] then
+				table.insert(ok, m)
+			end
+		end
+		list[math.min(index, #list + 1)] = { kind = kind, muts = ok }
+	end
+	d.brood = Meta.cleanBrood(list)
+	mark(player)
+	return true
+end
+
+-- A finished raid on this player's outpost, reported by the attacker's server (Outposts service).
+function Profile.applyDefense(player: Player, entries): number
+	local d = Profile.get(player)
+	if not d then
+		return 0
+	end
+	local gained = 0
+	for _, entry in entries do
+		if entry.won then
+			d.raid.defLosses += 1
+		else
+			d.raid.defWins += 1
+			gained += Meta.DefenseReward
+		end
+		d.raid.rating = math.max(0, d.raid.rating - (entry.delta or 0))
+	end
+	d.scrap += gained
+	mark(player)
+	return gained
+end
+
+function Profile.setRaidLog(player: Player, log)
+	local e = profiles[player]
+	if e then
+		e.raidLog = log
+		changed(player)
+	end
+end
+
 function Profile.grantRun(player: Player, runId: string, result, opId: string, threat: number)
 	local d = Profile.get(player)
 	if not d then
@@ -464,6 +681,41 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	local reward = Defs.runReward(result, threat, d.perks.PK_SALVAGE or 0, if mine then mine.kills else nil)
 	if d.lastRun == runId then
 		return d.lastReward or reward
+	end
+	-- Mode rewards (DD-038/039): sieges and raids pay by their own rules; anomalies and squads add on top.
+	local mode = result.mode or "hunt"
+	if mode == "siege" then
+		local level = result.siege or 1
+		reward.lines = { { if result.victory then "crown" else "timer", Meta.siegeReward(level, result.victory) } }
+		reward.total = Meta.siegeReward(level, result.victory)
+		if result.victory and level >= (d.outpost.siege or 1) then
+			d.outpost.siege = level + 1
+			reward.siegeUp = level + 1
+		end
+		d.outpost.best = math.max(d.outpost.best or 0, if result.victory then level else 0)
+	elseif mode == "raid" and result.raid then
+		local delta = Meta.ratingDelta(d.raid.rating, result.raid.rating or Meta.StartRating, result.victory)
+		d.raid.rating = math.max(0, d.raid.rating + delta)
+		if result.victory then
+			d.raid.wins += 1
+		else
+			d.raid.losses += 1
+		end
+		reward.lines = { { if result.victory then "crown" else "timer", Meta.raidReward(result.raid.rating or 1000, result.victory) } }
+		reward.total = Meta.raidReward(result.raid.rating or 1000, result.victory)
+		reward.rating = { delta = delta, now = d.raid.rating }
+	end
+	local bonus = Meta.squadMult(result.squad or 1)
+	if result.anomaly then
+		for _, a in Meta.Anomalies do
+			if a.id == result.anomaly then
+				bonus *= a.reward
+			end
+		end
+	end
+	if bonus > 1.001 then
+		reward.total = math.floor(reward.total * bonus + 0.5)
+		reward.bonus = bonus
 	end
 	d.lastRun = runId
 	d.scrap += reward.total

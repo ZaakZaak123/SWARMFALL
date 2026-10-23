@@ -17,6 +17,8 @@ local Settings = require(script.Parent.Settings)
 local Audio = require(script.Parent.Audio)
 local Icons = require(script.Parent.Icons)
 local Preview = require(script.Parent.Preview)
+local MetaMenus = require(script.Parent.MetaMenus)
+local Meta = require(Shared:WaitForChild("Meta"))
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
 local C, F = Theme.C, Theme.F
@@ -226,8 +228,25 @@ local function buildLobby()
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = safe,
 	})
+	-- Mode tabs (DD-037): hunts always; the outpost siege and raids appear once opened
+	ui.tabs = new("Frame", {
+		Position = UDim2.fromOffset(0, 124),
+		Size = UDim2.fromOffset(460, 40),
+		Parent = safe,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
+	})
+	ui.tabButtons = {}
+	for i, t in { { "hunt", "ОХОТЫ" }, { "siege", "АВАНПОСТ" }, { "raid", "ВТОРЖЕНИЕ" } } do
+		local b, bl = Theme.button(t[2], { Name = "Tab_" .. t[1], Size = UDim2.fromOffset(146, 40), TextSize = 13, LayoutOrder = i })
+		b.Parent = ui.tabs
+		b.Activated:Connect(function()
+			send("mode", t[1])
+			Audio.play("uiHover")
+		end)
+		ui.tabButtons[t[1]] = { button = b, label = bl }
+	end
 	-- Hunt card
-	local hunt = Theme.panel({ Name = "Hunt", Position = UDim2.fromOffset(0, 134), Size = UDim2.fromOffset(460, 214), CornerRadius = 20, Parent = safe })
+	local hunt = Theme.panel({ Name = "Hunt", Position = UDim2.fromOffset(0, 176), Size = UDim2.fromOffset(460, 214), CornerRadius = 20, Parent = safe })
 	ui.hunt = hunt
 	ui.huntTag = label("ОХОТА 1", {
 		Position = UDim2.fromOffset(24, 18),
@@ -258,6 +277,27 @@ local function buildLobby()
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Parent = hunt,
+	})
+	ui.anomaly = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -16, 0, 14),
+		Size = UDim2.fromOffset(0, 24),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.gold,
+		BackgroundTransparency = 0.82,
+		Corner = UDim.new(1, 0),
+		Stroke = { Color = C.gold, Transparency = 0.45 },
+		Visible = false,
+		Parent = hunt,
+	})
+	new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = ui.anomaly })
+	ui.anomalyText = label("", { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromScale(0, 1), FontFace = F.head, TextSize = 10, TextColor3 = C.gold, Parent = ui.anomaly })
+	ui.modeRow = new("Frame", {
+		Position = UDim2.fromOffset(24, 156),
+		Size = UDim2.new(1, -48, 0, 40),
+		Visible = false,
+		Parent = hunt,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), VerticalAlignment = Enum.VerticalAlignment.Center },
 	})
 	-- hunt navigation and threat
 	ui.huntPrev = Theme.button("‹", { Position = UDim2.fromOffset(24, 156), Size = UDim2.fromOffset(42, 38), TextSize = 22 })
@@ -332,6 +372,33 @@ local function buildLobby()
 		ui.settings.show()
 	end)
 	ui.xenite, ui.xeniteAmount = xenitePill(tr, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 2) })
+	-- Play together (DD-040): one tap to the Roblox invite sheet.
+	ui.invite = Theme.button("ПОЗВАТЬ ДРУЗЕЙ", { Name = "Invite", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 50), Size = UDim2.fromOffset(200, 40), TextSize = 12 })
+	ui.invite.Parent = tr
+	ui.invite.Activated:Connect(function()
+		Audio.play("ui")
+		task.spawn(function()
+			local SocialService = game:GetService("SocialService")
+			local lp = game:GetService("Players").LocalPlayer
+			local ok, can = pcall(SocialService.CanSendGameInviteAsync, SocialService, lp)
+			if ok and can then
+				pcall(SocialService.PromptGameInvite, SocialService, lp)
+			end
+		end)
+	end)
+	label("+10% ксенита за каждого в отряде", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 92), Size = UDim2.fromOffset(240, 14), FontFace = F.body, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = tr })
+	ui.harvest = Theme.button("СОБРАТЬ", { Name = "Harvest", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 112), Size = UDim2.fromOffset(200, 40), TextSize = 12 }, "primary")
+	ui.harvest.Parent = tr
+	ui.harvest.Visible = false
+	ui.harvest.Activated:Connect(function()
+		send("harvest")
+		Audio.play("orb", 1, 0.9)
+		Audio.play("level", 0.6, 1.4)
+	end)
+	-- «Пока тебя не было»: a one-time summary of raids on your outpost
+	ui.toast = Theme.panel({ Name = "Toast", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -40), Size = UDim2.fromOffset(520, 72), CornerRadius = 18, Visible = false, Parent = safe }, C.orange)
+	ui.toastTitle = label("ПОКА ТЕБЯ НЕ БЫЛО", { Position = UDim2.fromOffset(20, 10), Size = UDim2.new(1, -40, 0, 18), FontFace = F.head, TextSize = 12, TextColor3 = C.orange, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.toast })
+	ui.toastText = label("", { Position = UDim2.fromOffset(20, 30), Size = UDim2.new(1, -40, 0, 30), FontFace = F.bodyBold, TextSize = 15, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.toast })
 	ui.squad = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 60),
@@ -339,15 +406,38 @@ local function buildLobby()
 		Parent = tr,
 		List = { Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Right },
 	})
-	-- Bottom left: upgrades
-	ui.upgradesBtn = Theme.button("УЛУЧШЕНИЯ", {
-		Name = "Upgrades",
+	-- Bottom left: upgrades, swarm, outpost log, boards
+	ui.metaRow = new("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.fromOffset(760, 58),
+		Parent = safe,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
+	})
+	ui.upgradesBtn = Theme.button("УЛУЧШЕНИЯ", {
+		Name = "Upgrades",
 		Size = UDim2.fromOffset(230, 58),
 		TextSize = 17,
+		LayoutOrder = 1,
 	})
-	ui.upgradesBtn.Parent = safe
+	ui.upgradesBtn.Parent = ui.metaRow
+	local function metaButton(name: string, text: string, iconName: string, color: Color3, order: number, onClick)
+		local b, bl = Theme.button(text, { Name = name, Size = UDim2.fromOffset(150, 58), TextSize = 14, LayoutOrder = order })
+		b.Parent = ui.metaRow
+		bl.Position = UDim2.fromOffset(18, 0)
+		icon(iconName, 22, color, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), ZIndex = 3, Parent = b })
+		b.Activated:Connect(onClick)
+		return b
+	end
+	ui.swarmBtn = metaButton("Swarm", "РОЙ", "hive", C.violet, 2, function()
+		MetaMenus.showSwarm()
+	end)
+	ui.logBtn = metaButton("Log", "ЖУРНАЛ", "shield", C.orange, 3, function()
+		MetaMenus.showLog()
+	end)
+	ui.boardsBtn = metaButton("Boards", "РЕЙТИНГ", "crown", C.gold, 4, function()
+		MetaMenus.showBoards()
+	end)
 	ui.upgradesBtn.Label.Position = UDim2.fromOffset(22, 0)
 	icon("level", 24, C.lime, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 20, 0.5, 0), ZIndex = 3, Parent = ui.upgradesBtn })
 	ui.upgradesBadge = new("Frame", {
@@ -544,15 +634,101 @@ function Menus.refreshLobby()
 	local prof = profile
 	local runs = prof and prof.runs or 0
 	local op = Ops.get(info.op)
+	local mode = info.mode or "hunt"
+	local features = prof and prof.features or {}
 	ui.huntTag.Text = if op.code == "C-A01" then "КОНТРАКТ" else "ОХОТА " .. op.index
 	ui.huntName.Text = op.name
 	ui.huntBrief.Text = op.brief
 	local list = unlockedOps()
 	local isHost = info.host == myId
-	ui.huntPrev.Visible = #list > 1 and isHost
-	ui.huntNext.Visible = #list > 1 and isHost
+	-- tabs
+	local tabCount = 1 + (if features.outpost then 1 else 0) + (if features.raids then 1 else 0)
+	ui.tabs.Visible = tabCount > 1
+	ui.tabButtons.siege.button.Visible = features.outpost == true
+	ui.tabButtons.raid.button.Visible = features.raids == true
+	for key, t in ui.tabButtons do
+		local on = key == mode
+		t.button.BackgroundColor3 = if on then C.lime else C.ink
+		t.button.BackgroundTransparency = if on then 0 else 0.25
+		t.label.TextColor3 = if on then C.ink else C.text
+		t.button.Active = isHost
+	end
+	ui.hunt.Position = UDim2.fromOffset(0, if ui.tabs.Visible then 176 else 134)
+	-- anomaly of the day (hunts from the third one on, sieges)
+	local anomaly = nil
+	for _, a in Meta.Anomalies do
+		if a.id == info.anomaly then
+			anomaly = a
+		end
+	end
+	local showAnomaly = anomaly ~= nil and ((mode == "hunt" and op.index >= 3) or mode == "siege")
+	ui.anomaly.Visible = showAnomaly
+	if showAnomaly then
+		ui.anomalyText.Text = "АНОМАЛИЯ: " .. anomaly.name .. string.format("  ·  ×%.2f", anomaly.reward)
+		ui.anomaly.BackgroundColor3 = anomaly.color
+		ui.anomalyText.TextColor3 = anomaly.color
+	end
+	ui.modeRow.Visible = mode ~= "hunt"
+	-- Rebuild the action row only when its content changes: lobby state arrives 4×/s and a rebuilt
+	-- button swallows the click in progress.
+	local rowKey = mode .. "|" .. tostring(isHost) .. "|" .. tostring(info.target and info.target.uid) .. "|"
+	for _, c in info.candidates or {} do
+		rowKey ..= tostring(c.uid) .. ","
+	end
+	for slot in info.outpost or {} do
+		rowKey ..= "s" .. tostring(slot)
+	end
+	local rebuildRow = rowKey ~= ui.modeRowKey
+	ui.modeRowKey = rowKey
+	if rebuildRow then
+		clear(ui.modeRow)
+	end
+	if mode == "siege" then
+		local slots = info.outpost or {}
+		local built = 0
+		for _ in slots do
+			built += 1
+		end
+		ui.huntTag.Text = "ОСАДА АВАНПОСТА"
+		ui.huntName.Text = "УРОВЕНЬ " .. (info.siege or 1)
+		ui.huntBrief.Text = string.format("Пять волн идут на бур. Построек %d/%d — турели стреляют вместе с отрядом.", built, Meta.SocketCount)
+		if rebuildRow then
+			local b, bl = Theme.button("СТРОИТЬ", { Size = UDim2.fromOffset(150, 40), TextSize = 13 }, "primary")
+			b.Parent = ui.modeRow
+			b.Activated:Connect(function()
+				MetaMenus.showOutpost()
+			end)
+			if built == 0 then
+				bl.Text = "ПОСТРОИТЬ ПЕРВОЕ"
+				b.Size = UDim2.fromOffset(200, 40)
+			end
+		end
+	elseif mode == "raid" then
+		local t = info.target
+		ui.huntTag.Text = "ВТОРЖЕНИЕ  ·  ТВОЙ РЕЙТИНГ " .. (if prof and prof.raid then prof.raid.rating else "—")
+		ui.huntName.Text = if t then t.name else "Ищем аванпосты…"
+		ui.huntBrief.Text = if t then string.format("Рейтинг %d  ·  мощь обороны %d. Разрушь бур в центре за 4 минуты.", t.rating or 0, t.power or 0) else ""
+		if rebuildRow and isHost and info.candidates and #info.candidates > 1 then
+			for i, c in info.candidates do
+				local on = t and c.uid == t.uid
+				local b, bl = Theme.button(tostring(c.rating), { Size = UDim2.fromOffset(84, 40), TextSize = 13 }, if on then "primary" else "ghost")
+				b.Parent = ui.modeRow
+				b.Activated:Connect(function()
+					send("raidPick", i)
+					Audio.play("uiHover")
+				end)
+			end
+			local r = Theme.button("ДРУГИЕ", { Size = UDim2.fromOffset(96, 40), TextSize = 12 })
+			r.Parent = ui.modeRow
+			r.Activated:Connect(function()
+				send("raidRefresh")
+			end)
+		end
+	end
+	ui.huntPrev.Visible = mode == "hunt" and #list > 1 and isHost
+	ui.huntNext.Visible = mode == "hunt" and #list > 1 and isHost
 	local maxT = prof and prof.ops[info.op] or 1
-	ui.threat.Visible = maxT >= 2
+	ui.threat.Visible = mode == "hunt" and maxT >= 2
 	ui.threat.Position = UDim2.fromOffset(if #list > 1 and isHost then 132 else 24, 156)
 	for i, d in ui.threatDots do
 		d.button.Visible = i <= maxT
@@ -561,11 +737,38 @@ function Menus.refreshLobby()
 		d.button.BackgroundTransparency = if on then 0 else 0.9
 		d.text.TextColor3 = if on then C.ink else C.text
 	end
-	ui.hunt.Size = UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible then 214 else 160)
+	ui.hunt.Size = UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then 214 else 160)
 	-- Xenite + upgrades: after the first hunt
 	ui.xenite.Visible = runs > 0 or (prof and prof.scrap > 0)
 	ui.xeniteAmount.Text = Theme.commas(prof and prof.scrap or 0)
 	ui.upgradesBtn.Visible = runs > 0
+	ui.swarmBtn.Visible = features.swarm == true
+	ui.logBtn.Visible = features.outpost == true
+	ui.boardsBtn.Visible = features.outpost == true
+	local harvest = prof and prof.outpost and prof.outpost.harvest or 0
+	ui.harvest.Visible = harvest > 0
+	ui.harvest.Label.Text = "СОБРАТЬ  +" .. harvest
+	-- one summary of raids on the outpost per session
+	if prof and prof.raidLog and #prof.raidLog > 0 and not ui.toastShown then
+		ui.toastShown = true
+		local held, lost = 0, 0
+		for _, entry in prof.raidLog do
+			if os.time() - (entry.t or 0) < 3 * 86400 then
+				if entry.won then
+					lost += 1
+				else
+					held += 1
+				end
+			end
+		end
+		if held + lost > 0 then
+			ui.toastText.Text = string.format("Нападений на аванпост: %d  ·  отбито %d (+%d ксенита)  ·  прорвано %d", held + lost, held, held * Meta.DefenseReward, lost)
+			ui.toast.Visible = true
+			task.delay(9, function()
+				ui.toast.Visible = false
+			end)
+		end
+	end
 	local affordable = false
 	if prof then
 		for _, id in Defs.PerkOrder do
@@ -669,6 +872,7 @@ function Menus.showLobby(info, id: number, dev: string)
 			end
 		end
 	end
+	MetaMenus.setLobby(info)
 	if not ui.lobby.Visible then
 		ui.lobby.Visible = true
 		ui.lobbySafe.Position = UDim2.fromOffset(-40, 0)
@@ -687,6 +891,7 @@ end
 
 function Menus.hideLobby()
 	ui.lobby.Visible = false
+	MetaMenus.hideAll()
 	if ui.upgrades then
 		ui.upgrades.shade.Visible = false
 	end
@@ -1627,8 +1832,17 @@ function Menus.showResults(result, votes, id: number, reward)
 		tween(ui.resShade, 0.5, { BackgroundTransparency = 0.3 })
 		Audio.play(if result.victory then "evolve" else "warn", 0.7, if result.victory then 1.1 else 0.8)
 	end
-	ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ОХОТА " .. op.index) .. "  ·  " .. op.name .. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
-	ui.resTitle.Text = if result.victory then "ОХОТА ЗАВЕРШЕНА" else "ТЫ ПАЛ"
+	local mode = result.mode or "hunt"
+	if mode == "siege" then
+		ui.resTag.Text = "ОСАДА АВАНПОСТА  ·  УРОВЕНЬ " .. (result.siege or 1)
+		ui.resTitle.Text = if result.victory then "ОСАДА ОТБИТА" else "БУР ПАЛ"
+	elseif mode == "raid" then
+		ui.resTag.Text = "ВТОРЖЕНИЕ  ·  " .. (if result.raid then result.raid.name else "")
+		ui.resTitle.Text = if result.victory then "ВТОРЖЕНИЕ УСПЕШНО" else "ОБОРОНА ВЫСТОЯЛА"
+	else
+		ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ОХОТА " .. op.index) .. "  ·  " .. op.name .. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
+		ui.resTitle.Text = if result.victory then "ОХОТА ЗАВЕРШЕНА" else "ТЫ ПАЛ"
+	end
 	ui.resTitle.TextColor3 = if result.victory then C.lime else C.red
 	ui.resReason.Text = if result.chapterEnd and result.victory then "Глава завершена. " .. result.reason else result.reason
 	ui.resReason.TextColor3 = C.text
@@ -1662,6 +1876,9 @@ function Menus.showResults(result, votes, id: number, reward)
 		if reward.grant then
 			table.insert(parts, "+" .. reward.grant .. " бонус первой победы")
 		end
+		if reward.bonus and reward.bonus > 1.001 then
+			table.insert(parts, string.format("отряд и аномалия ×%.2f", reward.bonus))
+		end
 		ui.resRewardLines.Text = table.concat(parts, "   ·   ")
 	end
 	-- unlocks
@@ -1676,6 +1893,24 @@ function Menus.showResults(result, votes, id: number, reward)
 		elseif kind == "s01" then
 			k += 1
 			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
+		end
+	end
+	if reward and reward.siegeUp then
+		k += 1
+		unlockCard("threat", "ОСАДА", "Открыт уровень " .. reward.siegeUp, C.orange, k)
+	end
+	if reward and reward.rating then
+		k += 1
+		local d = reward.rating.delta
+		unlockCard("crown", "РЕЙТИНГ ВТОРЖЕНИЙ", string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now), if d >= 0 then C.gold else C.red, k)
+	end
+	-- A first story win that opens a meta mode (the next hunt unlocking is the signal).
+	local newly = { O03 = { "pin", "НОВЫЙ РЕЖИМ", "Аванпост и осада" }, O04 = { "hive", "НОВЫЙ РЕЖИМ", "Свой рой" }, O05 = { "skull", "НОВЫЙ РЕЖИМ", "Вторжения на чужие аванпосты" } }
+	for _, u in reward and reward.unlocked or {} do
+		local f = u[1] == "op" and newly[u[2]]
+		if f then
+			k += 1
+			unlockCard(f[1], f[2], f[3], C.violet, k)
 		end
 	end
 	if result.victory then
@@ -1734,6 +1969,7 @@ end
 -- Profile ------------------------------------------------------------------------------------------------
 function Menus.setProfile(pub)
 	profile = pub
+	MetaMenus.setProfile(pub)
 	if ui.upgrades and ui.upgrades.shade.Visible then
 		Menus.refreshUpgrades()
 	end
@@ -1765,6 +2001,7 @@ function Menus.init(playerGui: PlayerGui, sender)
 	buildNotes()
 	buildUpgrades()
 	buildSettings()
+	MetaMenus.init({ send = send, modal = modal, icon = icon, clear = clear, xenitePill = xenitePill })
 end
 
 function Menus.update(dt: number)

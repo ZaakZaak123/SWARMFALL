@@ -32,7 +32,16 @@ function Bot.run(
 	for i = 1, players do
 		table.insert(infos, { id = i, name = "BOT" .. i, weapon = weapon, perks = perks, s01 = (opts or {}).s01 })
 	end
-	local w = World.new({ seed = runSeed, players = infos, op = opts.op, map = mapId, threat = threat or 1 })
+	local w = World.new({
+		seed = runSeed,
+		players = infos,
+		op = opts.op,
+		map = mapId,
+		threat = threat or 1,
+		opDef = opts.opDef,
+		structures = opts.structures,
+		anomaly = opts.anomaly,
+	})
 	local ax, az = 0, 0
 	if opts.anchor then
 		ax, az = opts.anchor[1], opts.anchor[2]

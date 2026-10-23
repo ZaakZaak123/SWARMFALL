@@ -792,4 +792,12 @@ BLUEPRINT[10] = function() -- The Alpha: leader of the pack — huge, gold, crow
 	return LEGACY[10]()
 end
 
+-- Raid outposts (DD-039): another player's turrets and extractor are enemies. Bodies come from the
+-- shared structure generator (lazy require: Structures -> Models -> Creatures).
+for index, id in { [13] = "STING", [14] = "ARC", [15] = "MORTAR", [16] = "SHIELD", [17] = "CORE" } do
+	BLUEPRINT[index] = function()
+		return require(script.Parent.Structures).specs(id, 2, true), 0
+	end
+end
+
 return Creatures

@@ -281,6 +281,18 @@ function EnemyView.snapshot(rows, count: number)
 				local big = r.kind >= 4
 				Fx.emit("dust", Vector3.new(r.x, 0.6, r.z), if big then 4 else 2)
 			end
+			-- A brood mutant (another player's strain, DD-039): toxic-lime glands, a sickly shell.
+			if bit32.band(r.flags, 32) ~= 0 then
+				local mutant = Color3.fromRGB(150, 255, 90)
+				for i, p in rec.model.parts do
+					local spec = rec.model.specs[i]
+					if spec.name == "Nodule" or spec.role == "sac" or spec.role == "glow" then
+						p.Color = mutant
+					elseif spec.name == "Shell" then
+						p.Color = spec.color:Lerp(Color3.fromRGB(120, 200, 70), 0.45)
+					end
+				end
+			end
 			if r.state == ST.SPAWN and EnemyView.onSpawn then
 				EnemyView.onSpawn(r.x, r.z, r.kind)
 			end

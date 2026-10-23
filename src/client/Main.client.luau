@@ -394,6 +394,7 @@ local function leaveRun()
 	Controls.enabled = false
 end
 
+local showOutpost, outpostKeyOf -- outpost views (defined with the turret handlers below)
 stateRemote.OnClientEvent:Connect(function(buf, info)
 	if type(info) ~= "table" then
 		return
@@ -404,6 +405,8 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		end
 		mode = "LOBBY"
 		Menus.showLobby(info.lobby, myId, Controls.device)
+		local slots = info.lobby and info.lobby.outpost
+		showOutpost(slots, "L" .. outpostKeyOf(slots))
 		return
 	end
 	mode = "RUN"
@@ -412,6 +415,15 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	run = info.run
 	votes = info.votes or {}
+	if run and run.structures then
+		local slots = {}
+		for _, row in run.structures do
+			slots[row[1]] = { id = row[2], lvl = row[3] }
+		end
+		showOutpost(slots, "R" .. outpostKeyOf(slots))
+	else
+		showOutpost(nil, "none")
+	end
 	me = findPlayerState(myId)
 	debugExtra.simMs = info.simMs
 	debugExtra.rejected = info.rejected
@@ -834,6 +846,71 @@ handlers[E.COMPONENT] = function(x, z)
 	Audio.play("evolve")
 	CameraRig.shake(0.4)
 end
+-- Outpost structures (DD-037/038): your turrets in sieges and in the lobby; enemy turrets in raids are
+-- EnemyView records (negative refs). One shot handler for both sides.
+local Structures = require(script.Parent:WaitForChild("Structures"))
+local Meta = require(Shared:WaitForChild("Meta"))
+local outpostFolder = Instance.new("Folder")
+outpostFolder.Name = "OutpostView"
+outpostFolder.Parent = workspace
+local outpostModels = {} -- slot -> model
+local outpostKey = nil
+showOutpost = function(slots, key: string?)
+	if key == outpostKey then
+		return
+	end
+	outpostKey = key
+	outpostFolder:ClearAllChildren()
+	table.clear(outpostModels)
+	for slot, s in slots or {} do
+		local sock = Meta.Sockets[tonumber(slot)]
+		local id, lvl = s.id or s[2], s.lvl or s[3]
+		if sock and id then
+			local m = Structures.model(id, lvl, false)
+			local face = math.atan2(sock.x, sock.z) -- look outward, at the swarm
+			m:PivotTo(CFrame.new(sock.x, 0, sock.z) * CFrame.Angles(0, face + math.pi, 0))
+			m.Parent = outpostFolder
+			outpostModels[tonumber(slot)] = m
+		end
+	end
+end
+outpostKeyOf = function(slots): string
+	local parts = {}
+	for slot, s in slots or {} do
+		table.insert(parts, tostring(slot) .. (s.id or s[2] or "") .. (s.lvl or s[3] or 0))
+	end
+	table.sort(parts)
+	return table.concat(parts, ",")
+end
+local TURRET_COLOR = { [1] = Color3.fromRGB(255, 196, 70), [2] = C.cyan, [3] = C.orange, [4] = C.blue }
+handlers[E.TURRET] = function(ref, fx, fz, tx, tz, kind)
+	local hostile = ref < 0
+	local color = if hostile then C.red else TURRET_COLOR[kind] or C.gold
+	local from = Vector3.new(fx, 3.2, fz)
+	local to = Vector3.new(tx, 1.4, tz)
+	if not hostile then
+		local m = outpostModels[ref]
+		if m and kind ~= 4 then
+			local yaw = math.atan2(-(tx - fx), -(tz - fz))
+			m:PivotTo(CFrame.new(fx, 0, fz) * CFrame.Angles(0, yaw, 0))
+		end
+	end
+	if kind == 1 then
+		Fx.tracer(from, to, color, 0.35, 0.08)
+		Fx.light(from, color, 10, 0.08)
+		Audio.at("rifleClick", from, 0.5, 1.4)
+	elseif kind == 2 then
+		Fx.light(from + Vector3.yAxis * 2, color, 16, 0.2)
+		Audio.at("arc", from, 0.6, 0.9)
+	elseif kind == 3 then
+		Fx.projectile(from + Vector3.yAxis, to, color, 0.9, 70, 3, function() end)
+		Audio.at("boom", from, 0.25, 1.6)
+	elseif kind == 4 then
+		Fx.shockwave(Vector3.new(fx, 1, fz), 10, C.blue, 0.6)
+		Fx.lightning(Vector3.new(fx, 7, fz), Vector3.new(tx, 6, tz), C.blue, 0.4, 0.3)
+	end
+end
+
 handlers[E.COIL] = function(index)
 	local c = Maps.get(run and run.map).coils[index]
 	if c then
@@ -1251,6 +1328,8 @@ local function computeArrows(cam: Camera)
 			add(Vector3.new(rec.dx, 4, rec.dz), C.violet, "УЗЕЛ")
 		elseif rec.kind == 12 then
 			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "ИСТОЧНИК")
+		elseif rec.kind == 17 then
+			add(Vector3.new(rec.dx, 6, rec.dz), C.red, "БУР")
 		end
 	end
 end
@@ -1331,7 +1410,8 @@ local function frame(dt: number)
 	-- Movement & facing
 	if hum then
 		local frozen = not isPlaying or choosing
-		hum.WalkSpeed = if frozen then 0 else Defs.Player.Speed
+		local slow = if me and me.slow then me.slow else 0
+		hum.WalkSpeed = if frozen then 0 else Defs.Player.Speed * (1 - slow)
 	end
 	if root and linearVelocity then
 		local dashing = now < dashUntil and isPlaying

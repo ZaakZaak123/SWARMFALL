@@ -41,6 +41,7 @@ Codec.E = {
 	ASSAULT = 26, -- spawnX, spawnZ, count, etaSeconds, targetX, targetZ (strike group announced)
 	COMPONENT = 27, -- x, z, componentId (permanent component dropped — e.g. Ядро Бури)
 	HAMMER = 28, -- pid, x, z, radius, phase (0 granted, 1 windup, 2 impact), emergency 0/1, hits
+	TURRET = 30, -- ref (+slot allied / -enemyId hostile), fromX, fromZ, toX, toZ, kind (1 gun, 2 arc, 3 mortar, 4 shield)
 	OBJECTIVE = 29, -- action, x, z, a, b, c: 1 relay active (radius, charge, need), 2 target revealed (index),
 	--                 3 relay charged, 4 target destroyed (index, destroyed, total)
 }
@@ -63,7 +64,7 @@ Codec.State = {
 	ENTER = 7,
 	IDLE = 8,
 }
-Codec.Flag = { BURN = 1, SLOW = 2, CORRODE = 4, EXPOSED = 8, HIT = 16 }
+Codec.Flag = { BURN = 1, SLOW = 2, CORRODE = 4, EXPOSED = 8, HIT = 16, MUTANT = 32 }
 
 -- Damage flags
 -- GRAV: S01 Gravihammer. CARD: an independent card ability (shock dash). ENV: environment the player

@@ -12,6 +12,7 @@ local Rng = require(script.Parent.Rng)
 local Combat = require(script.Parent.Combat)
 local AI = require(script.Parent.AI)
 local Mission = require(script.Parent.Mission)
+local Outpost = require(script.Parent.Outpost)
 local Modules = require(Shared:WaitForChild("Modules"))
 
 local E, C = Codec.E, Codec.C
@@ -165,6 +166,9 @@ export type Options = {
 	threat: number?,
 	players: { { id: number, name: string?, weapon: string?, perks: { [string]: number }? } },
 	replay: boolean?, -- a repeat of an operation already won: 1–2 whitelisted changes (D02 §11.2)
+	opDef: any?, -- generated operation (siege / raid)
+	structures: any?, -- siege: the host's outpost slots
+	anomaly: any?, -- Meta anomaly of the day
 }
 
 function World.new(opts: Options)
@@ -176,7 +180,12 @@ function World.new(opts: Options)
 	if not opId then
 		opId = if opts.map == "MAP_HIVE_DEPTHS" then "O07" else "O05"
 	end
-	self.op = Ops.get(opId)
+	self.op = opts.opDef or Ops.get(opId)
+	self.anomaly = opts.anomaly
+	self.structures = Outpost.allied(opts.structures)
+	self.shells = {}
+	self.core = nil
+	self.acidRainT = 20
 	self.map = Maps.get(self.op.map)
 	self.nav = Nav.new(self.map)
 	self.threat = math.clamp(math.floor(opts.threat or 1), 1, Defs.Threat.Max)
@@ -699,6 +708,9 @@ function World:spawnEnemy(kind: string, x: number, z: number, spawnTime: number?
 		hp *= 1 + 0.5 * math.max(0, n - 1)
 	end
 	hp *= Defs.Threat.hp(self.threat)
+	if not def.static then
+		hp *= (self.op.enemyHpMult or 1) * (if self.anomaly and self.anomaly.hp then self.anomaly.hp else 1)
+	end
 	self.nextEnemyId += 1
 	local e = {
 		id = self.nextEnemyId,
@@ -738,6 +750,7 @@ function World:spawnEnemy(kind: string, x: number, z: number, spawnTime: number?
 		lastX = x,
 		lastZ = z,
 		stuckT = 0,
+		speedMult = if self.anomaly and self.anomaly.speed then self.anomaly.speed else 1,
 	}
 	local target = self:nearestPlayer(x, z)
 	if target then
@@ -795,7 +808,11 @@ function World:kill(e, p, depth: number, cause: number)
 	end
 	self:emit(E.KILL, e.id, e.def.index, e.x, e.z, if p then p.id else 0, cause, q(e.dmgFromX), q(e.dmgFromZ))
 	self.stats.killed += 1
+	Outpost.onDeath(self, e)
 	self.mission:onKill(e, p)
+	if self.phase == "RESULTS" then
+		return
+	end
 	local kind = e.kind
 	if e.def.boss then
 		self.boss = nil
@@ -932,6 +949,9 @@ end
 
 -- Progression ---------------------------------------------------------------------------------------
 function World:gainXp(amount: number)
+	if self.anomaly and self.anomaly.xp then
+		amount *= self.anomaly.xp
+	end
 	self.xp += amount
 	while self.xp >= self.xpNeed do
 		self.xp -= self.xpNeed
@@ -1103,7 +1123,8 @@ function World:director(dt: number)
 	end
 	local n = math.max(1, #self.playerList)
 	local cap = math.min(ph.cap * (1 + 0.45 * (n - 1)), Defs.Run.MaxActive * (1 + 0.45 * (n - 1)))
-	self.spawnAcc += ph.rate * (1 + 0.4 * (n - 1)) * Defs.Threat.spawn(self.threat) * (self.op.spawnMult or 1) * dt
+	local anomalySpawn = if self.anomaly and self.anomaly.spawn then self.anomaly.spawn else 1
+	self.spawnAcc += ph.rate * (1 + 0.4 * (n - 1)) * Defs.Threat.spawn(self.threat) * (self.op.spawnMult or 1) * anomalySpawn * dt
 	local active, specials = 0, 0
 	for _, e in self.enemies do
 		if not e.def.boss and not e.def.static then
@@ -1122,7 +1143,11 @@ function World:director(dt: number)
 			break
 		end
 		local kind = self.rng:weighted(ph.w, KIND_ORDER) or "EN_RUNNER"
-		if kind ~= "EN_RUNNER" and specials >= math.max(3, active * 0.32) then
+		local specialShare = 0.32 * (if self.anomaly and self.anomaly.specials then self.anomaly.specials else 1)
+		if self.anomaly and self.anomaly.specials and kind == "EN_RUNNER" and self.rng:chance(0.12) then
+			kind = KIND_ORDER[self.rng:int(2, 3)]
+		end
+		if kind ~= "EN_RUNNER" and specials >= math.max(3, active * specialShare) then
 			kind = "EN_RUNNER"
 		end
 		if self:spawnAtBreach(kind, ph.dirs) then
@@ -1150,7 +1175,7 @@ function World:director(dt: number)
 	end
 	local limit = self.op.hardLimit or Defs.Run.HardLimit
 	if self.t >= limit and self.phase == "ACTIVE" then
-		self:finish(false, "ВРЕМЯ ВЫШЛО — РОЙ ПОБЕДИЛ")
+		self:finish(false, if self.op.mode == "raid" then "ОБОРОНА ВЫСТОЯЛА" else "ВРЕМЯ ВЫШЛО — РОЙ ПОБЕДИЛ")
 	end
 	if self.op.objective == "boss" and self.t >= 385 and not self.breatherHeal then
 		self.breatherHeal = true
@@ -1338,9 +1363,15 @@ function World:updateHazards()
 		else
 			if t >= h.activeFrom then
 				for _, p in self.playerList do
-					if p.alive and inShape(h, p.x, p.z, 0.8) and t >= (h.lastHit[p.id] or -99) + h.tick then
-						h.lastHit[p.id] = t
-						self:hurtPlayer(p, h.damage, h.x, h.z)
+					if p.alive and inShape(h, p.x, p.z, 0.8) then
+						if h.slow then
+							p.slowUntil = t + 0.35
+							p.slowAmt = h.slow
+						end
+						if h.damage > 0 and t >= (h.lastHit[p.id] or -99) + h.tick then
+							h.lastHit[p.id] = t
+							self:hurtPlayer(p, h.damage, h.x, h.z)
+						end
 					end
 				end
 				self.mission:hazardTick(h, inShape)
@@ -1358,6 +1389,54 @@ function World:countHazards(source: string): number
 		end
 	end
 	return n
+end
+
+-- Siege structures for the client (static per run: positions, levels).
+function World:structureState()
+	if #self.structures == 0 then
+		return nil
+	end
+	if not self.structureCache then
+		local list = {}
+		for _, s in self.structures do
+			table.insert(list, { s.slot, s.id, s.lvl })
+		end
+		self.structureCache = list
+	end
+	return self.structureCache
+end
+
+-- Anomaly «Кислотный дождь»: telegraphed acid drops land near the hunters.
+function World:acidRain(dt: number)
+	if not (self.anomaly and self.anomaly.acidRain) then
+		return
+	end
+	self.acidRainT -= dt
+	if self.acidRainT > 0 then
+		return
+	end
+	self.acidRainT = 3.2 + self.rng:range(0, 1.5)
+	for _, p in self.playerList do
+		if p.alive then
+			local x, z = self.nav.resolve(p.x + self.rng:range(-14, 14), p.z + self.rng:range(-14, 14), 1)
+			local r = 5
+			self:addHazard({
+				source = "rain",
+				shape = Codec.Shape.CIRCLE,
+				x = x,
+				z = z,
+				dx = 0,
+				dz = 1,
+				a = r,
+				b = 0,
+				activeFrom = self.t + 1.3,
+				untilT = self.t + 4.3,
+				damage = 6,
+				tick = 0.5,
+			})
+			self:emit(E.TELE, Codec.Shape.CIRCLE, x, z, 0, 1, r, 0, 1.3, C.LIME, 3)
+		end
+	end
 end
 
 -- Coils ---------------------------------------------------------------------------------------------
@@ -1417,6 +1496,12 @@ function World:finish(victory: boolean, reason: string)
 		chapterEnd = self.op.chapterEnd == true,
 		eliteKilled = self.mission.eliteKilled,
 		reactor = if self.mission.reactor then self.mission.reactor.hp / self.mission.reactor.maxHp else nil,
+		mode = self.op.mode or "hunt",
+		siege = self.op.siege,
+		raid = if self.op.target then { uid = self.op.target.uid, name = self.op.target.name, rating = self.op.target.rating, rival = self.op.target.rival } else nil,
+		core = if self.core then math.max(0, self.core.hp / self.core.maxHp) else nil,
+		anomaly = if self.anomaly then self.anomaly.id else nil,
+		squad = #self.playerList,
 	}
 	for _, p in self.playerList do
 		p.firing = false
@@ -1430,7 +1515,7 @@ function World:finish(victory: boolean, reason: string)
 				self:emit(E.KILL, e.id, e.def.index, e.x, e.z, 0, 8)
 			end
 		end
-		self:banner("ОХОТА ЗАВЕРШЕНА", reason, C.GOLD, 5, "crown")
+		self:banner(if self.op.mode == "raid" then "ВТОРЖЕНИЕ УСПЕШНО" elseif self.op.mode == "siege" then "ОСАДА ОТБИТА" else "ОХОТА ЗАВЕРШЕНА", reason, C.GOLD, 5, "crown")
 	else
 		self:banner("ПОРАЖЕНИЕ", reason, C.RED, 5, "skull")
 	end
@@ -1457,6 +1542,9 @@ function World:step(dt: number)
 		if self.countdown <= 0 and not waiting then
 			self.phase = "ACTIVE"
 			self:banner(self.op.name, self.op.goal, C.LIME, 3, "")
+			if self.anomaly then
+				self:banner("АНОМАЛИЯ: " .. self.anomaly.name, self.anomaly.text, C.GOLD, 3.5, self.anomaly.icon)
+			end
 		end
 		return
 	end
@@ -1532,6 +1620,12 @@ function World:tick(dt: number)
 		end
 	end
 	AI.update(self, dt)
+	if #self.structures > 0 then
+		Outpost.update(self, dt)
+	else
+		Outpost.updateShells(self)
+	end
+	self:acidRain(dt)
 	if not self.solo then
 		self:updateRevives(dt)
 	end
@@ -1585,6 +1679,9 @@ function World:encodeEnemies(): buffer
 		if e.state == ST.EXPOSED then
 			f += Codec.Flag.EXPOSED
 		end
+		if e.mutant then
+			f += Codec.Flag.MUTANT
+		end
 		e.netFlags = f
 	end
 	return Codec.encodeEnemies(list, #list)
@@ -1632,6 +1729,7 @@ function World:publicState()
 			dashMax = Defs.Player.DashCooldown * p.dashMult,
 			kills = p.kills,
 			combo = p.combo,
+			slow = if self.t < (p.slowUntil or 0) then p.slowAmt else nil,
 		})
 	end
 	local boss = nil
@@ -1670,6 +1768,10 @@ function World:publicState()
 		runEvolution = self.op.runEvolution,
 		hardLimit = self.op.hardLimit or Defs.Run.HardLimit,
 		mission = self.mission:publicState(),
+		mode = self.op.mode or "hunt",
+		structures = self:structureState(),
+		core = if self.core and self.core.alive then { hp = self.core.hp / self.core.maxHp, name = self.op.name } else nil,
+		anomaly = if self.anomaly then self.anomaly.id else nil,
 		threat = self.threat,
 		result = self.result,
 		kills = self.teamKills,

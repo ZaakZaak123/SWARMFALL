@@ -818,14 +818,27 @@ function Hud.update(run, me, extra, dt: number)
 	if run.hive then
 		goal = string.format("Ульи %d/3  ·  %d с", run.hive, math.ceil(run.hiveEnds or 0))
 	end
+	if run.mode == "siege" and run.label then
+		goal = run.label .. "  ·  " .. goal
+	end
 	ui.goal.Visible = goal ~= ""
 	ui.goalText.Text = goal
 	local urgent = mission and mission.deadlineLeft and mission.deadlineLeft <= 60
 	ui.goalDot.BackgroundColor3 = if urgent then C.red elseif mission and mission.state == "FINALE" then C.gold else C.lime
 	ui.goalDot.BackgroundTransparency = 0.5 + math.sin(now * 5) * 0.5
 	ui.goalText.TextColor3 = if urgent then C.red else C.text
-	-- Boss
-	ui.boss.Visible = run.boss ~= nil
+	-- Boss (or the enemy extractor in a raid)
+	ui.boss.Visible = run.boss ~= nil or run.core ~= nil
+	if run.core and not run.boss then
+		ui.bossName.Text = run.core.name
+		shownBoss = nil
+		local frac = math.clamp(run.core.hp, 0, 1)
+		ui.bossFill.Size = UDim2.fromScale(frac, 1)
+		local trail = ui.bossTrail.Size.X.Scale
+		ui.bossTrail.Size = UDim2.fromScale(if trail > frac then trail - (trail - frac) * math.min(1, dt * 2) else frac, 1)
+		ui.bossTag.Text = "ВРАЖЕСКИЙ БУР"
+		ui.bossTag.TextColor3 = C.orange
+	end
 	if run.boss then
 		if shownBoss ~= run.boss.kind then
 			shownBoss = run.boss.kind

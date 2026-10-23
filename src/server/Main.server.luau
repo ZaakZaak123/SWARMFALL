@@ -16,6 +16,8 @@ local Ops = require(Shared:WaitForChild("Ops"))
 local World = require(script.Parent.Sim.World)
 local Arena = require(script.Parent.Arena)
 local Profile = require(script.Parent.Profile)
+local Outposts = require(script.Parent.Outposts)
+local Meta = require(Shared:WaitForChild("Meta"))
 
 Players.CharacterAutoLoads = false
 
@@ -39,7 +41,13 @@ local RESULTS_TIMEOUT = 60
 
 -- Server state ----------------------------------------------------------------------------------------
 local mode = "LOBBY" -- LOBBY | RUN
-local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1 }
+-- mode: "hunt" (story operations) | "siege" (host's outpost) | "raid" (lobby.target, chosen by the host)
+local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1, mode = "hunt", target = nil, candidates = nil }
+
+-- Anomaly of the day (DD-041): hunts from the third one on, and sieges. First hunts stay readable.
+local function todaysAnomaly()
+	return Meta.anomalyFor(Meta.dayIndex(os.time()))
+end
 local joinOrder: { Player } = {}
 local world = nil
 local runId = ""
@@ -112,6 +120,9 @@ local function pushProfile(player: Player)
 	end
 end
 Profile.onChanged(pushProfile)
+Profile.onChanged(function(player)
+	Outposts.publish(player)
+end)
 
 local function prepareCharacter(player: Player, x: number, z: number, facing: number?)
 	local ok, err = pcall(function()
@@ -188,7 +199,19 @@ local function startRun()
 	local hostPlayer = host()
 	local hostData = hostPlayer and Profile.get(hostPlayer)
 	local replay = hostData ~= nil and hostData.wins_by_op ~= nil and (hostData.wins_by_op[lobby.op] or 0) > 0
-	world = World.new({ seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay })
+	local opts = { seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay }
+	if lobby.mode == "siege" and hostData then
+		opts.opDef = Ops.makeSiege(hostData.outpost.siege)
+		opts.structures = hostData.outpost.slots
+		opts.threat = 1
+		opts.anomaly = todaysAnomaly()
+	elseif lobby.mode == "raid" and lobby.target then
+		opts.opDef = Ops.makeRaid(lobby.target)
+		opts.threat = 1
+	elseif Ops.get(lobby.op).index >= 3 then
+		opts.anomaly = todaysAnomaly()
+	end
+	world = World.new(opts)
 	mode = "RUN"
 	lobby.countdown = nil
 	table.clear(lobby.ready)
@@ -216,6 +239,25 @@ local function settle()
 		if player.Parent then
 			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat)
 		end
+	end
+	-- Raids: tell the owner what happened to their outpost (they may be offline), refresh targets.
+	if r.mode == "raid" and world.op.target then
+		local attackers = {}
+		local delta = 0
+		for userId, player in participants do
+			table.insert(attackers, player)
+			local rw = rewards[userId]
+			if rw and rw.rating then
+				delta = math.max(delta, rw.rating.delta)
+			end
+		end
+		Outposts.report(world.op.target, attackers, r.victory, delta)
+		lobby.target = nil
+		lobby.candidates = nil
+		lobby.mode = "hunt"
+	end
+	for _, player in participants do
+		Outposts.publish(player, true)
 	end
 end
 
@@ -279,6 +321,7 @@ local function autoDeploy(player: Player)
 	end
 	lobby.op = "O01"
 	lobby.threat = 1
+	lobby.mode = "hunt"
 	buildArena(Ops.get("O01").map)
 	lobby.weapon[player] = "W_ARC_RIFLE"
 	lobby.ready[player] = true
@@ -286,6 +329,17 @@ local function autoDeploy(player: Player)
 end
 
 Players.PlayerAdded:Connect(function(player)
+	task.spawn(function()
+		for _ = 1, 40 do
+			if Profile.get(player) or not player.Parent then
+				break
+			end
+			task.wait(0.25)
+		end
+		if player.Parent and Profile.get(player) then
+			Outposts.claim(player)
+		end
+	end)
 	task.wait(1)
 	if mode == "LOBBY" then
 		toHub(player)
@@ -353,6 +407,102 @@ function handlers.op(player: Player, opId)
 	lobby.threat = math.min(lobby.threat, Profile.maxThreat(player, opId))
 	buildArena(Ops.get(opId).map)
 	return true
+end
+
+-- Meta (DD-037…DD-041) -------------------------------------------------------------------------------
+local function hostOnly(player: Player): boolean
+	return lobbyOnly() and player == host()
+end
+
+function handlers.mode(player: Player, m)
+	if not hostOnly(player) or (m ~= "hunt" and m ~= "siege" and m ~= "raid") then
+		return false
+	end
+	local f = Profile.features(Profile.get(player) or {})
+	if (m == "siege" and not f.outpost) or (m == "raid" and not f.raids) then
+		return false
+	end
+	lobby.mode = m
+	if m == "raid" and not lobby.candidates then
+		lobby.candidates = {}
+		task.spawn(function()
+			local list = Outposts.candidates(player)
+			lobby.candidates = {}
+			for i, c in list do
+				lobby.candidates[i] = { name = c.name, rating = c.rating, power = Meta.outpostPower(c.slots), uid = c.uid, rival = c.rival }
+			end
+			lobby.candidateData = list
+			lobby.target = list[1]
+		end)
+	end
+	return true
+end
+
+function handlers.raidPick(player: Player, index)
+	if not hostOnly(player) or not finite(index) or not lobby.candidateData then
+		return false
+	end
+	local c = lobby.candidateData[index]
+	if c then
+		lobby.target = c
+	end
+	return c ~= nil
+end
+
+function handlers.raidRefresh(player: Player)
+	if not hostOnly(player) then
+		return false
+	end
+	lobby.candidates = nil
+	return handlers.mode(player, "raid")
+end
+
+function handlers.revenge(player: Player, uid)
+	if not hostOnly(player) or not finite(uid) then
+		return false
+	end
+	local f = Profile.features(Profile.get(player) or {})
+	local snap = Outposts.find(uid)
+	if not f.raids or not snap then
+		return false
+	end
+	lobby.mode = "raid"
+	lobby.target = snap
+	return true
+end
+
+function handlers.build(player: Player, slot, id)
+	return lobbyOnly() and finite(slot) and type(id) == "string" and Profile.build(player, slot, id)
+end
+
+function handlers.upgrade(player: Player, slot)
+	return lobbyOnly() and finite(slot) and Profile.upgrade(player, slot)
+end
+
+function handlers.sell(player: Player, slot)
+	return lobbyOnly() and finite(slot) and Profile.sell(player, slot)
+end
+
+function handlers.harvest(player: Player)
+	return Profile.collectHarvest(player) > 0
+end
+
+function handlers.unlockSpecies(player: Player, kind)
+	return type(kind) == "string" and Profile.unlockSpecies(player, kind)
+end
+
+function handlers.unlockMutation(player: Player, kind, mut)
+	return type(kind) == "string" and type(mut) == "string" and Profile.unlockMutation(player, kind, mut)
+end
+
+function handlers.setStrain(player: Player, index, kind, muts)
+	if not finite(index) or (kind ~= nil and type(kind) ~= "string") then
+		return false
+	end
+	if muts ~= nil and type(muts) ~= "table" then
+		return false
+	end
+	return Profile.setStrain(player, index, kind, muts)
 end
 
 function handlers.threat(player: Player, level)
@@ -523,6 +673,24 @@ if RunService:IsStudio() then
 		end
 		return true
 	end
+	function handlers.devMeta(player: Player)
+		local d = Profile.get(player)
+		if not d then
+			return false
+		end
+		d.wins_by_op = d.wins_by_op or {}
+		for _, id in { "O01", "O02", "O03", "O04" } do
+			d.wins_by_op[id] = math.max(1, d.wins_by_op[id] or 0)
+			d.ops[id] = math.max(d.ops[id] or 0, 2)
+		end
+		d.ops.O05 = math.max(d.ops.O05 or 0, 1)
+		d.scrap += 6000
+		for _, k in Meta.SpeciesOrder do
+			d.research[k] = (d.research[k] or 0) + 400
+		end
+		pushProfile(player)
+		return true
+	end
 	function handlers.devSkip(player: Player, seconds)
 		if not world or not finite(seconds) then
 			return false
@@ -615,7 +783,23 @@ local function lobbyInfo()
 		})
 	end
 	local h = host()
-	return { players = list, countdown = lobby.countdown, op = lobby.op, map = Ops.get(lobby.op).map, threat = lobby.threat, host = h and h.UserId or 0 }
+	local hostData = h and Profile.get(h)
+	return {
+		players = list,
+		countdown = lobby.countdown,
+		op = lobby.op,
+		map = Ops.get(lobby.op).map,
+		threat = lobby.threat,
+		host = h and h.UserId or 0,
+		mode = lobby.mode,
+		siege = if hostData then hostData.outpost.siege else 1,
+		outpost = if hostData then hostData.outpost.slots else nil,
+		target = if lobby.target then { name = lobby.target.name, rating = lobby.target.rating, uid = lobby.target.uid, power = Meta.outpostPower(lobby.target.slots), slots = lobby.target.slots, brood = lobby.target.brood } else nil,
+		candidates = lobby.candidates,
+		anomaly = todaysAnomaly().id,
+		boards = Outposts.boards(),
+		online = Outposts.online(),
+	}
 end
 
 local function publish()

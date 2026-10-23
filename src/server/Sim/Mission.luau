@@ -8,6 +8,7 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
+local Outpost = require(script.Parent.Outpost)
 local Codec = require(Shared:WaitForChild("Codec"))
 
 local E, C, SH = Codec.E, Codec.C, Codec.Shape
@@ -325,6 +326,10 @@ end
 -- Called by World:kill for every death.
 function Mission:onKill(e, p)
 	local w = self.w
+	if e.objective == "core" then
+		w:finish(true, "Вражеский бур разрушен")
+		return
+	end
 	if self.relay and self.relay.coil and self.relay.coil.alive and self.state == "FIGHT" and p then
 		local c = self.relay.coil
 		local r = self.op.relay.radius
@@ -610,6 +615,10 @@ function Mission:runBeat(beat)
 			4,
 			"@6"
 		)
+	elseif t == "outpost" then
+		Outpost.deployHostile(w, self.op.target)
+	elseif t == "brood" then
+		Outpost.broodWave(w, self.op.target)
 	elseif t == "hive" then
 		w:startHive()
 	elseif t == "boss" then
@@ -675,7 +684,7 @@ function Mission:update(dt: number)
 	end
 	if self.state == "FINALE" and w.t >= self.finaleUntil then
 		self.state = "DONE"
-		w:finish(true, "Кратер удержан")
+		w:finish(true, if self.op.mode == "siege" then "Осада отбита" else "Кратер удержан")
 	end
 end
 

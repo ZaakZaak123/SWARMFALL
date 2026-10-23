@@ -69,7 +69,7 @@ print("=== profile settlement")
 local p = player(1)
 Profile.load(p)
 local d = Profile.get(p)
-check(d ~= nil and d.v == 2 and d.ops.O01 == 1 and not d.ops.O02, "fresh v2 profile: only O01 open")
+check(d ~= nil and d.v == 3 and d.ops.O01 == 1 and not d.ops.O02, "fresh v3 profile: only O01 open")
 
 -- Defeat: progress kept, no story rights, component granted for the deed.
 local r1 = Profile.grantRun(p, "run-1", result(false, { components = { "CMP_STORM_CORE" } }), "O01", 1)
@@ -125,7 +125,7 @@ do
 	e.runs = 12
 	e.s01 = false
 	Profile._reconcile(e)
-	check(e.ops.O05 == 3 and e.ops.O07 == 1 and e.s01 == true and e.v == 2, "v1 veterans keep the boss hunts (O05/O07) and get S01")
+	check(e.ops.O05 == 3 and e.ops.O07 == 1 and e.s01 == true and e.v == 3, "v1 veterans keep the boss hunts (O05/O07) and get S01")
 end
 
 if failures > 0 then
