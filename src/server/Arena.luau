@@ -959,6 +959,11 @@ local function buildDressing(map, decor)
 		local x, z = rnd(-128, 128), rnd(-128, 128)
 		if clearOf(map, x, z, 2) and (x * x + z * z) > 400 then
 			local s = rnd(0.6, 2.4)
+			if ArtLoader.get("BOULDER") then
+				local rock = ArtLoader.place("BOULDER", model, CFrame.new(x, -s * 0.12, z) * CFrame.Angles(0, rnd(0, 6.28), 0), s * 0.22)
+				rock.CastShadow = s > 1.6
+				continue
+			end
 			part(model, {
 				Size = Vector3.new(s * rnd(1, 1.8), s * rnd(0.5, 1), s * rnd(1, 1.6)),
 				CFrame = CFrame.new(x, s * 0.25, z) * CFrame.Angles(rnd(-0.4, 0.4), rnd(0, 6.28), rnd(-0.4, 0.4)),
