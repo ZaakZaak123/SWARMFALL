@@ -509,7 +509,9 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)])
 		Hud.setVisible(false)
 	end
-	if run.phase == "COUNTDOWN" then
+	if run.phase == "COUNTDOWN" and run.waiting then
+		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И РОЙ ПОЙДЁТ")
+	elseif run.phase == "COUNTDOWN" then
 		Menus.note(string.format("ВЫСАДКА: %s  ·  %d", Maps.get(run.map).name, math.ceil(run.countdown)))
 	elseif not me then
 		Menus.note("НАБЛЮДЕНИЕ · ВЫ ВОЙДЁТЕ В СЛЕДУЮЩИЙ ЗАБЕГ")

@@ -66,6 +66,7 @@ export type OpDef = {
 	acid: { hp: number, every: number, count: number }?,
 	spawnMult: number?,
 	bossHpMult: number?,
+	playerDamageMult: number?, -- damage the swarm deals to players (O01: forgiving first run)
 	phases: { Phase },
 	beats: { Beat },
 	unlocks: { string },
@@ -75,49 +76,41 @@ export type OpDef = {
 
 local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 
--- O01 «ПЕРВЫЙ КОНТАКТ» — GDD §5, D02 §4. Only Runners + Spitters + one Core Carrier. Spitters ~1:35,
--- encirclement ~2:50 (S01 lesson), carrier ~6:20, then ~50 s of final swarm.
+-- O01 «ПЕРВЫЙ КОНТАКТ» — the first three minutes of the game (DD-024 overrides GDD §5 timings). One
+-- enemy type, one rule (protect the reactor), one wow moment (S01 at the encirclement ~1:25), one big
+-- enemy (the Carrier ~2:10), a short final swarm. Spitters debut in O02.
 Ops.O01 = {
 	id = "O01",
 	index = 1,
 	code = "O01",
 	name = "ПЕРВЫЙ КОНТАКТ",
 	map = "MAP_REACTOR_YARD",
-	brief = "Рой вышел к реактору. Удержи двор, убей Носителя ядра и переживи финальную волну.",
+	brief = "Рой идёт к реактору. Отстреливайся, убей Носителя ядра и продержись.",
 	goal = "Защити реактор",
 	objective = "carrier",
-	reactor = { hp = 1800 }, -- the first operation must be forgiving
+	reactor = { hp = 1500 }, -- the first operation must be forgiving
+	playerDamageMult = 0.6,
 	eliteName = "НОСИТЕЛЬ ЯДРА",
 	eliteGoal = "Убей Носителя ядра",
-	eliteHpMult = 0.7, -- first elite of the game: readable, not a sponge
+	eliteHpMult = 0.45, -- first big enemy of the game: a 15–25 s fight, not a sponge
 	runEvolution = false,
 	s01Event = true, -- the encirclement introduces S01 to profiles that do not have it yet
-	finaleTime = 50,
-	deadline = 600, -- carrier must fall by 10:00
-	hardLimit = 690,
-	finale = { at = 0, label = "ФИНАЛЬНЫЙ РОЙ", rate = 8.0, cap = 92, dirs = ALL, w = { EN_RUNNER = 0.9, EN_SPITTER = 0.1 } },
+	finaleTime = 20,
+	deadline = 300,
+	hardLimit = 360,
+	finale = { at = 0, label = "ФИНАЛЬНЫЙ РОЙ", rate = 9.0, cap = 80, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
-		{ at = 0, label = "КОНТАКТ", rate = 2.0, cap = 26, dirs = { "N", "E", "NE" }, w = { EN_RUNNER = 1 }, quiet = true },
-		{ at = 30, label = "НАРАСТАНИЕ", rate = 3.1, cap = 40, dirs = { "N", "E", "NE", "SE" }, w = { EN_RUNNER = 1 } },
-		{ at = 95, label = "ПЛЕВУНЫ", rate = 3.5, cap = 48, dirs = { "N", "E", "W", "NE", "NW" }, w = { EN_RUNNER = 0.92, EN_SPITTER = 0.08 } },
-		{ at = 160, label = "ОКРУЖЕНИЕ", rate = 4.4, cap = 60, dirs = ALL, w = { EN_RUNNER = 0.93, EN_SPITTER = 0.07 } },
-		{ at = 215, label = "ЭСКАЛАЦИЯ", rate = 4.8, cap = 70, dirs = ALL, w = { EN_RUNNER = 0.9, EN_SPITTER = 0.1 } },
-		{ at = 300, label = "ДАВЛЕНИЕ", rate = 6.4, cap = 84, dirs = ALL, w = { EN_RUNNER = 0.9, EN_SPITTER = 0.1 } },
-		{ at = 355, label = "ЗАТИШЬЕ", rate = 2.2, cap = 40, dirs = ALL, w = { EN_RUNNER = 0.92, EN_SPITTER = 0.08 } },
-		{ at = 380, label = "НОСИТЕЛЬ ЯДРА", rate = 2.4, cap = 40, dirs = ALL, w = { EN_RUNNER = 0.92, EN_SPITTER = 0.08 }, quiet = true },
+		{ at = 0, label = "КОНТАКТ", rate = 2.6, cap = 24, dirs = { "N", "NE" }, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 25, label = "НАРАСТАНИЕ", rate = 4.0, cap = 40, dirs = { "N", "E", "NE", "SE" }, w = { EN_RUNNER = 1 } },
+		{ at = 70, label = "ОКРУЖЕНИЕ", rate = 4.8, cap = 56, dirs = ALL, w = { EN_RUNNER = 1 } },
+		{ at = 105, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 70, dirs = ALL, w = { EN_RUNNER = 1 } },
+		{ at = 125, label = "НОСИТЕЛЬ ЯДРА", rate = 2.6, cap = 36, dirs = ALL, w = { EN_RUNNER = 1 }, quiet = true },
 	},
 	beats = {
-		{ at = 45, type = "assault", count = 6 },
-		{ at = 82, type = "assault", count = 8 },
-		{ at = 96, type = "banner", title = "ПЛЕВУН", sub = "Плюётся кислотой издалека — уходи из луж", kind = "EN_SPITTER" },
-		{ at = 125, type = "assault", count = 10 },
-		{ at = 170, type = "ring", count = 28 },
-		{ at = 200, type = "assault", count = 10 },
-		{ at = 240, type = "assault", count = 10 },
-		{ at = 275, type = "assault", count = 10, kind = "EN_SPITTER" },
-		{ at = 310, type = "assault", count = 11 },
-		{ at = 340, type = "assault", count = 11 },
-		{ at = 380, type = "elite" },
+		{ at = 35, type = "assault", count = 6 },
+		{ at = 82, type = "ring", count = 26 },
+		{ at = 108, type = "assault", count = 9 },
+		{ at = 128, type = "elite" },
 	},
 	unlocks = { "O02" },
 }
@@ -152,6 +145,7 @@ Ops.O02 = {
 	beats = {
 		{ at = 30, type = "banner", title = "ПРЫГУН", sub = "Замирает перед прыжком — уйди в сторону", kind = "EN_STALKER" },
 		{ at = 55, type = "assault", count = 7 },
+		{ at = 70, type = "banner", title = "ПЛЕВУН", sub = "Плюётся кислотой издалека — уходи из луж", kind = "EN_SPITTER" },
 		{ at = 125, type = "assault", count = 9 },
 		{ at = 140, type = "relay" },
 		{ at = 175, type = "assault", count = 5, kind = "EN_STALKER", target = "relay" },
@@ -350,6 +344,30 @@ Ops.CA01 = {
 	unlocks = {},
 	requires = "O02",
 }
+
+-- Early operations are short (DD-024): the same script, played faster. Scales every timing; objectives
+-- measured in kills shrink with it so the pace stays the same.
+local function compress(op: OpDef, k: number)
+	for _, ph in op.phases do
+		ph.at = math.floor(ph.at * k + 0.5)
+	end
+	for _, b in op.beats do
+		b.at = math.floor(b.at * k + 0.5)
+	end
+	op.deadline = op.deadline and math.floor(op.deadline * k + 0.5)
+	op.hardLimit = op.hardLimit and math.floor(op.hardLimit * k + 0.5)
+	op.finaleTime = op.finaleTime and math.floor(op.finaleTime * k + 0.5)
+	if op.relay then
+		op.relay.need = math.floor(op.relay.need * k + 0.5)
+	end
+	if op.nests then
+		op.nests.hp = math.floor(op.nests.hp * k + 0.5)
+	end
+end
+compress(Ops.O02, 0.7)
+compress(Ops.O03, 0.75)
+Ops.O03.deadline = 420 -- nests are walked to and shot down: keep a margin over the plain ×0.75
+Ops.O03.hardLimit = 420 + Ops.O03.finaleTime + 60
 
 Ops.Order = { "O01", "O02", "O03", "O04", "O05", "O06", "CA01" }
 

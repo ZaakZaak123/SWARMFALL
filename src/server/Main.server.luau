@@ -255,10 +255,41 @@ local function backToLobby()
 	end
 end
 
+-- A player who has never won O01 skips the lobby: seconds after joining they are already shooting
+-- (DD-024). Only when nobody else is waiting in the lobby with other plans.
+local function isNewcomer(player: Player): boolean
+	local d = Profile.get(player)
+	return d ~= nil and not (d.wins_by_op and (d.wins_by_op.O01 or 0) > 0) and (d.ops.O01 or 1) < 2
+end
+
+local function autoDeploy(player: Player)
+	for _ = 1, 40 do
+		if Profile.get(player) or not player.Parent then
+			break
+		end
+		task.wait(0.25)
+	end
+	if mode ~= "LOBBY" or not player.Parent or not isNewcomer(player) then
+		return
+	end
+	for _, other in Players:GetPlayers() do
+		if other ~= player and not isNewcomer(other) then
+			return
+		end
+	end
+	lobby.op = "O01"
+	lobby.threat = 1
+	buildArena(Ops.get("O01").map)
+	lobby.weapon[player] = "W_ARC_RIFLE"
+	lobby.ready[player] = true
+	lobby.countdown = math.min(lobby.countdown or 2, 2)
+end
+
 Players.PlayerAdded:Connect(function(player)
 	task.wait(1)
 	if mode == "LOBBY" then
 		toHub(player)
+		autoDeploy(player)
 	end
 end)
 for _, player in Players:GetPlayers() do

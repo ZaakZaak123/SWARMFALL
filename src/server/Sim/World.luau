@@ -285,7 +285,11 @@ end
 function World:setPlayerPosition(id: number, x: number, z: number)
 	local p = self.players[id]
 	if p and p.alive then
-		p.x, p.z = self.nav.resolve(x, z, 0.5)
+		local nx, nz = self.nav.resolve(x, z, 0.5)
+		if (nx - p.x) ^ 2 + (nz - p.z) ^ 2 > 0.04 and self.phase == "COUNTDOWN" and self.countdown <= 0 then
+			self.gotInput = true
+		end
+		p.x, p.z = nx, nz
 	end
 end
 
@@ -299,6 +303,9 @@ function World:setAim(id: number, dx: number, dz: number, firing: boolean)
 		p.aimX, p.aimZ = dx / m, dz / m
 	end
 	p.firing = firing == true
+	if p.firing then
+		self.gotInput = true
+	end
 end
 
 function World:reload(id: number)
@@ -516,7 +523,7 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 	end
 	p.graceUntil = self.t + Defs.Player.Grace
 	p.hitsTaken += 1
-	amount *= Defs.Threat.damage(self.threat) * (1 - (p.weaponDef.guard or 0))
+	amount *= Defs.Threat.damage(self.threat) * (1 - (p.weaponDef.guard or 0)) * (self.op.playerDamageMult or 1)
 	local absorbed = math.min(p.shield, amount)
 	p.shield -= absorbed
 	amount -= absorbed
@@ -526,6 +533,14 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 	p.hp = math.max(0, p.hp - amount)
 	p.combo = 0
 	self:emit(E.HURT, p.id, math.floor(amount + absorbed + 0.5), fromX, fromZ)
+	if p.hp <= 0 and p.newbie and self.op.id == "O01" and not p.secondWind then
+		-- A newcomer's first run must not end in the first minute while they learn the controls (DD-024).
+		p.secondWind = true
+		p.hp = math.floor(p.maxHp * 0.6)
+		p.iframeUntil = self.t + 2.5
+		self:banner("АВАРИЙНЫЙ ЩИТ", "Спасёт только раз — двигайся и стреляй", C.CYAN, 3, "shield")
+		return true
+	end
 	if p.hp <= 0 then
 		p.alive = false
 		p.firing = false
@@ -1427,7 +1442,19 @@ function World:step(dt: number)
 	end
 	if self.phase == "COUNTDOWN" then
 		self.countdown -= dt
-		if self.countdown <= 0 then
+		-- A solo newcomer's first run waits for their first move or shot (DD-024): still loading or
+		-- reading the controls must not cost them the run.
+		local waiting = false
+		if self.countdown <= 0 and self.solo and self.op.id == "O01" and not self.gotInput then
+			waiting = true
+			for _, p in self.playerList do
+				if not p.newbie then
+					waiting = false
+				end
+			end
+		end
+		self.waiting = waiting
+		if self.countdown <= 0 and not waiting then
 			self.phase = "ACTIVE"
 			self:banner(self.op.code .. " · " .. self.op.name, self.op.goal, C.CYAN, 3, "pin")
 		end
@@ -1625,6 +1652,7 @@ function World:publicState()
 		phase = self.phase,
 		t = self.t,
 		countdown = math.max(0, self.countdown),
+		waiting = self.waiting == true,
 		paused = self.paused or "",
 		pauseClock = self.pauseClock,
 		solo = self.solo,

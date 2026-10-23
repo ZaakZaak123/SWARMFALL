@@ -287,6 +287,7 @@ local function buildLobby()
 		"pin"
 	)
 	walkLabel.TextSize = 15
+	ui.walk = walk
 	walk.Activated:Connect(function()
 		Audio.play("ui")
 		if Menus.onWalk then
@@ -437,7 +438,7 @@ local function buildLobby()
 		ui.opCards[opId] = { card = card, stroke = card:FindFirstChildOfClass("UIStroke"), lock = lock }
 	end
 	-- Threat selector
-	label("УГРОЗА", {
+	ui.threatTitle = label("УГРОЗА", {
 		Position = UDim2.fromOffset(32, 384),
 		Size = UDim2.fromOffset(300, 18),
 		FontFace = F.title,
@@ -1021,7 +1022,7 @@ local function buildLobby()
 			TextXAlignment = Enum.TextXAlignment.Right,
 			Parent = row,
 		})
-		ui.researchRows[kind] = { name = name, stage = stage, fill = fill, count = count }
+		ui.researchRows[kind] = { row = row, order = i, name = name, stage = stage, fill = fill, count = count }
 	end
 	ui.s01Branches = {}
 	for i, b in { "A", "B", "C" } do
@@ -1645,6 +1646,44 @@ function Menus.refreshLobby()
 	end
 	local scrap = profile and profile.scrap or 0
 	ui.scrap.Text = Theme.commas(scrap) .. (if profile and profile.offline then " *" else "")
+	-- Progressive disclosure (DD-024): the lobby shows only what the player has reached, plus one locked
+	-- teaser of what comes next. Systems appear one story win at a time.
+	local winsByOp = profile and profile.winsByOp or {}
+	local opsReached = profile and profile.ops or {}
+	local function won(opId: string): boolean
+		return (winsByOp[opId] or 0) > 0 or (opsReached[opId] or 0) >= 2
+	end
+	local showWorkshop = won("O01")
+	if not showWorkshop and tab == "workshop" then
+		tab = "play"
+		ui.playTab.Visible, ui.shopTab.Visible = true, false
+	end
+	ui.tabs.workshop.button.Visible = showWorkshop
+	ui.tabs.play.button.Visible = showWorkshop
+	ui.walk.Visible = won("O02")
+	local showThreat = won("O03")
+	ui.threatTitle.Visible = showThreat
+	ui.threatInfo.Visible = showThreat
+	for _, pip in ui.threatPips do
+		pip.button.Visible = showThreat
+	end
+	-- weapons: owned and buyable ones, then a single locked teaser
+	local shownWeapons, teaser = 0, false
+	for _, id in Defs.WeaponOrder do
+		local c = ui.cards[id]
+		local owned = profile == nil or profile.weapons[id] == true
+		local buyable = profile ~= nil and (profile.blueprints == nil or profile.blueprints[id] ~= false)
+		local show = owned or buyable or not teaser
+		if not owned and not buyable then
+			teaser = true
+		end
+		c.card.Visible = show
+		if show then
+			c.card.Position = UDim2.fromOffset(380 + (shownWeapons % 2) * 272, 24 + (shownWeapons // 2) * 252)
+			shownWeapons += 1
+		end
+		c.recipe.Visible = showWorkshop
+	end
 	-- weapons: lock / blueprint, mastery, permanent form
 	for id, c in ui.cards do
 		local owned = profile == nil or profile.weapons[id] == true
@@ -1717,6 +1756,20 @@ function Menus.refreshLobby()
 	-- maps / threat
 	local isHost = lobbyState and lobbyState.host == myId
 	local opsProgress = profile and profile.ops or {}
+	local shownOps, opTeaser = 0, false
+	for _, opId in Ops.Order do
+		local m = ui.opCards[opId]
+		local unlocked = profile == nil or (opsProgress[opId] or 0) >= 1
+		local show = unlocked or not opTeaser
+		if not unlocked then
+			opTeaser = true
+		end
+		m.card.Visible = show
+		if show then
+			m.card.Position = UDim2.fromOffset(28, 24 + shownOps * 50)
+			shownOps += 1
+		end
+	end
 	for opId, m in ui.opCards do
 		local unlocked = profile == nil or (opsProgress[opId] or 0) >= 1
 		m.lock.Visible = not unlocked
@@ -1764,7 +1817,25 @@ function Menus.refreshLobby()
 		end
 		tc.stroke.Color = if owned then C.lime elseif won and scrap >= def.cost then C.gold else C.line
 	end
-	-- research
+	-- research: only species the player has already met
+	local shownRows = 0
+	for _, row in ui.researchRows or {} do
+		row.row.Visible = false
+	end
+	local rows = {}
+	for kind, row in ui.researchRows or {} do
+		if profile and profile.research and (profile.research[kind] or 0) > 0 then
+			table.insert(rows, row)
+		end
+	end
+	table.sort(rows, function(a, b)
+		return a.order < b.order
+	end)
+	for _, row in rows do
+		row.row.Visible = true
+		row.row.Position = UDim2.fromOffset(848, 204 + shownRows * 31)
+		shownRows += 1
+	end
 	for kind, row in ui.researchRows or {} do
 		local kills = profile and profile.research and profile.research[kind] or 0
 		local st = Defs.researchStage(kind, kills)
@@ -1799,7 +1870,10 @@ function Menus.refreshLobby()
 			else "ГРАВИМОЛОТ S01 — откроется в O01"
 		local open = profile and profile.s01 and rank >= Defs.S01Mastery.BranchAt
 		local tier = Defs.s01Tier(rank)
+		ui.s01Line.Visible = profile ~= nil and profile.s01 == true
+		ui.s01Tier.Visible = open == true
 		for b, ub in ui.s01Branches do
+			ub.button.Visible = open == true
 			local on = profile and profile.s01Branch == b
 			ub.button.BackgroundColor3 = if on then ub.def.color elseif open then C.panel2 else C.bg
 			ub.label.TextColor3 = if on then C.bg elseif open then C.text else C.dim

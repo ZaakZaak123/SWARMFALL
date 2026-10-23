@@ -632,6 +632,20 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = ui.banner,
 	})
 
+	-- First-run controls hint (DD-024): the first seconds of O01 say how to move and shoot, then fade.
+	ui.howTo = label("", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -150),
+		Size = UDim2.fromOffset(760, 64),
+		FontFace = F.head,
+		TextSize = 26,
+		TextWrapped = true,
+		TextStrokeTransparency = 0.4,
+		RichText = true,
+		Visible = false,
+		Parent = root,
+	})
+
 	-- Reticle
 	ui.reticle = new(
 		"Frame",
@@ -1042,6 +1056,8 @@ function Hud.update(run, me, extra, dt: number)
 		local evo = Defs.Evolutions[wdef.evolution]
 		for i, s in ui.slots do
 			local id = owned[i]
+			-- only filled slots and the next free one: no row of empty boxes before the first pick
+			s.frame.Visible = id ~= nil or (i == #owned + 1 and #owned > 0)
 			if s.id ~= id then
 				s.id = id
 				if s.icon then
@@ -1121,8 +1137,19 @@ function Hud.update(run, me, extra, dt: number)
 		local pulse = if me.s01Tutorial then 10 else 8
 		ui.od.stroke.Transparency = if odReady then 0.05 + math.sin(now * pulse) * 0.1 else 0.45
 		ui.od.stroke.Thickness = if me.s01Tutorial then 4 elseif odReady then 2 else 1
+		-- First-run controls hint
+		local howTo = run.op == "O01" and (run.waiting or (run.phase == "ACTIVE" and run.t < 18)) and me.alive
+		ui.howTo.Visible = howTo
+		if howTo then
+			ui.howTo.Text = if extra.device == "touch"
+				then "ЛЕВЫЙ СТИК — БЕГ   ·   ПРАВАЯ ПЛОЩАДКА — ОГОНЬ\n<font size=\"20\">Не подпускай рой к реактору</font>"
+				elseif extra.device == "gamepad" then "ЛЕВЫЙ СТИК — БЕГ   ·   ПРАВЫЙ СТИК — ОГОНЬ   ·   B — РЫВОК\n<font size=\"20\">Не подпускай рой к реактору</font>"
+				else "WASD — БЕГ   ·   МЫШЬ — ПРИЦЕЛ И ОГОНЬ   ·   ПРОБЕЛ — РЫВОК\n<font size=\"20\">Не подпускай рой к реактору</font>"
+			ui.howTo.TextTransparency = if run.waiting then 0 else math.clamp((run.t - 14) / 4, 0, 1)
+		end
+		ui.view.Visible = run.op ~= "O01" and extra.device ~= "touch"
 		-- Evolve
-		ui.evolve.Visible = (me.canEvolve or me.s01Tutorial) and extra.device ~= "touch"
+		ui.evolve.Visible =(me.canEvolve or me.s01Tutorial) and extra.device ~= "touch"
 		if me.s01Tutorial then
 			ui.evolveScale.Scale = 1 + math.sin(now * 8) * 0.06
 			ui.evolveText.Text = "ГРАВИМОЛОТ: УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")

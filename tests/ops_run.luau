@@ -1,6 +1,6 @@
 -- Operation playtests: the bot plays operations end to end and checks objective rules.
 -- Usage (repo root):  lune run tests/ops_run [op|all] [weapon] [seed]
--- O01 checks: carrier kill grants Ядро Бури, finale ends in victory, defended reactor survives,
+-- O01 checks (DD-024: ~3 min first run): carrier kill grants Ядро Бури, finale ends in victory, defended reactor survives,
 -- an undefended reactor falls (strike groups are real), only Runners/Spitters/Carrier appear.
 
 local process = require("@lune/process")
@@ -40,14 +40,15 @@ if opArg == "O01" or opArg == "all" then
 	report("defend", out)
 	local me = out.result.players[1]
 	local tut = out.milestones.s01Tutorial
-	check(tut ~= nil and tut >= 165 and tut <= 200, "S01 tutorial at the encirclement (" .. (if tut then fmt(tut) else "never") .. ")")
+	check(tut ~= nil and tut >= 80 and tut <= 100, "S01 tutorial at the encirclement (" .. (if tut then fmt(tut) else "never") .. ")")
 	check(me.s01Unlocked and me.s01.casts >= 1 and me.s01.best >= 4, string.format("S01 unlocked, tutorial strike hits a crowd (casts %d, hits %d, kills %d, best %d)", me.s01.casts, me.s01.hits, me.s01.kills, me.s01.best))
 	check(out.result ~= nil, "run finishes")
 	check(out.milestones.firstKill ~= nil and out.milestones.firstKill < 15, "first kill within 15 s")
-	check((out.milestones.assaults or 0) >= 6, "reactor strike groups announced")
+	check((out.milestones.assaults or 0) >= 2, "reactor strike groups announced")
+	check(out.result.victory, "a defending newcomer wins the first operation")
 	if out.result.victory then
 		check(out.result.eliteKilled and table.find(out.result.components, "CMP_STORM_CORE") ~= nil, "carrier kill grants Ядро Бури")
-		check(out.result.time > 380 and out.result.time < 520, "victory lands in the 6:20–8:40 window")
+		check(out.result.time > 150 and out.result.time < 240, "victory lands in the 2:30–4:00 window (DD-024)")
 	else
 		print("  NOTE defending bot lost: " .. out.result.reason)
 	end
