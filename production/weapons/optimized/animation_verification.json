@@ -1,0 +1,22 @@
+{
+  "W_ARC_RIFLE": {
+    "visual": "W01_Blender_optimized_v2",
+    "muzzleError": 0.0000026226043701171875,
+    "motors": {
+      "Motor_bolt": 0.14544521272182465,
+      "Motor_prongD": 0.023669013753533363,
+      "Motor_coil": 3.096130132675171,
+      "GunMotor": 0.7951753735542297,
+      "Motor_prongU": 0.023669013753533363,
+      "Motor_mag": 1.0036557912826538
+    }
+  },
+  "W_SCATTERGUN": {
+    "visual": "W02_Blender_optimized_v2",
+    "muzzleError": 0.0000020370491711219074,
+    "motors": {
+      "Motor_pump": 0.3629067838191986,
+      "GunMotor": 0.7981142997741699
+    }
+  }
+}

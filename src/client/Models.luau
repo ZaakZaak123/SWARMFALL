@@ -473,6 +473,9 @@ function Models.weapon(id: string, evolved: boolean, anchored: boolean?, scale: 
 	if id == "W_ARC_RIFLE" and not evolved then
 		return require(script.Parent.ArcRifleMesh).build(anchored ~= false, scale)
 	end
+	if id == "W_SCATTERGUN" and not evolved then
+		return require(script.Parent.VulcanMesh).build(anchored ~= false, scale)
+	end
 	local specs, meta = Models.weaponSpec(id, evolved)
 	local m = Models.build(specs, anchored ~= false, scale)
 	m.Name = id

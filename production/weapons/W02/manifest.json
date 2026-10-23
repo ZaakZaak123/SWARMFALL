@@ -1,0 +1,86 @@
+{
+  "mapping": "Roblox = (Blender Y, Blender Z, -Blender X)",
+  "parts": [
+    {
+      "name": "Chassis",
+      "rgb": [
+        39,
+        48,
+        61
+      ],
+      "group": null,
+      "triangles": 6892
+    },
+    {
+      "name": "Armor",
+      "rgb": [
+        202,
+        79,
+        29
+      ],
+      "group": null,
+      "triangles": 2852
+    },
+    {
+      "name": "Steel",
+      "rgb": [
+        112,
+        128,
+        141
+      ],
+      "group": null,
+      "triangles": 3852
+    },
+    {
+      "name": "Rubber",
+      "rgb": [
+        19,
+        23,
+        29
+      ],
+      "group": null,
+      "triangles": 868
+    },
+    {
+      "name": "Pump",
+      "rgb": [
+        210,
+        89,
+        31
+      ],
+      "group": "pump",
+      "triangles": 164
+    },
+    {
+      "name": "PumpRibs",
+      "rgb": [
+        32,
+        38,
+        45
+      ],
+      "group": "pump",
+      "triangles": 972
+    },
+    {
+      "name": "Brass",
+      "rgb": [
+        204,
+        153,
+        68
+      ],
+      "group": null,
+      "triangles": 1876
+    },
+    {
+      "name": "Indicators",
+      "rgb": [
+        255,
+        177,
+        65
+      ],
+      "group": null,
+      "triangles": 108
+    }
+  ],
+  "triangles": 17584
+}

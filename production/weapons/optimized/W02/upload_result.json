@@ -1,0 +1,23 @@
+{
+  "path": "operations/07b631de-e796-46a6-9c08-f08457d0b726",
+  "operationId": "07b631de-e796-46a6-9c08-f08457d0b726",
+  "done": true,
+  "response": {
+    "path": "assets/97387253975827",
+    "revisionId": "1",
+    "revisionCreateTime": "2026-10-23T10:30:43.541Z",
+    "assetId": "97387253975827",
+    "displayName": "SWARMFALL W02 optimized",
+    "description": "Original weapon, optimized geometry with preserved animation groups",
+    "assetType": "Model",
+    "creationContext": {
+      "creator": {
+        "userId": "11260914765"
+      }
+    },
+    "moderationResult": {
+      "moderationState": "Approved"
+    },
+    "state": "Active"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "W01": {
+    "hero": {
+      "silhouette_iou": 0.9951802781082079,
+      "mean_rgb_difference_0_to_1": 0.013371039181947708
+    },
+    "side": {
+      "silhouette_iou": 0.9868314129143834,
+      "mean_rgb_difference_0_to_1": 0.025192780420184135
+    },
+    "roundtrip": {
+      "meshes": 6,
+      "triangles": 4134
+    }
+  },
+  "W02": {
+    "hero": {
+      "silhouette_iou": 0.9968959862564423,
+      "mean_rgb_difference_0_to_1": 0.013376466929912567
+    },
+    "side": {
+      "silhouette_iou": 0.9852354434700975,
+      "mean_rgb_difference_0_to_1": 0.020357618108391762
+    },
+    "roundtrip": {
+      "meshes": 8,
+      "triangles": 4376
+    }
+  }
+}

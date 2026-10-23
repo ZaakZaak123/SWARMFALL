@@ -1,0 +1,23 @@
+{
+  "path": "operations/3d182aa5-fb0f-4625-80bf-27a5fa89de62",
+  "operationId": "3d182aa5-fb0f-4625-80bf-27a5fa89de62",
+  "done": true,
+  "response": {
+    "path": "assets/98232952921135",
+    "revisionId": "1",
+    "revisionCreateTime": "2026-10-23T10:02:15.460Z",
+    "assetId": "98232952921135",
+    "displayName": "SWARMFALL W02 Vulcan",
+    "description": "Original Blender pump shotgun for SWARMFALL",
+    "assetType": "Model",
+    "creationContext": {
+      "creator": {
+        "userId": "11260914765"
+      }
+    },
+    "moderationResult": {
+      "moderationState": "Approved"
+    },
+    "state": "Active"
+  }
+}

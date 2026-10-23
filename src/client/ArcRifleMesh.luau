@@ -24,7 +24,7 @@ function ArcRifleMesh.build(anchored: boolean, scale: number?): (Model, any)
 	local template = assets:WaitForChild("W01")
 	local model = Instance.new("Model")
 	model.Name = "W_ARC_RIFLE"
-	model:SetAttribute("VisualAsset", "W01_Blender_v1")
+	model:SetAttribute("VisualAsset", "W01_Blender_optimized_v2")
 	local root = part("Root", Vector3.one * 0.2, CFrame.identity, anchored)
 	root.Parent = model
 	model.PrimaryPart = root
