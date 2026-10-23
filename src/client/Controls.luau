@@ -43,14 +43,14 @@ local function makeButton(name: string, label: string, sub: string, pos: UDim2, 
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = pos,
 		Size = UDim2.fromOffset(size, size),
-		BackgroundColor3 = C.panel,
-		BackgroundTransparency = 0.25,
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.3,
 		Text = "",
 		Corner = UDim.new(1, 0),
-		Stroke = { Color = color, Thickness = 2, Transparency = 0.2 },
+		Stroke = { Color = color, Thickness = 2.5, Transparency = 0.25 },
 		Parent = gui,
 	})
-	local ic = Icons.new(label, math.floor(size * 0.48), color, C.panel)
+	local ic = Icons.new(label, math.floor(size * 0.46), color, C.ink)
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.fromScale(0.5, 0.42)
 	ic.Parent = b
@@ -65,30 +65,36 @@ function Controls.init(playerGui: PlayerGui)
 		Name = "AimPad",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(1, -150, 1, -150),
-		Size = UDim2.fromOffset(190, 190),
-		BackgroundColor3 = C.panel,
-		BackgroundTransparency = 0.55,
+		Size = UDim2.fromOffset(200, 200),
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.6,
 		Corner = UDim.new(1, 0),
-		Stroke = { Color = C.cyan, Thickness = 2, Transparency = 0.4 },
+		Stroke = { Color = C.lime, Thickness = 2, Transparency = 0.5 },
 		Parent = gui,
 	})
-	Theme.label("ПРИЦЕЛ · ОГОНЬ", { Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, 6), FontFace = Theme.F.title, TextSize = 11, TextColor3 = C.dim, Parent = pad })
+	local cross = Icons.new("crosshair", 40, C.lime, C.ink)
+	cross.AnchorPoint = Vector2.new(0.5, 0.5)
+	cross.Position = UDim2.fromScale(0.5, 0.5)
+	cross.Parent = pad
 	knob = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(70, 70),
-		BackgroundColor3 = C.cyan,
-		BackgroundTransparency = 0.35,
+		Size = UDim2.fromOffset(74, 74),
+		BackgroundColor3 = C.lime,
+		BackgroundTransparency = 0.45,
 		Corner = UDim.new(1, 0),
+		Stroke = { Color = C.lime, Thickness = 2, Transparency = 0.1 },
 		Parent = pad,
 	})
 	buttons = {
 		dash = makeButton("Dash", "dash", "", UDim2.new(1, -300, 1, -90), 84, C.cyan),
-		overdrive = makeButton("Gravihammer", "hammer", "", UDim2.new(1, -290, 1, -195), 70, C.cyan),
+		overdrive = makeButton("Gravihammer", "hammer", "", UDim2.new(1, -290, 1, -195), 76, C.lime),
 		evolve = makeButton("Evolve", "evolve", "", UDim2.new(1, -150, 1, -300), 76, C.gold),
 		reload = makeButton("Reload", "reload", "", UDim2.new(1, -60, 1, -290), 54, C.dim),
 		view = makeButton("View", "topdown", "", UDim2.new(1, -60, 1, -370), 54, C.cyan),
 	}
+	-- The minimal touch layout keeps the tactical camera: no view switch on phones.
+	buttons.view.button.Visible = false
 	buttons.dash.button.Activated:Connect(function()
 		act("dash")
 	end)
@@ -114,7 +120,10 @@ function Controls.init(playerGui: PlayerGui)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local t = input.UserInputType
-		if t == Enum.UserInputType.Touch then
+		if Settings.touch and workspace:GetAttribute("DevTouch") then
+			-- Studio phone emulation: keep the touch layout while the developer's mouse moves around.
+			Controls.device = "touch"
+		elseif t == Enum.UserInputType.Touch then
 			Controls.device = "touch"
 		elseif t == Enum.UserInputType.Keyboard or t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.MouseMovement then
 			Controls.device = "pc"
@@ -317,7 +326,10 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	b.button.Visible = visible
 	b.fill.Size = UDim2.fromScale(1, math.clamp(cooldownFrac or 0, 0, 1))
 	b.sub.Text = sub or ""
-	b.button.BackgroundTransparency = if ready then 0.05 else 0.35
+	b.button.BackgroundTransparency = if ready then 0.1 else 0.45
+	if name == "view" then
+		b.button.Visible = false
+	end
 end
 
 function Controls.setViewIcon(name: string)

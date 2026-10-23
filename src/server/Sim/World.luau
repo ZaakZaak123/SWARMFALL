@@ -1430,7 +1430,7 @@ function World:finish(victory: boolean, reason: string)
 				self:emit(E.KILL, e.id, e.def.index, e.x, e.z, 0, 8)
 			end
 		end
-		self:banner("ЗОНА ЗАЧИЩЕНА", reason, C.GOLD, 5, "crown")
+		self:banner("ОХОТА ЗАВЕРШЕНА", reason, C.GOLD, 5, "crown")
 	else
 		self:banner("ПОРАЖЕНИЕ", reason, C.RED, 5, "skull")
 	end

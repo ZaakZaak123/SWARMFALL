@@ -4,7 +4,7 @@
 
 local Defs = {}
 
-Defs.Version = "SWARMFALL-3.0"
+Defs.Version = "SPOREFALL-1.0"
 
 Defs.Run = {
 	Countdown = 4,
@@ -701,7 +701,7 @@ Defs.Enemies = {
 	BOSS_BROODMOTHER = {
 		id = "BOSS_BROODMOTHER",
 		index = 7,
-		name = "МАТКА РАЗЛОМА",
+		name = "МАТЬ РОЯ",
 		hp = 7200,
 		speed = 7,
 		radius = 8.5,

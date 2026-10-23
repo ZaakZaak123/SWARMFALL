@@ -329,7 +329,7 @@ do
 		objective = "boss",
 		spawnMult = 0.85,
 		bossHpMult = 0.75, -- the Devourer burrows; keep a viable boss window (D02 §9)
-		reactor = { hp = 1700, name = "БУР" },
+		reactor = { hp = 2400, name = "БУР" },
 		runEvolution = false,
 		hardLimit = 570,
 		phases = depths.phases,

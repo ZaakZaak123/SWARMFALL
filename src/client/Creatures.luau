@@ -77,8 +77,15 @@ local function runnerMesh()
 			continue
 		end
 		local centre = (mp.Position - RUNNER_ROOT) * RUNNER_SCALE
-		local spec =
-			{ mesh = mp, size = mp.Size * RUNNER_SCALE, cf = P(centre), color = info[1], mat = info[2], role = info[3] }
+		local spec = {
+			mesh = mp,
+			name = mp.Name,
+			size = mp.Size * RUNNER_SCALE,
+			cf = P(centre),
+			color = info[1],
+			mat = info[2],
+			role = info[3],
+		}
 		if info[4] then
 			local hip = info[4] * RUNNER_SCALE
 			spec.role = "leg"
@@ -91,7 +98,9 @@ local function runnerMesh()
 	-- Spore nodules along the spine (DD-033): the swarm glows warm against the cold crater, so a runner
 	-- reads at a glance from the top-down camera. The mesh itself is unchanged.
 	for i, z in { -0.55, 0.25, 1.05 } do
-		table.insert(s, ball(0.62 - i * 0.06, P(0, 2.36 - i * 0.05, z), rgb(255, 196, 92), M.Neon))
+		local n = ball(0.56 - i * 0.06, P(0, 2.34 - i * 0.05, z), rgb(255, 150, 54), M.Neon)
+		n.name = "Nodule"
+		table.insert(s, n)
 	end
 	return s
 end
@@ -564,6 +573,223 @@ BLUEPRINT[12] = function() -- Acid source: a cracked mound venting a bubbling gr
 		table.insert(s, blk(Vector3.new(0.9, 4, 0.9), P(k * 3.2, 3, 1.5) * A(0.3, 0, k * 0.4), rock, M.Slate))
 	end
 	return s, 0
+end
+
+-- The swarm family (DD-034) -------------------------------------------------------------------------------
+-- Every species is the base monster (the Runner mesh) grown differently: stretched, swollen, armoured,
+-- crowned. One silhouette language, so the swarm reads as one living thing; colour and extra growths say
+-- who is who. Falls back to the old part blueprints when the mesh asset is missing.
+local LEGACY = table.clone(BLUEPRINT)
+
+local function scaled(cf: CFrame, k: Vector3): CFrame
+	return CFrame.new(cf.Position * k) * cf.Rotation
+end
+
+-- o = { scale = Vector3, shell, flesh, head, legs, eyes, nodule (colour or false), noduleScale, extras }
+local function variant(o)
+	local s = runnerMesh()
+	if not s then
+		return nil
+	end
+	local k = o.scale
+	local out = {}
+	for _, spec in s do
+		if spec.name == "Nodule" and o.nodule == false then
+			continue
+		end
+		spec.cf = scaled(spec.cf, k)
+		if spec.shape == Enum.PartType.Ball then
+			spec.size = spec.size * math.min(k.X, k.Y, k.Z) * (o.noduleScale or 1)
+		else
+			spec.size = spec.size * k
+		end
+		if spec.hip then
+			spec.hip = scaled(spec.hip, k)
+			spec.loc = scaled(spec.loc, k)
+		end
+		local n = spec.name
+		if n == "Shell" and o.shell then
+			spec.color = o.shell
+		elseif n == "Flesh" and o.flesh then
+			spec.color = o.flesh
+		elseif n == "Head" and o.head then
+			spec.color = o.head
+		elseif n == "Eyes" and o.eyes then
+			spec.color = o.eyes
+		elseif n == "Nodule" and o.nodule then
+			spec.color = o.nodule
+		elseif n and n:sub(1, 3) == "Leg" and o.legs then
+			spec.color = o.legs
+		end
+		table.insert(out, spec)
+	end
+	for _, e in o.extras or {} do
+		table.insert(out, e)
+	end
+	return out
+end
+
+local function glowBall(d: number, cf: CFrame, color: Color3, role: string?, transparency: number?)
+	return { size = Vector3.one * d, cf = cf, color = color, mat = M.Neon, shape = Enum.PartType.Ball, role = role, transparency = transparency }
+end
+
+BLUEPRINT[2] = function() -- Leaper: long, lean, crimson, with two glowing scythes
+	local blade = rgb(255, 110, 200)
+	local s = variant({
+		scale = Vector3.new(0.85, 0.95, 1.3),
+		shell = rgb(232, 48, 104),
+		flesh = rgb(110, 20, 52),
+		head = rgb(160, 32, 70),
+		legs = rgb(90, 18, 46),
+		nodule = rgb(255, 140, 210),
+		extras = {
+			leg(Vector3.new(0.22, 2.5, 0.34), P(0.75, 2.2, -1.6), P(0.35, -0.5, -0.9) * A(-0.95, 0, 0.3), blade, 0, M.Neon),
+			leg(Vector3.new(0.22, 2.5, 0.34), P(-0.75, 2.2, -1.6), P(-0.35, -0.5, -0.9) * A(-0.95, 0, -0.3), blade, math.pi, M.Neon),
+		},
+	})
+	if s then
+		return s, 1.1
+	end
+	return LEGACY[2]()
+end
+
+BLUEPRINT[3] = function() -- Spitter: swollen, mustard shell, a translucent acid sac on its back
+	local acid = rgb(170, 255, 70)
+	local s = variant({
+		scale = Vector3.new(1.15, 1.1, 1.0),
+		shell = rgb(206, 168, 52),
+		flesh = rgb(96, 82, 26),
+		head = rgb(150, 120, 36),
+		legs = rgb(80, 66, 22),
+		eyes = acid,
+		nodule = false,
+		extras = {
+			{ size = Vector3.one * 2.9, cf = P(0, 3.1, 0.8), color = acid, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac", transparency = 0.25 },
+		},
+	})
+	if s then
+		return s, 1.0
+	end
+	return LEGACY[3]()
+end
+
+-- Bulwark: a runner grown huge and armoured; a front plate shows where bullets glance off.
+local function bulwarkVariant(k: number, elite: boolean)
+	local trim = if elite then rgb(255, 180, 60) else rgb(230, 100, 40)
+	local plate = if elite then rgb(120, 92, 54) else rgb(92, 64, 76)
+	local extras = {
+		blk(Vector3.new(2.7 * k, 1.9 * k, 0.35 * k), P(0, 1.55 * k, -2.25 * k) * A(-0.25, 0, 0), plate, M.Metal, "body"),
+		blk(Vector3.new(2.75 * k, 0.16 * k, 0.4 * k), P(0, 2.5 * k, -2.0 * k) * A(-0.25, 0, 0), trim, M.Neon),
+	}
+	for i = -1, 1 do
+		table.insert(
+			extras,
+			blk(Vector3.new(0.3 * k, 0.9 * k, 0.3 * k), P(i * 0.55 * k, 2.6 * k, (0.2 + math.abs(i) * 0.3) * k) * A(0.4, 0, -i * 0.35), trim, M.Neon)
+		)
+	end
+	if elite then
+		table.insert(extras, glowBall(0.9 * k, P(0, 2.55 * k, 0.9 * k), trim, "glow"))
+	end
+	return variant({
+		scale = Vector3.new(k, k * 0.95, k * 0.92),
+		shell = if elite then rgb(196, 120, 52) else rgb(150, 70, 58),
+		flesh = rgb(70, 30, 36),
+		head = if elite then rgb(150, 86, 40) else rgb(110, 46, 46),
+		legs = rgb(60, 28, 34),
+		nodule = trim,
+		noduleScale = 0.8,
+		extras = extras,
+	})
+end
+
+BLUEPRINT[4] = function()
+	local s = bulwarkVariant(1.95, false)
+	if s then
+		return s, 0.7
+	end
+	return LEGACY[4]()
+end
+
+BLUEPRINT[5] = function()
+	local s = bulwarkVariant(2.6, true)
+	if s then
+		return s, 0.6
+	end
+	return LEGACY[5]()
+end
+
+BLUEPRINT[7] = function() -- Broodmother: a colossal runner with a glowing brood abdomen and three weak nodes
+	local k = 4.6
+	local glow = rgb(255, 120, 200)
+	local extras = {
+		{ size = Vector3.one * 8, cf = P(0, 6.2, 7.5), color = rgb(255, 90, 160), mat = M.Neon, shape = Enum.PartType.Ball, role = "sac", transparency = 0.35 },
+	}
+	for _, off in { { -2.6, 11.2, 1.5 }, { 2.6, 11.2, 1.5 }, { 0, 10.4, 7.2 } } do
+		table.insert(extras, glowBall(2.4, P(off[1], off[2], off[3]), rgb(170, 255, 80), "node"))
+	end
+	for i = -2, 2 do
+		table.insert(extras, blk(Vector3.new(0.8, 4.2, 0.8), P(i * 1.5, 10.6 - math.abs(i) * 0.5, -3.6) * A(-0.5, 0, -i * 0.22), glow, M.Neon))
+	end
+	local s = variant({
+		scale = Vector3.new(k, k * 0.92, k),
+		shell = rgb(120, 36, 92),
+		flesh = rgb(54, 14, 40),
+		head = rgb(90, 24, 66),
+		legs = rgb(44, 12, 34),
+		eyes = rgb(255, 70, 80),
+		nodule = glow,
+		extras = extras,
+	})
+	if s then
+		return s, 0.35
+	end
+	return LEGACY[7]()
+end
+
+BLUEPRINT[8] = function() -- Bomber: a runner carrying a bloated burning sac
+	local sac = rgb(255, 150, 40)
+	local s = variant({
+		scale = Vector3.new(1.05, 1.0, 0.95),
+		shell = rgb(170, 64, 30),
+		flesh = rgb(70, 24, 14),
+		head = rgb(120, 44, 22),
+		legs = rgb(60, 22, 12),
+		eyes = rgb(255, 230, 120),
+		nodule = false,
+		extras = {
+			{ size = Vector3.one * 3.1, cf = P(0, 2.9, 0.6), color = sac, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac", transparency = 0.12 },
+		},
+	})
+	if s then
+		return s, 1.2
+	end
+	return LEGACY[8]()
+end
+
+BLUEPRINT[10] = function() -- The Alpha: leader of the pack — huge, gold, crowned, a xenite shard on its back
+	local k = 2.6
+	local gold = rgb(255, 176, 60)
+	local extras = {
+		{ size = Vector3.new(1.5, 4, 1.5), cf = P(0, 4.2, 1.0) * A(0.25, math.rad(45), 0), color = rgb(255, 90, 200), mat = M.Neon, role = "node", transparency = 0.1 },
+	}
+	for i = -2, 2 do
+		table.insert(extras, blk(Vector3.new(0.35, 1.6, 0.35), P(i * 0.45, 2.95, -2.6 + math.abs(i) * 0.2) * A(-0.35, 0, -i * 0.3), gold, M.Neon))
+	end
+	local s = variant({
+		scale = Vector3.new(k, k, k * 0.95),
+		shell = rgb(255, 160, 56),
+		flesh = rgb(130, 36, 30),
+		head = rgb(200, 90, 40),
+		legs = rgb(110, 34, 26),
+		eyes = rgb(255, 250, 200),
+		nodule = gold,
+		noduleScale = 0.75,
+		extras = extras,
+	})
+	if s then
+		return s, 0.6
+	end
+	return LEGACY[10]()
 end
 
 return Creatures

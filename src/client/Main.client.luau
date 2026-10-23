@@ -1478,6 +1478,7 @@ local function frame(dt: number)
 				)
 				else nil,
 		}
+		Hud.setDimmed(choosing)
 		Hud.update(run, me, extra, dt)
 		Hud.setView(CameraRig.mode(), CameraRig.ModeIcons[CameraRig.mode()], nil, Controls.device)
 		Controls.setViewIcon(CameraRig.ModeIcons[CameraRig.mode()])

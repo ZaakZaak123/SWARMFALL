@@ -512,6 +512,17 @@ if RunService:IsStudio() then
 		p.hp = 100000
 		return true
 	end
+	function handlers.devSpawn(player: Player, kind, count)
+		local p = participant(player)
+		if not p or type(kind) ~= "string" or not Defs.Enemies[kind] then
+			return false
+		end
+		for i = 1, math.clamp(tonumber(count) or 1, 1, 20) do
+			local a = i * 2.4
+			world:spawnEnemy(kind, p.x + math.cos(a) * 22, p.z + math.sin(a) * 22, 1)
+		end
+		return true
+	end
 	function handlers.devSkip(player: Player, seconds)
 		if not world or not finite(seconds) then
 			return false

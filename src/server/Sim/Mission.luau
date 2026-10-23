@@ -675,7 +675,7 @@ function Mission:update(dt: number)
 	end
 	if self.state == "FINALE" and w.t >= self.finaleUntil then
 		self.state = "DONE"
-		w:finish(true, "ЗОНА УДЕРЖАНА")
+		w:finish(true, "Кратер удержан")
 	end
 end
 

@@ -218,8 +218,8 @@ local function paintTerrain(map)
 	terrain:SetMaterialColor(M.Basalt, rgb(66, 52, 88))
 	terrain:SetMaterialColor(M.Slate, rgb(78, 64, 104))
 	terrain:SetMaterialColor(M.Rock, rgb(74, 58, 98))
-	terrain:SetMaterialColor(M.Grass, rgb(38, 150, 138))
-	terrain:SetMaterialColor(M.LeafyGrass, rgb(46, 190, 160))
+	terrain:SetMaterialColor(M.Grass, rgb(34, 126, 124))
+	terrain:SetMaterialColor(M.LeafyGrass, rgb(40, 150, 140))
 	terrain:SetMaterialColor(M.Mud, rgb(52, 38, 62))
 	terrain:SetMaterialColor(M.Ground, rgb(64, 50, 84))
 	terrain:SetMaterialColor(M.CrackedLava, rgb(200, 50, 150))
@@ -602,7 +602,7 @@ local function buildExtractor(o, decor)
 			Transparency = 0.1,
 		}))
 	end
-	light(model, c + Vector3.new(0, 8, 0), PAL.pink, 40, 3, true)
+	light(model, c + Vector3.new(0, 8, 0), PAL.pink, 28, 1.8, true)
 	-- the drill rig: three legs, a cross-head over the crystal, hazard-orange feet
 	local top = c + Vector3.new(0, 21, 0)
 	for i = 0, 2 do
@@ -975,21 +975,13 @@ end
 
 -- Sky dressing: a ringed gas giant and a small moon, low on the northern horizon.
 local function buildSky(decor)
+	-- A pale violet sister world low over the titan's skull: a quiet landmark for the lobby shot.
 	local model = Instance.new("Model")
 	model.Name = "Sky"
 	model.Parent = decor
-	local planet = Vector3.new(-210, 330, 900)
-	ball(model, planet, 150, rgb(70, 38, 112), M.Neon, { Transparency = 0.1 })
-	ball(model, planet + Vector3.new(-20, 26, -12), 124, rgb(130, 70, 160), M.Neon, { Transparency = 0.65 })
-	local ring = part(model, {
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1, 330, 330),
-		CFrame = CFrame.new(planet) * CFrame.Angles(math.rad(18), 0, math.rad(74)),
-		Color = rgb(255, 120, 200),
-		Material = M.Neon,
-		Transparency = 0.86,
-	})
-	ring.Name = "Ring"
+	local planet = Vector3.new(-250, 250, 950)
+	ball(model, planet, 120, rgb(150, 110, 200), M.Neon, { Transparency = 0.35 })
+	ball(model, planet + Vector3.new(-14, 16, -8), 96, rgb(210, 180, 240), M.Neon, { Transparency = 0.75 })
 end
 
 -- Lighting ----------------------------------------------------------------------------------------------
@@ -1013,12 +1005,12 @@ function Arena.lighting(theme: string)
 		end
 	end
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = if night then 0.34 else 0.27
-	atmosphere.Offset = 0.2
+	atmosphere.Density = if night then 0.3 else 0.24
+	atmosphere.Offset = 0.32
 	atmosphere.Color = if night then rgb(150, 40, 70) else rgb(230, 140, 170)
 	atmosphere.Decay = if night then rgb(50, 10, 40) else rgb(90, 60, 150)
 	atmosphere.Glare = if night then 0.2 else 0.9
-	atmosphere.Haze = if night then 1.6 else 1.1
+	atmosphere.Haze = if night then 1.2 else 0.7
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
 	sky.StarCount = 5000

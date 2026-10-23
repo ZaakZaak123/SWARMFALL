@@ -32,6 +32,11 @@ function Settings.set(key: string, value)
 	end
 end
 
+-- Studio-only: workspace attribute DevTouch emulates a phone (touch layout) for screenshots.
+if game:GetService("RunService"):IsStudio() and workspace:GetAttribute("DevTouch") then
+	Settings.touch = true
+end
+
 -- Low-end mobile starts on Medium.
 if Settings.touch then
 	Settings.quality = 2

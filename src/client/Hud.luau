@@ -395,7 +395,7 @@ function Hud.init(playerGui: PlayerGui)
 		Position = UDim2.fromOffset(32, 0),
 		Size = UDim2.new(1, -40, 1, 0),
 		FontFace = F.numHeavy,
-		TextSize = 15,
+		TextSize = 17,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextStrokeTransparency = 0.5,
 		TextStrokeColor3 = C.ink,
@@ -623,6 +623,11 @@ function Hud.setVisible(v: boolean)
 	overlay.Enabled = v
 end
 
+-- While a full-screen choice is open (cards, results) the combat HUD steps aside.
+function Hud.setDimmed(dimmed: boolean)
+	ui.root.Visible = not dimmed
+end
+
 -- Banners -------------------------------------------------------------------------------------------
 local function setBannerVisual(visual: string?, color: Color3)
 	for _, c in ui.bannerVisual:GetChildren() do
@@ -790,7 +795,7 @@ end
 function Hud.update(run, me, extra, dt: number)
 	local now = os.clock()
 	local vs = workspace.CurrentCamera.ViewportSize
-	local k = math.clamp(math.min(vs.Y / 820, vs.X / 1100), 0.58, 1.2)
+	local k = math.clamp(math.min(vs.Y / 820, vs.X / 1100), 0.72, 1.2)
 	ui.scale.Scale = k
 	ui.root.Size = UDim2.fromScale(1 / k, 1 / k)
 	local touch = extra.device == "touch"

@@ -1,7 +1,7 @@
 -- Operation playtests: the bot plays operations end to end and checks objective rules.
 -- Usage (repo root):  lune run tests/ops_run [op|all] [weapon] [seed]
--- O01 checks (DD-024: ~3 min first run): carrier kill grants Ядро Бури, finale ends in victory, defended reactor survives,
--- an undefended reactor falls (strike groups are real), only Runners/Spitters/Carrier appear.
+-- O01 (DD-024/DD-032): ~3 min first hunt, nothing to guard, the Alpha, Runners only. O02: the S01 lesson.
+-- O03+: each hunt resolves and, when the bot wins, its objective was met.
 
 local process = require("@lune/process")
 local Bot = require("./bot")
@@ -33,33 +33,23 @@ local function report(tag: string, out)
 end
 
 if opArg == "O01" or opArg == "all" then
-	print("=== O01 ПЕРВЫЙ КОНТАКТ")
-	-- Defending bot: orbits the reactor and prioritises strike groups.
-	-- New profile (no S01 yet): the encirclement must teach S01 with a pause the bot's press ends.
+	print("=== O01 ВЫСАДКА")
+	-- DD-032: the first hunt has no objective to guard and no S01 lesson — shoot, cards, the Alpha.
 	local out = Bot.run(weapon, 1, seed, false, nil, 1, nil, { op = "O01", orbit = 32, s01 = false })
-	report("defend", out)
+	report("newcomer", out)
 	local me = out.result.players[1]
-	local tut = out.milestones.s01Tutorial
-	check(tut ~= nil and tut >= 80 and tut <= 100, "S01 tutorial at the encirclement (" .. (if tut then fmt(tut) else "never") .. ")")
-	check(me.s01Unlocked and me.s01.casts >= 1 and me.s01.best >= 4, string.format("S01 unlocked, tutorial strike hits a crowd (casts %d, hits %d, kills %d, best %d)", me.s01.casts, me.s01.hits, me.s01.kills, me.s01.best))
 	check(out.result ~= nil, "run finishes")
 	check(out.milestones.firstKill ~= nil and out.milestones.firstKill < 15, "first kill within 15 s")
-	check((out.milestones.assaults or 0) >= 2, "reactor strike groups announced")
-	check(out.result.victory, "a defending newcomer wins the first operation")
+	check(out.milestones.s01Tutorial == nil and not me.s01Unlocked, "no Gravihammer lesson in the first hunt")
+	check(out.result.reactor == nil, "nothing to guard in the first hunt")
+	check(out.result.victory, "a newcomer bot wins the first hunt")
 	if out.result.victory then
-		check(out.result.eliteKilled and table.find(out.result.components, "CMP_STORM_CORE") ~= nil, "carrier kill grants Ядро Бури")
+		check(out.result.eliteKilled, "the Alpha is killed")
 		check(out.result.time > 150 and out.result.time < 240, "victory lands in the 2:30–4:00 window (DD-024)")
 	else
-		print("  NOTE defending bot lost: " .. out.result.reason)
+		print("  NOTE newcomer bot lost: " .. out.result.reason)
 	end
-	check(out.result.reactor ~= nil, "reactor reported in result")
-
-	-- Undefended reactor: bot hides in the far south corner and ignores strike groups.
-	local away = Bot.run(weapon, 1, seed, false, nil, 1, nil, { op = "O01", anchor = { -120, -110 }, orbit = 12, ignoreReactor = true })
-	report("ignore", away)
-	check(not away.result.victory and away.result.reason == "РЕАКТОР УНИЧТОЖЕН", "undefended reactor falls")
-
-	-- Roster: O01 never spawns species beyond Runner / Spitter / Carrier (GDD §4.3).
+	-- Roster: O01 is Runners and the Alpha only.
 	local seen = {}
 	local probe = Bot.run(weapon, 1, seed + 1, false, nil, 1, nil, { op = "O01", orbit = 32, onSpawn = function(kind)
 		seen[kind] = true
@@ -67,16 +57,29 @@ if opArg == "O01" or opArg == "all" then
 	report("roster", probe)
 	local extra = {}
 	for kind in seen do
-		if kind ~= "EN_RUNNER" and kind ~= "EN_SPITTER" and kind ~= "ELITE_CARRIER" then
+		if kind ~= "EN_RUNNER" and kind ~= "ELITE_CARRIER" then
 			table.insert(extra, kind)
 		end
 	end
-	check(#extra == 0, "O01 roster is Runner/Spitter/Carrier only" .. (if #extra > 0 then " (saw " .. table.concat(extra, ",") .. ")" else ""))
+	check(#extra == 0, "O01 roster is Runner/Alpha only" .. (if #extra > 0 then " (saw " .. table.concat(extra, ",") .. ")" else ""))
+end
+
+if opArg == "O02" or opArg == "all" or opArg == "chapter" then
+	print("=== O02 ОКРУЖЕНИЕ")
+	-- A profile without S01 learns it when the ring closes (~1:15) and the bot's press ends the pause.
+	local out = Bot.run(weapon, 1, seed + 2, false, nil, 1, nil, { op = "O02", orbit = 32, s01 = false })
+	report("O02", out)
+	local me = out.result.players[1]
+	local tut = out.milestones.s01Tutorial
+	check(tut ~= nil and tut >= 70 and tut <= 95, "S01 lesson at the ring (" .. (if tut then fmt(tut) else "never") .. ")")
+	check(me.s01Unlocked and me.s01.casts >= 1 and me.s01.best >= 4, string.format("S01 unlocked, lesson strike hits a crowd (casts %d, best %d)", me.s01.casts, me.s01.best))
+	check(out.result.victory, "O02 won by a bot with the start rifle")
+	check(out.result.time < 330, "O02 ends within ~5:30")
 end
 
 -- The rest of the chapter: each operation must resolve (no softlock), report a sane outcome and, when
 -- the defending bot wins, have met its objective.
-local CHAPTER = { "O02", "O03", "O04", "O05", "O06", "CA01" }
+local CHAPTER = { "O03", "O04", "O05", "O06", "O07", "CA01" }
 for _, id in CHAPTER do
 	if opArg == id or opArg == "all" or opArg == "chapter" then
 		print("=== " .. id)
@@ -87,11 +90,11 @@ for _, id in CHAPTER do
 		if r.victory then
 			local w = out.world
 			local m = w.mission
-			if id == "O02" then
-				check(m.relay and m.relay.charge >= m.relay.need, "O02 relay charged before the win")
-			elseif id == "O03" then
-				check(m.destroyed >= 2, "O03 two of three nests destroyed (" .. m.destroyed .. ")")
-			elseif id == "O05" or id == "CA01" then
+			if id == "O03" then
+				check(m.relay and m.relay.charge >= m.relay.need, "O03 pylon charged before the win")
+			elseif id == "O04" then
+				check(m.destroyed >= 2, "O04 two of three nests destroyed (" .. m.destroyed .. ")")
+			elseif id == "O06" or id == "CA01" then
 				check(m.destroyed >= 2, id .. " both targets destroyed")
 			else
 				check(w.boss == nil and w.bossSpawned, id .. " boss killed")

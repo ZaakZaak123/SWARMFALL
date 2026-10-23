@@ -58,7 +58,7 @@ end
 
 local function viewportScale(base: Vector2): number
 	local vs = workspace.CurrentCamera.ViewportSize
-	return math.clamp(math.min(vs.X / base.X, vs.Y / base.Y), 0.5, 1.25)
+	return math.clamp(math.min(vs.X / base.X, vs.Y / base.Y), 0.6, 1.25)
 end
 
 local function setBlur(size: number)
@@ -156,7 +156,7 @@ local function modal(name: string, w: number, h: number, title: string, accent: 
 		ZIndex = 42,
 		Parent = panel,
 	})
-	label("✕", { Size = UDim2.fromScale(1, 1), FontFace = F.display, TextSize = 18, ZIndex = 43, Parent = close })
+	label("×", { Size = UDim2.fromScale(1, 1), FontFace = F.bodyBold, TextSize = 26, ZIndex = 43, Parent = close })
 	local function hide()
 		shade.Visible = false
 		Audio.play("ui", 0.8, 0.9)
@@ -218,10 +218,10 @@ local function buildLobby()
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = logo })
 	ui.logoScale = new("UIScale", { Parent = logo })
 	label("ДЕРЖИ КРАТЕР.  НЕБО ПАДАЕТ РОЕМ.", {
-		Position = UDim2.fromOffset(4, 84),
-		Size = UDim2.fromOffset(640, 20),
+		Position = UDim2.fromOffset(4, 86),
+		Size = UDim2.fromOffset(640, 22),
 		FontFace = F.head,
-		TextSize = 14,
+		TextSize = 16,
 		TextColor3 = C.pink,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = safe,
@@ -252,7 +252,7 @@ local function buildLobby()
 		Position = UDim2.fromOffset(24, 82),
 		Size = UDim2.new(1, -48, 0, 60),
 		FontFace = F.body,
-		TextSize = 15,
+		TextSize = 17,
 		TextColor3 = C.dim,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -316,6 +316,7 @@ local function buildLobby()
 		Parent = safe,
 	})
 	ui.gear = new("TextButton", {
+		Name = "Settings",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.fromScale(1, 0),
 		Size = UDim2.fromOffset(44, 44),
@@ -340,6 +341,7 @@ local function buildLobby()
 	})
 	-- Bottom left: upgrades
 	ui.upgradesBtn = Theme.button("УЛУЧШЕНИЯ", {
+		Name = "Upgrades",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
 		Size = UDim2.fromOffset(230, 58),
@@ -364,6 +366,7 @@ local function buildLobby()
 	end)
 	-- Bottom right: PLAY
 	ui.play, ui.playLabel = Theme.button("В БОЙ", {
+		Name = "Play",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, 0, 1, -26),
 		Size = UDim2.fromOffset(330, 92),
@@ -378,7 +381,7 @@ local function buildLobby()
 		Position = UDim2.new(1, -10, 1, 0),
 		Size = UDim2.fromOffset(330, 20),
 		FontFace = F.bodyBold,
-		TextSize = 14,
+		TextSize = 16,
 		TextColor3 = C.dim,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Parent = safe,
@@ -568,6 +571,9 @@ function Menus.refreshLobby()
 		for _, id in Defs.PerkOrder do
 			local def = Defs.Perks[id]
 			local r = prof.perks[id] or 0
+			if id == "PK_OVERDRIVE" and not prof.s01 then
+				continue
+			end
 			if def.costs[r + 1] and prof.scrap >= def.costs[r + 1] then
 				affordable = true
 			end
@@ -673,7 +679,7 @@ function Menus.showLobby(info, id: number, dev: string)
 		setBlur(0)
 	end
 	-- A UIScale on a full-screen frame scales it past the screen edge: shrink the frame by the same factor.
-	local k = viewportScale(Vector2.new(1280, 760))
+	local k = math.max(0.72, viewportScale(Vector2.new(1280, 760)))
 	ui.lobbyScale.Scale = k
 	ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
 	Menus.refreshLobby()
@@ -736,6 +742,10 @@ function Menus.refreshUpgrades()
 	for i, id in Defs.PerkOrder do
 		local def = Defs.Perks[id]
 		local rank = profile.perks[id] or 0
+		-- Progressive discovery: the Gravihammer perk appears once the Gravihammer itself is known.
+		if id == "PK_OVERDRIVE" and not profile.s01 and rank == 0 then
+			continue
+		end
 		local cost = def.costs[rank + 1]
 		local maxed = cost == nil
 		local can = not maxed and profile.scrap >= cost
@@ -779,7 +789,8 @@ function Menus.refreshUpgrades()
 				Parent = tile,
 			})
 		end
-		label(def.stat(math.max(1, if maxed then rank else rank + 1)), {
+		local statText = if maxed then def.stat(rank) elseif rank > 0 then def.stat(rank) .. "  →  " .. def.stat(rank + 1) else def.stat(1)
+		label(statText, {
 			Position = UDim2.fromOffset(10, 116),
 			Size = UDim2.new(1, -20, 0, 36),
 			FontFace = F.bodyBold,
@@ -1051,10 +1062,10 @@ local function buildOffer()
 		})
 		new("UITextSizeConstraint", { MaxTextSize = 19, Parent = stat })
 		local desc = label("", {
-			Position = UDim2.fromOffset(18, 246),
-			Size = UDim2.new(1, -36, 0, 90),
+			Position = UDim2.fromOffset(16, 246),
+			Size = UDim2.new(1, -32, 0, 96),
 			FontFace = F.body,
-			TextSize = 14,
+			TextSize = 15,
 			TextWrapped = true,
 			TextColor3 = C.dim,
 			TextYAlignment = Enum.TextYAlignment.Top,
@@ -1477,6 +1488,7 @@ local function buildResults()
 		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 12) },
 	})
 	ui.resButton, ui.resButtonLabel = Theme.button("ДАЛЬШЕ", {
+		Name = "Continue",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -24),
 		Size = UDim2.fromOffset(320, 76),
@@ -1529,11 +1541,11 @@ local function statTile(iconName: string, title: string, value: string, color: C
 end
 
 local function unlockCard(iconName: string, tag: string, text: string, color: Color3, order: number)
-	local t = Theme.panel({ Size = UDim2.fromOffset(250, 84), CornerRadius = 18, LayoutOrder = order, ZIndex = 22, Parent = ui.resUnlocks }, color)
+	local t = Theme.panel({ Size = UDim2.fromOffset(320, 96), CornerRadius = 20, LayoutOrder = order, ZIndex = 22, Parent = ui.resUnlocks }, color)
 	local disc = new("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 14, 0.5, 0),
-		Size = UDim2.fromOffset(52, 52),
+		Position = UDim2.new(0, 16, 0.5, 0),
+		Size = UDim2.fromOffset(62, 62),
 		BackgroundColor3 = color,
 		BackgroundTransparency = 0.82,
 		Corner = UDim.new(1, 0),
@@ -1542,20 +1554,20 @@ local function unlockCard(iconName: string, tag: string, text: string, color: Co
 	})
 	icon(iconName, 30, color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 24, Parent = disc })
 	label(tag, {
-		Position = UDim2.fromOffset(78, 16),
-		Size = UDim2.new(1, -90, 0, 14),
+		Position = UDim2.fromOffset(92, 18),
+		Size = UDim2.new(1, -104, 0, 16),
 		FontFace = F.head,
-		TextSize = 10,
+		TextSize = 12,
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 23,
 		Parent = t,
 	})
 	label(text, {
-		Position = UDim2.fromOffset(78, 32),
-		Size = UDim2.new(1, -90, 0, 38),
+		Position = UDim2.fromOffset(92, 38),
+		Size = UDim2.new(1, -104, 0, 44),
 		FontFace = F.display,
-		TextSize = 15,
+		TextSize = 20,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -1592,12 +1604,15 @@ function Menus.showResults(result, votes, id: number, reward)
 		end
 	end
 	ui.resVotes.Text = if n > 1 then string.format("Готовы %d/%d", voted, n) else ""
-	if ui.results.Visible and ui.shownResult == result and ui.shownReward == reward then
+	-- The server re-sends the result table with every snapshot: compare by content, not identity.
+	local resultKey = string.format("%s|%.2f|%d|%s", result.op, result.time, result.kills, tostring(result.victory))
+	local rewardKey = if reward then tostring(reward.total) .. "|" .. tostring(reward.grant) else ""
+	if ui.results.Visible and ui.shownResult == resultKey and ui.shownReward == rewardKey then
 		return
 	end
-	local first = ui.shownResult ~= result
-	ui.shownResult = result
-	ui.shownReward = reward
+	local first = ui.shownResult ~= resultKey
+	ui.shownResult = resultKey
+	ui.shownReward = rewardKey
 	Menus.hideOffer()
 	ui.results.Visible = true
 	setBlur(18)
@@ -1661,9 +1676,6 @@ function Menus.showResults(result, votes, id: number, reward)
 		elseif kind == "s01" then
 			k += 1
 			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
-		elseif kind == "threat" then
-			k += 1
-			unlockCard("threat", "ОТКРЫТО", "Угроза " .. u[2] .. " — больше Ксенита", C.orange, k)
 		end
 	end
 	if result.victory then
