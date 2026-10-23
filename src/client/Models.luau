@@ -23,7 +23,10 @@ local STEEL = rgb(120, 128, 140)
 -- driven in-game by a Motor6D so weapons can animate their mechanisms.
 local currentGroup: string? = nil
 local function spec(list, shape, size, cf, color, mat, name)
-	table.insert(list, { shape = shape, size = size, cf = cf, color = color, mat = mat or M.Metal, name = name, group = currentGroup })
+	table.insert(
+		list,
+		{ shape = shape, size = size, cf = cf, color = color, mat = mat or M.Metal, name = name, group = currentGroup }
+	)
 end
 local function group(name: string?)
 	currentGroup = name
@@ -128,7 +131,14 @@ BUILDERS.W_ARC_RIFLE = function(evolved)
 	box(s, Vector3.new(0.4, 0.1, 0.54), P(0, -0.66, -1.05) * magTilt, body)
 	box(s, Vector3.new(0.38, 0.05, 0.52), P(0, 0.06, -0.93) * magTilt, trim)
 	for k = 1, 3 do
-		box(s, Vector3.new(0.385, 0.09, 0.3), P(0, -0.06 - k * 0.15, -0.97 - k * 0.025) * magTilt, accent, M.Neon, "Cell" .. k)
+		box(
+			s,
+			Vector3.new(0.385, 0.09, 0.3),
+			P(0, -0.06 - k * 0.15, -0.97 - k * 0.025) * magTilt,
+			accent,
+			M.Neon,
+			"Cell" .. k
+		)
 	end
 	group(nil)
 	-- Handguard: top/bottom shells + side rails, open band in the middle showing the coils.
@@ -152,7 +162,14 @@ BUILDERS.W_ARC_RIFLE = function(evolved)
 	group("coil")
 	for k = 0, 3 do
 		local z = -1.6 - k * 0.42
-		cylZ(s, 0.1, 0.42, P(0, y, z), if evolved then accent else rgb(205, 125, 60), if evolved then M.Neon else M.Metal)
+		cylZ(
+			s,
+			0.1,
+			0.42,
+			P(0, y, z),
+			if evolved then accent else rgb(205, 125, 60),
+			if evolved then M.Neon else M.Metal
+		)
 		box(s, Vector3.new(0.06, 0.46, 0.06), P(0, y, z), body) -- spoke (makes the spin visible)
 	end
 	group(nil)
@@ -198,16 +215,17 @@ BUILDERS.W_ARC_RIFLE = function(evolved)
 	end
 	local tip = -4.45 - reach + 0.04
 	box(s, Vector3.new(0.1, 0.1, 0.1), P(0, y, tip), accent, M.Neon, "Muzzle")
-	return s, {
-		grip = Vector3.new(0, -0.22, 0.1),
-		fore = Vector3.new(0, y - 0.38, -1.95),
-		eject = Vector3.new(0.34, 0.26, 0.15),
-		mag = Vector3.new(0, -0.55, -1.05),
-		boltHandle = Vector3.new(0.52, 0.26, 0.32),
-		-- pivots of rotating groups (gun space)
-		pivots = { coil = Vector3.new(0, y, -2.25) },
-		prongTips = { Vector3.new(0, y + 0.16, tip), Vector3.new(0, y - 0.16, tip) },
-	}
+	return s,
+		{
+			grip = Vector3.new(0, -0.22, 0.1),
+			fore = Vector3.new(0, y - 0.38, -1.95),
+			eject = Vector3.new(0.34, 0.26, 0.15),
+			mag = Vector3.new(0, -0.55, -1.05),
+			boltHandle = Vector3.new(0.52, 0.26, 0.32),
+			-- pivots of rotating groups (gun space)
+			pivots = { coil = Vector3.new(0, y, -2.25) },
+			prongTips = { Vector3.new(0, y + 0.16, tip), Vector3.new(0, y - 0.16, tip) },
+		}
 end
 
 BUILDERS.W_SCATTERGUN = function(evolved)
@@ -242,7 +260,13 @@ BUILDERS.W_SCATTERGUN = function(evolved)
 		end
 	end
 	box(s, Vector3.new(0.1, 0.1, 0.1), P(0, 0.47, -3.85), accent, M.Neon, "Muzzle")
-	return s, { grip = Vector3.new(0, -0.22, 0.1), fore = Vector3.new(0, -0.2, -1.65), eject = Vector3.new(0.44, 0.45, -0.55), mag = Vector3.new(0, -0.15, -1.0) }
+	return s,
+		{
+			grip = Vector3.new(0, -0.22, 0.1),
+			fore = Vector3.new(0, -0.2, -1.65),
+			eject = Vector3.new(0.44, 0.45, -0.55),
+			mag = Vector3.new(0, -0.15, -1.0),
+		}
 end
 
 BUILDERS.W_PLASMA_BEAM = function(evolved)
@@ -279,7 +303,13 @@ BUILDERS.W_PLASMA_BEAM = function(evolved)
 		ball(s, 0.5, P(0, 0.4, -3.0), rgb(20, 0, 30), M.SmoothPlastic)
 	end
 	box(s, Vector3.new(0.1, 0.1, 0.1), P(0, 0.4, if evolved then -4.3 - 0.2 else -3.35), accent, M.Neon, "Muzzle")
-	return s, { grip = Vector3.new(0, -0.25, 0.05), fore = Vector3.new(0, -0.26, -1.15), eject = Vector3.new(0.5, 0.35, -0.4), mag = Vector3.new(0, 1.05, -0.6) }
+	return s,
+		{
+			grip = Vector3.new(0, -0.25, 0.05),
+			fore = Vector3.new(0, -0.26, -1.15),
+			eject = Vector3.new(0.5, 0.35, -0.4),
+			mag = Vector3.new(0, 1.05, -0.6),
+		}
 end
 
 BUILDERS.W_RAILGUN = function(evolved)
@@ -311,7 +341,13 @@ BUILDERS.W_RAILGUN = function(evolved)
 		end
 	end
 	box(s, Vector3.new(0.1, 0.1, 0.1), P(0, 0.42, -4.85), accent, M.Neon, "Muzzle")
-	return s, { grip = Vector3.new(0, -0.22, 0.1), fore = Vector3.new(0, 0.1, -1.55), eject = Vector3.new(0.46, 0.72, -0.3), mag = Vector3.new(0, 1.05, -0.25) }
+	return s,
+		{
+			grip = Vector3.new(0, -0.22, 0.1),
+			fore = Vector3.new(0, 0.1, -1.55),
+			eject = Vector3.new(0.46, 0.72, -0.3),
+			mag = Vector3.new(0, 1.05, -0.25),
+		}
 end
 
 -- Returns specs and hold metadata (gun space: grip = right hand, fore = left hand, eject port, magazine).
@@ -338,7 +374,11 @@ function Models.creatureSpec(kind: number)
 			cf = P(math.sin(sp.seg * 0.5) * 3.5, p.Y, p.Z) * cf.Rotation
 		end
 		table.insert(out, {
-			shape = if sp.shape == Enum.PartType.Ball then "Ball" elseif sp.shape == Enum.PartType.Cylinder then "Cylinder" else "Block",
+			shape = if sp.shape == Enum.PartType.Ball
+				then "Ball"
+				elseif sp.shape == Enum.PartType.Cylinder then "Cylinder"
+				else "Block",
+			mesh = sp.mesh,
 			size = sp.size,
 			cf = cf,
 			color = sp.color,
@@ -350,7 +390,12 @@ function Models.creatureSpec(kind: number)
 end
 
 -- Instantiation --------------------------------------------------------------------------------------
-local SHAPES = { Block = Enum.PartType.Block, Ball = Enum.PartType.Ball, Cylinder = Enum.PartType.Cylinder, Wedge = Enum.PartType.Wedge }
+local SHAPES = {
+	Block = Enum.PartType.Block,
+	Ball = Enum.PartType.Ball,
+	Cylinder = Enum.PartType.Cylinder,
+	Wedge = Enum.PartType.Wedge,
+}
 
 -- Unanchored builds weld everything to an invisible Root; grouped specs weld to a per-group root that
 -- is attached with a Motor6D named "Motor_<group>" (animate via Motor6D.Transform).
@@ -371,8 +416,10 @@ function Models.build(specs, anchored: boolean, scale: number?): Model
 	model.PrimaryPart = root
 	local groupRoots = {}
 	for _, sp in specs do
-		local p = Instance.new("Part")
-		p.Shape = SHAPES[sp.shape] or Enum.PartType.Block
+		local p = if sp.mesh then sp.mesh:Clone() else Instance.new("Part")
+		if not sp.mesh then
+			p.Shape = SHAPES[sp.shape] or Enum.PartType.Block
+		end
 		p.Size = sp.size * k
 		p.CFrame = CFrame.new(sp.cf.Position * k) * sp.cf.Rotation
 		p.Color = sp.color

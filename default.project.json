@@ -4,7 +4,8 @@
     "$className": "DataModel",
     "ReplicatedStorage": {
       "Shared": { "$path": "src/shared" },
-      "WeaponAssets": { "$path": "assets/weapon_models" }
+      "WeaponAssets": { "$path": "assets/weapon_models" },
+      "EnemyAssets": { "$path": "assets/enemy_models" }
     },
     "ServerScriptService": {
       "Server": { "$path": "src/server" }

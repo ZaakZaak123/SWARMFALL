@@ -36,14 +36,15 @@ local BLUEPRINT = Creatures.Blueprints
 -- Instances ----------------------------------------------------------------------------------------
 local function buildModel(kind: number)
 	local specs, gaitScale = BLUEPRINT[kind]()
-	local model = { kind = kind, parts = {}, specs = specs, gait = gaitScale, bodies = {}, eyes = {}, nodes = {}, sacs = {} }
+	local model =
+		{ kind = kind, parts = {}, specs = specs, gait = gaitScale, bodies = {}, eyes = {}, nodes = {}, sacs = {} }
 	for _, sp in specs do
 		if sp.seg then
 			model.hasSegments = true
 		end
 	end
 	for i, spec in specs do
-		local p = Instance.new("Part")
+		local p = if spec.mesh then spec.mesh:Clone() else Instance.new("Part")
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanQuery = false
@@ -108,7 +109,9 @@ local function segmentCFrame(rec, spec, y)
 		look = Vector3.zAxis
 	end
 	local sink = (rec.sink or 0) * (1 - math.clamp(spec.seg / 9, 0, 0.8))
-	return CFrame.lookAt(point, point + look) * CFrame.new(spec.cf.Position.X, spec.cf.Position.Y + y * (1 - sink * 0.2), 0) * spec.cf.Rotation
+	return CFrame.lookAt(point, point + look)
+		* CFrame.new(spec.cf.Position.X, spec.cf.Position.Y + y * (1 - sink * 0.2), 0)
+		* spec.cf.Rotation
 end
 
 local function acquire(kind: number)
@@ -135,7 +138,13 @@ end
 -- HP bars for elites & hives
 local function attachBar(rec)
 	local def = Defs.EnemyByIndex[rec.kind]
-	local BAR = { [5] = "ЭЛИТА", [6] = "ГНЕЗДО", [10] = "НОСИТЕЛЬ ЯДРА", [11] = "ПИТАЮЩИЙ УЗЕЛ", [12] = "КИСЛОТНЫЙ ИСТОЧНИК" }
+	local BAR = {
+		[5] = "ЭЛИТА",
+		[6] = "ГНЕЗДО",
+		[10] = "НОСИТЕЛЬ ЯДРА",
+		[11] = "ПИТАЮЩИЙ УЗЕЛ",
+		[12] = "КИСЛОТНЫЙ ИСТОЧНИК",
+	}
 	if not BAR[rec.kind] then
 		return
 	end
@@ -161,7 +170,10 @@ local function attachBar(rec)
 	back.Parent = gui
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = if elite then rgb(255, 200, 60) elseif rec.kind == 11 then rgb(180, 120, 255) else rgb(170, 255, 80)
+	fill.BackgroundColor3 = if elite
+		then rgb(255, 200, 60)
+		elseif rec.kind == 11 then rgb(180, 120, 255)
+		else rgb(170, 255, 80)
 	fill.BorderSizePixel = 0
 	fill.Parent = back
 	local label = Instance.new("TextLabel")
@@ -360,14 +372,30 @@ function EnemyView.kill(id: number, dirX: number?, dirZ: number?)
 	local parts = {}
 	local scatter = Settings.quality >= 2 and rec.kind ~= 7
 	for i, p in m.parts do
-		local v = Vector3.new(math.random() - 0.5, math.random() * 0.8 + 0.5, math.random() - 0.5) * (if rec.kind >= 4 then 18 else 24)
+		local v = Vector3.new(math.random() - 0.5, math.random() * 0.8 + 0.5, math.random() - 0.5)
+			* (if rec.kind >= 4 then 18 else 24)
 		if dirX then
 			v += Vector3.new(dirX, 0, dirZ) * (if rec.kind >= 4 then 10 else 22)
 		end
-		parts[i] = { p = p, v = v, spin = Vector3.new(math.random() * 12 - 6, math.random() * 12 - 6, math.random() * 12 - 6), cf = p.CFrame, color = p.Color }
+		parts[i] = {
+			p = p,
+			v = v,
+			spin = Vector3.new(math.random() * 12 - 6, math.random() * 12 - 6, math.random() * 12 - 6),
+			cf = p.CFrame,
+			color = p.Color,
+		}
 		p.Color = Color3.new(1, 1, 1)
 	end
-	table.insert(dying, { model = m, parts = parts, t = 0, life = if rec.kind == 7 or rec.kind == 9 then 1.6 elseif rec.kind >= 4 then 0.8 else 0.6, scatter = scatter })
+	table.insert(
+		dying,
+		{
+			model = m,
+			parts = parts,
+			t = 0,
+			life = if rec.kind == 7 or rec.kind == 9 then 1.6 elseif rec.kind >= 4 then 0.8 else 0.6,
+			scatter = scatter,
+		}
+	)
 	return Vector3.new(rec.dx, 1, rec.dz)
 end
 
@@ -430,7 +458,20 @@ function EnemyView.nearestInCone(ox: number, oz: number, dx: number, dz: number,
 end
 
 -- Gait radians per stud travelled, per enemy kind (small skitterers step fast, giants slow).
-STRIDE = { [1] = 1.35, [2] = 0.9, [3] = 1.1, [4] = 0.75, [5] = 0.6, [6] = 0, [7] = 0.22, [8] = 1.6, [9] = 0.3, [10] = 0.6, [11] = 0, [12] = 0 }
+STRIDE = {
+	[1] = 1.35,
+	[2] = 0.9,
+	[3] = 1.1,
+	[4] = 0.75,
+	[5] = 0.6,
+	[6] = 0,
+	[7] = 0.22,
+	[8] = 1.6,
+	[9] = 0.3,
+	[10] = 0.6,
+	[11] = 0,
+	[12] = 0,
+}
 HEAVY = { [4] = true, [5] = true, [7] = true, [10] = true }
 WHITE = Color3.new(1, 1, 1)
 
@@ -510,7 +551,10 @@ function EnemyView.update(dt: number, camPos: Vector3)
 			tilt = math.sin(now * 25) * 0.15
 			roll += math.sin(now * 19) * 0.12
 		end
-		local base = CFrame.new(rec.dx + rec.kx, y, rec.dz + rec.kz) * CFrame.Angles(0, rec.face + math.pi, 0) * CFrame.new(shakeX, 0, pullZ) * CFrame.Angles(tilt + rec.tilt, 0, roll)
+		local base = CFrame.new(rec.dx + rec.kx, y, rec.dz + rec.kz)
+			* CFrame.Angles(0, rec.face + math.pi, 0)
+			* CFrame.new(shakeX, 0, pullZ)
+			* CFrame.Angles(tilt + rec.tilt, 0, roll)
 		-- gait
 		local attacking = state == ST.ATTACK
 		local far = (camPos - base.Position).Magnitude > farDist
@@ -640,7 +684,9 @@ function EnemyView.update(dt: number, camPos: Vector3)
 						pos = Vector3.new(pos.X, 0.2, pos.Z)
 						piece.v = Vector3.new(piece.v.X * 0.5, -piece.v.Y * 0.3, piece.v.Z * 0.5)
 					end
-					piece.cf = CFrame.new(pos) * piece.cf.Rotation * CFrame.Angles(piece.spin.X * dt, piece.spin.Y * dt, piece.spin.Z * dt)
+					piece.cf = CFrame.new(pos)
+						* piece.cf.Rotation
+						* CFrame.Angles(piece.spin.X * dt, piece.spin.Y * dt, piece.spin.Z * dt)
 				else
 					piece.cf = piece.cf - Vector3.new(0, dt * 6, 0)
 				end
