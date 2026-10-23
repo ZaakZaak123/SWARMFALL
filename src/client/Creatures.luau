@@ -266,6 +266,25 @@ end
 
 BLUEPRINT[6] = function() -- Hive
 	local flesh, dark, pore = rgb(88, 44, 98), rgb(44, 20, 52), rgb(170, 255, 80)
+	-- the generated nest mesh (DD-042) when its template has replicated; glowing sacs on its flanks
+	local art = game:GetService("ReplicatedStorage"):FindFirstChild("ArtTemplates")
+	local nest = art and art:FindFirstChild("NEST")
+	if nest then
+		local size = nest.Size * (7.5 / nest.Size.Y)
+		local s = { { size = size, cf = P(0, size.Y / 2 - 0.3, 0), color = flesh, mat = M.SmoothPlastic, mesh = nest, role = "body" } }
+		for i = 1, 6 do
+			local a = i / 6 * math.pi * 2
+			table.insert(s, {
+				size = Vector3.one * 1.2,
+				cf = P(math.cos(a) * size.X * 0.4, 1.6 + (i % 3) * 0.9, math.sin(a) * size.Z * 0.4),
+				color = pore,
+				mat = M.Neon,
+				shape = Enum.PartType.Ball,
+				role = "sac",
+			})
+		end
+		return s, 0
+	end
 	local s = {
 		ball(9, P(0, 1.5, 0), dark, M.Slate, "body"),
 		ball(6, P(1.3, 4.6, 0.6), flesh, M.SmoothPlastic, "body"),

@@ -389,6 +389,27 @@ end
 -- The swarm arrives where pods land; the fall itself (~0.9 s) is the warning. big = elites / bosses.
 local POD_SHELL = Color3.fromRGB(255, 120, 60)
 local POD_CORE = Color3.fromRGB(255, 220, 140)
+-- Spore pods use the generated POD mesh when its template has replicated (DD-042): a small free list,
+-- each pod stays planted for a moment after landing, then sinks into the floor.
+local podFree: { MeshPart } = {}
+local podNative = Vector3.new(2.47, 4, 2.47)
+local function podMesh(): MeshPart?
+	local p = table.remove(podFree)
+	if p then
+		return p
+	end
+	local folderT = game:GetService("ReplicatedStorage"):FindFirstChild("ArtTemplates")
+	local tpl = folderT and folderT:FindFirstChild("POD")
+	if not tpl then
+		return nil
+	end
+	podNative = tpl.Size
+	p = tpl:Clone()
+	p.CastShadow = false
+	p.Parent = folder
+	return p
+end
+
 function Fx.pod(x: number, z: number, big: boolean?)
 	if Fx.busy(4) then
 		return
@@ -397,11 +418,17 @@ function Fx.pod(x: number, z: number, big: boolean?)
 	local fall = if big then 1.2 else 0.85
 	local landing = Vector3.new(x, size * 0.4, z)
 	local from = landing + Vector3.new(math.random(-30, 30), 120, math.random(10, 40))
+	local up = (from - landing).Unit
+	local right = up:Cross(Vector3.zAxis).Unit
+	local pod = podMesh()
+	if pod then
+		pod.Size = podNative * (size * 1.7 / podNative.Y)
+	end
 	local shell = take("ball")
 	shell.Color = POD_SHELL
 	shell.Material = Enum.Material.Neon
-	shell.Transparency = 0
-	shell.Size = Vector3.one * size
+	shell.Transparency = if pod then 0.55 else 0
+	shell.Size = Vector3.one * (if pod then size * 1.25 else size)
 	local trail = take("block")
 	trail.Color = POD_CORE
 	trail.Transparency = 0.35
@@ -412,6 +439,9 @@ function Fx.pod(x: number, z: number, big: boolean?)
 		local e = k * k
 		local pos = from:Lerp(landing, e)
 		shell.CFrame = CFrame.new(pos)
+		if pod then
+			pod.CFrame = CFrame.fromMatrix(pos + up * size * 0.3, right, up)
+		end
 		local back = (from - landing).Unit * (6 + 14 * k)
 		segment(trail, pos, pos + back, size * 0.55)
 		-- landing mark grows as the pod nears
@@ -420,6 +450,21 @@ function Fx.pod(x: number, z: number, big: boolean?)
 	end, { { "ball", shell }, { "block", trail }, { "cyl", mark } }).done = function()
 		Fx.boom(Vector3.new(x, 0.5, z), if big then 9 else 4.5, POD_SHELL)
 		Fx.emit("dust", Vector3.new(x, 0.6, z), if big then 8 else 4)
+		if pod then
+			-- planted upright, a little tilted, then sinks away
+			local h = pod.Size.Y
+			local planted = CFrame.new(x, h * 0.35, z) * CFrame.Angles(math.random(-12, 12) / 100, math.random() * 6.28, math.random(-12, 12) / 100)
+			pod.CFrame = planted
+			task.delay(1.6, function()
+				local t0 = os.clock()
+				while os.clock() - t0 < 0.8 do
+					pod.CFrame = planted - Vector3.new(0, h * (os.clock() - t0) / 0.8, 0)
+					task.wait()
+				end
+				pod.CFrame = CFrame.new(0, -500, 0)
+				table.insert(podFree, pod)
+			end)
+		end
 		if Fx.onPodLanded then
 			Fx.onPodLanded(Vector3.new(x, 0, z), big)
 		end

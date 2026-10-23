@@ -39,12 +39,57 @@ local function base(s, accent: Color3, d: number)
 	cyl(s, d + 0.3, 0.12, 0, 0.72, 0, accent, M.Neon)
 end
 
+-- Generated meshes (Shared.Art, DD-042): height at level 1, yaw that turns the mesh's muzzle to -Z
+-- (the generated turrets already aim along their native -Z; checked top-down in Studio), and an
+-- optional neon accent on top (fraction of the mesh height).
+local MESHED = {
+	STING = { h = 4.4, yaw = 0 },
+	ARC = { h = 6.4, yaw = 0, orb = 0.86 },
+	MORTAR = { h = 4.4, yaw = 0 },
+	SHIELD = { h = 7.6, yaw = 0, orb = 0.95 },
+	HARVEST = { h = 4.6, yaw = 0 },
+}
+
+-- Template for a structure mesh: the textured original, or for hostile structures an untextured copy
+-- the builder tints red (a texture ignores Color). Nil until the server's ArtTemplates replicate.
+local hostileCopies = {}
+local function meshTemplate(key: string, hostile: boolean?): MeshPart?
+	local folder = game:GetService("ReplicatedStorage"):FindFirstChild("ArtTemplates")
+	local t = folder and folder:FindFirstChild(key)
+	if not t or not hostile then
+		return t
+	end
+	if not hostileCopies[key] then
+		local c = t:Clone()
+		c.TextureID = ""
+		hostileCopies[key] = c
+	end
+	return hostileCopies[key]
+end
+
 function Structures.specs(id: string, lvl: number, hostile: boolean?)
 	local def = Meta.Structures[id]
 	local accent = if hostile then HOSTILE else def and def.color or HULL
 	local hull = if hostile then rgb(150, 60, 70) else HULL
 	local s = {}
 	lvl = math.clamp(lvl or 1, 1, 3)
+	local meshed = MESHED[id]
+	local tpl = meshed and meshTemplate(id, hostile)
+	if tpl then
+		base(s, accent, 4.4)
+		local size = tpl.Size * (meshed.h * (0.9 + lvl * 0.1) / tpl.Size.Y)
+		table.insert(s, { size = size, cf = P(0, 0.7 + size.Y / 2, 0) * A(0, meshed.yaw, 0), color = hull, mat = M.SmoothPlastic, mesh = tpl, role = "body" })
+		if meshed.orb then
+			ball(s, size.X * 0.32, P(0, 0.7 + size.Y * meshed.orb, 0), accent, M.Neon, "glow")
+			s[#s].transparency = 0.45
+		end
+		-- level pips on the base plate
+		for k = 1, lvl do
+			local a = (k - (lvl + 1) / 2) * 0.5 + math.pi
+			ball(s, 0.45, P(math.sin(a) * 2.05, 0.75, math.cos(a) * 2.05), accent, M.Neon)
+		end
+		return s
+	end
 	if id == "STING" then
 		base(s, accent, 4.2)
 		cyl(s, 1.3, 2.2, 0, 1.8, 0, DARK, M.Metal, "body")
@@ -139,6 +184,7 @@ function Structures.model(id: string, lvl: number, hostile: boolean?): Model
 			color = sp.color,
 			mat = sp.mat,
 			transparency = sp.transparency,
+			mesh = sp.mesh,
 			name = if sp.role == "glow" or sp.role == "eye" then "Glow" else nil,
 		})
 	end
