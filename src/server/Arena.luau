@@ -14,6 +14,8 @@
 local Lighting = game:GetService("Lighting")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
+local ArtLoader = require(script.Parent.ArtLoader)
+local ArenaArt = require(script.Parent.ArenaArt)
 
 local rgb = Color3.fromRGB
 local M = Enum.Material
@@ -215,13 +217,14 @@ end
 -- Terrain -------------------------------------------------------------------------------------------------
 local function paintTerrain(map)
 	terrain:Clear()
-	terrain:SetMaterialColor(M.Basalt, rgb(66, 52, 88))
-	terrain:SetMaterialColor(M.Slate, rgb(78, 64, 104))
+	-- Ground/Grass/Basalt/Slate carry the generated SporeX variants: their tint only shades the texture.
+	terrain:SetMaterialColor(M.Basalt, rgb(140, 128, 165))
+	terrain:SetMaterialColor(M.Slate, rgb(150, 136, 175))
 	terrain:SetMaterialColor(M.Rock, rgb(74, 58, 98))
-	terrain:SetMaterialColor(M.Grass, rgb(34, 126, 124))
+	terrain:SetMaterialColor(M.Grass, rgb(150, 200, 195))
 	terrain:SetMaterialColor(M.LeafyGrass, rgb(40, 150, 140))
 	terrain:SetMaterialColor(M.Mud, rgb(52, 38, 62))
-	terrain:SetMaterialColor(M.Ground, rgb(64, 50, 84))
+	terrain:SetMaterialColor(M.Ground, rgb(135, 122, 158))
 	terrain:SetMaterialColor(M.CrackedLava, rgb(200, 50, 150))
 	terrain:SetMaterialColor(M.Salt, rgb(150, 130, 175))
 	terrain:SetMaterialColor(M.Asphalt, rgb(40, 34, 52))
@@ -321,7 +324,7 @@ local function paintTerrain(map)
 	task.wait()
 	-- Boulders (nav: round obstacles).
 	for _, o in map.obstacles do
-		if o.style == "boulder" then
+		if o.style == "boulder" and not ArtLoader.get("BOULDER") then
 			local r = o.w / 2
 			terrain:FillBall(Vector3.new(o.x, r * 0.35, o.z), r * 0.95, M.Basalt)
 			terrain:FillBall(Vector3.new(o.x + r * 0.3, r * 0.75, o.z - r * 0.2), r * 0.6, M.Rock)
@@ -973,30 +976,24 @@ local function buildDressing(map, decor)
 	e2.Lifetime = NumberRange.new(6, 10)
 end
 
--- Sky dressing: a ringed gas giant and a small moon, low on the northern horizon.
-local function buildSky(decor)
-	-- A pale violet sister world low over the titan's skull: a quiet landmark for the lobby shot.
-	local model = Instance.new("Model")
-	model.Name = "Sky"
-	model.Parent = decor
-	local planet = Vector3.new(-250, 250, 950)
-	ball(model, planet, 120, rgb(150, 110, 200), M.Neon, { Transparency = 0.35 })
-	ball(model, planet + Vector3.new(-14, 16, -8), 96, rgb(210, 180, 240), M.Neon, { Transparency = 0.75 })
-end
-
 -- Lighting ----------------------------------------------------------------------------------------------
+local SKY = {
+	dusk = { Ft = "86856141666347", Bk = "139944741204062", Lf = "97884626847303", Rt = "137347809792227", Up = "134115742236340", Dn = "90449782940747" },
+	night = { Ft = "78103046101805", Bk = "108175351376516", Lf = "127960814993421", Rt = "97184413821010", Up = "94364693298950", Dn = "79055482839356" },
+}
+
 function Arena.lighting(theme: string)
 	local night = theme == "night"
-	Lighting.ClockTime = if night then 23.6 else 18.35
+	Lighting.ClockTime = if night then 23.6 else 17.75
 	Lighting.GeographicLatitude = 20
-	Lighting.Brightness = if night then 1.4 else 2.6
-	Lighting.Ambient = if night then rgb(84, 40, 66) else rgb(96, 76, 132)
-	Lighting.OutdoorAmbient = if night then rgb(140, 70, 104) else rgb(166, 136, 204)
+	Lighting.Brightness = if night then 1.6 else 3
+	Lighting.Ambient = if night then rgb(96, 50, 80) else rgb(110, 90, 150)
+	Lighting.OutdoorAmbient = if night then rgb(160, 90, 130) else rgb(200, 170, 230)
 	Lighting.ColorShift_Top = if night then rgb(255, 120, 140) else rgb(255, 170, 140)
 	Lighting.ColorShift_Bottom = if night then rgb(40, 0, 30) else rgb(40, 20, 80)
-	Lighting.EnvironmentDiffuseScale = 0.5
+	Lighting.EnvironmentDiffuseScale = 0.8
 	Lighting.EnvironmentSpecularScale = 0.8
-	Lighting.ExposureCompensation = if night then 0.35 else 0.15
+	Lighting.ExposureCompensation = if night then 0.5 else 0.35
 	Lighting.GlobalShadows = true
 	Lighting.ShadowSoftness = 0.2
 	for _, c in Lighting:GetChildren() do
@@ -1005,18 +1002,24 @@ function Arena.lighting(theme: string)
 		end
 	end
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = if night then 0.3 else 0.24
-	atmosphere.Offset = 0.32
+	atmosphere.Density = if night then 0.28 else 0.22
+	atmosphere.Offset = 0.12
 	atmosphere.Color = if night then rgb(150, 40, 70) else rgb(230, 140, 170)
 	atmosphere.Decay = if night then rgb(50, 10, 40) else rgb(90, 60, 150)
-	atmosphere.Glare = if night then 0.2 else 0.9
-	atmosphere.Haze = if night then 1.2 else 0.7
+	atmosphere.Glare = if night then 0.2 else 0.6
+	atmosphere.Haze = if night then 0.8 else 0.4
 	atmosphere.Parent = Lighting
+	-- Painted skybox (tools/skybox.py): nebula band, ringed planet over the titan, the sunset glow sits
+	-- where the engine sun is at the dusk ClockTime. Stars and the moon are in the paint.
+	local faces = if night then SKY.night else SKY.dusk
 	local sky = Instance.new("Sky")
-	sky.StarCount = 5000
+	for face, id in faces do
+		sky["Skybox" .. face] = "rbxassetid://" .. id
+	end
+	sky.StarCount = 0
 	sky.CelestialBodiesShown = true
-	sky.SunAngularSize = 14
-	sky.MoonAngularSize = 9
+	sky.SunAngularSize = 8
+	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "Bloom"
@@ -1036,6 +1039,9 @@ function Arena.lighting(theme: string)
 	rays.Spread = 0.6
 	rays.Parent = Lighting
 end
+
+-- Helpers handed to the mesh art pass.
+local H = { W = W, part = part, ball = ball, rod = rod, disc = disc, light = light, fade = fade, spores = spores, rnd = rnd, boundary = boundary, clearOf = clearOf }
 
 function Arena.build(map)
 	seed = 7
@@ -1057,28 +1063,45 @@ function Arena.build(map)
 	buildSolid(map, solidF)
 	root.Parent = workspace
 	-- Decor is parented in small chunks so the server never stalls on one huge insert.
+	-- Each landmark prefers the generated mesh art (ArenaArt) and falls back to its primitive build.
 	local coilIndex = 0
 	for _, o in map.obstacles do
 		if o.style == "reactor" then
-			buildExtractor(o, decor)
+			if not ArenaArt.extractor(o, decor, H) then
+				buildExtractor(o, decor)
+			end
 		elseif o.style == "coil" then
 			coilIndex += 1
-			buildPylon(o, decor, coilIndex)
+			if not ArenaArt.pylon(o, decor, coilIndex, H, Defs.Coil.Radius) then
+				buildPylon(o, decor, coilIndex)
+			end
 		end
 	end
 	task.wait()
-	buildTitan(map, decor)
+	if not ArenaArt.titan(map, decor, H) then
+		buildTitan(map, decor)
+	end
 	task.wait()
-	buildDropship(map, decor)
-	buildGrove(map, decor)
+	if not ArenaArt.dropship(map, decor, H) then
+		buildDropship(map, decor)
+	end
+	if not ArenaArt.grove(map, decor, H) then
+		buildGrove(map, decor)
+	end
 	task.wait()
-	buildForest(map, decor)
+	if not ArenaArt.forest(map, decor, H) then
+		buildForest(map, decor)
+	end
 	task.wait()
-	buildWounds(map, decor)
-	buildRimFlora(map, decor)
+	ArenaArt.boulders(map, decor, H)
+	if not ArenaArt.wounds(map, decor, H) then
+		buildWounds(map, decor)
+	end
+	if not ArenaArt.rim(map, decor, H) then
+		buildRimFlora(map, decor)
+	end
 	buildRoots(map, decor)
 	buildDressing(map, decor)
-	buildSky(decor)
 	return root
 end
 

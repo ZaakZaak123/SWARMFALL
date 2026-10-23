@@ -173,8 +173,9 @@ function CameraRig.update(dt: number, view: string, focus: Vector3?, aimX: numbe
 			-- Lobby: over the hero's shoulder at the dropship ramp, the whole crater ahead and the titan's
 			-- skull on the horizon. A slow breathing drift keeps the shot alive.
 			local sway = math.sin(orbitAngle) * 3
-			local pos = hero + Vector3.new(13 + sway, 8 + math.sin(orbitAngle * 0.7) * 0.8, -20)
-			cam.CFrame = CFrame.lookAt(pos, hero + Vector3.new(-4 + sway * 0.4, 6, 40))
+			-- (camera stays in front of the dropship hull; the hero stands in the right third)
+			local pos = hero + Vector3.new(6 + sway * 0.3, 3 + math.sin(orbitAngle * 0.7) * 0.5, -12)
+			cam.CFrame = CFrame.lookAt(pos, hero + Vector3.new(-2 + sway * 0.2, 5, 40))
 		else
 			local center = Vector3.new(0, 6, 0)
 			local pos = center + Vector3.new(math.cos(orbitAngle) * 112, 44, math.sin(orbitAngle) * 112)

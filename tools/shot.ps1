@@ -1,5 +1,7 @@
-param([string]$Out = "shot.png", [double]$Scale = 0.5, [switch]$Viewport)
+param([string]$Out = "shot.png", [double]$Scale = 0.5, [switch]$Viewport, [switch]$Screen)
 # Screenshot of the Roblox Studio window via PrintWindow (works while other windows cover it).
+# -Screen copies the visible screen area instead (PrintWindow returns a blank 3D view on some GPUs/sessions;
+#   Studio must be the top window).
 # -Viewport crops to the 3D view (Studio chrome trimmed by fixed margins measured on this machine).
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
@@ -17,8 +19,13 @@ $w = $r.R - $r.L; $h = $r.B - $r.T
 $bmp = New-Object System.Drawing.Bitmap $w, $h
 $g = [System.Drawing.Graphics]::FromImage($bmp)
 $dc = $g.GetHdc()
-[W32]::PrintWindow($p.MainWindowHandle, $dc, 2) | Out-Null
-$g.ReleaseHdc($dc)
+if ($Screen) {
+  $g.ReleaseHdc($dc)
+  $g.CopyFromScreen($r.L, $r.T, 0, 0, (New-Object System.Drawing.Size $w, $h))
+} else {
+  [W32]::PrintWindow($p.MainWindowHandle, $dc, 2) | Out-Null
+  $g.ReleaseHdc($dc)
+}
 $src = New-Object System.Drawing.Rectangle 0, 0, $w, $h
 if ($Viewport) { $src = New-Object System.Drawing.Rectangle 12, 210, ($w - 12 - 190), ($h - 210 - 70) }
 $sw = [int]($src.Width * $Scale); $sh = [int]($src.Height * $Scale)

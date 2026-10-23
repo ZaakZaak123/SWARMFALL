@@ -15,6 +15,7 @@ local Maps = require(Shared:WaitForChild("Maps"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local World = require(script.Parent.Sim.World)
 local Arena = require(script.Parent.Arena)
+local ArtLoader = require(script.Parent.ArtLoader)
 local Profile = require(script.Parent.Profile)
 local Outposts = require(script.Parent.Outposts)
 local Meta = require(Shared:WaitForChild("Meta"))
@@ -69,6 +70,8 @@ local function buildArena(mapId: string)
 		Arena.build(Maps.get(mapId))
 	end
 end
+-- Mesh art first (bounded wait): the arena prefers it and falls back to primitives per asset.
+ArtLoader.load(15)
 buildArena(Ops.get(lobby.op).map)
 
 -- Helpers ---------------------------------------------------------------------------------------------

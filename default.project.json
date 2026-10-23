@@ -35,6 +35,32 @@
     },
     "SoundService": {
       "$properties": { "RespectFilteringEnabled": true }
+    },
+    "MaterialService": {
+      "SporeSoil": {
+        "$className": "MaterialVariant",
+        "$properties": { "BaseMaterial": "Ground", "StudsPerTile": 14, "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://104926590622361", "NormalMap": "rbxassetid://81156127785854",
+          "RoughnessMap": "rbxassetid://87161119110496", "MetalnessMap": "rbxassetid://108659045915588" }
+      },
+      "SporeMoss": {
+        "$className": "MaterialVariant",
+        "$properties": { "BaseMaterial": "Grass", "StudsPerTile": 10, "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://136885279666172", "NormalMap": "rbxassetid://110818496532734",
+          "RoughnessMap": "rbxassetid://140542496872559", "MetalnessMap": "rbxassetid://80239998792877" }
+      },
+      "SporeBasalt": {
+        "$className": "MaterialVariant",
+        "$properties": { "BaseMaterial": "Basalt", "StudsPerTile": 12, "MaterialPattern": "Regular",
+          "ColorMap": "rbxassetid://76810751350245", "NormalMap": "rbxassetid://78527806830495",
+          "RoughnessMap": "rbxassetid://111934362240543", "MetalnessMap": "rbxassetid://85145720669487" }
+      },
+      "SporeCliff": {
+        "$className": "MaterialVariant",
+        "$properties": { "BaseMaterial": "Slate", "StudsPerTile": 14, "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://103441784055610", "NormalMap": "rbxassetid://84641872574874",
+          "RoughnessMap": "rbxassetid://95178601832946", "MetalnessMap": "rbxassetid://88095077886843" }
+      }
     }
   }
 }
