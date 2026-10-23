@@ -1,5 +1,13 @@
 --!nonstrict
--- Visual language + tiny declarative UI builder.
+-- SPOREFALL visual language (DD-031) + a tiny declarative UI builder.
+--
+-- Ink panels (deep plum, translucent, rounded) over a cool world. Colour has one job each:
+--   lime  — action and growth (primary buttons, XP, "new")
+--   pink  — xenite, the currency
+--   gold  — rewards, level-up, rare
+--   hp    — the hero's health
+--   orange/red — the swarm and danger
+-- Type: Builder Extended Heavy for display and numbers, Montserrat for reading. Both ship Cyrillic.
 
 local TweenService = game:GetService("TweenService")
 
@@ -7,23 +15,26 @@ local rgb = Color3.fromRGB
 local Theme = {}
 
 Theme.C = {
-	bg = rgb(7, 11, 18),
-	panel = rgb(11, 18, 29),
-	panel2 = rgb(17, 27, 42),
-	line = rgb(48, 74, 96),
-	text = rgb(230, 246, 250),
-	dim = rgb(126, 149, 166),
-	cyan = rgb(84, 238, 255),
-	gold = rgb(255, 200, 60),
-	red = rgb(255, 70, 80),
-	lime = rgb(170, 255, 80),
-	violet = rgb(180, 110, 255),
-	orange = rgb(255, 140, 50),
-	blue = rgb(120, 170, 255),
+	bg = rgb(12, 8, 22),
+	panel = rgb(22, 14, 38),
+	panel2 = rgb(38, 26, 62),
+	line = rgb(98, 78, 140),
+	text = rgb(250, 246, 255),
+	dim = rgb(172, 158, 204),
+	cyan = rgb(86, 238, 230),
+	gold = rgb(255, 204, 70),
+	red = rgb(255, 64, 92),
+	lime = rgb(198, 255, 66),
+	violet = rgb(182, 124, 255),
+	orange = rgb(255, 138, 56),
+	blue = rgb(120, 176, 255),
 	white = rgb(255, 255, 255),
+	pink = rgb(255, 86, 198),
+	hp = rgb(255, 78, 112),
+	ink = rgb(14, 9, 26),
 }
 
--- Codec color codes -> colors
+-- Codec color codes -> colors (gameplay FX)
 Theme.Code = {
 	[1] = Theme.C.cyan,
 	[2] = Theme.C.orange,
@@ -36,24 +47,28 @@ Theme.Code = {
 	[9] = rgb(200, 245, 255), -- ICE: frost burst, shards, Ледолом
 }
 
+local BX = "rbxasset://fonts/families/BuilderExtended.json"
+local MS = "rbxasset://fonts/families/Montserrat.json"
 Theme.F = {
-	-- All faces below ship Cyrillic glyphs (Michroma/Sarpanch/BuilderSans do not).
-	title = Font.new("rbxasset://fonts/families/Zekton.json", Enum.FontWeight.Regular),
-	head = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold),
-	num = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold),
-	numHeavy = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy),
-	body = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Medium),
-	bodyBold = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold),
+	display = Font.new(BX, Enum.FontWeight.Heavy),
+	title = Font.new(BX, Enum.FontWeight.Heavy),
+	head = Font.new(BX, Enum.FontWeight.Bold),
+	num = Font.new(BX, Enum.FontWeight.Bold),
+	numHeavy = Font.new(BX, Enum.FontWeight.Heavy),
+	body = Font.new(MS, Enum.FontWeight.SemiBold),
+	bodyBold = Font.new(MS, Enum.FontWeight.Bold),
+	bodyHeavy = Font.new(MS, Enum.FontWeight.Heavy),
 	mono = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Regular),
-	tech = Font.new("rbxasset://fonts/families/Zekton.json", Enum.FontWeight.Regular),
+	tech = Font.new(BX, Enum.FontWeight.Bold),
 }
 
--- new("Frame", {props..., children = {...}}) ; special keys: Corner, Stroke, Pad, Gradient, Children
+-- new("Frame", {props..., children = {...}}) ; special keys: Corner, Stroke, Pad, Gradient, List, Aspect, MaxText
 function Theme.new(class: string, props, children)
 	local inst = Instance.new(class)
 	if inst:IsA("GuiObject") then
 		inst.BorderSizePixel = 0
-		if class == "Frame" or class == "TextLabel" or class == "ImageLabel" then
+		-- Containers are invisible unless they are given a fill colour.
+		if (class == "Frame" or class == "TextLabel" or class == "ImageLabel") and not (props and props.BackgroundColor3) then
 			inst.BackgroundTransparency = 1
 		end
 	end
@@ -65,6 +80,10 @@ function Theme.new(class: string, props, children)
 	end
 	if inst:IsA("TextButton") or inst:IsA("ImageButton") then
 		inst.AutoButtonColor = false
+	end
+	if inst:IsA("ScreenGui") then
+		-- children always draw above their parent; ZIndex only orders siblings
+		inst.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	end
 	local parent = nil
 	for k, v in props or {} do
@@ -80,6 +99,7 @@ function Theme.new(class: string, props, children)
 			s.Thickness = v.Thickness or 1
 			s.Transparency = v.Transparency or 0
 			s.ApplyStrokeMode = v.Mode or Enum.ApplyStrokeMode.Border
+			s.LineJoinMode = Enum.LineJoinMode.Round
 			s.Parent = inst
 		elseif k == "Pad" then
 			local p = Instance.new("UIPadding")
@@ -136,28 +156,25 @@ function Theme.tween(inst: Instance, time: number, props, style: Enum.EasingStyl
 	return t
 end
 
--- Angular sci-fi panel: dark fill, faint stroke and a bright corner accent.
+-- Ink panel: deep translucent plum, rounded, hairline light edge, soft top sheen.
 function Theme.panel(props, accent: Color3?)
+	local radius = props.CornerRadius or 12
+	props.CornerRadius = nil
 	local f = Theme.new("Frame", props)
-	f.BackgroundTransparency = props.BackgroundTransparency or 0.18
-	f.BackgroundColor3 = props.BackgroundColor3 or Theme.C.panel
+	f.BackgroundTransparency = props.BackgroundTransparency or 0.22
+	f.BackgroundColor3 = props.BackgroundColor3 or Theme.C.ink
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = accent or Theme.C.line
-	stroke.Transparency = 0.45
+	stroke.Color = accent or Theme.C.white
+	stroke.Transparency = if accent then 0.35 else 0.88
+	stroke.Thickness = if accent then 1.5 else 1
 	stroke.Parent = f
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 4)
+	corner.CornerRadius = UDim.new(0, radius)
 	corner.Parent = f
-	local tick = Theme.new("Frame", {
-		Name = "Accent",
-		BackgroundTransparency = 0,
-		BackgroundColor3 = accent or Theme.C.cyan,
-		Size = UDim2.new(0, 18, 0, 2),
-		Position = UDim2.new(0, 0, 0, 0),
-		ZIndex = (props.ZIndex or 1) + 1,
-		Parent = f,
-	})
-	tick.Name = "Accent"
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(rgb(255, 255, 255), rgb(200, 190, 220))
+	g.Parent = f
 	return f
 end
 
@@ -168,6 +185,81 @@ function Theme.label(text: string, props)
 		props.BackgroundTransparency = 1
 	end
 	return Theme.new("TextLabel", props)
+end
+
+-- Pill button with hover lift and press squash. kind: "primary" (lime), "ghost" (ink), "danger".
+function Theme.button(text: string, props, kind: string?)
+	kind = kind or "ghost"
+	local fill = if kind == "primary" then Theme.C.lime elseif kind == "danger" then Theme.C.red else Theme.C.ink
+	local fg = if kind == "primary" then Theme.C.ink else Theme.C.text
+	local b = Theme.new("TextButton", {
+		Text = "",
+		BackgroundColor3 = fill,
+		BackgroundTransparency = if kind == "ghost" then 0.2 else 0,
+		Corner = UDim.new(1, 0),
+		Stroke = { Color = if kind == "ghost" then Theme.C.white else fill, Transparency = if kind == "ghost" then 0.8 else 0.4, Thickness = if kind == "ghost" then 1 else 2 },
+	})
+	for k, v in props do
+		if k ~= "TextSize" and k ~= "Icon" then
+			b[k] = v
+		end
+	end
+	local scale = Instance.new("UIScale")
+	scale.Parent = b
+	local lbl = Theme.label(text, {
+		Name = "Label",
+		Size = UDim2.fromScale(1, 1),
+		FontFace = Theme.F.display,
+		TextSize = props.TextSize or 18,
+		TextColor3 = fg,
+		ZIndex = b.ZIndex + 1,
+		Parent = b,
+	})
+	if kind == "primary" then
+		Theme.new("UIGradient", {
+			Rotation = 90,
+			Color = ColorSequence.new(rgb(255, 255, 255), rgb(214, 226, 200)),
+			Parent = b,
+		})
+	end
+	b.MouseEnter:Connect(function()
+		Theme.tween(scale, 0.15, { Scale = 1.04 })
+	end)
+	b.MouseLeave:Connect(function()
+		Theme.tween(scale, 0.2, { Scale = 1 })
+	end)
+	b.MouseButton1Down:Connect(function()
+		Theme.tween(scale, 0.08, { Scale = 0.95 })
+	end)
+	b.MouseButton1Up:Connect(function()
+		Theme.tween(scale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+	end)
+	return b, lbl
+end
+
+-- Keycap chip ("SPACE", "Q") for PC hints.
+function Theme.key(text: string, props)
+	local k = Theme.new("Frame", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 22),
+		BackgroundColor3 = Theme.C.white,
+		BackgroundTransparency = 0.82,
+		Corner = 6,
+		Stroke = { Color = Theme.C.white, Transparency = 0.6 },
+	})
+	for kk, v in props or {} do
+		k[kk] = v
+	end
+	Theme.new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), Parent = k })
+	Theme.label(text, {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromScale(0, 1),
+		FontFace = Theme.F.num,
+		TextSize = 12,
+		ZIndex = k.ZIndex + 1,
+		Parent = k,
+	})
+	return k
 end
 
 function Theme.hex(c: Color3): string
@@ -181,8 +273,8 @@ end
 
 function Theme.commas(n: number): string
 	local s = tostring(math.floor(n))
-	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-	if out:sub(1, 1) == "," then
+	local out = s:reverse():gsub("(%d%d%d)", "%1 "):reverse()
+	if out:sub(1, 1) == " " then
 		out = out:sub(2)
 	end
 	return out

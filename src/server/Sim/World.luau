@@ -174,7 +174,7 @@ function World.new(opts: Options)
 	self.rng = Rng.new(seed)
 	local opId = opts.op
 	if not opId then
-		opId = if opts.map == "MAP_HIVE_DEPTHS" then "O06" else "O04"
+		opId = if opts.map == "MAP_HIVE_DEPTHS" then "O07" else "O05"
 	end
 	self.op = Ops.get(opId)
 	self.map = Maps.get(self.op.map)
@@ -1456,7 +1456,7 @@ function World:step(dt: number)
 		self.waiting = waiting
 		if self.countdown <= 0 and not waiting then
 			self.phase = "ACTIVE"
-			self:banner(self.op.code .. " · " .. self.op.name, self.op.goal, C.CYAN, 3, "pin")
+			self:banner(self.op.name, self.op.goal, C.LIME, 3, "")
 		end
 		return
 	end

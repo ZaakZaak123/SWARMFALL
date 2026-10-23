@@ -385,6 +385,47 @@ function Fx.boom(pos: Vector3, radius: number, color: Color3)
 	Fx.light(pos + Vector3.yAxis * 3, color, radius * 3, 0.3)
 end
 
+-- Spore pod (DD-033): a glowing seed falls from the sky on a slant, slams into the ground and bursts.
+-- The swarm arrives where pods land; the fall itself (~0.9 s) is the warning. big = elites / bosses.
+local POD_SHELL = Color3.fromRGB(255, 120, 60)
+local POD_CORE = Color3.fromRGB(255, 220, 140)
+function Fx.pod(x: number, z: number, big: boolean?)
+	if Fx.busy(4) then
+		return
+	end
+	local size = if big then 5 else 2.6
+	local fall = if big then 1.2 else 0.85
+	local landing = Vector3.new(x, size * 0.4, z)
+	local from = landing + Vector3.new(math.random(-30, 30), 120, math.random(10, 40))
+	local shell = take("ball")
+	shell.Color = POD_SHELL
+	shell.Material = Enum.Material.Neon
+	shell.Transparency = 0
+	shell.Size = Vector3.one * size
+	local trail = take("block")
+	trail.Color = POD_CORE
+	trail.Transparency = 0.35
+	local mark = take("cyl")
+	mark.Color = POD_SHELL
+	mark.Transparency = 1
+	spawn(fall, function(_, k)
+		local e = k * k
+		local pos = from:Lerp(landing, e)
+		shell.CFrame = CFrame.new(pos)
+		local back = (from - landing).Unit * (6 + 14 * k)
+		segment(trail, pos, pos + back, size * 0.55)
+		-- landing mark grows as the pod nears
+		flatCyl(mark, x, 0.1, z, size * (1.2 + k * 1.6), 0.06)
+		mark.Transparency = 0.9 - 0.55 * k
+	end, { { "ball", shell }, { "block", trail }, { "cyl", mark } }).done = function()
+		Fx.boom(Vector3.new(x, 0.5, z), if big then 9 else 4.5, POD_SHELL)
+		Fx.emit("dust", Vector3.new(x, 0.6, z), if big then 8 else 4)
+		if Fx.onPodLanded then
+			Fx.onPodLanded(Vector3.new(x, 0, z), big)
+		end
+	end
+end
+
 function Fx.shockwave(pos: Vector3, radius: number, color: Color3, life: number?)
 	local ring = take("cyl")
 	ring.Color = color
@@ -1139,6 +1180,9 @@ function Fx.update(dt: number)
 			liveParts -= #e.parts
 			active[i] = active[#active]
 			active[#active] = nil
+			if e.done then
+				e.done()
+			end
 		else
 			e.update(e, k, dt, e.t)
 			i += 1

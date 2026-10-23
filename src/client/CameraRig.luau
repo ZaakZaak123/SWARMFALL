@@ -149,7 +149,7 @@ function CameraRig.setCollision(folder: Instance?)
 end
 
 -- view: "play" | "lobby". focus = character root position (nil -> lobby orbit).
-function CameraRig.update(dt: number, view: string, focus: Vector3?, aimX: number, aimZ: number, leadScale: number, forceTop: boolean?)
+function CameraRig.update(dt: number, view: string, focus: Vector3?, aimX: number, aimZ: number, leadScale: number, forceTop: boolean?, hero: Vector3?)
 	local cam = workspace.CurrentCamera
 	cam.CameraType = Enum.CameraType.Scriptable
 	local now = os.clock()
@@ -161,11 +161,19 @@ function CameraRig.update(dt: number, view: string, focus: Vector3?, aimX: numbe
 	local roll = math.noise(now * 12, seed + 5) * shake * 0.04
 
 	if view == "lobby" or not focus then
-		orbitAngle += dt * 0.06
-		local center = Vector3.new(0, 4, 0)
-		local pos = center + Vector3.new(math.cos(orbitAngle) * 125, 62, math.sin(orbitAngle) * 125)
-		cam.FieldOfView = 55
-		cam.CFrame = CFrame.lookAt(pos, center + Vector3.new(0, -8, 0))
+		orbitAngle += dt * 0.05
+		cam.FieldOfView = 50
+		if hero then
+			-- Lobby: over the hero's shoulder at the dropship ramp, the whole crater ahead and the titan's
+			-- skull on the horizon. A slow breathing drift keeps the shot alive.
+			local sway = math.sin(orbitAngle) * 3
+			local pos = hero + Vector3.new(13 + sway, 8 + math.sin(orbitAngle * 0.7) * 0.8, -20)
+			cam.CFrame = CFrame.lookAt(pos, hero + Vector3.new(-4 + sway * 0.4, 6, 40))
+		else
+			local center = Vector3.new(0, 6, 0)
+			local pos = center + Vector3.new(math.cos(orbitAngle) * 112, 44, math.sin(orbitAngle) * 112)
+			cam.CFrame = CFrame.lookAt(pos, center)
+		end
 		follow = nil
 		current = nil
 		return

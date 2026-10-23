@@ -76,58 +76,98 @@ export type OpDef = {
 
 local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 
--- O01 «ПЕРВЫЙ КОНТАКТ» — the first three minutes of the game (DD-024 overrides GDD §5 timings). One
--- enemy type, one rule (protect the reactor), one wow moment (S01 at the encirclement ~1:25), one big
--- enemy (the Carrier ~2:10), a short final swarm. Spitters debut in O02.
+-- SPOREFALL hunts (DD-032): one new idea per hunt.
+--   O01 ВЫСАДКА       shoot, level up, pick cards; one big enemy at the end. No objective to guard.
+--   O02 ОКРУЖЕНИЕ     the Gravihammer (S01) is learned when the swarm closes a ring; the Leaper.
+--   O03 ПОЮЩИЙ ПИЛОН  guard the extractor (БУР) and charge a spore pylon; the Spitter.
+--   O04 ГНЁЗДА        destroy two of three nests; the Bulwark.
+--   O05 МАТЬ РОЯ      the Broodmother.
+--   O06 КРОВАВАЯ НОЧЬ the crater after dark, power nodes, the Bomber.
+--   O07 ПОЖИРАТЕЛЬ    chapter finale.
+-- Ids are profile keys; their meaning shifted in the reboot (old O02..O06 became O03..O07).
+
+-- O01 «ВЫСАДКА» — the first three minutes of the game. One enemy type, one rule (stay alive), cards,
+-- one big enemy (the Alpha, ~2:05) and a short final swarm.
 Ops.O01 = {
 	id = "O01",
 	index = 1,
 	code = "O01",
-	name = "ПЕРВЫЙ КОНТАКТ",
+	name = "ВЫСАДКА",
 	map = "MAP_REACTOR_YARD",
-	brief = "Рой идёт к реактору. Отстреливайся, убей Носителя ядра и продержись.",
-	goal = "Защити реактор",
+	brief = "Кратер кишит роем. Стреляй, расти в силе и убей Альфу.",
+	goal = "Продержись",
 	objective = "carrier",
-	reactor = { hp = 1500 }, -- the first operation must be forgiving
 	playerDamageMult = 0.6,
-	eliteName = "НОСИТЕЛЬ ЯДРА",
-	eliteGoal = "Убей Носителя ядра",
+	eliteName = "АЛЬФА",
+	eliteGoal = "Убей Альфу",
 	eliteHpMult = 0.45, -- first big enemy of the game: a 15–25 s fight, not a sponge
 	runEvolution = false,
-	s01Event = true, -- the encirclement introduces S01 to profiles that do not have it yet
 	finaleTime = 20,
 	deadline = 300,
 	hardLimit = 360,
-	finale = { at = 0, label = "ФИНАЛЬНЫЙ РОЙ", rate = 9.0, cap = 80, dirs = ALL, w = { EN_RUNNER = 1 } },
+	finale = { at = 0, label = "ПОСЛЕДНЯЯ ВОЛНА", rate = 9.0, cap = 80, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
-		{ at = 0, label = "КОНТАКТ", rate = 2.6, cap = 24, dirs = { "N", "NE" }, w = { EN_RUNNER = 1 }, quiet = true },
-		{ at = 25, label = "НАРАСТАНИЕ", rate = 4.0, cap = 40, dirs = { "N", "E", "NE", "SE" }, w = { EN_RUNNER = 1 } },
-		{ at = 70, label = "ОКРУЖЕНИЕ", rate = 4.8, cap = 56, dirs = ALL, w = { EN_RUNNER = 1 } },
-		{ at = 105, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 70, dirs = ALL, w = { EN_RUNNER = 1 } },
-		{ at = 125, label = "НОСИТЕЛЬ ЯДРА", rate = 2.6, cap = 36, dirs = ALL, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 0, label = "КОНТАКТ", rate = 2.6, cap = 24, dirs = { "N", "NE", "NW" }, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 25, label = "НАРАСТАНИЕ", rate = 4.0, cap = 40, dirs = { "N", "E", "NE", "W", "NW" }, w = { EN_RUNNER = 1 } },
+		{ at = 70, label = "СО ВСЕХ СТОРОН", rate = 4.8, cap = 56, dirs = ALL, w = { EN_RUNNER = 1 } },
+		{ at = 100, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 70, dirs = ALL, w = { EN_RUNNER = 1 } },
+		{ at = 122, label = "АЛЬФА", rate = 2.6, cap = 36, dirs = ALL, w = { EN_RUNNER = 1 }, quiet = true },
 	},
 	beats = {
-		{ at = 35, type = "assault", count = 6 },
-		{ at = 82, type = "ring", count = 26 },
-		{ at = 108, type = "assault", count = 9 },
-		{ at = 128, type = "elite" },
+		{ at = 125, type = "elite" },
 	},
 	unlocks = { "O02" },
 }
 
--- O02 «КЛЕЩИ ПЕРИМЕТРА» — D02 §5. Introduces the Stalker. The outer relay coil charges from kills inside
--- its zone (60; Runner +1, Spitter +2, Stalker +3). Stalker groups hunt the relay; if it falls before it is
--- charged, the backup coil takes over with 100% of the charge. Then hold the reactor.
+-- O02 «ОКРУЖЕНИЕ» — the old first operation's best moment, now its own hunt: the swarm closes a ring and
+-- the Gravihammer is learned on the spot. Leapers debut. No objective to guard yet.
 Ops.O02 = {
 	id = "O02",
 	index = 2,
 	code = "O02",
-	name = "КЛЕЩИ ПЕРИМЕТРА",
+	name = "ОКРУЖЕНИЕ",
 	map = "MAP_REACTOR_YARD",
-	brief = "Прыгуны режут периметр. Заряди внешнюю катушку убийствами рядом с ней, затем удержи реактор.",
-	goal = "Защити реактор",
+	brief = "Рой учится окружать. Пробей кольцо Гравимолотом и убей Альфу.",
+	goal = "Продержись",
+	objective = "carrier",
+	playerDamageMult = 0.75,
+	eliteName = "АЛЬФА",
+	eliteGoal = "Убей Альфу",
+	eliteHpMult = 0.6,
+	runEvolution = false,
+	s01Event = true, -- the ring teaches S01 to profiles that do not have it yet
+	finaleTime = 25,
+	deadline = 330,
+	hardLimit = 400,
+	finale = { at = 0, label = "ПОСЛЕДНЯЯ ВОЛНА", rate = 9.0, cap = 86, dirs = ALL, w = { EN_RUNNER = 0.88, EN_STALKER = 0.12 } },
+	phases = {
+		{ at = 0, label = "КОНТАКТ", rate = 2.8, cap = 28, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 30, label = "ПРЫГУНЫ", rate = 3.8, cap = 40, dirs = { "N", "NE", "NW", "E", "W" }, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 } },
+		{ at = 70, label = "КОЛЬЦО", rate = 4.6, cap = 56, dirs = ALL, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 } },
+		{ at = 120, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 72, dirs = ALL, w = { EN_RUNNER = 0.86, EN_STALKER = 0.14 } },
+		{ at = 168, label = "АЛЬФА", rate = 3.0, cap = 44, dirs = ALL, w = { EN_RUNNER = 0.88, EN_STALKER = 0.12 }, quiet = true },
+	},
+	beats = {
+		{ at = 30, type = "banner", title = "ПРЫГУН", sub = "Замирает перед прыжком — уйди в сторону", kind = "EN_STALKER" },
+		{ at = 74, type = "ring", count = 26 },
+		{ at = 170, type = "elite" },
+	},
+	unlocks = { "O03" },
+	requires = "O01",
+}
+
+-- O03 «ПОЮЩИЙ ПИЛОН» (was O02, D02 §5). First hunt with something to guard: the extractor. A spore pylon
+-- charges from kills inside its zone; Leaper groups hunt it; if it falls the backup takes over.
+Ops.O03 = {
+	id = "O03",
+	index = 3,
+	code = "O03",
+	name = "ПОЮЩИЙ ПИЛОН",
+	map = "MAP_REACTOR_YARD",
+	brief = "Рой идёт на наш бур. Убивай врагов у пилона, чтобы зарядить его, и не дай разрушить бур.",
+	goal = "Защити бур",
 	objective = "relay",
-	reactor = { hp = 2100 },
+	reactor = { hp = 2100, name = "БУР" },
 	runEvolution = false,
 	relay = { need = 400, radius = 30, hp = 800, primary = 1, backup = 2 }, -- 60 in D02 assumed a far lower kill rate
 	finaleTime = 70,
@@ -143,8 +183,7 @@ Ops.O02 = {
 		{ at = 380, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 80, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.14, EN_SPITTER = 0.06 } },
 	},
 	beats = {
-		{ at = 30, type = "banner", title = "ПРЫГУН", sub = "Замирает перед прыжком — уйди в сторону", kind = "EN_STALKER" },
-		{ at = 55, type = "assault", count = 7 },
+				{ at = 55, type = "assault", count = 7 },
 		{ at = 70, type = "banner", title = "ПЛЕВУН", sub = "Плюётся кислотой издалека — уходи из луж", kind = "EN_SPITTER" },
 		{ at = 125, type = "assault", count = 9 },
 		{ at = 140, type = "relay" },
@@ -156,22 +195,22 @@ Ops.O02 = {
 		{ at = 360, type = "assault", count = 9 },
 		{ at = 400, type = "assault", count = 8, kind = "EN_STALKER", target = "relay" },
 	},
-	unlocks = { "O03", "CA01" },
-	requires = "O01",
+	unlocks = { "O04", "CA01" },
+	requires = "O02",
 }
 
--- O03 «ГНЕЗДОВОЙ ПРОРЫВ» — D02 §6. Three nests open at ~2:00; any two win (3/3 = optional +20 bonus).
+-- O04 «ГНЁЗДА» (was O03, D02 §6). Three nests open at ~2:00; any two win (3/3 = optional +20 bonus).
 -- Introduces the Bulwark, which escorts a nest.
-Ops.O03 = {
-	id = "O03",
-	index = 3,
-	code = "O03",
-	name = "ГНЕЗДОВОЙ ПРОРЫВ",
+Ops.O04 = {
+	id = "O04",
+	index = 4,
+	code = "O04",
+	name = "ГНЁЗДА",
 	map = "MAP_REACTOR_YARD",
-	brief = "Рой пустил корни во дворе. Уничтожь любые два гнезда из трёх, не потеряв реактор.",
-	goal = "Защити реактор",
+	brief = "Рой пустил корни в кратере. Уничтожь любые два гнезда из трёх и сбереги бур.",
+	goal = "Защити бур",
 	objective = "nests",
-	reactor = { hp = 2000 },
+	reactor = { hp = 2000, name = "БУР" },
 	runEvolution = false,
 	nests = { need = 2, hp = 900 },
 	finaleTime = 60,
@@ -197,26 +236,26 @@ Ops.O03 = {
 		{ at = 400, type = "assault", count = 10 },
 		{ at = 460, type = "assault", count = 10 },
 	},
-	unlocks = { "O04" },
-	requires = "O02",
+	unlocks = { "O05" },
+	requires = "O03",
 }
 
--- O04 «МАТКА РАЗЛОМА» — D02 §7. Two elites, the peak swarm, optional nests, then the Broodmother. Her
+-- O05 «МАТЬ РОЯ» (was O04, D02 §7). Two elites, the peak swarm, optional nests, then the Broodmother. Her
 -- death wins at once. Reactor defended throughout.
 do
 	local yard = Maps.get("MAP_REACTOR_YARD")
-	Ops.O04 = {
-		id = "O04",
-		index = 4,
-		code = "O04",
-		name = "МАТКА РАЗЛОМА",
+	Ops.O05 = {
+		id = "O05",
+		index = 5,
+		code = "O05",
+		name = "МАТЬ РОЯ",
 		map = "MAP_REACTOR_YARD",
-		brief = "Королева роя идёт к реактору. Переживи две элиты и пиковый рой, затем убей Матку.",
-		goal = "Защити реактор и убей Матку",
+		brief = "Королева роя выходит из пасти титана. Переживи элиту и пиковый рой, затем убей Мать роя.",
+		goal = "Защити бур и убей Мать роя",
 		objective = "boss",
 		spawnMult = 0.85,
 		bossHpMult = 0.85,
-		reactor = { hp = 1600 },
+		reactor = { hp = 1600, name = "БУР" },
 		runEvolution = false,
 		hardLimit = 540,
 		phases = yard.phases,
@@ -230,23 +269,23 @@ do
 			{ at = 420, type = "boss" },
 			{ at = 480, type = "enrage" },
 		},
-		unlocks = { "O05" },
-		requires = "O03",
+		unlocks = { "O06" },
+		requires = "O04",
 	}
 end
 
--- O05 «ЦЕПНАЯ РЕАКЦИЯ» — D02 §8. Hive Depths, the Bomber, two power nodes (shootable by any weapon;
+-- O06 «КРОВАВАЯ НОЧЬ» (was O05, D02 §8). The crater after dark, the Bomber, two power nodes (shootable by any weapon;
 -- bomber blasts help but are optional). The energy heart is the defended object.
-Ops.O05 = {
-	id = "O05",
-	index = 5,
-	code = "O05",
-	name = "ЦЕПНАЯ РЕАКЦИЯ",
+Ops.O06 = {
+	id = "O06",
+	index = 6,
+	code = "O06",
+	name = "КРОВАВАЯ НОЧЬ",
 	map = "MAP_HIVE_DEPTHS",
-	brief = "Под реактором пульсирует улей. Разрушь два питающих узла и удержи энергетическую сердцевину.",
-	goal = "Защити сердцевину",
+	brief = "Ночью кратер краснеет. Разрушь два питающих узла роя и сбереги бур. Взрывуны рвутся рядом.",
+	goal = "Защити бур",
 	objective = "nodes",
-	reactor = { hp = 1500, radius = 6, name = "СЕРДЦЕВИНА" },
+	reactor = { hp = 1500, name = "БУР" },
 	runEvolution = false,
 	nodes = { hp = 2400, count = 2 },
 	finaleTime = 60,
@@ -271,26 +310,26 @@ Ops.O05 = {
 		{ at = 320, type = "assault", count = 12 },
 		{ at = 380, type = "assault", count = 14, kind = "EN_BOMBER" },
 	},
-	unlocks = { "O06" },
-	requires = "O04",
+	unlocks = { "O07" },
+	requires = "O05",
 }
 
--- O06 «СЕРДЦЕ ГЛУБИН» — D02 §9. Chapter finale: two elites, bombers, optional nests, the Devourer. His
+-- O07 «ПОЖИРАТЕЛЬ» (was O06, D02 §9). Chapter finale: two elites, bombers, optional nests, the Devourer. His
 -- death wins at once while the heart and the hero live.
 do
 	local depths = Maps.get("MAP_HIVE_DEPTHS")
-	Ops.O06 = {
-		id = "O06",
-		index = 6,
-		code = "O06",
-		name = "СЕРДЦЕ ГЛУБИН",
+	Ops.O07 = {
+		id = "O07",
+		index = 7,
+		code = "O07",
+		name = "ПОЖИРАТЕЛЬ",
 		map = "MAP_HIVE_DEPTHS",
-		brief = "Финал главы. Удержи сердцевину, переживи элиты и встреть Пожирателя.",
-		goal = "Защити сердцевину и убей Пожирателя",
+		brief = "Финал главы. Из-под кратера поднимается Пожиратель. Сбереги бур и убей его.",
+		goal = "Защити бур и убей Пожирателя",
 		objective = "boss",
 		spawnMult = 0.85,
 		bossHpMult = 0.75, -- the Devourer burrows; keep a viable boss window (D02 §9)
-		reactor = { hp = 1700, radius = 6, name = "СЕРДЦЕВИНА" },
+		reactor = { hp = 1700, name = "БУР" },
 		runEvolution = false,
 		hardLimit = 570,
 		phases = depths.phases,
@@ -305,7 +344,7 @@ do
 			{ at = 470, type = "enrage" },
 		},
 		unlocks = {},
-		requires = "O05",
+		requires = "O06",
 		chapterEnd = true,
 	}
 end
@@ -314,14 +353,14 @@ end
 -- that keep seeding acid until destroyed by direct fire. Not a story key.
 Ops.CA01 = {
 	id = "CA01",
-	index = 7,
+	index = 8,
 	code = "C-A01",
-	name = "КИСЛОТНЫЙ ФРОНТ",
+	name = "КИСЛОТНЫЙ ДОЖДЬ",
 	map = "MAP_REACTOR_YARD",
-	brief = "Контракт: Плевуны травят двор кислотой. Уничтожь два кислотных источника и удержи периметр.",
-	goal = "Защити реактор",
+	brief = "Контракт: плевуны травят кратер. Уничтожь два кислотных источника и сбереги бур.",
+	goal = "Защити бур",
 	objective = "acid",
-	reactor = { hp = 1500 },
+	reactor = { hp = 1500, name = "БУР" },
 	runEvolution = false,
 	acid = { hp = 2000, every = 3.4, count = 2 },
 	finaleTime = 50,
@@ -342,7 +381,7 @@ Ops.CA01 = {
 		{ at = 290, type = "assault", count = 12 },
 	},
 	unlocks = {},
-	requires = "O02",
+	requires = "O03",
 }
 
 -- Early operations are short (DD-024): the same script, played faster. Scales every timing; objectives
@@ -364,12 +403,12 @@ local function compress(op: OpDef, k: number)
 		op.nests.hp = math.floor(op.nests.hp * k + 0.5)
 	end
 end
-compress(Ops.O02, 0.7)
-compress(Ops.O03, 0.75)
-Ops.O03.deadline = 420 -- nests are walked to and shot down: keep a margin over the plain ×0.75
-Ops.O03.hardLimit = 420 + Ops.O03.finaleTime + 60
+compress(Ops.O03, 0.7)
+compress(Ops.O04, 0.75)
+Ops.O04.deadline = 420 -- nests are walked to and shot down: keep a margin over the plain ×0.75
+Ops.O04.hardLimit = 420 + Ops.O04.finaleTime + 60
 
-Ops.Order = { "O01", "O02", "O03", "O04", "O05", "O06", "CA01" }
+Ops.Order = { "O01", "O02", "O03", "O04", "O05", "O06", "O07", "CA01" }
 
 function Ops.get(id: string?): OpDef
 	return (id and (Ops :: any)[id]) or Ops.O01

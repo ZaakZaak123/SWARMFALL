@@ -2,6 +2,9 @@
 -- Map definitions: geometry (single source of truth for builder, simulation, client) + run script.
 -- Plane is XZ, floor top at Y = 0. Data is authored as a map (east = +X); X is mirrored once at the end
 -- so that "east" renders on screen-right with our camera (Roblox is right-handed).
+--
+-- SPOREFALL has one world: the Bloom Crater (DD-030). Both map ids share its geometry; they differ in
+-- the hour (dusk / blood night) and the run script. Ids are data keys (profile migration) — keep them.
 
 export type Obstacle = {
 	name: string,
@@ -71,66 +74,79 @@ local function mirror(def: MapDef)
 	def.playerStart.x = -def.playerStart.x
 end
 
--- MAP 1: REACTOR YARD ---------------------------------------------------------------------------------
-do
+-- THE BLOOM CRATER --------------------------------------------------------------------------------------
+-- A rounded crater ~270 studs across. North: the bones of a fallen titan — its skull sits in the rim and
+-- the swarm pours out of its jaws, ribs arch over the northern approach. South: our dropship, where every
+-- hunt starts. East: a grove of pink xenite crystals. West: a forest of glowing mushrooms. Centre: the
+-- extractor drilling the mother crystal. Corners: cliff masses with spore wounds the swarm crawls out of.
+local function crater(): ({ Obstacle }, { { x: number, z: number } })
 	local list, box, round = builder()
-	round("ReactorCore", 0, 0, 12, 14, "reactor")
-	box("CoreBarrierW", -24, 0, 3, 10, 4, "barrier")
-	box("CoreBarrierE", 24, 0, 3, 10, 4, "barrier")
-	box("CoreBarrierN", 0, 25, 10, 3, 4, "barrier")
-	box("CoreBarrierS", 0, -27, 10, 3, 4, "barrier")
-	box("ConduitW1", -30, 66, 8, 18, 8, "container")
-	box("ConduitE1", 30, 66, 8, 18, 8, "container")
-	box("ConduitW2", -30, 110, 8, 18, 8, "container")
-	box("ConduitE2", 30, 110, 8, 18, 8, "container")
-	box("RailsNorth", 112, 32, 22, 8, 6, "railcar")
-	box("RailsSouth", 112, -32, 22, 8, 6, "railcar")
-	round("RailsPylon", 150, 0, 6, 10, "pylon")
-	round("RefineryW", -34, -94, 18, 12, "tank")
-	round("RefineryE", 34, -94, 18, 12, "tank")
-	round("RefineryValve", 0, -126, 8, 6, "tank")
-	box("HangarNW", -125, 32, 18, 8, 9, "container")
-	box("HangarSW", -125, -32, 18, 8, 9, "container")
-	box("HangarCargo", -102, 0, 8, 18, 6, "crate")
-	box("YardNE", 96, 98, 18, 8, 8, "container")
-	box("YardNW", -96, 98, 8, 18, 8, "container")
-	round("YardSE", 96, -98, 12, 9, "tank")
-	box("YardSW", -96, -98, 18, 8, 8, "crate")
-	box("BlockN", 70, 128, 8, 8, 5, "crate")
-	box("BlockS", -70, -128, 8, 8, 5, "crate")
-	box("BlockE", 140, 66, 8, 8, 5, "crate")
-	box("BlockW", -140, -66, 8, 8, 5, "crate")
-	round("Coil1", 62, 58, 4, 11, "coil")
-	round("Coil2", -62, 58, 4, 11, "coil")
-	round("Coil3", 62, -58, 4, 11, "coil")
-	round("Coil4", -62, -58, 4, 11, "coil")
+	round("ReactorCore", 0, 0, 12, 16, "reactor")
+	-- titan ribs: pairs of feet; the arches above are decor (Arena)
+	for i, z in { 70, 88, 106 } do
+		round("RibW" .. i, -22, z, 5, 5, "ribfoot")
+		round("RibE" .. i, 22, z, 5, 5, "ribfoot")
+	end
+	box("Dropship", 0, -104, 34, 16, 10, "dropship")
+	-- xenite grove (east)
+	round("XeniteA", 100, 22, 12, 16, "crystal")
+	round("XeniteB", 92, -18, 9, 11, "crystal")
+	round("XeniteC", 114, -6, 7, 9, "crystal")
+	round("XeniteD", 84, 42, 6, 7, "crystal")
+	-- mushroom forest (west)
+	round("ShroomA", -100, 24, 6, 22, "mushroom")
+	round("ShroomB", -92, -22, 5, 16, "mushroom")
+	round("ShroomC", -114, -4, 4, 12, "mushroom")
+	round("ShroomD", -80, 46, 3.5, 9, "mushroom")
+	-- basalt boulders: mid-ring cover
+	round("BoulderNE", 40, 62, 10, 7, "boulder")
+	round("BoulderSW", -40, -62, 10, 7, "boulder")
+	round("BoulderSE", 64, -46, 8, 6, "boulder")
+	round("BoulderNW", -64, 40, 8, 6, "boulder")
+	-- spore pylons (the old relay coils): zap the swarm coming down the diagonals
+	local coils = { { x = 38, z = 38 }, { x = -38, z = 38 }, { x = 38, z = -38 }, { x = -38, z = -38 } }
+	for i, c in coils do
+		round("Coil" .. i, c.x, c.z, 4, 12, "coil")
+	end
+	-- cliff masses close the corners into a rounded bowl
+	for _, s in { { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 } } do
+		round("Cliff", 150 * s[1], 150 * s[2], 150, 40, "cliff")
+	end
+	return list, coils
+end
 
+local CRATER_SPAWNS = function()
+	return {
+		N = { x = 0, z = 126 },
+		NE = { x = 86, z = 86 },
+		E = { x = 126, z = 0 },
+		SE = { x = 86, z = -86 },
+		S = { x = 0, z = -128 },
+		SW = { x = -86, z = -86 },
+		W = { x = -126, z = 0 },
+		NW = { x = -86, z = 86 },
+	}
+end
+
+do
+	local list, coils = crater()
 	local def: MapDef = {
 		id = "MAP_REACTOR_YARD",
 		index = 1,
-		name = "РЕАКТОРНЫЙ ДВОР",
-		subtitle = "Промзона под открытым небом. Матка рвётся с севера.",
-		theme = "yard",
+		name = "КРАТЕР ЦВЕТЕНИЯ",
+		subtitle = "Кратер в сумерках. Рой выходит из пасти титана.",
+		theme = "dusk",
 		unlock = "",
-		halfX = 180,
-		halfZ = 160,
+		halfX = 140,
+		halfZ = 140,
 		wall = 4,
-		playerStart = { x = 0, z = -16 },
+		playerStart = { x = 0, z = -26 },
 		obstacles = list,
-		coils = { { x = 62, z = 58 }, { x = -62, z = 58 }, { x = 62, z = -58 }, { x = -62, z = -58 } },
-		spawns = {
-			N = { x = 0, z = 148 },
-			NE = { x = 132, z = 136 },
-			E = { x = 168, z = 0 },
-			SE = { x = 132, z = -136 },
-			S = { x = 0, z = -148 },
-			SW = { x = -132, z = -136 },
-			W = { x = -168, z = 0 },
-			NW = { x = -132, z = 136 },
-		},
+		coils = coils,
+		spawns = CRATER_SPAWNS(),
 		spawnOrder = SPAWN_ORDER,
-		hiveSites = { { x = -82, z = 74 }, { x = 104, z = -70 }, { x = 0, z = -62 } },
-		bossEntry = { x = 0, z = 150 },
+		hiveSites = { { x = -60, z = 80 }, { x = 72, z = -70 }, { x = -70, z = -30 } },
+		bossEntry = { x = 0, z = 116 },
 		boss = "BOSS_BROODMOTHER",
 		elite = "ELITE_BULWARK",
 		phases = {
@@ -152,52 +168,24 @@ do
 	Maps.MAP_REACTOR_YARD = def
 end
 
--- MAP 2: HIVE DEPTHS ----------------------------------------------------------------------------------
 do
-	local list, box, round = builder()
-	round("HeartSpire", 0, 0, 10, 18, "spire")
-	for i = 0, 5 do
-		local a = math.rad(30 + i * 60)
-		round("Pillar" .. i, math.cos(a) * 45, math.sin(a) * 45, if i % 2 == 0 then 9 else 7, 14, "stalagmite")
-	end
-	for i = 0, 7 do
-		local a = math.rad(22.5 + i * 45)
-		round("Mound" .. i, math.cos(a) * 96, math.sin(a) * 96, if i % 2 == 0 then 18 else 14, 7, "mound")
-	end
-	box("RigS", 60, -112, 16, 8, 7, "rig")
-	box("RigN", -70, 108, 8, 16, 7, "rig")
-	box("RigE", 122, 44, 10, 10, 6, "rig")
-	box("RigW", -122, -44, 10, 10, 6, "rig")
-	round("Coil1", 0, 76, 4, 11, "coil")
-	round("Coil2", 0, -76, 4, 11, "coil")
-	round("Coil3", 80, 0, 4, 11, "coil")
-	round("Coil4", -80, 0, 4, 11, "coil")
-
+	local list, coils = crater()
 	local def: MapDef = {
 		id = "MAP_HIVE_DEPTHS",
 		index = 2,
-		name = "ГЛУБИНЫ УЛЬЯ",
-		subtitle = "Пещера под реактором. Взрывуны. Из-под земли идёт Пожиратель.",
-		theme = "depths",
-		unlock = "Победи Матку на Реакторном дворе",
-		halfX = 160,
-		halfZ = 150,
+		name = "КРОВАВАЯ НОЧЬ",
+		subtitle = "Тот же кратер после заката. Взрывуны. Из-под земли идёт Пожиратель.",
+		theme = "night",
+		unlock = "Победи Матку в Кратере",
+		halfX = 140,
+		halfZ = 140,
 		wall = 4,
-		playerStart = { x = 0, z = -18 },
+		playerStart = { x = 0, z = -26 },
 		obstacles = list,
-		coils = { { x = 0, z = 76 }, { x = 0, z = -76 }, { x = 80, z = 0 }, { x = -80, z = 0 } },
-		spawns = {
-			N = { x = 0, z = 138 },
-			NE = { x = 112, z = 112 },
-			E = { x = 148, z = 0 },
-			SE = { x = 112, z = -112 },
-			S = { x = 0, z = -138 },
-			SW = { x = -112, z = -112 },
-			W = { x = -148, z = 0 },
-			NW = { x = -112, z = 112 },
-		},
+		coils = coils,
+		spawns = CRATER_SPAWNS(),
 		spawnOrder = SPAWN_ORDER,
-		hiveSites = { { x = 56, z = 56 }, { x = -60, z = -50 }, { x = 70, z = -62 } },
+		hiveSites = { { x = -60, z = 80 }, { x = 72, z = -70 }, { x = -70, z = -30 } },
 		bossEntry = { x = 0, z = 100 },
 		boss = "BOSS_DEVOURER",
 		elite = "ELITE_BULWARK",

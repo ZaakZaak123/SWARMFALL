@@ -281,6 +281,9 @@ function EnemyView.snapshot(rows, count: number)
 				local big = r.kind >= 4
 				Fx.emit("dust", Vector3.new(r.x, 0.6, r.z), if big then 4 else 2)
 			end
+			if r.state == ST.SPAWN and EnemyView.onSpawn then
+				EnemyView.onSpawn(r.x, r.z, r.kind)
+			end
 		else
 			rec.vx = (r.x - rec.cx) / SNAP_DT
 			rec.vz = (r.z - rec.cz) / SNAP_DT

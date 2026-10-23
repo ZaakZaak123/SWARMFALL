@@ -16,7 +16,6 @@ local Ops = require(Shared:WaitForChild("Ops"))
 local World = require(script.Parent.Sim.World)
 local Arena = require(script.Parent.Arena)
 local Profile = require(script.Parent.Profile)
-local Hub = require(script.Parent.Hub)
 
 Players.CharacterAutoLoads = false
 
@@ -63,7 +62,6 @@ local function buildArena(mapId: string)
 	end
 end
 buildArena(Ops.get(lobby.op).map)
-Hub.build()
 
 -- Helpers ---------------------------------------------------------------------------------------------
 local function finite(n): boolean
@@ -115,7 +113,7 @@ local function pushProfile(player: Player)
 end
 Profile.onChanged(pushProfile)
 
-local function prepareCharacter(player: Player, x: number, z: number)
+local function prepareCharacter(player: Player, x: number, z: number, facing: number?)
 	local ok, err = pcall(function()
 		player:LoadCharacter()
 	end)
@@ -145,7 +143,7 @@ local function prepareCharacter(player: Player, x: number, z: number)
 	hum.BreakJointsOnDeath = true
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-	char:PivotTo(CFrame.new(x, 3.2, z))
+	char:PivotTo(CFrame.new(x, 3.2, z) * CFrame.Angles(0, facing or 0, 0))
 	tracking[player] = { x = x, z = z, y = 3.2 }
 end
 
@@ -221,13 +219,15 @@ local function settle()
 	end
 end
 
--- Between operations every player walks in Узел-7 (the quick menu stays one tap away).
+-- Between hunts the squad stands at the dropship ramp, facing the crater (the lobby camera frames it).
+local LOBBY_SPOTS = { { -2, -84 }, { -7, -86 }, { 3, -86 }, { -12, -88 } }
 local function toHub(player: Player)
 	if mode ~= "LOBBY" or not player.Parent then
 		return
 	end
-	local s = Hub.Spawn
-	prepareCharacter(player, s.X + (math.random() - 0.5) * 6, s.Z + (math.random() - 0.5) * 4)
+	local i = table.find(Players:GetPlayers(), player) or 1
+	local spot = LOBBY_SPOTS[(i - 1) % #LOBBY_SPOTS + 1]
+	prepareCharacter(player, spot[1], spot[2], math.pi)
 end
 
 local function backToLobby()

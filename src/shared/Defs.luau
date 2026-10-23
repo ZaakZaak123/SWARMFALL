@@ -491,7 +491,7 @@ Defs.Upgrades = {
 			return `щит {pick(r, V.UPG_SHIELD.amount)}`
 		end,
 		describe = function(r)
-			return `Каждые {pick(r, V.UPG_SHIELD.every)} убийств — энергощит тебе и реактору.`
+			return `Каждые {pick(r, V.UPG_SHIELD.every)} убийств — энергощит тебе и буру.`
 		end,
 	},
 } :: { [string]: UpgradeDef }
@@ -730,7 +730,7 @@ Defs.Enemies = {
 	ELITE_CARRIER = {
 		id = "ELITE_CARRIER",
 		index = 10,
-		name = "НОСИТЕЛЬ ЯДРА",
+		name = "АЛЬФА",
 		hp = 1150,
 		speed = 9.5,
 		radius = 4.3,
@@ -1095,7 +1095,7 @@ Defs.FormMastery = 10 -- M10 opens the permanent form craft
 Defs.LineTrial = { Shots = 60, MinHits = 2 }
 
 -- Story blueprints (D03 §1): O02 → Вулкан, O03 → Разлом, O04 → Рельсотрон. Blueprint ≠ owned.
-Defs.Blueprints = { W_SCATTERGUN = "O02", W_PLASMA_BEAM = "O03", W_RAILGUN = "O04" }
+Defs.Blueprints = { W_SCATTERGUN = "O02", W_PLASMA_BEAM = "O04", W_RAILGUN = "O05" }
 
 -- Squad rules (DD-012): a player at 0 HP is downed, not dead. A teammate standing close fills the revive
 -- ring; nobody close = it slowly drains. Bleed-out ends the operation for that player (spectate).

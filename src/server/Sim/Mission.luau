@@ -62,7 +62,7 @@ function Mission.new(w, op)
 		local radius = op.reactor.radius or Defs.Reactor.Radius
 		self.reactor = {
 			obj = "reactor",
-			name = op.reactor.name or "РЕАКТОР",
+			name = op.reactor.name or "БУР",
 			x = 0,
 			z = 0,
 			r = radius,
@@ -240,7 +240,7 @@ function Mission:activateRelay(index: number, carried: number)
 	local hp = cfg.hp * Defs.Reactor.hpScale(w.threat, #w.playerList)
 	local coil = {
 		obj = "relay",
-		name = "КАТУШКА",
+		name = "ПИЛОН",
 		x = c.x,
 		z = c.z,
 		r = 3.5,
@@ -255,7 +255,7 @@ function Mission:activateRelay(index: number, carried: number)
 	self.relay.index = index
 	self.relay.used[index] = true
 	self.relay.charge = carried
-	self.goal = "Заряди катушку убийствами рядом"
+	self.goal = "Заряди пилон: убивай рядом с ним"
 	w:emit(E.OBJECTIVE, 1, c.x, c.z, cfg.radius, carried, cfg.need)
 end
 
@@ -269,15 +269,15 @@ function Mission:relayLost()
 		local carried = self.relay.charge
 		self:activateRelay(self.relayBackup, carried)
 		w:banner(
-			"КАТУШКА ПОТЕРЯНА",
-			`Запасная катушка активна · заряд сохранён {carried}/{self.relay.need}`,
+			"ПИЛОН ПОТЕРЯН",
+			`Запасной пилон активен · заряд сохранён {carried}/{self.relay.need}`,
 			C.ORANGE,
 			4,
 			"reactor"
 		)
 		return
 	end
-	w:finish(false, "ОБЕ КАТУШКИ ПОТЕРЯНЫ")
+	w:finish(false, "ОБА ПИЛОНА ПОТЕРЯНЫ")
 end
 
 -- Nests / nodes / acid sources (O03 / O05 / C-A01) --------------------------------------------------
@@ -334,8 +334,8 @@ function Mission:onKill(e, p)
 			if self.relay.charge >= self.relay.need and before < self.relay.need then
 				w:emit(E.OBJECTIVE, 3, c.x, c.z, 0, self.relay.charge, self.relay.need)
 				self:objectiveDone(
-					"КАТУШКА ЗАРЯЖЕНА",
-					"Периметр закрыт. Вернись к реактору и удержи его!"
+					"ПИЛОН ЗАРЯЖЕН",
+					"Периметр закрыт. Вернись к буру и удержи его!"
 				)
 			end
 		end
@@ -450,7 +450,7 @@ function Mission:assault(beat)
 	w:emit(E.ASSAULT, s.x, s.z, spawned, math.floor(eta + 0.5), obj.x, obj.z)
 	if toRelay then
 		w:banner(
-			"АТАКА НА КАТУШКУ",
+			"АТАКА НА ПИЛОН",
 			`Прыгуны идут с направления {DIR_NAME[key] or key} — защити заряд`,
 			C.ORANGE,
 			3,
@@ -499,7 +499,7 @@ function Mission:elite()
 	self.goal = self.op.eliteGoal or ("Убей " .. (self.op.eliteName or "элиту"))
 	w:banner(
 		self.op.eliteName or "ЭЛИТА",
-		"Убей его — он несёт Ядро Бури",
+		"Вожак стаи. Убей его!",
 		C.GOLD,
 		4,
 		"@" .. e.def.index
@@ -516,15 +516,15 @@ function Mission:onEliteKilled(e)
 	table.insert(self.components, "CMP_STORM_CORE")
 	w:emit(E.COMPONENT, e.x, e.z, "CMP_STORM_CORE")
 	w:banner(
-		"ЯДРО БУРИ ПОЛУЧЕНО",
-		"Постоянный компонент сохранён. Переживи финальный рой!",
+		"АЛЬФА ПОВЕРЖЕНА",
+		"Стая в ярости. Переживи последнюю волну!",
 		C.GOLD,
 		4,
 		"core"
 	)
 	self.state = "FINALE"
 	self.finaleUntil = w.t + (self.op.finaleTime or 50)
-	self.goal = "Переживи финальный рой"
+	self.goal = "Переживи последнюю волну"
 end
 
 function Mission:guard(beat)
@@ -570,8 +570,8 @@ function Mission:runBeat(beat)
 		local c = w.map.coils[self.relayPrimary]
 		w:emit(E.ASSAULT, c.x, c.z, 0, 0, 0, 0)
 		w:banner(
-			"ВНЕШНЯЯ КАТУШКА",
-			"Убивай врагов в её зоне, чтобы зарядить ретранслятор",
+			"ПОЮЩИЙ ПИЛОН",
+			"Убивай врагов в его зоне, чтобы зарядить",
 			C.CYAN,
 			4,
 			"reactor"
@@ -605,7 +605,7 @@ function Mission:runBeat(beat)
 		self.goal = "Уничтожь кислотные источники"
 		w:banner(
 			if i == 1 then "КИСЛОТНЫЙ ИСТОЧНИК" else "ВТОРОЙ ИСТОЧНИК",
-			"Стреляй по источнику — он травит двор",
+			"Стреляй по источнику — он травит кратер",
 			C.LIME,
 			4,
 			"@6"
@@ -691,7 +691,7 @@ function Mission:goalText(): string
 	local g = self.goal
 	if self.state == "FIGHT" then
 		if self.relay and self.relay.coil then
-			g = `Заряди катушку {self.relay.charge}/{self.relay.need}`
+			g = `Заряди пилон {self.relay.charge}/{self.relay.need}`
 		elseif #self.targets > 0 then
 			g = self.goal .. ` · {self.destroyed}/{self:need()}`
 		end

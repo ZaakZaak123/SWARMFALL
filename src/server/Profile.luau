@@ -82,10 +82,10 @@ local function reconcile(data)
 		-- v1 -> v2: players keep what they unlocked. Beating the yard boss (threat 2+ or depths open)
 		-- keeps the Matka run (O04) and the depths run (O06) available.
 		if (data.threat.MAP_REACTOR_YARD or 1) >= 2 or data.threat.MAP_HIVE_DEPTHS then
-			data.ops.O04 = math.max(data.ops.O04 or 1, data.threat.MAP_REACTOR_YARD or 1)
+			data.ops.O05 = math.max(data.ops.O05 or 1, data.threat.MAP_REACTOR_YARD or 1)
 		end
 		if data.threat.MAP_HIVE_DEPTHS then
-			data.ops.O06 = math.max(data.ops.O06 or 1, data.threat.MAP_HIVE_DEPTHS)
+			data.ops.O07 = math.max(data.ops.O07 or 1, data.threat.MAP_HIVE_DEPTHS)
 		end
 	end
 	data.v = VERSION
@@ -522,7 +522,7 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		d.wins_by_op = d.wins_by_op or {}
 		d.wins_by_op[opId] = (d.wins_by_op[opId] or 0) + 1
 		-- First-win story components (D03 §3).
-		local firstWin = { O05 = "CMP_FLAME_HEART", O06 = "CMP_VOID_HEART" }
+		local firstWin = { O06 = "CMP_FLAME_HEART", O07 = "CMP_VOID_HEART" }
 		local comp = firstWin[opId]
 		if comp and not d.components[comp] then
 			d.components[comp] = true

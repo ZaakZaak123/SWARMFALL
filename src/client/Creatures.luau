@@ -54,9 +54,9 @@ local RUNNER_ROOT = Vector3.new(0, 0, -4.8336)
 local RUNNER_SCALE = 0.85
 -- part -> colour, material, role; legs -> hip (template space, relative to ROOT) and gait phase
 local RUNNER_MESH = {
-	Shell = { rgb(245, 100, 50), M.SmoothPlastic, "body" },
-	Flesh = { rgb(120, 38, 30), M.SmoothPlastic, "body" },
-	Head = { rgb(150, 50, 32), M.SmoothPlastic, "body" },
+	Shell = { rgb(255, 118, 52), M.SmoothPlastic, "body" },
+	Flesh = { rgb(150, 46, 36), M.SmoothPlastic, "body" },
+	Head = { rgb(178, 60, 38), M.SmoothPlastic, "body" },
 	Mandibles = { rgb(235, 215, 170), M.SmoothPlastic },
 	Eyes = { rgb(255, 230, 90), M.Neon, "eye" },
 	LegFL = { rgb(95, 32, 26), M.SmoothPlastic, nil, Vector3.new(0.62, 1.4, -0.7), 0 },
@@ -87,6 +87,11 @@ local function runnerMesh()
 			spec.phase = info[5]
 		end
 		table.insert(s, spec)
+	end
+	-- Spore nodules along the spine (DD-033): the swarm glows warm against the cold crater, so a runner
+	-- reads at a glance from the top-down camera. The mesh itself is unchanged.
+	for i, z in { -0.55, 0.25, 1.05 } do
+		table.insert(s, ball(0.62 - i * 0.06, P(0, 2.36 - i * 0.05, z), rgb(255, 196, 92), M.Neon))
 	end
 	return s
 end

@@ -192,7 +192,11 @@ end
 
 -- Actions -----------------------------------------------------------------------------------------
 local function playing(): boolean
-	return mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.phase == "ACTIVE" and run.paused == ""
+	if not (mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.paused == "") then
+		return false
+	end
+	-- A newcomer's first hunt waits for their first move or shot (DD-024): that input must be possible.
+	return run.phase == "ACTIVE" or (run.phase == "COUNTDOWN" and run.waiting == true)
 end
 
 Controls.actions.dash = function()
@@ -352,6 +356,7 @@ end
 -- Remotes -----------------------------------------------------------------------------------------
 local function enterRun()
 	inRun = true
+	Hud.reset()
 	Menus.hideLobby()
 	Menus.hideResults()
 	Hud.setVisible(true)
@@ -378,94 +383,6 @@ local function leaveRun()
 	Controls.enabled = false
 end
 
--- Узел-7 ------------------------------------------------------------------------------------------
--- Walking the base is optional: the quick menu (default after results) does everything the terminals do.
-local hubWalk = false
-local hubBar = Instance.new("ScreenGui")
-hubBar.Name = "Node7Bar"
-hubBar.ResetOnSpawn = false
-hubBar.Enabled = false
-hubBar.Parent = player:WaitForChild("PlayerGui")
-do
-	local b = Instance.new("TextButton")
-	b.AnchorPoint = Vector2.new(0.5, 0)
-	b.Position = UDim2.new(0.5, 0, 0, 12)
-	b.Size = UDim2.fromOffset(300, 40)
-	b.BackgroundColor3 = C.bg
-	b.BackgroundTransparency = 0.2
-	b.TextColor3 = C.cyan
-	b.Font = Enum.Font.GothamBlack
-	b.TextSize = 16
-	b.Text = "УЗЕЛ-7  ·  МЕНЮ [H]"
-	b.Parent = hubBar
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-	b.Activated:Connect(function()
-		hubWalk = false
-		Audio.play("ui")
-	end)
-end
-
-local function refreshHub()
-	local node = workspace:FindFirstChild("Node7")
-	local prof = Menus.profile and Menus.profile()
-	if not node or not prof then
-		return
-	end
-	local lit = {
-		TrophyStormCore = prof.components and prof.components.CMP_STORM_CORE == true,
-		TrophyBroodmother = prof.winsByOp and (prof.winsByOp.O04 or 0) > 0,
-		TrophyDevourer = prof.winsByOp and (prof.winsByOp.O06 or 0) > 0,
-	}
-	for _, d in node:GetDescendants() do
-		if d:IsA("BasePart") then
-			local trophy = d:GetAttribute("Trophy")
-			if trophy then
-				d.Transparency = if lit[trophy] then 0.1 else 0.85
-				local g = d:FindFirstChild("Glow")
-				if g then
-					g.Brightness = if lit[trophy] then 2 else 0
-				end
-			end
-			local wid = d:GetAttribute("Weapon")
-			if wid and d.Name:sub(1, 8) == "RackLamp" then
-				d.Transparency = if prof.weapons and prof.weapons[wid] then 0.2 else 0.9
-			end
-		end
-	end
-end
-
-Menus.onWalk = function()
-	if player.Character then
-		hubWalk = true
-	end
-end
-
-game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)
-	local action = prompt:GetAttribute("Terminal")
-	if not action or mode ~= "LOBBY" then
-		return
-	end
-	hubWalk = false
-	Menus.setTab(if action == "lab" then "workshop" else "play")
-	if action == "arsenal" and Menus.dossierSelected then
-		Menus.dossierSelected("mods")
-	end
-	Audio.play("ui", 1, 1.1)
-end)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed or mode ~= "LOBBY" then
-		return
-	end
-	if input.KeyCode == Enum.KeyCode.H or input.KeyCode == Enum.KeyCode.ButtonSelect then
-		if hubWalk then
-			hubWalk = false
-		elseif player.Character then
-			hubWalk = true
-		end
-	end
-end)
-
 stateRemote.OnClientEvent:Connect(function(buf, info)
 	if type(info) ~= "table" then
 		return
@@ -475,18 +392,9 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			leaveRun()
 		end
 		mode = "LOBBY"
-		if hubWalk and player.Character then
-			Menus.hideLobby()
-		else
-			hubWalk = false
-			Menus.showLobby(info.lobby, myId, Controls.device)
-		end
-		hubBar.Enabled = hubWalk
-		refreshHub()
+		Menus.showLobby(info.lobby, myId, Controls.device)
 		return
 	end
-	hubWalk = false
-	hubBar.Enabled = false
 	mode = "RUN"
 	if not inRun then
 		enterRun()
@@ -510,23 +418,23 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Hud.setVisible(false)
 	end
 	if run.phase == "COUNTDOWN" and run.waiting then
-		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И РОЙ ПОЙДЁТ")
+		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — РОЙ УЖЕ БЛИЗКО")
 	elseif run.phase == "COUNTDOWN" then
-		Menus.note(string.format("ВЫСАДКА: %s  ·  %d", Maps.get(run.map).name, math.ceil(run.countdown)))
+		Menus.note(string.format("ВЫСАДКА  ·  %d", math.ceil(run.countdown)))
 	elseif not me then
-		Menus.note("НАБЛЮДЕНИЕ · ВЫ ВОЙДЁТЕ В СЛЕДУЮЩИЙ ЗАБЕГ")
+		Menus.note("НАБЛЮДЕНИЕ  ·  ТЫ ВОЙДЁШЬ В СЛЕДУЮЩУЮ ОХОТУ")
 	elseif not me.alive and not run.result and me.downed then
 		Menus.note(
 			string.format(
-				"ВЫ РАНЕНЫ · НАПАРНИК ПОДНИМЕТ ВАС  ·  %d с  ·  %d%%",
+				"ТЫ РАНЕН  ·  НАПАРНИК ПОДНИМЕТ  ·  %d с  ·  %d%%",
 				me.bleed or 0,
 				me.revive or 0
 			)
 		)
 	elseif not me.alive and not run.result then
-		Menus.note("ВЫ ПОВЕРЖЕНЫ · НАБЛЮДАЕТЕ ЗА ОТРЯДОМ")
+		Menus.note("ТЫ ВЫБЫЛ  ·  СЛЕДИ ЗА ОТРЯДОМ")
 	elseif run.paused == "MENU" then
-		Menus.note("ПАУЗА · НАЖМИТЕ P ИЛИ ЗАКРОЙТЕ МЕНЮ")
+		Menus.note("ПАУЗА  ·  P — ПРОДОЛЖИТЬ")
 	elseif run.paused == "CHOOSE" and me and not me.offer then
 		Menus.note("ОТРЯД ВЫБИРАЕТ УЛУЧШЕНИЯ…")
 	else
@@ -1151,6 +1059,58 @@ local function localFire(dt: number)
 	end
 end
 
+-- Spore pods (DD-033): where the swarm surfaces, pods keep falling from the sky. One pod per breach
+-- every few seconds (and always for big enemies), so the sky shows where the next wave comes from.
+local podClock = {}
+EnemyView.onSpawn = function(x: number, z: number, kind: number)
+	if mode ~= "RUN" then
+		return
+	end
+	local big = kind == 5 or kind == 7 or kind == 9 or kind == 10
+	local cell = math.floor(x / 24) .. ":" .. math.floor(z / 24)
+	local now = os.clock()
+	if big or now - (podClock[cell] or 0) > 2.4 then
+		podClock[cell] = now
+		Fx.pod(x + math.random(-3, 3), z + math.random(-3, 3), big)
+	end
+end
+
+-- Tall decor between the camera and the hero fades out (ribs, mushroom caps, the drill rig).
+local fadeParts = {}
+local fadeClock = 0
+local function updateFade(dt: number, cam: Camera, focus: Vector3?)
+	fadeClock += dt
+	if fadeClock < 0.05 then
+		return
+	end
+	local step = fadeClock
+	fadeClock = 0
+	local c = cam.CFrame.Position
+	for _, f in fadeParts do
+		local p = f.part
+		local want = 0
+		if focus then
+			-- distance from the part to the camera->hero segment, and the hero is not in front of it
+			local seg = focus + Vector3.new(0, 2, 0) - c
+			local len = seg.Magnitude
+			local dir = seg / len
+			local rel = p.Position - c
+			local t = math.clamp(rel:Dot(dir), 0, len)
+			local d = (rel - dir * t).Magnitude
+			if d < f.r and t < len - 1 then
+				want = 0.72
+			end
+		end
+		local cur = p.LocalTransparencyModifier
+		if cur ~= want then
+			p.LocalTransparencyModifier = cur + (want - cur) * math.min(1, step * 8)
+			if math.abs(p.LocalTransparencyModifier - want) < 0.02 then
+				p.LocalTransparencyModifier = want
+			end
+		end
+	end
+end
+
 -- Arena animation -------------------------------------------------------------------------------------
 local animated = nil -- { rings = {{part, baseCF, index}}, core = part?, heart = part? }
 local function animateArena(now: number)
@@ -1181,6 +1141,23 @@ local function animateArena(now: number)
 			end
 		end
 		animated.heart = decor:FindFirstChild("Heart")
+		table.clear(fadeParts)
+		for _, d in decor:GetDescendants() do
+			if d:IsA("BasePart") and d:GetAttribute("Fade") then
+				table.insert(fadeParts, { part = d, r = math.max(d.Size.X, d.Size.Z) * 0.5 + 3 })
+			end
+		end
+		animated.rings2 = {}
+		for i = 1, 4 do
+			local coil = decor:FindFirstChild("Coil" .. i)
+			if coil then
+				for _, r in coil:GetChildren() do
+					if r.Name == "Ring" and r.Shape == Enum.PartType.Cylinder then
+						table.insert(animated.rings2, { r, r.CFrame, i })
+					end
+				end
+			end
+		end
 		for i = 1, 4 do
 			coilModels[i] = decor:FindFirstChild("Coil" .. i)
 		end
@@ -1191,8 +1168,11 @@ local function animateArena(now: number)
 			* CFrame.new(math.sin(now * 1.3 + i) * 0.4, 0, 0)
 			* CFrame.Angles(now * (0.4 + i * 0.25) * (if i % 2 == 0 then -1 else 1), 0, 0)
 	end
+	for _, ring in animated.rings2 do
+		ring[1].CFrame = ring[2] * CFrame.new(math.sin(now * 2 + ring[3]) * 0.4, 0, 0) * CFrame.Angles(0, math.sin(now * 1.3 + ring[3]) * 0.18, math.sin(now * 1.7 + ring[3] * 2) * 0.18)
+	end
 	if animated.core then
-		animated.core.Transparency = 0.35 + (math.sin(now * 2.5) + 1) * 0.08
+		animated.core.Transparency = 0.45 + (math.sin(now * 2.5) + 1) * 0.08
 	end
 	if animated.heart then
 		local k = (math.sin(now * 3) + 1) / 2
@@ -1253,7 +1233,7 @@ local function computeArrows(cam: Camera)
 		if rec.kind == 7 or rec.kind == 9 then
 			add(Vector3.new(rec.dx, 6, rec.dz), C.red, "БОСС")
 		elseif rec.kind == 5 or rec.kind == 10 then
-			add(Vector3.new(rec.dx, 4, rec.dz), C.gold, if rec.kind == 10 then "НОСИТЕЛЬ" else "ЭЛИТА")
+			add(Vector3.new(rec.dx, 4, rec.dz), C.gold, if rec.kind == 10 then "АЛЬФА" else "ЭЛИТА")
 		elseif rec.kind == 6 then
 			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "ГНЕЗДО")
 		elseif rec.kind == 11 then
@@ -1446,17 +1426,10 @@ local function frame(dt: number)
 		if focus then
 			Audio.setFocus(focus)
 		end
-	elseif hubWalk and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-		-- Third-person walk around Узел-7 with the stock follow camera.
-		local cam = workspace.CurrentCamera
-		local hum = player.Character:FindFirstChildOfClass("Humanoid")
-		if cam.CameraType ~= Enum.CameraType.Custom or cam.CameraSubject ~= hum then
-			cam.CameraType = Enum.CameraType.Custom
-			cam.CameraSubject = hum
-			cam.FieldOfView = 70
-		end
+		updateFade(dt, workspace.CurrentCamera, focus)
 	else
-		CameraRig.update(dt, "lobby", nil, 0, 1, 0)
+		local lroot = myRoot()
+		CameraRig.update(dt, "lobby", nil, 0, 1, 0, nil, if lroot then lroot.Position else nil)
 	end
 
 	-- Overdrive grade
@@ -1464,8 +1437,8 @@ local function frame(dt: number)
 	if grade then
 		local od = me and me.s01Casting
 		local low = me and me.alive and me.hp / me.maxHp < 0.3
-		grade.Saturation = if od then 0.45 elseif low then -0.25 else 0.12
-		grade.TintColor = if od then Color3.fromRGB(255, 240, 215) else Color3.fromRGB(232, 244, 255)
+		grade.Saturation = if od then 0.45 elseif low then -0.25 else 0.2
+		grade.TintColor = if od then Color3.fromRGB(255, 240, 215) else Color3.fromRGB(255, 238, 250)
 	end
 
 	animateArena(now)
