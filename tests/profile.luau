@@ -125,7 +125,7 @@ do
 	e.runs = 12
 	e.s01 = false
 	Profile._reconcile(e)
-	check(e.ops.O04 == 3 and e.ops.O06 == 1 and e.s01 == true and e.v == 2, "v1 veterans keep O04/O06 and get S01")
+	check(e.ops.O05 == 3 and e.ops.O07 == 1 and e.s01 == true and e.v == 2, "v1 veterans keep the boss hunts (O05/O07) and get S01")
 end
 
 if failures > 0 then
