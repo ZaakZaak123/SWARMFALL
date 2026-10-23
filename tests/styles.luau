@@ -313,7 +313,8 @@ do -- «Барьер» refill also shields the reactor, without stacking
 end
 
 do -- synergy banner fires once when the pair completes
-	local w, p = world()
+	local w = World.new({ seed = 7, op = "O02", players = { { id = 1, weapon = "W_ARC_RIFLE" } } })
+	local p = w.playerList[1]
 	p.slots = 0
 	Combat.applyChoice(w, p, "UPG_PIERCE")
 	w:drainEvents()
@@ -331,6 +332,19 @@ do -- synergy banner fires once when the pair completes
 		end
 	end
 	check(banners == 1, "synergy announced once")
+	-- O01 shows bare cards (DD-024): the synergy works but is not announced.
+	local w1 = World.new({ seed = 7, op = "O01", players = { { id = 1, weapon = "W_ARC_RIFLE" } } })
+	local p1 = w1.playerList[1]
+	p1.slots = 0
+	Combat.applyChoice(w1, p1, "UPG_PIERCE")
+	Combat.applyChoice(w1, p1, "UPG_CRIT")
+	local quiet = true
+	for _, ev in w1:drainEvents() do
+		if ev[1] == Codec.E.BANNER and ev[2]:find("СИНЕРГИЯ") then
+			quiet = false
+		end
+	end
+	check(quiet and p1.synergies.SYN_PIERCE_CRIT == true, "O01: synergy active but not announced")
 end
 
 do -- a new profile's second O01 offer shows «Расщепление»

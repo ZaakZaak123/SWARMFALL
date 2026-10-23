@@ -32,6 +32,14 @@ local offerFocus = 1
 local banishMode = false
 local blur
 local tab = "play"
+-- «НОВОЕ» (DD-024): anything that appears in the lobby after the session's first profile is marked
+-- until the player touches it. Session-only: the first profile of a session is the baseline.
+local seen: { [string]: boolean }? = nil
+local function markSeen(key: string)
+	if seen then
+		seen[key] = true
+	end
+end
 
 local STAT_ICONS = { power = "burst", rate = "chevrons", range = "crosshair", control = "users" }
 local STAT_NAMES = { power = "УРОН", rate = "ТЕМП", range = "ДАЛЬНОСТЬ", control = "ТОЛПА" }
@@ -91,6 +99,24 @@ local function button(parent, text: string, props, color: Color3?, iconName: str
 		tween(scale, 0.12, { Scale = 1 })
 	end)
 	return b, l
+end
+
+local function newBadge(parent: GuiObject, z: number?)
+	return label("НОВОЕ", {
+		Name = "NewBadge",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 8, 0, 2),
+		Size = UDim2.fromOffset(60, 20),
+		FontFace = F.head,
+		TextSize = 13,
+		TextColor3 = C.bg,
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.lime,
+		Corner = 3,
+		ZIndex = z or 8,
+		Visible = false,
+		Parent = parent,
+	})
 end
 
 local function scrapTag(parent, amount: number, props, color: Color3?)
@@ -288,7 +314,9 @@ local function buildLobby()
 	)
 	walkLabel.TextSize = 15
 	ui.walk = walk
+	ui.walkBadge = newBadge(walk, 5)
 	walk.Activated:Connect(function()
+		markSeen("walk")
 		Audio.play("ui")
 		if Menus.onWalk then
 			Menus.onWalk()
@@ -325,11 +353,12 @@ local function buildLobby()
 		)
 		l.TextColor3 = C.text
 		b.Activated:Connect(function()
+			markSeen("tab:" .. t[1])
 			tab = t[1]
 			Audio.play("ui")
 			Menus.refreshLobby()
 		end)
-		ui.tabs[t[1]] = { button = b, label = l }
+		ui.tabs[t[1]] = { button = b, label = l, badge = newBadge(b, 5) }
 	end
 
 	-- PLAY tab -------------------------------------------------------------------------------------
@@ -432,10 +461,12 @@ local function buildLobby()
 			tween(scale, 0.12, { Scale = 1 })
 		end)
 		card.Activated:Connect(function()
+			markSeen("op:" .. opId)
 			send("op", opId)
 			Audio.play("ui")
 		end)
-		ui.opCards[opId] = { card = card, stroke = card:FindFirstChildOfClass("UIStroke"), lock = lock }
+		ui.opCards[opId] =
+			{ card = card, stroke = card:FindFirstChildOfClass("UIStroke"), lock = lock, badge = newBadge(card, 7) }
 	end
 	-- Threat selector
 	ui.threatTitle = label("УГРОЗА", {
@@ -473,11 +504,14 @@ local function buildLobby()
 			Parent = b,
 		})
 		b.Activated:Connect(function()
+			markSeen("threat")
 			send("threat", t)
 			Audio.play("ui")
 		end)
 		ui.threatPips[t] = { button = b, icon = ic, stroke = b:FindFirstChildOfClass("UIStroke") }
 	end
+	ui.threatBadge = newBadge(ui.threatTitle, 8)
+	ui.threatBadge.Position = UDim2.fromOffset(130, 9)
 	ui.threatInfo = label("", {
 		Position = UDim2.fromOffset(32, 472),
 		Size = UDim2.fromOffset(330, 40),
@@ -720,6 +754,7 @@ local function buildLobby()
 			tween(scale, 0.15, { Scale = 1 })
 		end)
 		card.Activated:Connect(function()
+			markSeen("weapon:" .. id)
 			if profile and not profile.weapons[id] then
 				if (profile.scrap or 0) >= w.cost then
 					send("buyWeapon", id)
@@ -746,6 +781,7 @@ local function buildLobby()
 			mKills = mKills,
 			formState = formState,
 			evo = evo,
+			badge = newBadge(card, 7),
 		}
 	end
 
@@ -778,6 +814,7 @@ local function buildLobby()
 		if ui.ready then
 			send("unready")
 		else
+			markSeen("op:" .. (lobbyState and lobbyState.op or "O01"))
 			send("ready", selectedWeapon)
 		end
 	end)
@@ -1682,7 +1719,7 @@ function Menus.refreshLobby()
 			c.card.Position = UDim2.fromOffset(380 + (shownWeapons % 2) * 272, 24 + (shownWeapons // 2) * 252)
 			shownWeapons += 1
 		end
-		c.recipe.Visible = showWorkshop
+		c.recipe.Visible = showWorkshop and owned
 	end
 	-- weapons: lock / blueprint, mastery, permanent form
 	for id, c in ui.cards do
@@ -1910,6 +1947,31 @@ function Menus.refreshLobby()
 			pc.buy.BackgroundColor3 = C.panel2
 			pc.buyLabel.TextColor3 = C.lime
 		end
+	end
+	-- «НОВОЕ» badges: reachable now, not in the session baseline, not touched yet
+	local reach = {
+		["tab:workshop"] = { ui.tabs.workshop.badge, showWorkshop },
+		walk = { ui.walkBadge, ui.walk.Visible },
+		threat = { ui.threatBadge, showThreat },
+	}
+	for opId, m in ui.opCards do
+		reach["op:" .. opId] = { m.badge, m.card.Visible and not m.lock.Visible }
+	end
+	for id, c in ui.cards do
+		local usable = profile ~= nil
+			and (profile.weapons[id] == true or profile.blueprints == nil or profile.blueprints[id] ~= false)
+		reach["weapon:" .. id] = { c.badge, c.card.Visible and usable }
+	end
+	if profile and not seen then
+		seen = {}
+		for key, r in reach do
+			if r[2] then
+				seen[key] = true
+			end
+		end
+	end
+	for key, r in reach do
+		r[1].Visible = seen ~= nil and r[2] and not seen[key]
 	end
 end
 
@@ -2416,13 +2478,15 @@ function Menus.showOffer(me, run)
 				and run.runEvolution == true
 				and me.evolved == ""
 				and table.find(evo.keys, id) ~= nil
-			-- Style chip (DD-017) unless the card is a legacy evolution key.
-			local style = Defs.Upgrades[id] and Defs.Styles[Defs.Upgrades[id].style]
+			-- Style chip (DD-017) unless the card is a legacy evolution key. The first operation shows bare
+			-- cards: name, number, one line (DD-024); styles and synergies are taught from O02 on.
+			local simple = run ~= nil and run.op == "O01"
+			local style = not simple and Defs.Upgrades[id] and Defs.Styles[Defs.Upgrades[id].style]
 			c.tag.Text = if isKey then "КЛЮЧ ЭВОЛЮЦИИ" elseif style then style.name else ""
 			c.tag.TextColor3 = if isKey or not style then C.gold else style.color
 			c.tagIcon.Visible = isKey
-			c.tag2.Text = synergyNote(me, id) or ""
-			local syn = synergyFor(me, id)
+			local syn = if simple then nil else synergyFor(me, id)
+			c.tag2.Text = if syn then synergyNote(me, id) or "" else ""
 			if syn then
 				c.desc.Text = text .. '\n<font color="#C9A2FF">+ ' .. syn.text .. "</font>"
 			end
@@ -2671,6 +2735,15 @@ local function buildResults()
 		ZIndex = 21,
 		Parent = content,
 	})
+	-- First win of an operation (DD-024): one big «ОТКРЫТО» block replaces the tables.
+	ui.resUnlock = new("Frame", {
+		Position = UDim2.fromOffset(0, 250),
+		Size = UDim2.new(1, 0, 0, 300),
+		List = { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center },
+		Visible = false,
+		ZIndex = 21,
+		Parent = content,
+	})
 	ui.resPlayers = new("Frame", {
 		Position = UDim2.fromOffset(0, 370),
 		Size = UDim2.new(1, 0, 0, 200),
@@ -2686,6 +2759,7 @@ local function buildResults()
 	}, C.cyan, "play")
 	ui.resButtonLabel.TextSize = 24
 	ui.resButton.Activated:Connect(function()
+		ui.resClicked = true
 		send("continue")
 		Audio.play("ui")
 		ui.resButtonLabel.Text = "ЖДЁМ ОТРЯД"
@@ -2716,6 +2790,62 @@ local function statTile(parent, iconName: string, title: string, value: string, 
 	})
 end
 
+-- What the lobby gains with the first win of an operation (mirrors the gating in refreshLobby).
+local FIRST_WIN_FEATURE = {
+	O01 = "РАЗВИТИЕ — перки и лаборатория",
+	O02 = "УЗЕЛ-7 — база отряда",
+	O03 = "УГРОЗА — выше риск, больше Ксенита",
+}
+
+local function unlockInfo(u): (string, string)
+	local kind = u[1]
+	local text = if kind == "op"
+		then "ОТКРЫТО: " .. u[2] .. " · " .. Ops.get(u[2]).name
+		elseif kind == "component" then (Defs.Components[u[2]] and Defs.Components[u[2]].name or u[2]) .. " — В АРСЕНАЛЕ"
+		elseif kind == "s01" then "ГРАВИМОЛОТ S01 НАВСЕГДА"
+		elseif kind == "mastery" then (Defs.Weapons[u[2]] and Defs.Weapons[u[2]].short or u[2]) .. " · M" .. u[3]
+		elseif kind == "research" then "ИЗУЧЕН: "
+			.. (Defs.Enemies[u[2]] and Defs.Enemies[u[2]].name or u[2])
+			.. " "
+			.. string.rep("I", u[3])
+		else "УГРОЗА " .. u[2] .. " ОТКРЫТА"
+	local iconName = if kind == "op"
+		then "pin"
+		elseif kind == "component" then "core"
+		elseif kind == "s01" then "hammer"
+		elseif kind == "mastery" then "level"
+		elseif kind == "research" then "eye"
+		else "threat"
+	return text, iconName
+end
+
+local function unlockLine(parent, order: number, text: string, iconName: string, size: number, color: Color3)
+	local row = new("Frame", {
+		LayoutOrder = order,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, size + 12),
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 10),
+		},
+		ZIndex = 22,
+		Parent = parent,
+	})
+	icon(iconName, size, color, { LayoutOrder = 1, ZIndex = 22 }).Parent = row
+	label(text, {
+		LayoutOrder = 2,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, size + 12),
+		FontFace = F.head,
+		TextSize = size,
+		TextColor3 = color,
+		ZIndex = 22,
+		Parent = row,
+	})
+	return row
+end
+
 function Menus.showResults(result, votes, id: number, reward)
 	if ui.results.Visible and ui.shownResult == result and ui.shownReward == reward then
 		return
@@ -2723,8 +2853,65 @@ function Menus.showResults(result, votes, id: number, reward)
 	local first = ui.shownResult ~= result
 	ui.shownResult = result
 	ui.shownReward = reward
+	if first then
+		ui.resClicked = false
+	end
 	Menus.hideOffer()
 	ui.results.Visible = true
+	-- Spotlight: the first win of an operation opens the next one. Then the screen is about that alone.
+	local opened = nil
+	for _, u in reward and reward.unlocked or {} do
+		if u[1] == "op" then
+			opened = u[2]
+		end
+	end
+	local spotlight = result.victory and opened ~= nil
+	ui.resStats.Visible = not spotlight
+	ui.resProgress.Visible = not spotlight
+	ui.resPlayers.Visible = not spotlight
+	ui.resUnlock.Visible = spotlight
+	ui.resReward.Position = UDim2.new(0.5, 0, 0, if spotlight then 156 else 264)
+	if not ui.resClicked then
+		ui.resButtonLabel.Text = if spotlight then "ДАЛЬШЕ" else "В ЛОББИ"
+	end
+	clear(ui.resUnlock)
+	if spotlight then
+		label("ОТКРЫТО", {
+			LayoutOrder = 1,
+			Size = UDim2.new(1, 0, 0, 30),
+			FontFace = F.title,
+			TextSize = 24,
+			TextColor3 = C.lime,
+			ZIndex = 22,
+			Parent = ui.resUnlock,
+		})
+		local op = Ops.get(opened)
+		local big = unlockLine(ui.resUnlock, 2, op.code .. " · " .. op.name, "pin", 46, C.white)
+		local s = new("UIScale", { Scale = 1.6, Parent = big })
+		tween(s, 0.45, { Scale = 1 }, Enum.EasingStyle.Back)
+		label(op.brief, {
+			LayoutOrder = 3,
+			Size = UDim2.fromOffset(760, 44),
+			FontFace = F.body,
+			TextSize = 17,
+			TextWrapped = true,
+			TextColor3 = C.dim,
+			ZIndex = 22,
+			Parent = ui.resUnlock,
+		})
+		local feature = FIRST_WIN_FEATURE[result.op]
+		if feature then
+			unlockLine(ui.resUnlock, 4, "+ " .. feature, "level", 26, C.cyan)
+		end
+		local k = 0
+		for _, u in reward.unlocked do
+			if u[1] == "component" or u[1] == "s01" then
+				k += 1
+				local text, iconName = unlockInfo(u)
+				unlockLine(ui.resUnlock, 4 + k, text, iconName, 22, C.gold)
+			end
+		end
+	end
 	local vs = workspace.CurrentCamera.ViewportSize
 	ui.resultsScale.Scale = math.clamp(math.min(vs.X / 1080, vs.Y / 700), 0.45, 1.3)
 	clear(ui.resIcon)
@@ -2890,7 +3077,7 @@ function Menus.showResults(result, votes, id: number, reward)
 			return (PRIORITY[a[1]] or 9) < (PRIORITY[b[1]] or 9)
 		end)
 		for k, u in list do
-			if k > 3 then
+			if k > 3 or spotlight then
 				break
 			end
 			local cell = new("Frame", {
@@ -2906,26 +3093,7 @@ function Menus.showResults(result, votes, id: number, reward)
 				Parent = row,
 			})
 			local kind = u[1]
-			local text = if kind == "op"
-				then "ОТКРЫТО: " .. u[2] .. " · " .. Ops.get(u[2]).name
-				elseif kind == "component" then (Defs.Components[u[2]] and Defs.Components[u[2]].name or u[2])
-					.. " — В АРСЕНАЛЕ"
-				elseif kind == "s01" then "ГРАВИМОЛОТ S01 НАВСЕГДА"
-				elseif kind == "mastery" then (Defs.Weapons[u[2]] and Defs.Weapons[u[2]].short or u[2])
-					.. " · M"
-					.. u[3]
-				elseif kind == "research" then "ИЗУЧЕН: "
-					.. (Defs.Enemies[u[2]] and Defs.Enemies[u[2]].name or u[2])
-					.. " "
-					.. string.rep("I", u[3])
-				else "УГРОЗА " .. u[2] .. " ОТКРЫТА"
-			local iconName = if kind == "op"
-				then "pin"
-				elseif kind == "component" then "core"
-				elseif kind == "s01" then "hammer"
-				elseif kind == "mastery" then "level"
-				elseif kind == "research" then "eye"
-				else "threat"
+			local text, iconName = unlockInfo(u)
 			icon(iconName, 24, if kind == "component" then C.gold else C.lime, { LayoutOrder = 1, ZIndex = 22 }).Parent =
 				cell
 			label(text, {
@@ -3047,7 +3215,6 @@ function Menus.showResults(result, votes, id: number, reward)
 			Parent = stats,
 		})
 	end
-	ui.resButtonLabel.Text = "В ЛОББИ"
 	ui.resTitle.TextTransparency = 1
 	tween(ui.resTitle, 0.6, { TextTransparency = 0 })
 end

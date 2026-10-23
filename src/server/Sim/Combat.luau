@@ -899,6 +899,10 @@ function Combat.applyChoice(w, p, choice: string)
 			if not p.synergies[sid] and Combat.synergyActive(p, sid) then
 				p.synergies[sid] = true
 				local syn = Defs.Synergies[sid]
+				-- O01 teaches only the basics (DD-024): the synergy works, the banner waits for O02.
+				if w.op.id == "O01" then
+					continue
+				end
 				w:banner(
 					"СИНЕРГИЯ: " .. syn.name,
 					(if w.solo then "" else p.name .. " · ") .. syn.text,
