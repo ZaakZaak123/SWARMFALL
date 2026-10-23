@@ -193,6 +193,41 @@ function Audio.loop(key: string, id: string, volume: number, pitch: number)
 	end
 end
 
+-- Music beds (DD-036): the crater's ambience under everything, a fight track during hunts. Both are
+-- Roblox-licensed library assets (Pro Sound Effects "Electric Forest", APM "Independant Fight").
+local BEDS = {
+	ambience = { PSE .. "9114244977", 0.32 },
+	fight = { PSE .. "9042560019", 0.22 },
+}
+local beds = {}
+local bedTarget = { ambience = 0, fight = 0 }
+function Audio.setMusic(state: string)
+	bedTarget.ambience = if state == "run" then 0.45 else 1
+	bedTarget.fight = if state == "run" then 1 elseif state == "boss" then 1.25 else 0
+end
+function Audio.updateMusic(dt: number)
+	for key, def in BEDS do
+		local s = beds[key]
+		if not s then
+			s = Instance.new("Sound")
+			s.Name = "Bed_" .. key
+			s.SoundId = def[1]
+			s.Looped = true
+			s.Volume = 0
+			s.SoundGroup = group("ui")
+			s.Parent = SoundService
+			beds[key] = s
+		end
+		local goal = def[2] * bedTarget[key]
+		s.Volume += (goal - s.Volume) * math.min(1, dt * 0.8)
+		if s.Volume > 0.005 and not s.IsPlaying then
+			s:Play()
+		elseif s.Volume <= 0.005 and goal == 0 and s.IsPlaying then
+			s:Pause()
+		end
+	end
+end
+
 Audio.Ids = { whoosh = S .. "action_falling.ogg", rumble = S .. "impact_explosion_03.mp3", beam = PSE .. "9114246115" }
 
 return Audio

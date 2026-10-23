@@ -139,6 +139,12 @@ function CameraRig.closeUp(duration: number)
 	zoomUntil = os.clock() + duration
 end
 
+local INTRO_TIME = 3.2
+local introT = 1
+function CameraRig.intro()
+	introT = 0
+end
+
 function CameraRig.reset()
 	follow = nil
 	trauma = 0
@@ -249,6 +255,14 @@ function CameraRig.update(dt: number, view: string, focus: Vector3?, aimX: numbe
 
 	cam.CFrame = CFrame.lookAt(camPos, camPos + forward) * CFrame.new(sx, sy, 0) * CFrame.Angles(0, 0, roll)
 	cam.FieldOfView = p.fov + fovKick - 8 * z
+	-- Landing shot (DD-036): a hunt opens high over the crater and swoops down onto the hero.
+	if introT < 1 then
+		introT = math.min(1, introT + dt / INTRO_TIME)
+		local k = ease(introT)
+		local from = CFrame.lookAt(focus + Vector3.new(-40, 120, -150), focus + Vector3.new(0, 0, 60))
+		cam.CFrame = from:Lerp(cam.CFrame, k)
+		cam.FieldOfView = 70 + (cam.FieldOfView - 70) * k
+	end
 end
 
 -- 0 (camera away from the head) .. 1 (camera inside the head): used to fade the own body out.

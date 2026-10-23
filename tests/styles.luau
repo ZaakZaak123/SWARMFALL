@@ -59,8 +59,8 @@ if args[1] == "run" then
 	process.exit(if r.victory then 0 else 2)
 end
 
-local function world(weapon)
-	local w = World.new({ seed = 7, op = "O01", players = { { id = 1, weapon = weapon or "W_ARC_RIFLE" } } })
+local function world(weapon, op)
+	local w = World.new({ seed = 7, op = op or "O01", players = { { id = 1, weapon = weapon or "W_ARC_RIFLE" } } })
 	w:step(5)
 	w.t = 120
 	for _, e in w.enemies do
@@ -296,8 +296,8 @@ do -- Вулкан's heavy frame takes 30% less damage
 	check(math.abs((a.maxHp - a.hp) - (b.maxHp - b.hp) * 0.7) < 1e-6, "Вулкан: −30% incoming damage")
 end
 
-do -- «Барьер» refill also shields the reactor, without stacking
-	local w, p = world()
+do -- «Барьер» refill also shields the extractor (O03 is the first hunt with one), without stacking
+	local w, p = world(nil, "O03")
 	give(w, p, { UPG_SHIELD = 3 })
 	p.shieldKills = 100
 	local e = w:spawnEnemy("EN_RUNNER", p.x + 30, p.z, 0)

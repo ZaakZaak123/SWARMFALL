@@ -364,7 +364,18 @@ local function enterRun()
 	Fx.clear()
 	clearObjectives()
 	CameraRig.reset()
+	CameraRig.intro()
 	table.clear(lastCoilState)
+	-- The sky opens: a rain of spore pods over the crater while the camera comes down.
+	task.spawn(function()
+		local rng = Random.new()
+		for i = 1, 12 do
+			local a = rng:NextNumber(0, math.pi * 2)
+			local r = rng:NextNumber(60, 120)
+			Fx.pod(math.cos(a) * r, math.sin(a) * r, i % 5 == 0)
+			task.wait(rng:NextNumber(0.12, 0.3))
+		end
+	end)
 end
 
 local function leaveRun()
@@ -1455,6 +1466,8 @@ local function frame(dt: number)
 	EnemyView.update(dt, cam.CFrame.Position)
 	Fx.update(dt)
 	Menus.update(dt)
+	Audio.setMusic(if mode ~= "RUN" or not run or run.result then "lobby" elseif run.boss then "boss" else "run")
+	Audio.updateMusic(dt)
 
 	if run and me then
 		computeArrows(cam)
