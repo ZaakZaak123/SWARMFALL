@@ -36,6 +36,14 @@ Art.Meshes = {
 	-- XP gem (drawn Neon, coloured by tier)
 	GEM = { mesh = "rbxassetid://82319770548580", tex = "rbxassetid://106570994593008", size = Vector3.new(0.62, 1.60, 0.57) },
 	HARVEST = { mesh = "rbxassetid://71957833199002", tex = "rbxassetid://137686635194541", size = Vector3.new(5.00, 4.45, 3.80) },
+	-- base stations and furniture (DD-056)
+	ARMORY = { mesh = "rbxassetid://121893845271506", tex = "rbxassetid://129955545877203", size = Vector3.new(5.94, 7.00, 3.66) },
+	BUILDDESK = { mesh = "rbxassetid://124355537983434", tex = "rbxassetid://108790107511088", size = Vector3.new(7.00, 6.50, 7.00) },
+	BEACON = { mesh = "rbxassetid://109356532071460", tex = "rbxassetid://80652932562427", size = Vector3.new(2.74, 10.00, 2.79) },
+	BOARD = { mesh = "rbxassetid://76491411634190", tex = "rbxassetid://88214790030886", size = Vector3.new(6.46, 7.00, 1.84) },
+	RADAR = { mesh = "rbxassetid://89625350262556", tex = "rbxassetid://73147736121457", size = Vector3.new(6.00, 8.43, 4.85) },
+	FLOODLIGHT = { mesh = "rbxassetid://116061092931530", tex = "rbxassetid://91763926511926", size = Vector3.new(3.00, 4.50, 1.20) },
+	PLINTH = { mesh = "rbxassetid://123821428304518", tex = "rbxassetid://83838900429311", size = Vector3.new(4.04, 2.00, 4.05) },
 }
 
 -- Swarm species (DD-048): segmented generated creatures, one mesh per animated piece. Coordinates are

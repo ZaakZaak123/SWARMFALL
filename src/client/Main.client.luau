@@ -1854,6 +1854,9 @@ local function frame(dt: number)
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = sceneCf
 	end
+	local baseWorld = mode ~= "RUN" or Base.sceneActive()
+	Base.setWorldVisible(baseWorld)
+	Range.setVisible(mode ~= "RUN")
 	local onBase = (mode == "LOBBY" or mode == "HUB") and not Menus.modalOpen() and not HubMenus.anyVisible() and not Base.sceneActive()
 	Base.setActive(onBase)
 	Base.update(dt, if root then root.Position else nil)

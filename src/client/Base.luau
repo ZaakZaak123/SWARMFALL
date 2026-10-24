@@ -32,6 +32,8 @@ local Base = {}
 local STATIONS = {
 	{
 		key = "armory",
+		art = "ARMORY",
+		h = 6.5,
 		name = "ОРУЖЕЙНАЯ",
 		sub = "Оружие и улучшения",
 		icon = "swords",
@@ -41,6 +43,8 @@ local STATIONS = {
 	},
 	{
 		key = "build",
+		art = "BUILDDESK",
+		h = 5.5,
 		name = "ПОСТРОЙКИ",
 		sub = "Турели аванпоста",
 		icon = "shield",
@@ -50,6 +54,8 @@ local STATIONS = {
 	},
 	{
 		key = "launch",
+		art = "BEACON",
+		h = 10,
 		name = "ВЫСАДКА",
 		sub = "Выбор охоты · в бой",
 		icon = "play",
@@ -60,6 +66,8 @@ local STATIONS = {
 	-- camp only (DD-053)
 	{
 		key = "board",
+		art = "BOARD",
+		h = 6.5,
 		name = "ДОСКА ОТРЯДОВ",
 		sub = "Найди напарников",
 		icon = "users",
@@ -70,6 +78,8 @@ local STATIONS = {
 	},
 	{
 		key = "outposts",
+		art = "RADAR",
+		h = 7.5,
 		name = "АВАНПОСТЫ",
 		sub = "Базы других охотников",
 		icon = "eye",
@@ -278,7 +288,7 @@ local function buildWorld()
 				Parent = head,
 			}
 		)
-		lamps[i] = { head = head, light = spot }
+		lamps[i] = { head = head, light = spot, pole = pole, yaw = yaw }
 	end
 	-- socket markers (empty sockets, once the outpost is open)
 	for i, s in Meta.Sockets do
@@ -293,6 +303,59 @@ local function buildWorld()
 		end)
 		pr.MaxActivationDistance = 7
 		sockets[i] = { ring = ring, prompt = pr }
+	end
+end
+
+
+-- Generated models for the stations, lamps and plinths (DD-056). The art templates replicate from the
+-- server a moment after join; until then (or if an asset fails) the primitive base stands in.
+local function artTemplate(key: string): MeshPart?
+	local f = game:GetService("ReplicatedStorage"):FindFirstChild("ArtTemplates")
+	local t = f and f:FindFirstChild(key)
+	return if t and t:IsA("MeshPart") then t else nil
+end
+
+local function artModel(key: string, height: number, cf: CFrame, parent: Instance): MeshPart?
+	local t = artTemplate(key)
+	if not t then
+		return nil
+	end
+	local m = t:Clone()
+	m.Size = t.Size * (height / t.Size.Y)
+	m.CFrame = cf * CFrame.new(0, m.Size.Y / 2, 0)
+	m.CastShadow = true
+	m.Parent = parent
+	return m
+end
+
+-- Each station: its model at the back of the pad, front to the camera; the bare beam goes away once
+-- the model is there.
+local function dressStations()
+	for _, sp in stationParts do
+		local def = sp.def
+		if def.art and not sp.model then
+			-- generated meshes face -Z: toward the camera; a slight turn toward the middle of the yard
+			local at = Vector3.new(def.x, 0.25, def.z)
+			local yaw = math.clamp(-def.x / 60, -0.35, 0.35)
+			local m = artModel(def.art, def.h, CFrame.new(at + Vector3.new(0, 0, 1.6)) * CFrame.Angles(0, yaw, 0), sp.holder)
+			if m then
+				sp.model = m
+				sp.beam.Transparency = 1
+				sp.beam.Parent = nil
+			end
+		end
+	end
+	for _, l in lamps do
+		if not l.model then
+			local pos = l.head.Position
+			local m = artModel("FLOODLIGHT", 11, CFrame.new(pos.X, 0, pos.Z) * CFrame.Angles(0, l.yaw + math.pi, 0), l.head.Parent)
+			if m then
+				l.model = m
+				l.pole.Transparency = 1
+				l.head.Transparency = 1
+				l.head.CFrame = CFrame.new(pos.X, 10.4, pos.Z) * CFrame.Angles(0, l.yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
+			end
+		end
 	end
 end
 
@@ -420,6 +483,7 @@ local function fitTo(model: Model, height: number, longest: boolean?)
 end
 
 local function pedestal(x: number, color: Color3, lit: boolean): BasePart
+	local plinth = artModel("PLINTH", 1.3, CFrame.new(x, 0, SHOW_Z), showFolder)
 	local base = part({
 		Name = "Pedestal",
 		Shape = Enum.PartType.Cylinder,
@@ -430,6 +494,11 @@ local function pedestal(x: number, color: Color3, lit: boolean): BasePart
 	})
 	base.CFrame = CFrame.new(x, 0.6, SHOW_Z) * CFrame.Angles(0, 0, math.rad(90))
 	base.CastShadow = true
+	if plinth then
+		base.Transparency = 1 -- the generated plinth carries the look; this part stays as the anchor
+		plinth.Size = Vector3.new(5.6, plinth.Size.Y, 5.6)
+		plinth.CFrame = CFrame.new(x, plinth.Size.Y / 2, SHOW_Z)
+	end
 	local ring = ringPart("Ring", 3.2, color, 1.24, showFolder)
 	ring.CFrame = CFrame.new(x, 1.24, SHOW_Z)
 	setRing(ring, if lit then 0.1 else 0.7)
@@ -1180,6 +1249,15 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 	actions = acts
 	buildWorld()
 	buildHud(playerGui)
+	task.spawn(function()
+		local rs = game:GetService("ReplicatedStorage")
+		local f = rs:WaitForChild("ArtTemplates", 30)
+		local t0 = os.clock()
+		while f and not f:GetAttribute("Ready") and os.clock() - t0 < 30 do
+			task.wait(0.5)
+		end
+		dressStations()
+	end)
 end
 
 function Base.setProfile(pub)
@@ -1212,6 +1290,15 @@ function Base.setActive(on: boolean)
 	end
 	if on then
 		Base.refresh()
+	end
+end
+
+-- The base's own buildings (stations, lamps, showcase, markers) are not part of the battlefield: they
+-- leave the world for the run and come back on the base (and for the victory scene).
+function Base.setWorldVisible(on: boolean)
+	local want = if on then workspace else nil
+	if folder.Parent ~= want then
+		folder.Parent = want
 	end
 end
 

@@ -140,6 +140,13 @@ function Range.init(parent: Instance)
 	new("UIStroke", { Color = C.ink, Thickness = 2.5, Parent = boardText })
 end
 
+function Range.setVisible(on: boolean)
+	local want = if on then workspace else nil
+	if folder.Parent ~= want then
+		folder.Parent = want
+	end
+end
+
 function Range.isActive(): boolean
 	return active
 end
