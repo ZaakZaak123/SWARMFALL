@@ -1,5 +1,5 @@
 --!nonstrict
--- Server glue: lobby -> run -> results. Owns characters, validates every remote, feeds the pure
+-- Server glue: camp -> squad base -> run -> results. Owns characters, validates every remote, feeds the pure
 -- simulation (Sim/World), replicates its state (15 Hz packed snapshots) and events (batched),
 -- and settles meta progression (Profile) at the end of each run.
 
@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local AnalyticsService = game:GetService("AnalyticsService")
+local TeleportService = game:GetService("TeleportService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
@@ -20,6 +21,9 @@ local ArtLoader = require(script.Parent.ArtLoader)
 local Profile = require(script.Parent.Profile)
 local Outposts = require(script.Parent.Outposts)
 local Meta = require(Shared:WaitForChild("Meta"))
+local Showcase = require(Shared:WaitForChild("Showcase"))
+local Goals = require(Shared:WaitForChild("Goals"))
+local Squads = require(script.Parent.Squads)
 
 Players.CharacterAutoLoads = false
 
@@ -35,6 +39,7 @@ local inputRemote = remote(Codec.Remotes.Input)
 local stateRemote = remote(Codec.Remotes.State)
 local eventsRemote = remote(Codec.Remotes.Events)
 local profileRemote = remote(Codec.Remotes.Profile)
+local socialRemote = remote(Codec.Remotes.Social)
 remotes.Parent = ReplicatedStorage
 
 local SNAPSHOT_RATE = 15
@@ -43,10 +48,24 @@ local JOIN_GRACE = 15 -- a player who just arrived gets at least this long befor
 local STRIKE_DELAY = 5 -- first turret built -> the swarm comes (the build animation plays meanwhile)
 local RESULTS_TIMEOUT = 60
 
+-- Server roles (DD-053) -------------------------------------------------------------------------------
+-- Public servers are camps (HUB): everyone meets, shows off, forms squads; nobody fights there. A squad
+-- that launches drops into its own reserved server — a session: the squad's base (LOBBY) and its runs
+-- (RUN), exactly the old one-squad server. Studio has no teleports: the camp turns into the session in
+-- place and back («В ЛАГЕРЬ»).
+local IS_SESSION = game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0
+local TELEPORTS = not RunService:IsStudio()
+local SESSION_WAIT = 20 -- a session waits this long for the whole squad before it starts anyway
+local squads = Squads.new()
+local hubSwap = nil -- the squad whose lobby a camp handler is acting on
+local sessionHostId: number? = nil -- the squad host of a session (its base and turrets)
+local sessionPlan = nil -- { members = {userId}, autostart, since } until the session's first run
+
 -- Server state ----------------------------------------------------------------------------------------
-local mode = "LOBBY" -- LOBBY | RUN
+local mode = if IS_SESSION then "LOBBY" else "HUB" -- HUB | LOBBY | RUN
 -- mode: "hunt" (story operations) | "siege" (host's outpost) | "raid" (lobby.target, chosen by the host)
 local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1, mode = "hunt", target = nil, candidates = nil, hold = false, strikeAt = nil :: number? }
+local serverLobby = lobby -- `lobby` is swapped to a camp squad while its handlers run
 
 -- Anomaly of the day (DD-041): hunts from the third one on, and sieges. First hunts stay readable.
 local function todaysAnomaly()
@@ -99,6 +118,15 @@ local function allow(player: Player): boolean
 end
 
 local function host(): Player?
+	if hubSwap then
+		return hubSwap.host
+	end
+	if sessionHostId then
+		local h = Players:GetPlayerByUserId(sessionHostId)
+		if h then
+			return h
+		end
+	end
 	for _, p in joinOrder do
 		if p.Parent then
 			return p
@@ -308,10 +336,17 @@ end
 local LOBBY_SPOTS = { { 0, -58 }, { -5, -60 }, { 5, -60 }, { 0, -63 } }
 local LOBBY_FACING = math.pi
 local function toHub(player: Player)
-	if mode ~= "LOBBY" or not player.Parent then
+	if (mode ~= "LOBBY" and mode ~= "HUB") or not player.Parent then
 		return
 	end
 	local i = table.find(Players:GetPlayers(), player) or 1
+	if mode == "HUB" then
+		-- the camp can hold a crowd: a loose ring in the yard
+		local a = (i - 1) * 2.4
+		local r = if i == 1 then 0 else 4 + (i % 3) * 3
+		prepareCharacter(player, math.cos(a) * r, -58 + math.sin(a) * r * 0.6, LOBBY_FACING)
+		return
+	end
 	local spot = LOBBY_SPOTS[(i - 1) % #LOBBY_SPOTS + 1]
 	prepareCharacter(player, spot[1], spot[2], LOBBY_FACING)
 end
@@ -341,6 +376,209 @@ local function backToLobby()
 	end
 end
 
+-- Camp (DD-053) ---------------------------------------------------------------------------------------
+local function social(player: Player, kind: string, data)
+	if player.Parent then
+		socialRemote:FireClient(player, kind, data)
+	end
+end
+
+-- The hunt a hunter's own squad starts on: their next unwon story hunt.
+local function nextOpFor(player: Player): string
+	local d = Profile.get(player)
+	if not d then
+		return "O01"
+	end
+	local last = "O01"
+	for _, id in Ops.Order do
+		if id ~= "CA01" and (d.ops[id] or 0) >= 1 then
+			last = id
+			if ((d.wins_by_op or {})[id] or 0) == 0 then
+				return id
+			end
+		end
+	end
+	return last
+end
+
+local function canPlay(player: Player, sq): boolean
+	if sq.mode == "hunt" then
+		return Profile.maxThreat(player, sq.op) >= 1
+	end
+	return Profile.get(player) ~= nil
+end
+
+local function teleportData(sq)
+	local data = {
+		v = 1,
+		host = sq.host.UserId,
+		op = sq.op,
+		threat = sq.threat,
+		mode = sq.mode,
+		target = if sq.target then sq.target.uid else nil,
+		members = {},
+		weapons = {},
+		autostart = true,
+	}
+	for _, m in sq.members do
+		table.insert(data.members, m.UserId)
+		data.weapons[tostring(m.UserId)] = sq.weapon[m] or "W_ARC_RIFLE"
+	end
+	return data
+end
+
+-- Studio: the camp becomes this squad's session in place.
+local function enterSessionInPlace(sq)
+	-- may run inside a swapped camp handler: write to the server's own lobby
+	lobby = serverLobby
+	hubSwap = nil
+	lobby.op, lobby.threat, lobby.mode, lobby.target = sq.op, sq.threat, sq.mode, sq.target
+	table.clear(lobby.ready)
+	table.clear(lobby.weapon)
+	for _, m in sq.members do
+		lobby.ready[m] = true
+		lobby.weapon[m] = sq.weapon[m] or "W_ARC_RIFLE"
+	end
+	sessionHostId = sq.host.UserId
+	for _, m in table.clone(sq.members) do
+		squads:remove(m)
+	end
+	mode = "LOBBY"
+	startRun()
+end
+
+-- A squad drops into its own reserved server (or, in Studio, this one).
+local function launch(sq)
+	if sq.launching then
+		return
+	end
+	-- whoever is not ready when the countdown ends stays in the camp
+	for _, m in table.clone(sq.members) do
+		if not sq.ready[m] then
+			squads:solo(m, nextOpFor(m))
+		end
+	end
+	if #sq.members == 0 then
+		return
+	end
+	sq.launching = true
+	sq.countdown = nil
+	if not TELEPORTS then
+		enterSessionInPlace(sq)
+		return
+	end
+	local members = table.clone(sq.members)
+	for _, m in members do
+		social(m, "launch", Ops.get(sq.op).name)
+	end
+	task.spawn(function()
+		local options = Instance.new("TeleportOptions")
+		options.ShouldReserveServer = true
+		options:SetTeleportData(teleportData(sq))
+		local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, members, options)
+		if not ok then
+			warn("[SWARMFALL] launch failed", err)
+			sq.launching = false
+			table.clear(sq.ready)
+			for _, m in members do
+				social(m, "error", "Высадка не удалась — попробуй ещё раз")
+			end
+		end
+	end)
+end
+
+TeleportService.TeleportInitFailed:Connect(function(player: Player, _result, message)
+	warn("[SWARMFALL] teleport failed", player.Name, message)
+	local sq = squads:squadOf(player)
+	if sq then
+		sq.launching = false
+		table.clear(sq.ready)
+	end
+	social(player, "error", "Высадка не удалась — попробуй ещё раз")
+end)
+
+-- «В ЛАГЕРЬ»: back to a public camp server (live) or, in Studio, the whole server back to the camp.
+local function toCamp(player: Player): boolean
+	if TELEPORTS then
+		if not IS_SESSION then
+			return false
+		end
+		task.spawn(function()
+			local ok = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, { player })
+			if not ok then
+				social(player, "error", "Не удалось вернуться в лагерь")
+			end
+		end)
+		return true
+	end
+	if mode ~= "LOBBY" then
+		return false
+	end
+	mode = "HUB"
+	sessionHostId = nil
+	table.clear(lobby.ready)
+	lobby.countdown = nil
+	lobby.strikeAt = nil
+	buildArena("MAP_REACTOR_YARD")
+	for _, pl in Players:GetPlayers() do
+		squads:solo(pl, nextOpFor(pl))
+		clearCharacter(pl)
+		task.spawn(toHub, pl)
+	end
+	return true
+end
+
+-- Session: the squad arrives with a plan (teleport data). Only ids and choices travel; everything is
+-- checked against the host's profile here (teleport data passes through clients).
+local function sessionJoin(player: Player)
+	if not IS_SESSION or sessionPlan then
+		return
+	end
+	local ok, jd = pcall(player.GetJoinData, player)
+	local data = ok and jd and jd.TeleportData
+	if type(data) ~= "table" or not tonumber(data.host) then
+		return
+	end
+	sessionHostId = tonumber(data.host)
+	sessionPlan = { members = {}, since = os.clock(), data = data }
+	for _, uid in (if type(data.members) == "table" then data.members else {}) do
+		if tonumber(uid) then
+			table.insert(sessionPlan.members, tonumber(uid))
+		end
+	end
+end
+
+local function sessionStart()
+	local plan = sessionPlan
+	sessionPlan = nil
+	local d = plan.data
+	local h = host()
+	if not h then
+		return
+	end
+	local opId = if type(d.op) == "string" and table.find(Ops.Order, d.op) and Profile.maxThreat(h, d.op) >= 1 then d.op else "O01"
+	lobby.op = opId
+	lobby.threat = math.clamp(math.floor(tonumber(d.threat) or 1), 1, math.max(1, Profile.maxThreat(h, opId)))
+	local f = Profile.features(Profile.get(h) or {})
+	local m = d.mode
+	lobby.mode = if m == "siege" and f.siege then "siege" elseif m == "strike" and f.outpost then "strike" elseif m == "raid" and f.raids then "raid" else "hunt"
+	if lobby.mode == "raid" then
+		lobby.target = if tonumber(d.target) then Outposts.find(tonumber(d.target)) else nil
+		if not lobby.target then
+			lobby.mode = "hunt"
+		end
+	end
+	buildArena(Ops.get(lobby.op).map)
+	for _, player in Players:GetPlayers() do
+		local w = type(d.weapons) == "table" and d.weapons[tostring(player.UserId)]
+		lobby.weapon[player] = if type(w) == "string" and Defs.Weapons[w] then w else "W_ARC_RIFLE"
+		lobby.ready[player] = true
+	end
+	if d.autostart then
+		startRun()
+	end
+end
+
 -- A player who has never won O01 skips the lobby: seconds after joining they are already shooting
 -- (DD-024). Only when nobody else is waiting in the lobby with other plans.
 local function isNewcomer(player: Player): boolean
@@ -362,7 +600,17 @@ local function autoDeploy(player: Player)
 		funnel[player] = {}
 		funnelStep(player, 1)
 	end
-	if mode ~= "LOBBY" then
+	if mode == "HUB" then
+		local sq = squads:squadOf(player) or squads:solo(player, "O01")
+		if #sq.members == 1 and not sq.launching then
+			sq.op, sq.mode, sq.threat = "O01", "hunt", 1
+			sq.weapon[player] = "W_ARC_RIFLE"
+			sq.ready[player] = true
+			launch(sq)
+		end
+		return
+	end
+	if mode ~= "LOBBY" or IS_SESSION then
 		return
 	end
 	for _, other in Players:GetPlayers() do
@@ -389,10 +637,18 @@ Players.PlayerAdded:Connect(function(player)
 		end
 		if player.Parent and Profile.get(player) then
 			Outposts.claim(player)
+			local sq = squads:squadOf(player)
+			if sq and #sq.members == 1 and not sq.launching then
+				sq.op = nextOpFor(player)
+			end
 		end
 	end)
+	if mode == "HUB" then
+		squads:solo(player, "O01")
+	end
+	sessionJoin(player)
 	task.wait(1)
-	if mode == "LOBBY" then
+	if mode == "LOBBY" or mode == "HUB" then
 		toHub(player)
 		if lobby.countdown then
 			lobby.countdown = math.max(lobby.countdown, JOIN_GRACE)
@@ -401,6 +657,10 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 for _, player in Players:GetPlayers() do
+	if mode == "HUB" then
+		squads:solo(player, nextOpFor(player))
+	end
+	sessionJoin(player)
 	task.spawn(function()
 		toHub(player)
 		autoDeploy(player)
@@ -411,7 +671,7 @@ end
 local handlers = {}
 
 local function lobbyOnly(): boolean
-	return mode == "LOBBY"
+	return mode == "LOBBY" or mode == "HUB"
 end
 
 function handlers.ready(player: Player, weapon)
@@ -421,13 +681,17 @@ function handlers.ready(player: Player, weapon)
 	lobby.weapon[player] = weapon
 	lobby.ready[player] = true
 	local all = true
-	for _, p in Players:GetPlayers() do
+	for _, p in (if mode == "HUB" then lobby.members else Players:GetPlayers()) do
 		if not lobby.ready[p] then
 			all = false
 		end
 	end
 	if all then
-		startRun()
+		if mode == "HUB" then
+			launch(lobby)
+		else
+			startRun()
+		end
 	elseif not lobby.countdown then
 		lobby.countdown = SQUAD_GATHER
 	end
@@ -462,7 +726,9 @@ function handlers.op(player: Player, opId)
 	end
 	lobby.op = opId
 	lobby.threat = math.min(lobby.threat, Profile.maxThreat(player, opId))
-	buildArena(Ops.get(opId).map)
+	if mode ~= "HUB" then
+		buildArena(Ops.get(opId).map)
+	end
 	return true
 end
 
@@ -480,16 +746,17 @@ function handlers.mode(player: Player, m)
 		return false
 	end
 	lobby.mode = m
-	if m == "raid" and not lobby.candidates then
-		lobby.candidates = {}
+	local L = lobby -- a camp squad: the async fill below must land in it, not in the server lobby
+	if m == "raid" and not L.candidates then
+		L.candidates = {}
 		task.spawn(function()
 			local list = Outposts.candidates(player)
-			lobby.candidates = {}
+			L.candidates = {}
 			for i, c in list do
-				lobby.candidates[i] = { name = c.name, rating = c.rating, power = Meta.outpostPower(c.slots), uid = c.uid, rival = c.rival }
+				L.candidates[i] = { name = c.name, rating = c.rating, power = Meta.outpostPower(c.slots), uid = c.uid, rival = c.rival }
 			end
-			lobby.candidateData = list
-			lobby.target = list[1]
+			L.candidateData = list
+			L.target = list[1]
 		end)
 	end
 	return true
@@ -531,7 +798,21 @@ end
 -- The first turret on a host's outpost calls the swarm: «Первый натиск» starts by itself (DD-052).
 local function maybeStrike(player: Player)
 	local d = Profile.get(player)
-	if not d or d.tut.strike or player ~= host() or mode ~= "LOBBY" or lobby.strikeAt then
+	if not d or d.tut.strike then
+		return
+	end
+	if mode == "HUB" then
+		-- built in the camp: the hunter drops into their own short defence
+		local sq = squads:squadOf(player)
+		if sq and not sq.launching and not sq.strikeAt then
+			if #sq.members > 1 then
+				sq = squads:solo(player, nextOpFor(player))
+			end
+			sq.strikeAt = os.clock() + STRIKE_DELAY
+		end
+		return
+	end
+	if player ~= host() or mode ~= "LOBBY" or lobby.strikeAt then
 		return
 	end
 	lobby.strikeAt = os.clock() + STRIKE_DELAY
@@ -788,6 +1069,100 @@ if RunService:IsStudio() then
 	end
 end
 
+-- Camp handlers (DD-053) ------------------------------------------------------------------------------
+local function campOnly(): boolean
+	return mode == "HUB"
+end
+
+function handlers.join(player: Player, id)
+	if not campOnly() or not finite(id) then
+		return false
+	end
+	local ok, why = squads:join(player, id)
+	if not ok then
+		social(player, "error", why or "Не получилось")
+		return false
+	end
+	local sq = squads:squadOf(player)
+	for _, m in sq.members do
+		if m ~= player then
+			social(m, "joined", player.DisplayName)
+		end
+	end
+	return true
+end
+
+function handlers.leave(player: Player)
+	if not campOnly() then
+		return false
+	end
+	local sq = squads:squadOf(player)
+	if not sq or #sq.members <= 1 or sq.launching then
+		return false
+	end
+	squads:leave(player, nextOpFor(player))
+	return true
+end
+
+function handlers.recruit(player: Player, on)
+	local sq = campOnly() and squads:squadOf(player)
+	if not sq or sq.host ~= player or type(on) ~= "boolean" then
+		return false
+	end
+	sq.open = on
+	return true
+end
+
+function handlers.invite(player: Player, uid)
+	local sq = campOnly() and squads:squadOf(player)
+	local target = finite(uid) and Players:GetPlayerByUserId(uid)
+	if not sq or not target or target == player or #sq.members >= Squads.Max then
+		return false
+	end
+	if sq.host ~= player then
+		-- a member asks: the invite still comes from the squad
+		sq = squads:squadOf(player)
+	end
+	sq.invited[target.UserId] = true
+	social(target, "invite", { from = player.DisplayName, squad = sq.id, title = Showcase.squadTitle(sq.mode, Ops.get(sq.op).name, Ops.get(sq.op).index, nil) })
+	return true
+end
+
+function handlers.match(player: Player)
+	if not campOnly() then
+		return false
+	end
+	local result, sq = squads:match(player, canPlay)
+	if result == "joined" and sq then
+		for _, m in sq.members do
+			if m ~= player then
+				social(m, "joined", player.DisplayName)
+			end
+		end
+	end
+	social(player, "match", result)
+	return true
+end
+
+function handlers.like(player: Player, uid)
+	local owner = finite(uid) and Players:GetPlayerByUserId(uid)
+	if not owner or not Profile.like(player, owner, Meta.dayIndex(os.time())) then
+		return false
+	end
+	social(owner, "liked", player.DisplayName)
+	return true
+end
+
+function handlers.camp(player: Player)
+	if mode == "RUN" and world and world.phase == "RESULTS" then
+		settle()
+		if not TELEPORTS then
+			backToLobby()
+		end
+	end
+	return toCamp(player)
+end
+
 function handlers.profile(player: Player)
 	pushProfile(player)
 	return true
@@ -803,7 +1178,18 @@ inputRemote.OnServerEvent:Connect(function(player: Player, action, ...)
 		rejected += 1
 		return
 	end
-	local ok, accepted = pcall(handler, player, ...)
+	local ok, accepted
+	if mode == "HUB" and squads:squadOf(player) then
+		-- camp: lobby handlers act on the player's own squad
+		local saved = lobby
+		lobby = squads:squadOf(player)
+		hubSwap = lobby
+		ok, accepted = pcall(handler, player, ...)
+		lobby = saved
+		hubSwap = nil
+	else
+		ok, accepted = pcall(handler, player, ...)
+	end
 	if not ok then
 		warn("[SWARMFALL] handler error", action, accepted)
 		rejected += 1
@@ -860,23 +1246,24 @@ local function syncCharacters(dt: number)
 end
 
 -- Replication ----------------------------------------------------------------------------------------
-local function lobbyInfo()
+local function lobbyInfo(L, h, members, shared)
+	L = L or lobby
+	h = h or host()
 	local list = {}
-	for _, player in Players:GetPlayers() do
+	for _, player in members or Players:GetPlayers() do
 		table.insert(list, {
 			id = player.UserId,
 			name = player.DisplayName,
-			ready = lobby.ready[player] == true,
-			weapon = lobby.weapon[player] or "W_ARC_RIFLE",
+			ready = L.ready[player] == true,
+			weapon = L.weapon[player] or "W_ARC_RIFLE",
 		})
 	end
-	local h = host()
+	local lobby = L
 	local hostData = h and Profile.get(h)
+	shared = shared or { boards = Outposts.boards(), online = Outposts.online() }
 	return {
 		players = list,
 		countdown = lobby.countdown,
-		hold = lobby.hold,
-		strike = if lobby.strikeAt then math.max(0, lobby.strikeAt - os.clock()) else nil,
 		op = lobby.op,
 		map = Ops.get(lobby.op).map,
 		threat = lobby.threat,
@@ -887,9 +1274,43 @@ local function lobbyInfo()
 		target = if lobby.target then { name = lobby.target.name, rating = lobby.target.rating, uid = lobby.target.uid, power = Meta.outpostPower(lobby.target.slots), slots = lobby.target.slots, brood = lobby.target.brood } else nil,
 		candidates = lobby.candidates,
 		anomaly = todaysAnomaly().id,
-		boards = Outposts.boards(),
-		online = Outposts.online(),
+		boards = shared.boards,
+		online = shared.online,
+		hold = lobby.hold,
+		strike = if lobby.strikeAt then math.max(0, lobby.strikeAt - os.clock()) else nil,
+		camp = mode == "LOBBY" and (IS_SESSION or not TELEPORTS), -- «В ЛАГЕРЬ» is possible
 	}
+end
+
+-- The camp in one table: every squad (lobby-shaped, so the base UI reads it) and every hunter's showcase.
+local function hubInfo()
+	local shared = { boards = Outposts.boards(), online = Outposts.online() }
+	local list = {}
+	for _, sq in squads:all() do
+		local info = lobbyInfo(sq, sq.host, sq.members, shared)
+		local op = Ops.get(sq.op)
+		info.id = sq.id
+		info.open = sq.open
+		info.launching = sq.launching
+		info.title = Showcase.squadTitle(sq.mode, op.name, op.index, info.siege)
+		info.outpost = nil -- the camp shows each hunter their own outpost
+		table.insert(list, info)
+	end
+	local hunters = {}
+	for _, player in Players:GetPlayers() do
+		local d = Profile.get(player)
+		if d then
+			local sq = squads:squadOf(player)
+			local weapon = (sq and sq.weapon[player]) or "W_ARC_RIFLE"
+			if not Profile.ownsWeapon(player, weapon) then
+				weapon = "W_ARC_RIFLE"
+			end
+			local entry = Showcase.build(player.UserId, player.DisplayName, d, weapon, Profile.equippedForm(player, weapon))
+			entry.squad = sq and sq.id or 0
+			table.insert(hunters, entry)
+		end
+	end
+	return { squads = list, hunters = hunters }
 end
 
 local function publish()
@@ -909,15 +1330,49 @@ local function publish()
 			votes = votes,
 			rewards = myRewards,
 			rejected = if RunService:IsStudio() then rejected else nil,
+			camp = IS_SESSION or not TELEPORTS, -- results may offer «В ЛАГЕРЬ»
 			simMs = world.stats.lastTickMs,
 		})
+	elseif mode == "HUB" then
+		stateRemote:FireAllClients(nil, { mode = "HUB", hub = hubInfo() })
 	else
 		stateRemote:FireAllClients(nil, { mode = "LOBBY", lobby = lobbyInfo() })
 	end
 end
 
 RunService.Heartbeat:Connect(function(dt)
-	if mode == "LOBBY" then
+	if mode == "HUB" then
+		for _, sq in squads:all() do
+			if sq.launching then
+				continue
+			end
+			if sq.strikeAt and os.clock() >= sq.strikeAt then
+				sq.strikeAt = nil
+				sq.mode = "strike"
+				for _, m in sq.members do
+					sq.ready[m] = true
+				end
+				launch(sq)
+			elseif sq.countdown and not sq.hold then
+				sq.countdown -= dt
+				if sq.countdown <= 0 then
+					launch(sq)
+				end
+			end
+		end
+	elseif mode == "LOBBY" and sessionPlan then
+		-- a session waits for its squad (and their profiles), then drops
+		local all = true
+		for _, uid in sessionPlan.members do
+			local pl = Players:GetPlayerByUserId(uid)
+			if not pl or not Profile.get(pl) then
+				all = false
+			end
+		end
+		if (all and host() and Profile.get(host() :: Player)) or os.clock() - sessionPlan.since > SESSION_WAIT then
+			sessionStart()
+		end
+	elseif mode == "LOBBY" then
 		if lobby.strikeAt and os.clock() >= lobby.strikeAt then
 			-- Everyone on the base defends: the whole server is pulled into «Первый натиск».
 			lobby.mode = "strike"
@@ -969,6 +1424,7 @@ end
 
 Players.PlayerRemoving:Connect(function(player)
 	funnel[player] = nil
+	squads:remove(player)
 	buckets[player] = nil
 	lobby.ready[player] = nil
 	lobby.weapon[player] = nil

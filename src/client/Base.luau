@@ -31,6 +31,9 @@ local STATIONS = {
 	{ key = "armory", name = "ОРУЖЕЙНАЯ", sub = "Оружие и улучшения", icon = "swords", color = C.gold, x = -20, z = -56 },
 	{ key = "build", name = "ПОСТРОЙКИ", sub = "Турели аванпоста", icon = "shield", color = C.cyan, x = 22, z = -44 },
 	{ key = "launch", name = "ВЫСАДКА", sub = "Выбор охоты · в бой", icon = "play", color = C.lime, x = 0, z = -71 },
+	-- camp only (DD-053)
+	{ key = "board", name = "ДОСКА ОТРЯДОВ", sub = "Найди напарников", icon = "users", color = C.orange, x = -17, z = -70, camp = true },
+	{ key = "outposts", name = "АВАНПОСТЫ", sub = "Базы других охотников", icon = "eye", color = C.pink, x = -24, z = -42, camp = true },
 }
 local LAMPS = { { -32, -36 }, { 32, -36 }, { -30, -72 }, { 30, -72 } }
 
@@ -49,6 +52,7 @@ local active = false
 local lampsOn = false
 local goal = nil
 local scene = nil -- running victory scene
+local camp = nil -- camp state (squads + hunters) while in a public camp server
 
 local function part(props): BasePart
 	local p = new("Part", props)
@@ -432,8 +436,23 @@ local function buildHud(playerGui: PlayerGui)
 	ui.stArmory = stationButton(ui.stations, "armory", "ОРУЖЕЙНАЯ", "swords", C.gold, 1)
 	ui.stBuild = stationButton(ui.stations, "build", "ПОСТРОЙКИ", "shield", C.cyan, 2)
 	ui.stLaunch = stationButton(ui.stations, "launch", "ВЫСАДКА", "pin", C.lime, 3)
-	ui.stSwarm = stationButton(ui.stations, "swarm", "РОЙ", "hive", C.violet, 4)
+	ui.stBoard = stationButton(ui.stations, "board", "ОТРЯДЫ", "users", C.orange, 4)
+	ui.stOutposts = stationButton(ui.stations, "outposts", "АВАНПОСТЫ", "eye", C.pink, 5)
+	ui.stSwarm = stationButton(ui.stations, "swarm", "РОЙ", "hive", C.violet, 6)
 	ui.stSwarm.Size = UDim2.fromOffset(110, 56)
+	for _, b in { ui.stArmory, ui.stBuild, ui.stLaunch, ui.stBoard, ui.stOutposts } do
+		b.Size = UDim2.fromOffset(156, 56)
+	end
+	-- session base: back to the public camp
+	ui.toCamp, ui.toCampLabel = Theme.button("В ЛАГЕРЬ", { Name = "ToCamp", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -224, 0, 54), Size = UDim2.fromOffset(150, 40), TextSize = 12 })
+	ui.toCamp.Parent = tr
+	ui.toCamp.Visible = false
+	ui.toCamp.Activated:Connect(function()
+		Audio.play("ui")
+		if actions and actions.camp then
+			actions.camp()
+		end
+	end)
 	-- bottom-right: go
 	ui.play, ui.playLabel = Theme.button("В БОЙ", { Name = "Play", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, -24), Size = UDim2.fromOffset(300, 84), TextSize = 32 }, "primary")
 	ui.play.Parent = safe
@@ -540,21 +559,24 @@ function Base.refresh()
 	-- stations available
 	stationParts.build.holder.Parent = if f.outpost then folder else nil
 	stationParts.armory.holder.Parent = if (profile.runs or 0) > 0 then folder else nil
+	stationParts.board.holder.Parent = if camp then folder else nil
+	stationParts.outposts.holder.Parent = if camp then folder else nil
 	-- sockets: faint rings on the empty ones while the outpost is open
 	local slots = (profile.outpost and profile.outpost.slots) or {}
 	if lobby and lobby.outpost then
 		slots = lobby.outpost
 	end
 	local isHost = lobby ~= nil and lobby.host == myId
+	local ownsBase = camp ~= nil or isHost -- in the camp every hunter builds their own outpost
 	for i, s in sockets do
 		local empty = not slots[i] and not slots[tostring(i)]
 		-- the first steps light one socket only; the rest of the ring appears after the first defence
 		local focused = goal ~= nil and (goal.key == "sting" or goal.key == "strike")
-		local show = f.outpost == true and empty and isHost and not focused and not (goal and goal.slot == i and goal.station == "build")
+		local show = f.outpost == true and empty and ownsBase and not focused and not (goal and goal.slot == i and goal.station == "build")
 		s.show = show
 	end
 	-- the goal socket
-	if goal and goal.station == "build" and goal.slot and isHost and f.outpost then
+	if goal and goal.station == "build" and goal.slot and ownsBase and f.outpost then
 		local def = goal.structure and Meta.Structures[goal.structure]
 		local affordable = def ~= nil and (profile.scrap or 0) >= def.cost[1]
 		local built = slots[goal.slot] or slots[tostring(goal.slot)]
@@ -577,8 +599,16 @@ function Base.refresh()
 			hostName = p.name
 		end
 	end
-	ui.tag.Text = if isHost or hostName == "" then "ТВОЙ АВАНПОСТ" else "АВАНПОСТ ОТРЯДА"
-	ui.owner.Text = if hostName ~= "" then hostName else Players.LocalPlayer.DisplayName
+	if camp then
+		ui.tag.Text = string.format("КРАТЕР ЦВЕТЕНИЯ  ·  ОХОТНИКОВ: %d", #(camp.hunters or {}))
+		ui.owner.Text = if #players > 1 then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players) else "ЛАГЕРЬ"
+	else
+		ui.tag.Text = if isHost or hostName == "" then "ТВОЙ АВАНПОСТ" else "АВАНПОСТ ОТРЯДА"
+		ui.owner.Text = if hostName ~= "" then hostName else Players.LocalPlayer.DisplayName
+	end
+	ui.toCamp.Visible = lobby ~= nil and lobby.camp == true
+	ui.stBoard.Visible = camp ~= nil
+	ui.stOutposts.Visible = camp ~= nil
 	if goal then
 		ui.goal.Visible = true
 		ui.goalTitle.Text = goal.title
@@ -600,7 +630,7 @@ function Base.refresh()
 		elseif goal.station == "launch" then
 			btn = if goal.op then "К ВЫСАДКЕ" else "ВЫСАДКА"
 		end
-		ui.goalBtn.Visible = btn ~= nil and (goal.station ~= "build" or isHost)
+		ui.goalBtn.Visible = btn ~= nil and (goal.station ~= "build" or ownsBase)
 		ui.goalBtnLabel.Text = btn or ""
 	else
 		ui.goal.Visible = false
@@ -676,6 +706,10 @@ function Base.setLobby(info, id: number)
 	lobby = info
 	myId = id
 	Base.refresh()
+end
+
+function Base.setCamp(info)
+	camp = info
 end
 
 function Base.leaveLobby()

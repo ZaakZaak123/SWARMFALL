@@ -29,6 +29,7 @@ local Preview = require(script.Parent:WaitForChild("Preview"))
 local Menus = require(script.Parent:WaitForChild("Menus"))
 local MetaMenus = require(script.Parent:WaitForChild("MetaMenus"))
 local Base = require(script.Parent:WaitForChild("Base"))
+local HubMenus = require(script.Parent:WaitForChild("HubMenus"))
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
 local WeaponFeel = require(script.Parent:WaitForChild("WeaponFeel"))
@@ -111,6 +112,15 @@ Base.init(playerGui, send, {
 		Menus.showSettings()
 	end,
 	goal = goalAction,
+	board = function()
+		HubMenus.showBoard()
+	end,
+	outposts = function()
+		HubMenus.showOutposts()
+	end,
+	camp = function()
+		send("camp")
+	end,
 	play = function()
 		if Base.ready() then
 			send("unready")
@@ -452,10 +462,56 @@ end
 
 local showOutpost, outpostKeyOf -- outpost views (defined with the turret handlers below)
 local sceneSeen = false -- the first-victory scene plays once per session at most
+local updateShowcase -- camp/base gear, nameplates and inspection (defined below)
+local campState = nil -- camp (public server) state: squads + hunters' showcases (DD-053)
+local visitingUid = nil -- whose outpost the camp shows instead of ours
 stateRemote.OnClientEvent:Connect(function(buf, info)
 	if type(info) ~= "table" then
 		return
 	end
+	if info.mode == "HUB" then
+		if inRun then
+			leaveRun()
+		end
+		if mode ~= "HUB" then
+			Base.resetCamera()
+		end
+		mode = "HUB"
+		campState = info.hub
+		local mine = nil
+		for _, sq in info.hub.squads do
+			for _, p in sq.players do
+				if p.id == myId then
+					mine = sq
+				end
+			end
+		end
+		HubMenus.setHub(info.hub, myId)
+		Base.setCamp(info.hub)
+		if mine then
+			Menus.showLobby(mine, myId, Controls.device)
+			Base.setLobby(mine, myId)
+		end
+		local visit = visitingUid and HubMenus.hunter(visitingUid)
+		if visitingUid and not visit then
+			visitingUid = nil
+			HubMenus.setVisiting(nil)
+		end
+		if visit then
+			showOutpost(visit.slots, "V" .. visitingUid .. outpostKeyOf(visit.slots))
+		else
+			local prof = Menus.profile()
+			local slots = prof and prof.outpost and prof.outpost.slots or {}
+			showOutpost(slots, "L" .. outpostKeyOf(slots))
+		end
+		return
+	end
+	campState = nil
+	if visitingUid then
+		visitingUid = nil
+		HubMenus.setVisiting(nil)
+	end
+	Base.setCamp(nil)
 	if info.mode == "LOBBY" then
 		if inRun then
 			leaveRun()
@@ -520,7 +576,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			end)
 		end
 		if not Base.sceneActive() then
-			Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)])
+			Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)], info.camp)
 		end
 	end
 	if run.phase == "COUNTDOWN" and run.waiting then
@@ -547,6 +603,113 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Menus.note(nil)
 	end
 end)
+
+-- Camp (DD-053) ------------------------------------------------------------------------------------------
+-- Visiting an outpost swaps what stands on the sockets for this client only; walking the yard stays shared.
+HubMenus.init(Menus.helpers(), {
+	visit = function(uid: number)
+		visitingUid = uid
+		HubMenus.setVisiting(uid)
+		Audio.play("level", 0.5, 1.1)
+	end,
+	home = function()
+		visitingUid = nil
+		HubMenus.setVisiting(nil)
+	end,
+})
+remotes:WaitForChild(Codec.Remotes.Social).OnClientEvent:Connect(function(kind, data)
+	if type(kind) == "string" then
+		HubMenus.onSocial(kind, data)
+	end
+end)
+
+-- Nameplate (title over the head) and «Осмотреть» on every other hunter, between runs.
+local plates = {} -- character -> { gui, title, prompt, uid }
+local function plateFor(char: Model, uid: number)
+	local rec = plates[char]
+	if rec then
+		return rec
+	end
+	local head = char:FindFirstChild("Head")
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not head or not root then
+		return nil
+	end
+	local g = Instance.new("BillboardGui")
+	g.Name = "SporePlate"
+	g.Size = UDim2.fromOffset(220, 46)
+	g.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+	g.LightInfluence = 0
+	g.MaxDistance = 90
+	g.AlwaysOnTop = true
+	g.Adornee = head
+	local name = Theme.label("", { Size = UDim2.new(1, 0, 0, 24), FontFace = Theme.F.display, TextSize = 18, Parent = g })
+	local st = Instance.new("UIStroke")
+	st.Thickness = 2.5
+	st.Color = C.ink
+	st.Parent = name
+	local title = Theme.label("", { Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 18), FontFace = Theme.F.head, TextSize = 12, TextColor3 = C.gold, Parent = g })
+	local st2 = Instance.new("UIStroke")
+	st2.Thickness = 2
+	st2.Color = C.ink
+	st2.Parent = title
+	g.Parent = head
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Осмотреть"
+	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = root
+	prompt.Triggered:Connect(function()
+		HubMenus.showCard(uid)
+	end)
+	rec = { gui = g, name = name, title = title, prompt = prompt, uid = uid }
+	plates[char] = rec
+	return rec
+end
+
+updateShowcase = function()
+	local list = {}
+	if mode == "HUB" and campState then
+		for _, h in campState.hunters do
+			list[h.id] = { weapon = h.weapon, form = h.form, name = h.name, title = h.title }
+		end
+	elseif mode == "LOBBY" then
+		local info = Menus.lobbyState()
+		for _, p in (info and info.players) or {} do
+			list[p.id] = { weapon = p.weapon, name = p.name, title = "" }
+		end
+	end
+	for uid, e in list do
+		local pl = Players:GetPlayerByUserId(uid)
+		local char = pl and pl.Character
+		if char and Defs.Weapons[e.weapon] then
+			local rig = Gear.ensure(char, e.weapon, e.form ~= nil, uid == myId)
+			if rig then
+				Gear.update(rig, false, 0, false)
+				Rig.setState(char, true, 0, 1, false)
+			end
+			if uid ~= myId then
+				local rec = plateFor(char, uid)
+				if rec then
+					rec.name.Text = e.name
+					rec.title.Text = e.title
+					rec.prompt.Enabled = mode == "HUB" and Base.isActive()
+				end
+			end
+		end
+	end
+	for char, rec in plates do
+		if not char.Parent or not list[rec.uid] then
+			rec.gui:Destroy()
+			rec.prompt:Destroy()
+			plates[char] = nil
+		end
+	end
+	Gear.cleanup()
+end
 
 local function nearMe(pos: Vector3, radius: number): boolean
 	local root = myRoot()
@@ -1510,7 +1673,7 @@ local function frame(dt: number)
 	end
 
 	-- Movement & facing
-	local walkingBase = mode == "LOBBY" and Base.isActive()
+	local walkingBase = (mode == "LOBBY" or mode == "HUB") and Base.isActive()
 	if hum then
 		local frozen = not isPlaying or choosing
 		local slow = if me and me.slow then me.slow else 0
@@ -1544,6 +1707,10 @@ local function frame(dt: number)
 		end
 	end
 
+	-- Between runs: everyone carries their gun, a nameplate with their title, and can be inspected.
+	if not run then
+		updateShowcase()
+	end
 	-- Gear for every squad member
 	if run then
 		for _, p in run.players do
@@ -1638,7 +1805,7 @@ local function frame(dt: number)
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = sceneCf
 	end
-	local onBase = mode == "LOBBY" and not Menus.modalOpen() and not Base.sceneActive()
+	local onBase = (mode == "LOBBY" or mode == "HUB") and not Menus.modalOpen() and not HubMenus.anyVisible() and not Base.sceneActive()
 	Base.setActive(onBase)
 	Base.update(dt, if root then root.Position else nil)
 

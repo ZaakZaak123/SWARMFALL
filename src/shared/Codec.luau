@@ -9,6 +9,7 @@ Codec.Remotes = {
 	State = "State", -- S->C  (enemyBuffer, stateTable) ~15 Hz
 	Events = "Events", -- S->C  ({event}) batched
 	Profile = "Profile", -- S->C  (public profile) on change
+	Social = "Social", -- S->C  (kind: string, data) camp toasts: invites, likes, launch errors
 }
 
 -- Event type codes: first element of every event array.

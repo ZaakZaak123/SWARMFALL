@@ -65,6 +65,8 @@ local function defaults()
 		brood = {}, -- up to 3 strains { kind, muts }
 		raid = { rating = Meta.StartRating, wins = 0, losses = 0, defWins = 0, defLosses = 0 },
 		lastDay = 0,
+		likes = 0, -- «Крутой аванпост» marks from visitors (DD-053)
+		liked = {}, -- owner user id (string) -> day index of the last like given
 		tut = {}, -- one-time onboarding beats (DD-052): drill = victory scene seen, strike = first defence done
 	}
 end
@@ -530,6 +532,28 @@ function Profile.collectHarvest(player: Player): number
 	end
 	mark(player)
 	return amount
+end
+
+-- «Крутой аванпост» (DD-053): one mark per visitor per owner per day; never your own.
+function Profile.like(liker: Player, owner: Player, day: number): boolean
+	local a, b = Profile.get(liker), Profile.get(owner)
+	if not a or not b or liker == owner then
+		return false
+	end
+	local key = tostring(owner.UserId)
+	if a.liked[key] == day then
+		return false
+	end
+	for k, v in a.liked do
+		if v ~= day then
+			a.liked[k] = nil -- only today's marks matter
+		end
+	end
+	a.liked[key] = day
+	b.likes = (b.likes or 0) + 1
+	mark(liker)
+	mark(owner)
+	return true
 end
 
 -- One-time onboarding flags the client may set (the victory scene was watched).

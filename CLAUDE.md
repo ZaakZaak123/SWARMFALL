@@ -26,6 +26,7 @@ rojo build -o build/SWARMFALL.rbxlx
 lune run tests/compile
 lune run tests/ops_order            (быстро: данные операций)
 lune run tests/profile              (быстро: инварианты профиля D03)
+lune run tests/hub                  (быстро: отряды лагеря и витрина)
 lune run tests/styles               (быстро: стили сборок и синергии; `run <STYLE> [weapon] [seed]` — бот O01 одним стилем)
 lune run tests/ops_run O01          (бот играет O01: ~10 мин)
 lune run tests/ops_run <O02..CA01>  (бот играет операцию; запускай параллельно в фоне)

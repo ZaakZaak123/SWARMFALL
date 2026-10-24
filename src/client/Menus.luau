@@ -917,6 +917,15 @@ function Menus.modalOpen(): boolean
 		or MetaMenus.anyVisible()
 end
 
+-- Window helpers for the camp menus (same look as every other window).
+function Menus.lobbyState()
+	return lobbyState
+end
+
+function Menus.helpers()
+	return { send = send, modal = modal, clear = clear, gui = gui }
+end
+
 function Menus.selectedWeapon(): string
 	return selectedWeapon
 end
@@ -1891,6 +1900,35 @@ local function buildResults()
 	}, "primary")
 	ui.resButton.Parent = body
 	ui.resButtonLabel.ZIndex = 23
+	-- DD-053: back to the public camp instead of the squad's base
+	ui.resCamp, ui.resCampLabel = Theme.button("В ЛАГЕРЬ", {
+		Name = "ToCamp",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0.5, 176, 1, -32),
+		Size = UDim2.fromOffset(170, 60),
+		ZIndex = 22,
+		TextSize = 16,
+	})
+	ui.resCamp.Parent = body
+	ui.resCampLabel.ZIndex = 23
+	ui.resCamp.Visible = false
+	ui.resCamp.Activated:Connect(function()
+		if not ui.resClicked then
+			ui.resClicked = true
+			send("camp")
+			Audio.play("ui")
+			ui.resCampLabel.Text = "ЛЕТИМ…"
+		end
+	end)
+	-- squad contribution: everyone's part, not just kills
+	ui.resSquad = new("Frame", {
+		LayoutOrder = 5,
+		Size = UDim2.new(1, 0, 0, 34),
+		ZIndex = 22,
+		Visible = false,
+		Parent = ui.resList,
+		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8) },
+	})
 	ui.resVotes = label("", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, 0),
@@ -2008,7 +2046,7 @@ local function countUp(lbl: TextLabel, target: number, fmt: string, duration: nu
 	end)
 end
 
-function Menus.showResults(result, votes, id: number, reward)
+function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	local n = #result.players
 	local voted = 0
 	for _, v in votes do
@@ -2033,7 +2071,8 @@ function Menus.showResults(result, votes, id: number, reward)
 	local op = Ops.get(result.op)
 	if first then
 		ui.resClicked = false
-		ui.resButtonLabel.Text = "НА БАЗУ"
+		ui.resButtonLabel.Text = if n > 1 then "НА БАЗУ ОТРЯДА" else "НА БАЗУ"
+		ui.resCampLabel.Text = "В ЛАГЕРЬ"
 		ui.resTitleScale.Scale = 1.6
 		tween(ui.resTitleScale, 0.6, { Scale = 1 }, Enum.EasingStyle.Back)
 		ui.resShade.BackgroundTransparency = 1
@@ -2073,6 +2112,31 @@ function Menus.showResults(result, votes, id: number, reward)
 	countUp(kv, if mine then mine.kills else result.kills, "%s", 1.1)
 	countUp(dv, if mine then mine.damage or 0 else 0, "%s", 1.3)
 	tv.Text = Theme.fmtTime(result.time)
+	ui.resCamp.Visible = canCamp == true
+	-- squad contribution (DD-053): damage, kills and rescues of everyone
+	clear(ui.resSquad)
+	ui.resSquad.Visible = n > 1
+	if n > 1 then
+		for i, p in result.players do
+			local chip = new("Frame", {
+				Size = UDim2.fromOffset(0, 32),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = C.ink,
+				BackgroundTransparency = 0.2,
+				Corner = UDim.new(1, 0),
+				Stroke = { Color = if p.id == id then C.lime else C.white, Transparency = if p.id == id then 0.4 else 0.85 },
+				LayoutOrder = i,
+				ZIndex = 23,
+				Parent = ui.resSquad,
+			})
+			new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = chip })
+			local parts = { tostring(p.name or "?"), Theme.commas(p.damage or 0) .. " урона", tostring(p.kills or 0) .. " убийств" }
+			if (p.revives or 0) > 0 then
+				table.insert(parts, tostring(p.revives) .. " спасений")
+			end
+			label(table.concat(parts, "  ·  "), { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 32), FontFace = F.bodyBold, TextSize = 13, ZIndex = 24, Parent = chip })
+		end
+	end
 	-- build strip
 	clear(ui.resBuild)
 	ui.resBuild.Visible = mine ~= nil
