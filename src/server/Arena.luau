@@ -234,12 +234,33 @@ local function paintTerrain(map)
 		terrain.Decoration = false
 	end)
 	terrain.WaterColor = PAL.teal
-	-- Bedrock floor, surface exactly at Y = 0.
-	terrain:FillBlock(CFrame.new(0, -6, 0), Vector3.new(760, 12, 760), M.Ground)
+	-- Bedrock floor, surface exactly at Y = 0. Smooth terrain draws a voxel's surface at
+	-- centre + 4 * (occupancy - 0.5): a block filled up to 0 makes the -4..0 voxel full and the surface
+	-- appears at +2, sinking every creature, pickup and prop by 2 studs. Filling to -2 leaves that voxel
+	-- half full, which puts the surface on 0 (measured with a downward ray).
+	terrain:FillBlock(CFrame.new(0, -7, 0), Vector3.new(760, 10, 760), M.Ground)
 	task.wait()
 	-- Floor patches (replace the top layer only).
+	-- Recolours the top voxel layer in a disc. Fill calls would also change occupancy and raise bumps;
+	-- this only rewrites the material, so the surface stays on 0.
 	local function patch(x: number, z: number, r: number, material)
-		terrain:FillCylinder(CFrame.new(W(x, -1, z)), 2, r, material)
+		local c = W(x, 0, z)
+		local region = Region3.new(Vector3.new(c.X - r, -4, c.Z - r), Vector3.new(c.X + r, 0, c.Z + r)):ExpandToGrid(4)
+		local mats, occs = terrain:ReadVoxels(region, 4)
+		local size = mats.Size
+		local corner = region.CFrame.Position - region.Size / 2
+		for i = 1, size.X do
+			for k = 1, size.Z do
+				local px, pz = corner.X + (i - 0.5) * 4, corner.Z + (k - 0.5) * 4
+				local dx, dz = px - c.X, pz - c.Z
+				for j = 1, size.Y do
+					if dx * dx + dz * dz <= r * r and occs[i][j][k] > 0 then
+						mats[i][j][k] = material
+					end
+				end
+			end
+		end
+		terrain:WriteVoxels(region, 4, mats, occs)
 	end
 	-- Zones are a few large, soft patches near the rim; the middle of the bowl stays one clean floor.
 	-- north: the titan's shadow — darker ash under the ribs
@@ -879,18 +900,8 @@ local function buildDressing(map, decor)
 	model.Name = "Dressing"
 	model.Parent = decor
 	-- bioluminescent pools (flat, walkable)
-	-- three quiet pools away from the fight lanes (more read as hazards and noise from above)
-	local pools = { { -86, -56, 10 }, { 80, 78, 8 }, { -100, 72, 7 } }
-	for _, p in pools do
-		local pos = W(p[1], 0, p[2])
-		if not clearOf(map, pos.X, pos.Z, p[3] / 2) then
-			continue
-		end
-		disc(model, pos + Vector3.new(0, 0.04, 0), p[3] * 2 + 1.6, 0.06, rgb(20, 60, 64), M.SmoothPlastic, 0)
-		local pool = disc(model, pos + Vector3.new(0, 0.08, 0), p[3] * 2, 0.06, PAL.tealDeep, M.Neon, 0.55)
-		pool.Name = "Pool"
-		light(model, pos + Vector3.new(0, 3, 0), PAL.teal, p[3] * 2.2, 0.8):SetAttribute("Ambient", true)
-	end
+	-- (the glowing pools are gone: they always sat under the old raised terrain, and once the floor
+	-- came down to 0 they read as solid teal buttons on the field, DD-049)
 	-- basalt rubble: only along the edge, framing the floor instead of dotting it
 	for i = 1, 40 do
 		local a = rnd(0, 6.28)

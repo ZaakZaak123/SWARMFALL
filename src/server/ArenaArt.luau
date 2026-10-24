@@ -143,8 +143,9 @@ function ArenaArt.dropship(map, decor, H): boolean
 		sl.Shadows = false
 		sl.Parent = head
 	end
-	H.disc(decor, Vector3.new(0, 0.03, o.z + 14), 30, 0.05, rgb(255, 150, 40), Enum.Material.Neon, 0.85)
-	H.disc(decor, Vector3.new(0, 0.04, o.z + 14), 28, 0.05, rgb(40, 34, 52), Enum.Material.Asphalt, 0)
+	-- landing pad: a faint ring and a slightly darker floor (it sat under the old raised terrain, DD-049)
+	H.disc(decor, Vector3.new(0, 0.03, o.z + 14), 30, 0.05, rgb(255, 150, 40), Enum.Material.Neon, 0.9)
+	H.disc(decor, Vector3.new(0, 0.04, o.z + 14), 28, 0.05, rgb(70, 64, 92), Enum.Material.Slate, 0.45)
 	return true
 end
 
@@ -169,8 +170,9 @@ function ArenaArt.extractor(o, decor, H): boolean
 		ring.Name = "HaloRing" .. i
 		H.fade(ring)
 	end
-	H.disc(decor, c + Vector3.new(0, 0.03, 0), 28, 0.06, rgb(150, 30, 120), Enum.Material.Neon, 0.75)
-	H.disc(decor, c + Vector3.new(0, 0.05, 0), 25, 0.06, rgb(24, 18, 34), Enum.Material.Basalt, 0)
+	-- the plaza: a slightly darker floor and a faint ring marking the defend zone
+	H.disc(decor, c + Vector3.new(0, 0.03, 0), 28, 0.06, rgb(150, 30, 120), Enum.Material.Neon, 0.82)
+	H.disc(decor, c + Vector3.new(0, 0.05, 0), 25, 0.06, rgb(64, 54, 86), Enum.Material.Basalt, 0.35)
 	return true
 end
 
