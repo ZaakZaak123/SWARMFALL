@@ -30,6 +30,8 @@ local Menus = require(script.Parent:WaitForChild("Menus"))
 local MetaMenus = require(script.Parent:WaitForChild("MetaMenus"))
 local Base = require(script.Parent:WaitForChild("Base"))
 local HubMenus = require(script.Parent:WaitForChild("HubMenus"))
+local Range = require(script.Parent:WaitForChild("Range"))
+Range.init(workspace)
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
 local WeaponFeel = require(script.Parent:WaitForChild("WeaponFeel"))
@@ -1702,14 +1704,16 @@ local function frame(dt: number)
 	local root, hum = myRoot()
 	local isPlaying = playing()
 	local choosing = Menus.offerVisible()
-	Controls.enabled = isPlaying and not choosing
+	-- the shooting range on the base drives the gun while the hunter stands on its mark (DD-055)
+	local ranging = (mode == "LOBBY" or mode == "HUB") and Base.isActive() and Range.wants(root and root.Position)
+	Controls.enabled = (isPlaying and not choosing) or ranging
 	-- Camera look input first (mouse-look / stick-look in third & first person), then aim.
 	CameraRig.processInput(dt, Controls.device, isPlaying and not choosing and mode == "RUN", Controls.look)
 	local immersive = CameraRig.immersive() and isPlaying
 	local fx, fz = CameraRig.forward()
 	if root then
 		local range = if me then Defs.Weapons[me.weapon].range else 60
-		Controls.update(root.Position, isPlaying and not choosing, range, immersive, fx, fz)
+		Controls.update(root.Position, (isPlaying and not choosing) or ranging, range, immersive, fx, fz)
 	else
 		Controls.update(Vector3.zero, false, 60)
 	end
@@ -1720,7 +1724,7 @@ local function frame(dt: number)
 		local frozen = not isPlaying or choosing
 		local slow = if me and me.slow then me.slow else 0
 		hum.WalkSpeed = if walkingBase then Defs.Player.Speed elseif frozen then 0 else Defs.Player.Speed * (1 - slow)
-		hum.AutoRotate = walkingBase
+		hum.AutoRotate = walkingBase and not ranging
 	end
 	if root and linearVelocity then
 		local dashing = now < dashUntil and isPlaying
@@ -1730,7 +1734,10 @@ local function frame(dt: number)
 				* (Defs.Player.DashDistance / Defs.Player.DashTime)
 		end
 	end
-	if root and isPlaying then
+	if mode == "LOBBY" or mode == "HUB" then
+		Range.update(dt, if root then root.Position else nil, player.Character, Menus.selectedWeapon(), Controls.aimX, Controls.aimZ, Controls.firing and ranging)
+	end
+	if root and (isPlaying or ranging) then
 		local look = Vector3.new(Controls.aimX, 0, Controls.aimZ)
 		root.CFrame = CFrame.lookAt(root.Position, root.Position + look)
 	end
