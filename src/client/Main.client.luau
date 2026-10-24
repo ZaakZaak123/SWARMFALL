@@ -695,7 +695,24 @@ local function plateFor(char: Model, uid: number)
 	return rec
 end
 
+-- The showcase row on the base: the visited hunter's, else our own (built from the profile).
+local Showcase = require(Shared:WaitForChild("Showcase"))
+local function ownShowcase()
+	local prof = Menus.profile()
+	if not prof then
+		return nil
+	end
+	local d = { wins_by_op = prof.winsByOp, mastery = prof.mastery, outpost = prof.outpost, raid = prof.raid, wins = prof.wins }
+	local weapon = Menus.selectedWeapon()
+	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])
+end
+
 updateShowcase = function()
+	local shown = nil
+	if mode == "HUB" and campState and visitingUid then
+		shown = HubMenus.hunter(visitingUid)
+	end
+	Base.setShowcase(shown or ownShowcase())
 	local list = {}
 	if mode == "HUB" and campState then
 		for _, h in campState.hunters do

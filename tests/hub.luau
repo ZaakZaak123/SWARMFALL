@@ -76,6 +76,24 @@ check(
 	"board line for a siege"
 )
 
+print("=== awards")
+local aw = Showcase.awards({
+	{ id = 1, damage = 9000, kills = 300, revives = 0, bigDamage = 100, guardKills = 3, bestCombo = 9, alive = true },
+	{ id = 2, damage = 2000, kills = 80, revives = 2, bigDamage = 900, guardKills = 40, bestCombo = 3, alive = true },
+	{ id = 3, damage = 500, kills = 20, revives = 0, bigDamage = 0, guardKills = 1, bestCombo = 2, alive = false },
+})
+for id = 1, 3 do
+	local names = {}
+	for _, a in aw[id] or {} do
+		table.insert(names, a[2])
+	end
+	print("  " .. id .. ": " .. table.concat(names, ", "))
+end
+check(aw[2] and aw[2][1][2] == "Спаситель · 2" and aw[2][2][2] == "Защитник бура", "help comes first: rescues and guarding the drill")
+check(aw[1] and aw[1][1][2] == "Главный калибр", "the top gun is noticed")
+check(aw[3] ~= nil and #aw[3] == 1, "everyone is noticed for something")
+check(next(Showcase.awards({ { id = 1, damage = 1 } })) == nil, "no awards in a solo run")
+
 if failures > 0 then
 	print(failures .. " FAILURE(S)")
 else

@@ -104,6 +104,8 @@ local function newPlayer(map, info, index: number, count: number)
 		offersMade = 0,
 		kills = 0,
 		damage = 0,
+		bigDamage = 0, -- to elites and bosses (squad awards, DD-054)
+		guardKills = 0, -- kills close to the drill (squad awards)
 		chainCount = 0,
 		killCount = 0,
 		shieldKills = 0,
@@ -641,6 +643,8 @@ function World:playerResult(p)
 		species = table.clone(p.species),
 		level = self.level,
 		revives = p.revives or 0,
+		bigDamage = math.floor(p.bigDamage),
+		guardKills = p.guardKills,
 		feats = table.clone(p.feats),
 		causes = table.clone(p.causeKills),
 		hitsTaken = p.hitsTaken,

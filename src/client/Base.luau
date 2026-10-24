@@ -18,6 +18,8 @@ local Icons = require(script.Parent.Icons)
 local Audio = require(script.Parent.Audio)
 local Fx = require(script.Parent.Fx)
 local Structures = require(script.Parent.Structures)
+local Models = require(script.Parent.Models)
+local Defs = require(Shared:WaitForChild("Defs"))
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -392,6 +394,145 @@ local function showGoalMarker(slot: number, structureId: string?, title: string,
 	pr.MaxActivationDistance = 9
 	goalMarker =
 		{ holder = holder, ring = ring, beam = beam, board = bb, prompt = pr, model = model, key = key, slot = slot }
+end
+
+-- Showcase row (DD-054) -----------------------------------------------------------------------------------
+-- In front of the drill: the favourite gun on a stand and one pedestal per boss. A beaten boss stands in
+-- gold; one not yet beaten is a faint hologram with the hunt that earns it — a goal you can walk up to.
+-- Shows the base's owner: yours, or the hunter you are visiting.
+local TROPHIES = {
+	{ op = "O01", kind = 10, name = "АЛЬФА", hunt = "Охота 1" },
+	{ op = "O05", kind = 7, name = "МАТЬ РОЯ", hunt = "Охота 5" },
+	{ op = "O07", kind = 9, name = "ПОЖИРАТЕЛЬ", hunt = "Охота 7" },
+}
+local SHOW_Z = -33
+local showFolder = nil
+local showKey = nil
+local spinners = {} -- { model, cf, height }
+
+-- Scale to a height and move the pivot to the bottom centre, so it stands and spins in place.
+local function fitTo(model: Model, height: number, longest: boolean?)
+	local _, size = model:GetBoundingBox()
+	local k = if longest then height / math.max(size.X, size.Y, size.Z, 0.1) else height / math.max(size.Y, size.X * 0.6, size.Z * 0.6, 0.1)
+	pcall(model.ScaleTo, model, model:GetScale() * k)
+	local cf, sz = model:GetBoundingBox()
+	model.WorldPivot = CFrame.new(cf.X, cf.Y - sz.Y / 2, cf.Z)
+end
+
+local function pedestal(x: number, color: Color3, lit: boolean): BasePart
+	local base = part({
+		Name = "Pedestal",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.2, 5.6, 5.6),
+		Color = Color3.fromRGB(34, 28, 48),
+		Material = Enum.Material.Slate,
+		Parent = showFolder,
+	})
+	base.CFrame = CFrame.new(x, 0.6, SHOW_Z) * CFrame.Angles(0, 0, math.rad(90))
+	base.CastShadow = true
+	local ring = ringPart("Ring", 3.2, color, 1.24, showFolder)
+	ring.CFrame = CFrame.new(x, 1.24, SHOW_Z)
+	setRing(ring, if lit then 0.1 else 0.7)
+	if lit then
+		new("PointLight", { Color = color, Range = 9, Brightness = 1.2, Shadows = false, Parent = base })
+	end
+	return base
+end
+
+local function plaque(base: BasePart, title: string, sub: string, color: Color3)
+	local b = new("BillboardGui", {
+		Size = UDim2.fromOffset(150, 34),
+		StudsOffsetWorldSpace = Vector3.new(0, 7.5, 0),
+		LightInfluence = 0,
+		MaxDistance = 90,
+		Adornee = base,
+		Parent = base,
+	})
+	local t = label(title, { Size = UDim2.new(1, 0, 0, 18), FontFace = F.display, TextSize = 13, TextColor3 = color, Parent = b })
+	new("UIStroke", { Color = C.ink, Thickness = 2, Parent = t })
+	local s2 = label(sub, { Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 14), FontFace = F.bodyBold, TextSize = 11, TextColor3 = C.dim, Parent = b })
+	new("UIStroke", { Color = C.ink, Thickness = 1.5, Parent = s2 })
+end
+
+local function statue(model: Model, gold: boolean)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CastShadow = gold
+			if gold then
+				d.Material = Enum.Material.Metal
+				d.Color = Color3.fromRGB(232, 182, 72)
+			else
+				d.Material = Enum.Material.Neon
+				d.Color = C.violet
+				d.Transparency = math.max(d.Transparency, 0.8)
+			end
+			if d:IsA("MeshPart") then
+				d.TextureID = ""
+			end
+		elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") or d:IsA("Light") or d:IsA("ParticleEmitter") then
+			d:Destroy()
+		end
+	end
+end
+
+-- entry: a Showcase entry (or the same fields built from the own profile); nil hides the row.
+function Base.setShowcase(entry)
+	local key = if entry then table.concat({ entry.id, entry.weapon, tostring(entry.form), entry.mastery, entry.siege, tostring(entry.trophyKey) }, "|") else "none"
+	if key == showKey then
+		return
+	end
+	showKey = key
+	if showFolder then
+		showFolder:Destroy()
+	end
+	table.clear(spinners)
+	if not entry then
+		showFolder = nil
+		return
+	end
+	showFolder = new("Folder", { Name = "Showcase", Parent = folder })
+	-- the gun
+	local wdef = Defs.Weapons[entry.weapon]
+	if wdef then
+		local evo = entry.form and Defs.Evolutions[entry.form]
+		local base = pedestal(-13, C.cyan, true)
+		local ok, gun = pcall(Models.weapon, entry.weapon, evo ~= nil, true)
+		if ok and gun then
+			for _, d in gun:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Anchored = true
+					d.CanCollide = false
+					d.CanQuery = false
+				end
+			end
+			fitTo(gun, 5, true)
+			gun.Parent = showFolder
+			table.insert(spinners, { model = gun, cf = CFrame.new(-13, 2.2, SHOW_Z), speed = 0.6 })
+		end
+		plaque(base, if evo then evo.name else wdef.name, string.format("Любимое оружие · M%d", entry.mastery or 1), C.cyan)
+	end
+	-- the trophies
+	for i, t in TROPHIES do
+		local x = -1 + (i - 1) * 11
+		local won = entry.won and entry.won[t.op]
+		local base = pedestal(x, if won then C.gold else C.violet, won)
+		local ok, m = pcall(Models.creature, t.kind)
+		if ok and m then
+			statue(m, won)
+			fitTo(m, if t.kind == 10 then 5 else 6)
+			m.Parent = showFolder
+			table.insert(spinners, { model = m, cf = CFrame.new(x, 1.3, SHOW_Z), speed = if won then 0.25 else 0.1 })
+		end
+		plaque(base, t.name, if won then "Повержен" else t.hunt .. " · трофей", if won then C.gold else C.dim)
+	end
+	-- the siege record on the drill-side
+	if (entry.siege or 0) > 0 then
+		local base = pedestal(-24, C.orange, true)
+		plaque(base, "ОСАДА " .. entry.siege, "Лучший удержанный уровень", C.orange)
+	end
 end
 
 -- HUD -----------------------------------------------------------------------------------------------------
@@ -1146,6 +1287,11 @@ function Base.update(_dt: number, _root: Vector3?)
 	for _, s in sockets do
 		s.prompt.Enabled = active and s.show == true
 		setRing(s.ring, if active and s.show then 0.55 else 1)
+	end
+	for _, sp in spinners do
+		if sp.model.Parent then
+			sp.model:PivotTo(sp.cf * CFrame.Angles(0, now * sp.speed, 0))
+		end
 	end
 	if goalMarker then
 		local pulse = 0.5 + math.sin(now * 3.2) * 0.5

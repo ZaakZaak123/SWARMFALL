@@ -578,6 +578,9 @@ function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fr
 	e.dmgFromX, e.dmgFromZ = fromX, fromZ
 	if p then
 		p.damage += amount
+		if e.def.boss or e.def.elite then
+			p.bigDamage += amount -- squad awards (DD-054)
+		end
 	end
 	if e.hp <= 0 then
 		local cause = if band(flags, DF.GRAV) ~= 0
@@ -605,6 +608,11 @@ end
 function Combat.onKill(w, p, e, depth: number, cause: number)
 	local t = w.t
 	p.kills += 1
+	-- squad awards (DD-054): kills close to the drill count as guarding it
+	local rc = w.mission and w.mission.reactor
+	if rc and (e.x - rc.x) ^ 2 + (e.z - rc.z) ^ 2 < (rc.r + 22) ^ 2 then
+		p.guardKills += 1
+	end
 	p.combo += 1
 	p.comboT = 2.5
 	if p.combo > p.bestCombo then

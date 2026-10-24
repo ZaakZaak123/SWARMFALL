@@ -20,6 +20,7 @@ local Preview = require(script.Parent.Preview)
 local MetaMenus = require(script.Parent.MetaMenus)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Goals = require(Shared:WaitForChild("Goals"))
+local Showcase = require(Shared:WaitForChild("Showcase"))
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
 local C, F = Theme.C, Theme.F
@@ -1924,10 +1925,11 @@ local function buildResults()
 	ui.resSquad = new("Frame", {
 		LayoutOrder = 5,
 		Size = UDim2.new(1, 0, 0, 34),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		ZIndex = 22,
 		Visible = false,
 		Parent = ui.resList,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8) },
+		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), Wraps = true },
 	})
 	ui.resVotes = label("", {
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -2116,6 +2118,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	-- squad contribution (DD-053): damage, kills and rescues of everyone
 	clear(ui.resSquad)
 	ui.resSquad.Visible = n > 1
+	local awards = Showcase.awards(result.players)
 	if n > 1 then
 		for i, p in result.players do
 			local chip = new("Frame", {
@@ -2134,7 +2137,12 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			if (p.revives or 0) > 0 then
 				table.insert(parts, tostring(p.revives) .. " спасений")
 			end
+			new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = chip })
 			label(table.concat(parts, "  ·  "), { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 32), FontFace = F.bodyBold, TextSize = 13, ZIndex = 24, Parent = chip })
+			for k, a in awards[p.id] or {} do
+				icon(a[1], 16, C.gold, { LayoutOrder = k * 2, ZIndex = 24, Parent = chip })
+				label(a[2], { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 32), FontFace = F.head, TextSize = 12, TextColor3 = C.gold, LayoutOrder = k * 2 + 1, ZIndex = 24, Parent = chip })
+			end
 		end
 	end
 	-- build strip

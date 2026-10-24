@@ -23,6 +23,8 @@ export type Entry = {
 	power: number, -- outpost defence power
 	slots: { [string]: { id: string, lvl: number } }, -- string keys: socket index (remote-safe)
 	newbie: boolean,
+	won: { [string]: boolean },
+	trophyKey: string,
 }
 
 local function won(d, opId: string): boolean
@@ -95,7 +97,61 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 		power = Meta.outpostPower((d.outpost and d.outpost.slots) or {}),
 		slots = slots,
 		newbie = not won(d, "O01"),
+		won = { O01 = won(d, "O01"), O05 = won(d, "O05"), O07 = won(d, "O07") }, -- trophy pedestals
+		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07") then "c" else ""),
 	}
+end
+
+-- Squad awards on the results screen (DD-054): every member is noticed for something — the help that
+-- a kill count hides (guarding the drill, carrying the big targets, rescues) comes first. Returns
+-- user id -> { { icon, title } } (at most two each). Solo runs get none.
+function Showcase.awards(players): { [number]: { { string } } }
+	local out = {}
+	if #players < 2 then
+		return out
+	end
+	local function give(p, icon: string, title: string)
+		out[p.id] = out[p.id] or {}
+		if #out[p.id] < 2 then
+			table.insert(out[p.id], { icon, title })
+		end
+	end
+	local function best(field: string, min: number)
+		local top, value = nil, min
+		for _, p in players do
+			local v = p[field] or 0
+			if v > value then
+				top, value = p, v
+			end
+		end
+		return top, value
+	end
+	local rescuer, saves = best("revives", 0)
+	if rescuer then
+		give(rescuer, "heart", "Спаситель · " .. saves)
+	end
+	local guard = best("guardKills", 9)
+	if guard then
+		give(guard, "shield", "Защитник бура")
+	end
+	local hunter = best("bigDamage", 0)
+	if hunter then
+		give(hunter, "elite", "Охотник на крупных")
+	end
+	local gun = best("damage", 0)
+	if gun then
+		give(gun, "boom", "Главный калибр")
+	end
+	local combo = best("bestCombo", 4)
+	if combo then
+		give(combo, "burst", "Мастер комбо")
+	end
+	for _, p in players do
+		if not out[p.id] then
+			give(p, if p.alive then "check" else "users", if p.alive then "В строю до конца" else "Плечом к плечу")
+		end
+	end
+	return out
 end
 
 -- Squad board line: what the squad goes for, in the owner's words.
