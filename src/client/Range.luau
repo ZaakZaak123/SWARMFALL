@@ -16,9 +16,10 @@ local new, C, F = Theme.new, Theme.C, Theme.F
 
 local Range = {}
 
-local MARK = Vector3.new(38, 0, -77) -- the firing mark; the dummies stand east of it (screen-left)
+local O = require(Shared:WaitForChild("Meta")).HomeOrigin
+local MARK = O + Vector3.new(36, 0, -12) -- the firing mark in the shelter; the dummies stand east (screen-left)
 local MARK_R = 5
-local DUMMIES = { Vector3.new(56, 0, -70), Vector3.new(60, 0, -77), Vector3.new(56, 0, -84) }
+local DUMMIES = { O + Vector3.new(54, 0, -5), O + Vector3.new(58, 0, -12), O + Vector3.new(54, 0, -19) }
 local DUMMY_R = 2.4
 
 local folder

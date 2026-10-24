@@ -45,6 +45,19 @@ Art.Meshes = {
 	FLOODLIGHT = { mesh = "rbxassetid://116061092931530", tex = "rbxassetid://91763926511926", size = Vector3.new(3.00, 4.50, 1.20) },
 	CRATES = { mesh = "rbxassetid://94138031272825", tex = "rbxassetid://136163660888408", size = Vector3.new(3.50, 4.00, 3.32) },
 	HABITAT = { mesh = "rbxassetid://134465806873246", tex = "rbxassetid://116198100759129", size = Vector3.new(7.44, 3.70, 7.00) },
+	-- the shelter in the grove (DD-057)
+	SHELTER = { mesh = "rbxassetid://72863952493813", tex = "rbxassetid://98774809571481", size = Vector3.new(13.43, 10.00, 9.88) },
+	OAK = { mesh = "rbxassetid://85741782673464", tex = "rbxassetid://72414915952681", size = Vector3.new(16.00, 18.09, 14.86) },
+	BIRCH = { mesh = "rbxassetid://95251548212501", tex = "rbxassetid://107780517233658", size = Vector3.new(9.00, 10.29, 7.91) },
+	BUSH = { mesh = "rbxassetid://131228805977078", tex = "rbxassetid://121191056187020", size = Vector3.new(3.45, 3.50, 3.39) },
+	RUIN_WALL = { mesh = "rbxassetid://120281890088193", tex = "rbxassetid://140554157908571", size = Vector3.new(7.92, 5.02, 3.00) },
+	CAR_WRECK = { mesh = "rbxassetid://114241734504890", tex = "rbxassetid://115583847011097", size = Vector3.new(3.08, 2.61, 5.00) },
+	GENERATOR = { mesh = "rbxassetid://78569986644475", tex = "rbxassetid://120462046279033", size = Vector3.new(1.92, 4.00, 3.48) },
+	WORKBENCH = { mesh = "rbxassetid://108049539930078", tex = "rbxassetid://94143747733396", size = Vector3.new(3.47, 5.00, 2.76) },
+	RADIO = { mesh = "rbxassetid://80968043748132", tex = "rbxassetid://130421780513354", size = Vector3.new(5.99, 6.64, 4.00) },
+	RUBBLE = { mesh = "rbxassetid://136407996252517", tex = "rbxassetid://75414344452594", size = Vector3.new(5.15, 1.86, 5.00) },
+	GARDEN = { mesh = "rbxassetid://97951323835600", tex = "rbxassetid://119584403913449", size = Vector3.new(4.22, 4.00, 2.43) },
+	TANK_FRAME = { mesh = "rbxassetid://76141219891860", tex = "rbxassetid://133587076996859", size = Vector3.new(5.00, 7.73, 4.72) },
 	PLINTH = { mesh = "rbxassetid://123821428304518", tex = "rbxassetid://83838900429311", size = Vector3.new(4.04, 2.00, 4.05) },
 }
 

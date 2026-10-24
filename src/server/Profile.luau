@@ -67,6 +67,7 @@ local function defaults()
 		lastDay = 0,
 		likes = 0, -- «Крутой аванпост» marks from visitors (DD-053)
 		liked = {}, -- owner user id (string) -> day index of the last like given
+		home = {}, -- restored shelter spots (DD-057): id -> true; never lost
 		tut = {}, -- one-time onboarding beats (DD-052): drill = victory scene seen, strike = first defence done
 	}
 end
@@ -109,6 +110,21 @@ local function reconcile(data)
 		end
 	end
 	data.outpost.slots = Meta.cleanOutpost(data.outpost.slots)
+	-- v4 (DD-057): the shelter. Players who already had what a spot opens get it restored for free, so
+	-- nobody loses access to the outpost, the siege or their swarm.
+	local won = data.wins_by_op or {}
+	if (won.O01 or 0) > 0 then
+		data.home.GENERATOR = true
+	end
+	if next(data.outpost.slots) ~= nil or (won.O02 or 0) > 0 then
+		data.home.WORKBENCH = true
+	end
+	if (won.O02 or 0) > 0 and (data.outpost.best or 0) > 0 then
+		data.home.RADIO = true
+	end
+	if (won.O03 or 0) > 0 and (next(data.brood) ~= nil or (data.species.EN_STALKER ~= nil)) then
+		data.home.LAB = true
+	end
 	data.brood = Meta.cleanBrood(data.brood)
 	data.v = VERSION
 	return data
@@ -245,6 +261,7 @@ function Profile.public(player: Player)
 		raid = d.raid,
 		raidLog = e.raidLog,
 		tut = d.tut,
+		home = d.home,
 	}
 end
 
@@ -493,10 +510,16 @@ end
 function Profile.features(d)
 	local won = d.wins_by_op or {}
 	-- DD-052: the outpost (building) opens with the first hunt won, the siege ladder with the second.
+	-- DD-057: what a restored shelter spot opens. The workshop builds the drill's defences, the radio
+	-- picks up the swarm at the drill (siege ladder; the first defence is open with the first turret),
+	-- the lab holds the samples (own swarm).
+	local home = d.home or {}
+	local hasTurret = d.outpost ~= nil and next(d.outpost.slots or {}) ~= nil
 	return {
-		outpost = (won.O01 or 0) > 0,
-		siege = (won.O02 or 0) > 0,
-		swarm = (won.O03 or 0) > 0,
+		outpost = (won.O01 or 0) > 0 and home.WORKBENCH == true,
+		siege = hasTurret,
+		siegeLadder = home.RADIO == true,
+		swarm = (won.O03 or 0) > 0 and home.LAB == true,
 		raids = (won.O04 or 0) > 0,
 	}
 end
@@ -532,6 +555,22 @@ function Profile.collectHarvest(player: Player): number
 	end
 	mark(player)
 	return amount
+end
+
+-- Restore a shelter spot (DD-057): once, for its cost, after its hunt is won.
+function Profile.restore(player: Player, id: string): boolean
+	local d = Profile.get(player)
+	local def = Meta.Home[id]
+	if not d or not def or d.home[id] or def.free then
+		return false
+	end
+	if ((d.wins_by_op or {})[def.unlock] or 0) == 0 or d.scrap < def.cost then
+		return false
+	end
+	d.scrap -= def.cost
+	d.home[id] = true
+	mark(player)
+	return true
 end
 
 -- «Крутой аванпост» (DD-053): one mark per visitor per owner per day; never your own.
@@ -824,6 +863,14 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		d.wins += 1
 		d.wins_by_op = d.wins_by_op or {}
 		d.wins_by_op[opId] = (d.wins_by_op[opId] or 0) + 1
+		-- DD-057: a spot the hunt itself restores (the generator from the first sortie)
+		for _, hid in Meta.HomeOrder do
+			local hdef = Meta.Home[hid]
+			if hdef.free and hdef.unlock == opId and not d.home[hid] then
+				d.home[hid] = true
+				table.insert(unlocked, { "home", hid })
+			end
+		end
 		-- First-win story components (D03 §3).
 		local firstWin = { O06 = "CMP_FLAME_HEART", O07 = "CMP_VOID_HEART" }
 		local comp = firstWin[opId]

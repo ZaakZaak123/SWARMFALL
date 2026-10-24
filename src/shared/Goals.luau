@@ -13,10 +13,12 @@ export type Goal = {
 	icon: string,
 	title: string, -- short, caps
 	text: string, -- one sentence: what, and what it gives
-	station: string, -- "launch" | "build" | "armory": where on the base it happens
+	station: string, -- "launch" | "build" | "armory" | "home": where on the base it happens
+	spot: string?, -- home goals: the shelter spot to restore (Meta.Home)
 	slot: number?, -- build goals: the socket to light up
 	structure: string?, -- a structure to show as a model (what is being bought or opened)
 	op: string?, -- the hunt that gets you there
+	mode: string?, -- launch goals for the drill defence ("siege")
 }
 
 -- Cyrillic-aware case helpers (string.lower is byte-wise and leaves Cyrillic alone).
@@ -95,7 +97,13 @@ function Goals.opensWith(opId: string): ({ string }, string?)
 			first = first or id
 		end
 	end
-	local modes = { O02 = "осада аванпоста", O03 = "свой рой", O04 = "вторжения" }
+	for _, id in Meta.HomeOrder do
+		local h = Meta.Home[id]
+		if h.unlock == opId and not h.free then
+			table.insert(names, "«" .. Goals.titleCase(h.name) .. "»")
+		end
+	end
+	local modes = { O04 = "вторжения" }
 	if modes[opId] then
 		table.insert(names, modes[opId])
 	end
@@ -109,14 +117,28 @@ function Goals.next(pub): Goal?
 	local slots = (pub.outpost and pub.outpost.slots) or {}
 	local scrap = pub.scrap or 0
 	local tut = pub.tut or {}
+	local home = pub.home or {}
 	if not won(pub, "O01") then
 		return {
 			key = "hunt1",
 			icon = "skull",
-			title = "ПЕРВАЯ ОХОТА",
-			text = "Убей Альфу — и кратер станет твоим аванпостом.",
+			title = "ВЫЛАЗКА ЗА ГЕНЕРАТОРОМ",
+			text = "В руинах станции — генератор для убежища. Убей Альфу, что гнездится на нём.",
 			station = "launch",
 			op = "O01",
+		}
+	end
+	local bench = Meta.Home.WORKBENCH
+	if not home.WORKBENCH then
+		return {
+			key = "workbench",
+			icon = bench.icon,
+			title = "ПОЧИНИ МАСТЕРСКУЮ",
+			text = if scrap >= bench.cost
+				then string.format("Добычи хватает (%d утиля). На верстаке соберёшь оборону для бура.", bench.cost)
+				else string.format("Нужно %d утиля — ещё одна вылазка, и хватит.", bench.cost),
+			station = if scrap >= bench.cost then "home" else "launch",
+			spot = "WORKBENCH",
 		}
 	end
 	if builtCount(slots) == 0 then
@@ -124,13 +146,10 @@ function Goals.next(pub): Goal?
 		return {
 			key = "sting",
 			icon = "crosshair",
-			title = "ПЕРВАЯ ТУРЕЛЬ",
+			title = "ПЕРВАЯ ТУРЕЛЬ ДЛЯ БУРА",
 			text = if scrap >= cost
-				then "Добычи хватает на «Жало». Поставь его на подсвеченное гнездо."
-				else string.format(
-					"«Жало» стоит %d ксенита — ещё одна охота, и хватит.",
-					cost
-				),
+				then "Собери «Жало» на верстаке — оно встанет у бура в опасной зоне."
+				else string.format("«Жало» стоит %d утиля — ещё одна вылазка, и хватит.", cost),
 			station = if scrap >= cost then "build" else "launch",
 			slot = Meta.FirstSocket,
 			structure = "STING",
@@ -140,11 +159,26 @@ function Goals.next(pub): Goal?
 		return {
 			key = "strike",
 			icon = "shield",
-			title = "РОЙ ИДЁТ НА БУР",
-			text = "Держись у турели — она стреляет вместе с тобой.",
-			station = "build",
+			title = "ОБОРОНА БУРА",
+			text = "Бур в опасной зоне. Когда будешь готов — выйди и отбей первый натиск вместе с турелью.",
+			station = "launch",
+			mode = "siege",
 			structure = "STING",
 		}
+	end
+	-- A shelter spot that is open and affordable: restore it (the home grows first).
+	for _, id in Meta.HomeOrder do
+		local h = Meta.Home[id]
+		if not h.free and not home[id] and won(pub, h.unlock) and scrap >= h.cost then
+			return {
+				key = "home_" .. id,
+				icon = h.icon,
+				title = "ВОССТАНОВИ: " .. h.name,
+				text = h.text .. string.format(" Хватает утиля (%d).", h.cost),
+				station = "home",
+				spot = id,
+			}
+		end
 	end
 	-- An opened structure the player can afford and has not built yet: build it.
 	for _, id in Meta.StructureOrder do
@@ -156,7 +190,7 @@ function Goals.next(pub): Goal?
 					key = "build_" .. id,
 					icon = def.icon,
 					title = "ПОСТРОЙ " .. def.name,
-					text = def.text .. string.format(" Хватает ксенита (%d).", def.cost[1]),
+					text = def.text .. string.format(" Хватает утиля (%d).", def.cost[1]),
 					station = "build",
 					slot = slot,
 					structure = id,
@@ -174,7 +208,7 @@ function Goals.next(pub): Goal?
 			if structDef then
 				-- Lead with the headline structure, then the rest in one short tail.
 				text = string.format(
-					"Ещё одна охота — и откроется %s: %s",
+					"Ещё одна вылазка — и откроется %s: %s",
 					names[1],
 					lowerFirst(structDef.text)
 				)
@@ -182,7 +216,7 @@ function Goals.next(pub): Goal?
 					text ..= " Плюс " .. table.concat(names, ", ", 2) .. "."
 				end
 			elseif #names > 0 then
-				text = "Ещё одна охота — и откроется: " .. table.concat(names, ", ") .. "."
+				text = "Ещё одна вылазка — и откроется: " .. table.concat(names, ", ") .. "."
 			end
 			return {
 				key = "op_" .. opId,
@@ -210,7 +244,7 @@ function Goals.next(pub): Goal?
 			icon = "level",
 			title = "УЛУЧШИ " .. best.name,
 			text = string.format(
-				"Хватает ксенита (%d) — турель станет сильнее в осадах и охотах.",
+				"Хватает утиля (%d) — турель станет сильнее в обороне бура и охотах.",
 				bestCost
 			),
 			station = "build",
@@ -222,8 +256,8 @@ function Goals.next(pub): Goal?
 	return {
 		key = "siege",
 		icon = "threat",
-		title = "ОСАДА · УРОВЕНЬ " .. siege,
-		text = "Сколько продержится твой аванпост? Каждая победа открывает уровень выше.",
+		title = "ОБОРОНА БУРА · УРОВЕНЬ " .. siege,
+		text = "Сколько продержится бур? Каждая отбитая волна открывает уровень выше.",
 		station = "launch",
 	}
 end

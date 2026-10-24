@@ -89,7 +89,12 @@ local function goalAction()
 			MetaMenus.showOutpost(g.slot)
 		end
 	elseif g.station == "launch" then
+		if g.mode == "siege" then
+			send("mode", "siege")
+		end
 		Menus.openLaunch()
+	elseif g.station == "home" and g.spot then
+		send("restore", g.spot)
 	elseif g.station == "armory" then
 		Menus.showUpgrades()
 	end
@@ -114,6 +119,25 @@ Base.init(playerGui, send, {
 		Menus.showSettings()
 	end,
 	goal = goalAction,
+	-- a prepared spot of the shelter: restore it, or use what it became (DD-057)
+	spot = function(id: string)
+		local prof = Menus.profile()
+		local home = prof and prof.home or {}
+		if not home[id] then
+			send("restore", id)
+		elseif id == "WORKBENCH" then
+			MetaMenus.showOutpost()
+		elseif id == "RADIO" then
+			send("mode", "siege")
+			Menus.openLaunch()
+		elseif id == "LAB" then
+			MetaMenus.showSwarm()
+		end
+	end,
+	radio = function()
+		send("mode", "siege")
+		Menus.openLaunch()
+	end,
 	board = function()
 		HubMenus.showBoard()
 	end,
@@ -568,12 +592,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			Base.victoryScene(workspace.CurrentCamera.CFrame, function()
 				send("tut", "drill")
 			end, function()
-				-- the drill's first pulse sweeps the leftover swarm away
-				for _, rec in EnemyView.records do
-					local pos = Vector3.new(rec.dx, 1, rec.dz)
-					Fx.emitWith("gooBlob", pos, 3, 0.8, Color3.fromRGB(255, 120, 60))
-					Fx.emitWith("flash", pos, 1, 0.8, C.cyan)
-				end
+				-- the camera leaves the crater: the swarm that is left stays behind
 				EnemyView.clear()
 			end)
 		end
@@ -1173,7 +1192,8 @@ showOutpost = function(slots, key: string?)
 			local tag = tostring(slot) .. id .. tostring(lvl)
 			seen[tag] = true
 			if before and not before[tag] then
-				Base.buildAnim(m, cf, Meta.Structures[id].color)
+				-- built on the workbench in the shelter; it stands at the drill (DD-057)
+				Base.crafted(Meta.Structures[id].color)
 			end
 		end
 	end

@@ -87,26 +87,32 @@ end
 
 print("=== next goal")
 do
-	local pub = { winsByOp = {}, ops = { O01 = 1 }, scrap = 0, outpost = { slots = {}, siege = 1 }, tut = {} }
+	local pub = { winsByOp = {}, ops = { O01 = 1 }, scrap = 0, outpost = { slots = {}, siege = 1 }, tut = {}, home = {} }
 	local function step(tag)
 		local g = Goals.next(pub)
-		print(string.format("  %-14s %s · %s  [%s%s]", tag, g.title, g.text, g.station, if g.slot then " #" .. g.slot else ""))
+		print(string.format("  %-14s %s · %s  [%s%s]", tag, g.title, g.text, g.station, if g.spot then " " .. g.spot elseif g.slot then " #" .. g.slot else ""))
 		return g
 	end
-	check(step("new").key == "hunt1", "goal 1: the first hunt")
-	pub.winsByOp.O01, pub.ops.O02, pub.scrap = 1, 1, 150
+	check(step("new").key == "hunt1", "goal 1: the sortie for the generator")
+	pub.winsByOp.O01, pub.ops.O02, pub.scrap, pub.home.GENERATOR = 1, 1, 180, true
 	local g = step("won O01")
-	check(g.key == "sting" and g.station == "build" and g.slot == Meta.FirstSocket, "goal 2: the first turret on the lit socket")
+	check(g.key == "workbench" and g.station == "home" and g.spot == "WORKBENCH", "goal 2: repair the workshop in the shelter")
+	pub.home.WORKBENCH, pub.scrap = true, 160
+	g = step("workshop")
+	check(g.key == "sting" and g.station == "build", "goal 3: the first turret is made at the workbench")
 	pub.outpost.slots[Meta.FirstSocket] = { id = "STING", lvl = 1 }
 	pub.scrap = 30
-	check(step("built").key == "strike", "goal 3: the first defence")
+	g = step("built")
+	check(g.key == "strike" and g.station == "launch" and g.mode == "siege", "goal 4: the drill defence is a sortie you choose")
 	pub.tut.strike = true
 	g = step("defended")
-	check(g.key == "op_O02" and g.structure == "ARC" and g.text:find("Разрядник") ~= nil, "goal 4: next hunt opens the Разрядник")
+	check(g.key == "op_O02" and g.structure == "ARC" and g.text:find("Разрядник") ~= nil, "goal 5: next sortie opens the Разрядник and the radio")
 	pub.winsByOp.O02, pub.ops.O03, pub.scrap = 1, 1, 400
-	check(step("won O02").key == "build_ARC", "goal 5: build the Разрядник when affordable")
+	check(step("won O02").key == "home_RADIO", "goal 6: the shelter grows first (radio)")
+	pub.home.RADIO, pub.home.GARDEN = true, true
+	check(step("radio").key == "build_ARC", "goal 7: then the Разрядник")
 	pub.scrap = 100
-	check(step("poor").key == "op_O03", "goal 6: otherwise the next hunt")
+	check(step("poor").key == "op_O03", "goal 8: otherwise the next sortie")
 	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")
 end
 

@@ -1,9 +1,11 @@
 --!nonstrict
--- The base (DD-052): the yard between the dropship and the drill where the squad lives between sorties.
--- You walk it: three stations you can see from the spawn (ОРУЖЕЙНАЯ, ПОСТРОЙКИ, ВЫСАДКА), the outpost
--- sockets around the drill, the one lit socket of the current goal. The same stations are buttons on
--- the HUD, so the walk is a pleasure and never a chore. Also owns the first-victory scene: the drill
--- starts, the floodlights come on, the camera finds the empty socket for the first turret.
+-- The shelter (DD-052 → DD-057): a green grove far from the crater where the survivor lives between
+-- sorties. You walk it: the old bunker, the gate out to the wasteland (ВЫЛАЗКА), the armory, and the
+-- prepared spots you bring back to life one by one (generator, workshop, radio, lab, garden) — each
+-- restored spot changes the place and opens something. The same functions are buttons on the HUD, so
+-- the walk is a pleasure and never a chore. Also owns the first-victory scene: the return home, the
+-- generator starts, the lights come on, the camera finds the broken workshop.
+-- Everything here is drawn by this client: in a public camp every survivor sees their own shelter.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -26,70 +28,67 @@ local label, tween = Theme.label, Theme.tween
 
 local Base = {}
 
--- Layout (world). The spawn is (0, -58) facing the drill (north, +Z); the launch pad at the dropship ramp
--- just behind, the outpost terminal on the screen-left next to the first socket, the armory on the right,
--- the drill and its sockets ahead. (The camera looks north from the south: screen-left is world +X.)
+-- Layout, in shelter coordinates (Meta.HomeOrigin = courtyard centre; the camera looks north, +Z, so
+-- screen-left is +X). Spawn (0, -4) facing the bunker.
+local O = Meta.HomeOrigin
+local function W(x: number, y: number, z: number): Vector3
+	return Vector3.new(O.X + x, y, O.Z + z)
+end
 local STATIONS = {
-	{
-		key = "armory",
-		art = "ARMORY",
-		h = 6.5,
-		name = "ОРУЖЕЙНАЯ",
-		sub = "Оружие и улучшения",
-		icon = "swords",
-		color = C.gold,
-		x = -20,
-		z = -56,
-	},
-	{
-		key = "build",
-		art = "BUILDDESK",
-		h = 5.5,
-		name = "ПОСТРОЙКИ",
-		sub = "Турели аванпоста",
-		icon = "shield",
-		color = C.cyan,
-		x = 22,
-		z = -44,
-	},
-	{
-		key = "launch",
-		art = "BEACON",
-		h = 10,
-		name = "ВЫСАДКА",
-		sub = "Выбор охоты · в бой",
-		icon = "play",
-		color = C.lime,
-		x = 0,
-		z = -71,
-	},
-	-- camp only (DD-053)
-	{
-		key = "board",
-		art = "BOARD",
-		h = 6.5,
-		name = "ДОСКА ОТРЯДОВ",
-		sub = "Найди напарников",
-		icon = "users",
-		color = C.orange,
-		x = -17,
-		z = -70,
-		camp = true,
-	},
-	{
-		key = "outposts",
-		art = "RADAR",
-		h = 7.5,
-		name = "АВАНПОСТЫ",
-		sub = "Базы других охотников",
-		icon = "eye",
-		color = C.pink,
-		x = -24,
-		z = -42,
-		camp = true,
-	},
+	{ key = "armory", art = "ARMORY", h = 6.5, name = "ОРУЖЕЙНАЯ", sub = "Оружие и улучшения", icon = "swords", color = C.gold, x = -26, z = 12 },
+	{ key = "launch", art = "BEACON", h = 9, name = "ВЫЛАЗКА", sub = "Ворота в пустошь · в бой", icon = "play", color = C.lime, x = 0, z = -30 },
+	-- camp only (DD-053): the settlement's shared posts
+	{ key = "board", art = "BOARD", h = 6.5, name = "ДОСКА ОТРЯДОВ", sub = "Найди напарников", icon = "users", color = C.orange, x = -15, z = -27, camp = true },
+	{ key = "outposts", art = "RADAR", h = 7.5, name = "УБЕЖИЩА", sub = "Дома других выживших", icon = "eye", color = C.pink, x = 15, z = -27, camp = true },
 }
-local LAMPS = { { -32, -36 }, { 32, -36 }, { -30, -72 }, { 30, -72 } }
+-- Prepared spots of the shelter (Meta.Home): rubble until restored, then the thing itself. A restored
+-- spot is also a station: the workshop builds the drill's defences, the radio picks the drill defence,
+-- the lab shows the samples.
+local SPOTS = {
+	GENERATOR = { art = "GENERATOR", h = 4.2, x = -11, z = 19, yaw = 0.3, color = C.gold },
+	WORKBENCH = { art = "WORKBENCH", h = 5, x = 13, z = 13, yaw = -0.25, color = C.cyan, station = "build", stationName = "МАСТЕРСКАЯ", stationSub = "Оборона бура: турели, ловушки" },
+	RADIO = { art = "RADIO", h = 6.5, x = -24, z = -3, yaw = 0.35, color = C.orange, station = "radio", stationName = "РАДИОСТАНЦИЯ", stationSub = "Оборона бура по уровням" },
+	LAB = { art = "TANK_FRAME", h = 7.5, x = 27, z = 9, yaw = -0.3, color = C.violet, station = "swarm", stationName = "ЛАБОРАТОРИЯ", stationSub = "Образцы роя" },
+	GARDEN = { art = "GARDEN", h = 4, x = -14, z = -14, yaw = 0.2, color = C.lime },
+}
+local LAMPS = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
+-- The grove itself: the bunker, trees, old ruins, a wreck by the gate.
+local DECOR = { -- { art, height, x, z, yaw }
+	{ "SHELTER", 14, 0, 29, 0 },
+	{ "OAK", 20, -42, 34, 0.4 },
+	{ "OAK", 22, 46, 38, 2.1 },
+	{ "OAK", 18, -56, -8, 1.2 },
+	{ "OAK", 21, 60, 4, 3.3 },
+	{ "OAK", 19, -40, -50, 2.6 },
+	{ "OAK", 20, 44, -52, 0.9 },
+	{ "OAK", 24, 4, 62, 1.7 },
+	{ "BIRCH", 15, -26, 40, 0.3 },
+	{ "BIRCH", 14, 28, 44, 1.1 },
+	{ "BIRCH", 16, -60, 20, 2.2 },
+	{ "BIRCH", 15, 62, -26, 0.6 },
+	{ "BIRCH", 13, -48, -30, 1.9 },
+	{ "BIRCH", 14, 50, -38, 2.8 },
+	{ "BIRCH", 17, -18, 56, 0.8 },
+	{ "BUSH", 3.2, -20, 26, 0 },
+	{ "BUSH", 2.8, 20, 28, 1 },
+	{ "BUSH", 3.4, -36, 8, 2 },
+	{ "BUSH", 3.0, 38, -6, 0.5 },
+	{ "BUSH", 2.6, -30, -34, 1.5 },
+	{ "BUSH", 3.0, 30, -36, 2.5 },
+	{ "BUSH", 3.6, -8, 40, 0.2 },
+	{ "BUSH", 2.8, 12, 42, 1.2 },
+	{ "BUSH", 3.2, -44, -16, 2.2 },
+	{ "BUSH", 2.9, 46, 18, 0.7 },
+	{ "RUIN_WALL", 5, -11, -36, 0 },
+	{ "RUIN_WALL", 5, 11, -36, math.pi },
+	{ "RUIN_WALL", 4.5, -48, 6, 1.57 },
+	{ "RUIN_WALL", 5, 50, -10, -1.57 },
+	{ "RUIN_WALL", 4.5, -22, 50, 0.1 },
+	{ "RUIN_WALL", 4.2, 26, 52, -0.15 },
+	{ "CAR_WRECK", 2.8, 9, -47, 0.5 },
+	{ "CRATES", 3, -18, 24, 0.4 },
+	{ "CRATES", 2.6, 19, 21, -0.6 },
+}
 
 local send, actions -- set in init
 local folder: Folder
@@ -97,7 +96,6 @@ local gui: ScreenGui
 local ui = {}
 local stationParts = {} -- key -> { pad, ring, beam, board, prompt, light, def }
 local lamps = {} -- { head, light }
-local sockets = {} -- index -> { ring, prompt }
 local goalMarker = nil -- { model, ring, beam, board, slot, structure }
 local profile = nil
 local lobby = nil
@@ -230,9 +228,9 @@ local function buildWorld()
 			Transparency = 0.15,
 			Parent = holder,
 		})
-		pad.CFrame = CFrame.new(def.x, 0.12, def.z) * CFrame.Angles(0, 0, math.rad(90))
+		pad.CFrame = CFrame.new(W(def.x, 0.12, def.z)) * CFrame.Angles(0, 0, math.rad(90))
 		local ring = ringPart("Ring", 4.8, def.color, 0.3, holder)
-		ring.CFrame = CFrame.new(def.x, 0.3, def.z)
+		ring.CFrame = CFrame.new(W(def.x, 0.3, def.z))
 		local beam = part({
 			Name = "Beam",
 			Shape = Enum.PartType.Cylinder,
@@ -242,7 +240,7 @@ local function buildWorld()
 			Transparency = 0.5,
 			Parent = holder,
 		})
-		beam.CFrame = CFrame.new(def.x, 7, def.z) * CFrame.Angles(0, 0, math.rad(90))
+		beam.CFrame = CFrame.new(W(def.x, 7, def.z)) * CFrame.Angles(0, 0, math.rad(90))
 		local light =
 			new("PointLight", { Color = def.color, Range = 14, Brightness = 1.2, Shadows = false, Parent = pad })
 		local bb = board(pad, def.icon, def.name, def.sub, def.color, 8.5)
@@ -264,9 +262,9 @@ local function buildWorld()
 			Material = Enum.Material.Metal,
 			Parent = m,
 		})
-		pole.CFrame = CFrame.new(xz[1], 5.5, xz[2])
+		pole.CFrame = CFrame.new(W(xz[1], 5.5, xz[2]))
 		pole.CastShadow = true
-		local toward = Vector3.new(0, 0, -54) - Vector3.new(xz[1], 0, xz[2])
+		local toward = Vector3.new(0, 0, 0) - Vector3.new(xz[1], 0, xz[2])
 		local yaw = math.atan2(-toward.X, -toward.Z)
 		local head = part({
 			Name = "Head",
@@ -275,7 +273,7 @@ local function buildWorld()
 			Material = Enum.Material.Neon,
 			Parent = m,
 		})
-		head.CFrame = CFrame.new(xz[1], 11.2, xz[2]) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
+		head.CFrame = CFrame.new(W(xz[1], 11.2, xz[2])) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
 		local spot = new(
 			"SpotLight",
 			{
@@ -290,22 +288,7 @@ local function buildWorld()
 		)
 		lamps[i] = { head = head, light = spot, pole = pole, yaw = yaw }
 	end
-	-- socket markers (empty sockets, once the outpost is open)
-	for i, s in Meta.Sockets do
-		local holder = new("Model", { Name = "Socket" .. i, Parent = folder })
-		local ring = ringPart("Ring", 3, C.cyan, 0.25, holder)
-		ring.CFrame = CFrame.new(s.x, 0.25, s.z)
-		setRing(ring, 1)
-		local pr = prompt(ring, "Строить", "Гнездо " .. i, function()
-			if actions and actions.socket then
-				actions.socket(i)
-			end
-		end)
-		pr.MaxActivationDistance = 7
-		sockets[i] = { ring = ring, prompt = pr }
-	end
 end
-
 
 -- Generated models for the stations, lamps and plinths (DD-056). The art templates replicate from the
 -- server a moment after join; until then (or if an asset fails) the primitive base stands in.
@@ -328,26 +311,19 @@ local function artModel(key: string, height: number, cf: CFrame, parent: Instanc
 	return m
 end
 
--- Each station: its model at the back of the pad, front to the camera; the bare beam goes away once
--- the model is there.
-local PROPS = { -- { art, height, x, z, yaw }
-	{ "HABITAT", 4.6, -38, -58, 0.5 },
-	{ "HABITAT", 4.2, -32, -86, -0.3 },
-	{ "CRATES", 3.4, 14, -84, 0.2 },
-	{ "CRATES", 2.8, -10, -86, -0.6 },
-	{ "CRATES", 3.2, 28, -92, 1.1 },
-	{ "CRATES", 2.6, -44, -72, 0.9 },
-}
-local propsDone = false
+-- The grove (trees, ruins, the bunker) and each station's model at the back of its pad, front to the
+-- camera; the bare beam goes away once the model is there.
+local decorDone = false
+local spotParts = {} -- id -> { holder, ring, board, prompt, light, model, rubble, restored }
+local restoredShown = {} -- spots whose restored look is on screen (to animate only real changes)
+local bulbs = {} -- courtyard string lights (on with the generator)
 
 local function dressStations()
 	for _, sp in stationParts do
 		local def = sp.def
 		if def.art and not sp.model then
-			-- generated meshes face -Z: toward the camera; a slight turn toward the middle of the yard
-			local at = Vector3.new(def.x, 0.25, def.z)
 			local yaw = math.clamp(-def.x / 60, -0.35, 0.35)
-			local m = artModel(def.art, def.h, CFrame.new(at + Vector3.new(0, 0, 1.6)) * CFrame.Angles(0, yaw, 0), sp.holder)
+			local m = artModel(def.art, def.h, CFrame.new(W(def.x, 0.25, def.z + 1.6)) * CFrame.Angles(0, yaw, 0), sp.holder)
 			if m then
 				sp.model = m
 				sp.beam.Transparency = 1
@@ -355,13 +331,13 @@ local function dressStations()
 			end
 		end
 	end
-	-- camp life around the edges of the yard: habitats and supply crates (solid, base only)
-	if not propsDone then
-		propsDone = true
-		for _, pr in PROPS do
-			local m = artModel(pr[1], pr[2], CFrame.new(pr[3], 0, pr[4]) * CFrame.Angles(0, pr[5], 0), folder)
+	if not decorDone then
+		decorDone = true
+		local grove = new("Folder", { Name = "Grove", Parent = folder })
+		for _, d in DECOR do
+			local m = artModel(d[1], d[2], CFrame.new(W(d[3], 0, d[4])) * CFrame.Angles(0, d[5], 0), grove)
 			if m then
-				m.CanCollide = true
+				m.CanCollide = d[1] ~= "BUSH"
 			end
 		end
 	end
@@ -376,6 +352,104 @@ local function dressStations()
 				l.head.CFrame = CFrame.new(pos.X, 10.4, pos.Z) * CFrame.Angles(0, l.yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
 			end
 		end
+	end
+	-- a spot that was waiting for its model gets it now
+	for id in spotParts do
+		restoredShown[id] = nil
+	end
+end
+
+-- Spots ----------------------------------------------------------------------------------------------------
+local function buildSpots()
+	for _, id in Meta.HomeOrder do
+		local def = Meta.Home[id]
+		local sd = SPOTS[id]
+		local holder = new("Model", { Name = "Spot_" .. id, Parent = folder })
+		local ring = ringPart("Ring", 4, sd.color, 0.3, holder)
+		ring.CFrame = CFrame.new(W(sd.x, 0.3, sd.z))
+		local light = new("PointLight", { Color = Color3.fromRGB(255, 214, 160), Range = 12, Brightness = 0, Shadows = false, Parent = ring })
+		local bb = board(ring, def.icon, def.name, "", sd.color, 7.5)
+		local pr = prompt(ring, "Восстановить", def.name, function()
+			if actions and actions.spot then
+				actions.spot(id)
+			end
+		end)
+		pr.MaxActivationDistance = 9
+		spotParts[id] = { holder = holder, ring = ring, board = bb, prompt = pr, light = light, def = def, sd = sd }
+	end
+	-- string lights across the courtyard, from the bunker's corners to the front lamps
+	local runs = { { W(-7, 7, 21.5), W(-32, 10, -20) }, { W(7, 7, 21.5), W(32, 10, -22) }, { W(-7, 7, 21.5), W(7, 7, 21.5) } }
+	for _, r in runs do
+		local a, b = r[1], r[2]
+		local n = math.floor((b - a).Magnitude / 3)
+		for k = 0, n do
+			local t = k / n
+			local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * 2.2, 0)
+			local bulb = part({ Name = "Bulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.45, 0.45, 0.45), Color = Color3.fromRGB(90, 80, 70), Material = Enum.Material.SmoothPlastic, Parent = folder })
+			bulb.CFrame = CFrame.new(p)
+			table.insert(bulbs, bulb)
+		end
+	end
+end
+
+-- The look of a spot: rubble until restored; restored = its model, warm light, and (animate) a burst.
+local function showSpot(id: string, restored: boolean, animate: boolean)
+	local sp = spotParts[id]
+	if not sp then
+		return
+	end
+	local sd = sp.sd
+	local base = CFrame.new(W(sd.x, 0.25, sd.z + 0.8)) * CFrame.Angles(0, sd.yaw, 0)
+	if restored then
+		if sp.rubble then
+			sp.rubble:Destroy()
+			sp.rubble = nil
+		end
+		if not sp.model or not sp.model.Parent then
+			sp.model = artModel(sd.art, sd.h, base, sp.holder)
+			if sp.model then
+				sp.model.CanCollide = true
+			end
+			if id == "LAB" and sp.model then
+				-- the specimen tank: glass, the liquid, a sample inside (DD-059 fills it from research)
+				local glass = part({ Name = "Glass", Shape = Enum.PartType.Cylinder, Size = Vector3.new(sd.h * 0.62, 3.6, 3.6), Color = Color3.fromRGB(190, 230, 220), Material = Enum.Material.Glass, Transparency = 0.6, Parent = sp.holder })
+				glass.CFrame = base * CFrame.new(0, sd.h * 0.5, 0) * CFrame.Angles(0, 0, math.rad(90))
+				local liquid = part({ Name = "Liquid", Shape = Enum.PartType.Cylinder, Size = Vector3.new(sd.h * 0.56, 3.3, 3.3), Color = Color3.fromRGB(120, 255, 170), Material = Enum.Material.Neon, Transparency = 0.82, Parent = sp.holder })
+				liquid.CFrame = glass.CFrame
+				sp.tank = { glass = glass, liquid = liquid, base = base }
+			end
+		end
+		sp.light.Brightness = if id == "GENERATOR" or id == "GARDEN" or id == "WORKBENCH" then 1.4 else 0.8
+		if animate and sp.model then
+			local pos = sp.model.Position
+			Fx.emitWith("dust", pos, 14, 1.6)
+			for k = 1, 6 do
+				local a = k / 6 * math.pi * 2
+				Fx.emitWith("streak", pos + Vector3.yAxis, 3, 0.8, sd.color, Vector3.new(math.cos(a), 1.2, math.sin(a)).Unit)
+			end
+			Fx.ring(W(sd.x, 0.4, sd.z), 7, sd.color, 0.8)
+			Fx.light(pos + Vector3.yAxis * 3, Color3.fromRGB(255, 220, 170), 24, 1.2)
+			Audio.play("evolve", 0.5, 1.3)
+			local final = sp.model.CFrame
+			sp.model.CFrame = final * CFrame.new(0, -sd.h * 0.6, 0)
+			tween(sp.model, 0.9, { CFrame = final }, Enum.EasingStyle.Back)
+		end
+	else
+		if sp.model then
+			sp.model:Destroy()
+			sp.model = nil
+		end
+		if not sp.rubble or not sp.rubble.Parent then
+			sp.rubble = artModel("RUBBLE", 1.9, base, sp.holder)
+		end
+		sp.light.Brightness = 0
+	end
+end
+
+local function setBulbs(on: boolean)
+	for i, b in bulbs do
+		b.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		b.Color = if on then (if i % 3 == 0 then Color3.fromRGB(255, 200, 120) else Color3.fromRGB(255, 232, 170)) else Color3.fromRGB(90, 80, 70)
 	end
 end
 
@@ -406,45 +480,16 @@ local function clearGoalMarker()
 	end
 end
 
-local function hologram(model: Model, color: Color3)
-	for _, d in model:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.Material = Enum.Material.Neon
-			d.Color = color
-			d.Transparency = math.max(d.Transparency, 0.62)
-			d.CastShadow = false
-			d.CanCollide = false
-			d.CanQuery = false
-			if d:IsA("MeshPart") then
-				d.TextureID = ""
-			end
-		elseif
-			d:IsA("Decal")
-			or d:IsA("Texture")
-			or d:IsA("SurfaceAppearance")
-			or d:IsA("Light")
-			or d:IsA("ParticleEmitter")
-		then
-			d:Destroy()
-		end
-	end
-end
-
-local function showGoalMarker(slot: number, structureId: string?, title: string, sub: string, buildable: boolean)
-	local key = tostring(slot) .. "|" .. tostring(structureId) .. "|" .. title .. "|" .. sub .. tostring(buildable)
+-- The lit spot of the current goal: a pulsing ring and a beam over a place in the shelter.
+local function showGoalMarker(pos: Vector3, color: Color3, title: string, sub: string, iconName: string)
+	local key = tostring(pos) .. "|" .. title .. "|" .. sub
 	if goalMarker and goalMarker.key == key then
 		return
 	end
 	clearGoalMarker()
-	local s = Meta.Sockets[slot]
-	if not s then
-		return
-	end
-	local def = structureId and Meta.Structures[structureId]
-	local color = if def then def.color else C.lime
 	local holder = new("Model", { Name = "GoalMarker", Parent = folder })
-	local ring = ringPart("Ring", 4, color, 0.32, holder)
-	ring.CFrame = CFrame.new(s.x, 0.32, s.z)
+	local ring = ringPart("Ring", 4.6, color, 0.34, holder)
+	ring.CFrame = CFrame.new(pos.X, 0.34, pos.Z)
 	local beam = part({
 		Name = "Beam",
 		Shape = Enum.PartType.Cylinder,
@@ -454,29 +499,9 @@ local function showGoalMarker(slot: number, structureId: string?, title: string,
 		Transparency = 0.6,
 		Parent = holder,
 	})
-	beam.CFrame = CFrame.new(s.x, 30, s.z) * CFrame.Angles(0, 0, math.rad(90))
-	new("PointLight", { Color = color, Range = 16, Brightness = 1.6, Shadows = false, Parent = ring })
-	local model = nil
-	if def then
-		model = Structures.model(structureId, 1, false)
-		hologram(model, color)
-		model:PivotTo(CFrame.new(s.x, 0, s.z) * CFrame.Angles(0, math.atan2(s.x, s.z) + math.pi, 0))
-		model.Parent = holder
-	end
-	local bb = board(ring, if def then def.icon else "pin", title, sub, color, 9)
-	local pr = prompt(
-		ring,
-		if buildable and def then "Поставить" else "Строить",
-		if def then def.name else "Гнездо",
-		function()
-			if actions and actions.goal then
-				actions.goal()
-			end
-		end
-	)
-	pr.MaxActivationDistance = 9
-	goalMarker =
-		{ holder = holder, ring = ring, beam = beam, board = bb, prompt = pr, model = model, key = key, slot = slot }
+	beam.CFrame = CFrame.new(pos.X, 30, pos.Z) * CFrame.Angles(0, 0, math.rad(90))
+	-- the spot under the beam already carries its own sign
+	goalMarker = { holder = holder, ring = ring, beam = beam, key = key }
 end
 
 -- Showcase row (DD-054) -----------------------------------------------------------------------------------
@@ -484,11 +509,11 @@ end
 -- gold; one not yet beaten is a faint hologram with the hunt that earns it — a goal you can walk up to.
 -- Shows the base's owner: yours, or the hunter you are visiting.
 local TROPHIES = {
-	{ op = "O01", kind = 10, name = "АЛЬФА", hunt = "Охота 1" },
-	{ op = "O05", kind = 7, name = "МАТЬ РОЯ", hunt = "Охота 5" },
-	{ op = "O07", kind = 9, name = "ПОЖИРАТЕЛЬ", hunt = "Охота 7" },
+	{ op = "O01", kind = 10, name = "АЛЬФА", hunt = "вылазка 1" },
+	{ op = "O05", kind = 7, name = "МАТЬ РОЯ", hunt = "вылазка 5" },
+	{ op = "O07", kind = 9, name = "ПОЖИРАТЕЛЬ", hunt = "вылазка 7" },
 }
-local SHOW_Z = -33
+local SHOW_Z = -16 -- shelter coordinates
 local showFolder = nil
 local showKey = nil
 local spinners = {} -- { model, cf, height }
@@ -503,7 +528,7 @@ local function fitTo(model: Model, height: number, longest: boolean?)
 end
 
 local function pedestal(x: number, color: Color3, lit: boolean): BasePart
-	local plinth = artModel("PLINTH", 1.3, CFrame.new(x, 0, SHOW_Z), showFolder)
+	local plinth = artModel("PLINTH", 1.3, CFrame.new(W(x, 0, SHOW_Z)), showFolder)
 	local base = part({
 		Name = "Pedestal",
 		Shape = Enum.PartType.Cylinder,
@@ -512,15 +537,15 @@ local function pedestal(x: number, color: Color3, lit: boolean): BasePart
 		Material = Enum.Material.Slate,
 		Parent = showFolder,
 	})
-	base.CFrame = CFrame.new(x, 0.6, SHOW_Z) * CFrame.Angles(0, 0, math.rad(90))
+	base.CFrame = CFrame.new(W(x, 0.6, SHOW_Z)) * CFrame.Angles(0, 0, math.rad(90))
 	base.CastShadow = true
 	if plinth then
 		base.Transparency = 1 -- the generated plinth carries the look; this part stays as the anchor
 		plinth.Size = Vector3.new(5.6, plinth.Size.Y, 5.6)
-		plinth.CFrame = CFrame.new(x, plinth.Size.Y / 2, SHOW_Z)
+		plinth.CFrame = CFrame.new(W(x, plinth.Size.Y / 2, SHOW_Z))
 	end
 	local ring = ringPart("Ring", 3.2, color, 1.24, showFolder)
-	ring.CFrame = CFrame.new(x, 1.24, SHOW_Z)
+	ring.CFrame = CFrame.new(W(x, 1.24, SHOW_Z))
 	setRing(ring, if lit then 0.1 else 0.7)
 	if lit then
 		new("PointLight", { Color = color, Range = 9, Brightness = 1.2, Shadows = false, Parent = base })
@@ -587,7 +612,7 @@ function Base.setShowcase(entry)
 	local wdef = Defs.Weapons[entry.weapon]
 	if wdef then
 		local evo = entry.form and Defs.Evolutions[entry.form]
-		local base = pedestal(-13, C.cyan, true)
+		local base = pedestal(-2, C.cyan, true)
 		local ok, gun = pcall(Models.weapon, entry.weapon, evo ~= nil, true)
 		if ok and gun then
 			for _, d in gun:GetDescendants() do
@@ -599,13 +624,13 @@ function Base.setShowcase(entry)
 			end
 			fitTo(gun, 5, true)
 			gun.Parent = showFolder
-			table.insert(spinners, { model = gun, cf = CFrame.new(-13, 2.2, SHOW_Z), speed = 0.6 })
+			table.insert(spinners, { model = gun, cf = CFrame.new(W(-2, 2.2, SHOW_Z)), speed = 0.6 })
 		end
 		plaque(base, if evo then evo.name else wdef.name, string.format("Любимое оружие · M%d", entry.mastery or 1), C.cyan)
 	end
 	-- the trophies
 	for i, t in TROPHIES do
-		local x = -1 + (i - 1) * 11
+		local x = 8 + (i - 1) * 9
 		local won = entry.won and entry.won[t.op]
 		local base = pedestal(x, if won then C.gold else C.violet, won)
 		local ok, m = pcall(Models.creature, t.kind)
@@ -613,14 +638,14 @@ function Base.setShowcase(entry)
 			statue(m, won)
 			fitTo(m, if t.kind == 10 then 5 else 6)
 			m.Parent = showFolder
-			table.insert(spinners, { model = m, cf = CFrame.new(x, 1.3, SHOW_Z), speed = if won then 0.25 else 0.1 })
+			table.insert(spinners, { model = m, cf = CFrame.new(W(x, 1.3, SHOW_Z)), speed = if won then 0.25 else 0.1 })
 		end
-		plaque(base, t.name, if won then "Повержен" else t.hunt .. " · трофей", if won then C.gold else C.dim)
+		plaque(base, t.name, if won then "Повержен · " .. t.hunt else t.hunt .. " · трофей", if won then C.gold else C.dim)
 	end
 	-- the siege record on the drill-side
 	if (entry.siege or 0) > 0 then
-		local base = pedestal(-24, C.orange, true)
-		plaque(base, "ОСАДА " .. entry.siege, "Лучший удержанный уровень", C.orange)
+		local base = pedestal(-26, C.orange, true)
+		plaque(base, "ОБОРОНА " .. entry.siege, "Лучший удержанный уровень бура", C.orange)
 	end
 end
 
@@ -693,6 +718,7 @@ local function buildHud(playerGui: PlayerGui)
 		}
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.owner })
+	ui.ownerNote = label("", { Position = UDim2.fromOffset(4, 240), Size = UDim2.fromOffset(440, 30), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = safe })
 	-- goal card
 	local card = Theme.panel(
 		{ Name = "Goal", Position = UDim2.fromOffset(0, 68), Size = UDim2.fromOffset(440, 168), CornerRadius = 18 },
@@ -902,13 +928,12 @@ local function buildHud(playerGui: PlayerGui)
 		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
 	})
 	ui.stArmory = stationButton(ui.stations, "armory", "ОРУЖЕЙНАЯ", "swords", C.gold, 1)
-	ui.stBuild = stationButton(ui.stations, "build", "ПОСТРОЙКИ", "shield", C.cyan, 2)
-	ui.stLaunch = stationButton(ui.stations, "launch", "ВЫСАДКА", "pin", C.lime, 3)
+	ui.stBuild = stationButton(ui.stations, "build", "МАСТЕРСКАЯ", "gear", C.cyan, 2)
+	ui.stLaunch = stationButton(ui.stations, "launch", "ВЫЛАЗКА", "play", C.lime, 3)
 	ui.stBoard = stationButton(ui.stations, "board", "ОТРЯДЫ", "users", C.orange, 4)
-	ui.stOutposts = stationButton(ui.stations, "outposts", "АВАНПОСТЫ", "eye", C.pink, 5)
-	ui.stSwarm = stationButton(ui.stations, "swarm", "РОЙ", "hive", C.violet, 6)
-	ui.stSwarm.Size = UDim2.fromOffset(110, 56)
-	for _, b in { ui.stArmory, ui.stBuild, ui.stLaunch, ui.stBoard, ui.stOutposts } do
+	ui.stOutposts = stationButton(ui.stations, "outposts", "УБЕЖИЩА", "eye", C.pink, 5)
+	ui.stSwarm = stationButton(ui.stations, "swarm", "ЛАБОРАТОРИЯ", "hive", C.violet, 6)
+	for _, b in { ui.stArmory, ui.stBuild, ui.stLaunch, ui.stBoard, ui.stOutposts, ui.stSwarm } do
 		b.Size = UDim2.fromOffset(156, 56)
 	end
 	-- session base: back to the public camp
@@ -1101,55 +1126,59 @@ function Base.refresh()
 	end
 	local f = features()
 	goal = Goals.next(profile)
-	-- the lights are on once the crater is ours
-	local ours = ((profile.winsByOp or {}).O01 or 0) > 0
-	if ours ~= lampsOn and not scene then
-		setLamps(ours, true)
-	end
-	-- stations available
-	stationParts.build.holder.Parent = if f.outpost then folder else nil
+	local home = profile.home or {}
+	local won = profile.winsByOp or {}
 	stationParts.armory.holder.Parent = if (profile.runs or 0) > 0 then folder else nil
 	stationParts.board.holder.Parent = if camp then folder else nil
 	stationParts.outposts.holder.Parent = if camp then folder else nil
-	-- sockets: faint rings on the empty ones while the outpost is open
-	local slots = (profile.outpost and profile.outpost.slots) or {}
-	if lobby and lobby.outpost then
-		slots = lobby.outpost
+	-- the generator brings the light: floodlights, string lights, the bunker's windows
+	local powered = home.GENERATOR == true
+	if powered ~= lampsOn and not scene then
+		setLamps(powered, true)
+		setBulbs(powered)
 	end
-	local isHost = lobby ~= nil and lobby.host == myId
-	local ownsBase = camp ~= nil or isHost -- in the camp every hunter builds their own outpost
-	for i, s in sockets do
-		local empty = not slots[i] and not slots[tostring(i)]
-		-- the first steps light one socket only; the rest of the ring appears after the first defence
-		local focused = goal ~= nil and (goal.key == "sting" or goal.key == "strike")
-		local show = f.outpost == true
-			and empty
-			and ownsBase
-			and not focused
-			and not (goal and goal.slot == i and goal.station == "build")
-		s.show = show
-	end
-	-- the goal socket
-	if goal and goal.station == "build" and goal.slot and ownsBase and f.outpost then
-		local def = goal.structure and Meta.Structures[goal.structure]
-		local affordable = def ~= nil and (profile.scrap or 0) >= def.cost[1]
-		local built = slots[goal.slot] or slots[tostring(goal.slot)]
-		if built then
-			clearGoalMarker()
-		else
-			showGoalMarker(
-				goal.slot,
-				goal.structure,
-				if def then def.name else "ГНЕЗДО",
-				if affordable
-					then "Поставить · ◆ " .. def.cost[1]
-					else "Нужно ◆ " .. (if def then def.cost[1] else 0),
-				affordable
-			)
+	-- the prepared spots: rubble or restored, a prompt to restore when it is open
+	for id, sp in spotParts do
+		local def = sp.def
+		local restored = home[id] == true
+		if restoredShown[id] ~= restored then
+			local animate = restoredShown[id] == false and restored and not scene
+			restoredShown[id] = restored
+			showSpot(id, restored, animate)
 		end
+		local open = ((won[def.unlock] or 0) > 0)
+		local affordable = (profile.scrap or 0) >= def.cost
+		local title = sp.board:FindFirstChild("Title", true)
+		local sub = sp.board:FindFirstChild("Sub", true)
+		local sd = sp.sd
+		if title then
+			title.Text = if restored and sd.stationName then sd.stationName else def.name
+		end
+		if sub then
+			sub.Text = if restored then (sd.stationSub or "Восстановлено")
+				elseif def.free then "Заработает после вылазки 1"
+				elseif not open then "Откроется после вылазки " .. tostring(tonumber(def.unlock:sub(2)) or "")
+				else string.format("Починить · ◆ %d%s", def.cost, if affordable then "" else " (не хватает)")
+		end
+		sp.canRestore = not restored and open and not def.free
+		sp.isStation = restored and sd.station ~= nil
+	end
+	-- the goal: a beam over the place where it happens
+	if goal and goal.station == "home" and goal.spot and spotParts[goal.spot] then
+		local sd = SPOTS[goal.spot]
+		local def = Meta.Home[goal.spot]
+		showGoalMarker(W(sd.x, 0, sd.z), sd.color, def.name, "Починить · ◆ " .. def.cost, def.icon)
+	elseif goal and goal.station == "build" and f.outpost then
+		local sd = SPOTS.WORKBENCH
+		local def = goal.structure and Meta.Structures[goal.structure]
+		showGoalMarker(W(sd.x, 0, sd.z), C.cyan, if def then "СОБРАТЬ: " .. def.name else "МАСТЕРСКАЯ", if def then "Для бура · ◆ " .. def.cost[1] else "", if def then def.icon else "gear")
 	else
 		clearGoalMarker()
 	end
+	local isHost = lobby ~= nil and lobby.host == myId
+	local ownsBase = true -- the shelter is always your own (in a camp every survivor sees theirs)
+	local slots = (profile.outpost and profile.outpost.slots) or {}
+	local _ = slots
 	if not gui then
 		return
 	end
@@ -1162,13 +1191,15 @@ function Base.refresh()
 		end
 	end
 	if camp then
-		ui.tag.Text = string.format("КРАТЕР ЦВЕТЕНИЯ  ·  ОХОТНИКОВ: %d", #(camp.hunters or {}))
+		ui.tag.Text = string.format("ПОСЕЛЕНИЕ ВЫЖИВШИХ  ·  ЗДЕСЬ: %d", #(camp.hunters or {}))
 		ui.owner.Text = if #players > 1
 			then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players)
-			else "ЛАГЕРЬ"
+			else "ТВОЁ УБЕЖИЩЕ"
+		ui.ownerNote.Text = "Убежище у каждого своё: другие выжившие видят здесь своё. Чужое — через «Убежища»."
 	else
-		ui.tag.Text = if isHost or hostName == "" then "ТВОЙ АВАНПОСТ" else "АВАНПОСТ ОТРЯДА"
-		ui.owner.Text = if hostName ~= "" then hostName else Players.LocalPlayer.DisplayName
+		ui.tag.Text = if isHost or hostName == "" then "ТВОЁ УБЕЖИЩЕ" else "УБЕЖИЩЕ ОТРЯДА · у каждого своё"
+		ui.owner.Text = Players.LocalPlayer.DisplayName
+		ui.ownerNote.Text = ""
 	end
 	ui.toCamp.Visible = lobby ~= nil and lobby.camp == true
 	ui.stBoard.Visible = camp ~= nil
@@ -1180,22 +1211,25 @@ function Base.refresh()
 		for _, c in ui.goalIcon:GetChildren() do
 			c:Destroy()
 		end
-		local col = if goal.structure then Meta.Structures[goal.structure].color else C.lime
+		local col = if goal.structure then Meta.Structures[goal.structure].color
+			elseif goal.spot and SPOTS[goal.spot] then SPOTS[goal.spot].color
+			else C.lime
 		local d = Icons.disc(goal.icon, 46, col, 2)
 		d.Parent = ui.goalIcon
 		setGoalView(goal.structure)
 		local btn = nil
-		if goal.key == "strike" then
-			btn = nil
-		elseif goal.station == "build" then
+		if goal.station == "build" then
 			local def = goal.structure and Meta.Structures[goal.structure]
 			local affordable = def and (profile.scrap or 0) >= def.cost[if goal.key == "upgrade" then 2 else 1]
 			btn = if goal.key == "upgrade"
 				then "УЛУЧШИТЬ"
-				elseif affordable then "ПОСТАВИТЬ"
-				else "ПОСТРОЙКИ"
+				elseif affordable then "СОБРАТЬ"
+				else "МАСТЕРСКАЯ"
 		elseif goal.station == "launch" then
-			btn = if goal.op then "К ВЫСАДКЕ" else "ВЫСАДКА"
+			btn = if goal.mode == "siege" then "К ОБОРОНЕ БУРА" else "НА ВЫЛАЗКУ"
+		elseif goal.station == "home" then
+			local h = goal.spot and Meta.Home[goal.spot]
+			btn = if h and (profile.scrap or 0) >= h.cost then "ПОЧИНИТЬ" else nil
 		end
 		ui.goalBtn.Visible = btn ~= nil and (goal.station ~= "build" or ownsBase)
 		ui.goalBtnLabel.Text = btn or ""
@@ -1232,9 +1266,9 @@ function Base.refresh()
 	ui.amReady = amReady
 	local op = lobby and Ops.get(lobby.op)
 	local modeName = if lobby and lobby.mode == "siege"
-		then "ОСАДА · УРОВЕНЬ " .. (lobby.siege or 1)
+		then "ОБОРОНА БУРА · " .. (if profile.tut and profile.tut.strike then "УРОВЕНЬ " .. (lobby.siege or 1) else "ПЕРВЫЙ НАТИСК")
 		elseif lobby and lobby.mode == "raid" then "ВТОРЖЕНИЕ"
-		elseif op then "ОХОТА " .. op.index .. " · " .. op.name
+		elseif op then "ВЫЛАЗКА " .. op.index .. " · " .. op.name
 		else ""
 	ui.playLabel.Text = if amReady then "ОТМЕНА" else "В БОЙ"
 	ui.playSub.Text = if amReady then "ждём отряд" else modeName
@@ -1246,7 +1280,7 @@ function Base.refresh()
 	ui.status.Text = if cd and lobby.hold
 		then string.format("Ждём друзей  ·  готовы %d/%d", ready, n)
 		elseif cd then string.format(
-			"Высадка через %d  ·  готовы %d/%d",
+			"Выход через %d  ·  готовы %d/%d",
 			math.ceil(cd),
 			ready,
 			n
@@ -1268,6 +1302,7 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 	send = sender
 	actions = acts
 	buildWorld()
+	buildSpots()
 	buildHud(playerGui)
 	task.spawn(function()
 		local rs = game:GetService("ReplicatedStorage")
@@ -1342,6 +1377,19 @@ function Base.invite()
 	end)
 end
 
+-- Something was made on the workbench for the drill: sparks and a hammer ring over the bench.
+function Base.crafted(color: Color3)
+	local sd = SPOTS.WORKBENCH
+	local pos = W(sd.x, 3, sd.z)
+	for k = 1, 8 do
+		local a = k / 8 * math.pi * 2
+		Fx.emitWith("streak", pos, 2, 0.7, color, Vector3.new(math.cos(a), 1.5, math.sin(a)).Unit)
+	end
+	Fx.ring(W(sd.x, 0.4, sd.z), 6, color, 0.7)
+	Fx.light(pos, color, 18, 0.8)
+	Audio.play("evolve", 0.5, 1.5)
+end
+
 -- A structure that just appeared on the base: it rises out of the ground in a shower of sparks.
 function Base.buildAnim(model: Model, cf: CFrame, color: Color3)
 	local t0 = os.clock()
@@ -1391,9 +1439,17 @@ function Base.update(_dt: number, _root: Vector3?)
 		s.beam.Transparency = if active then 0.62 + math.sin(now * 1.6 + s.def.z) * 0.08 else 0.85
 		s.light.Brightness = if hot then 2 + pulse else 1
 	end
-	for _, s in sockets do
-		s.prompt.Enabled = active and s.show == true
-		setRing(s.ring, if active and s.show then 0.55 else 1)
+	for id, sp in spotParts do
+		local usable = active and (sp.canRestore or sp.isStation)
+		sp.prompt.Enabled = usable == true
+		sp.prompt.ActionText = if sp.isStation then (sp.sd.stationName or sp.def.name) else "Починить · ◆ " .. sp.def.cost
+		sp.board.Enabled = active or scene ~= nil
+		local glow = if sp.canRestore then 0.25 + math.sin(now * 3 + sp.sd.x) * 0.15 elseif sp.isStation then 0.45 else 0.85
+		setRing(sp.ring, glow)
+		if sp.tank and sp.tank.liquid.Parent then
+			sp.tank.liquid.Transparency = 0.78 + math.sin(now * 1.3) * 0.05
+		end
+		local _ = id
 	end
 	for _, sp in spinners do
 		if sp.model.Parent then
@@ -1404,15 +1460,7 @@ function Base.update(_dt: number, _root: Vector3?)
 		local pulse = 0.5 + math.sin(now * 3.2) * 0.5
 		setRing(goalMarker.ring, pulse * 0.4, 3.6 + pulse * 0.8)
 		goalMarker.beam.Transparency = 0.55 + pulse * 0.25
-		goalMarker.prompt.Enabled = active
-		goalMarker.board.Enabled = active or scene ~= nil
-		if goalMarker.model then
-			local s = Meta.Sockets[goalMarker.slot]
-			goalMarker.model:PivotTo(
-				CFrame.new(s.x, 0.15 + math.sin(now * 2) * 0.15, s.z)
-					* CFrame.Angles(0, math.atan2(s.x, s.z) + math.pi + math.sin(now * 0.8) * 0.4, 0)
-			)
-		end
+
 	end
 	if gui and gui.Enabled then
 		ui.playGlow.Transparency = 0.45 + math.sin(now * 3) * 0.25
@@ -1536,18 +1584,22 @@ end
 
 -- Plays once after the first hunt is won; onDone runs when it ends or is skipped. Returns false if it
 -- cannot play (no camera).
-function Base.victoryScene(startCf: CFrame, onDone, onDrill)
+-- The return home after the first sortie: the grove from above, the generator coughs to life, the
+-- lights come on, the camera finds the broken workshop the loot will pay for.
+function Base.victoryScene(startCf: CFrame, onDone, onReturn)
 	if scene then
 		return false
 	end
 	local sg = buildSceneGui()
-	local s = Meta.Sockets[Meta.FirstSocket]
+	local wb = SPOTS.WORKBENCH
+	local gen = SPOTS.GENERATOR
 	local keys = {
 		{ t = 0, cf = startCf },
-		{ t = 1.8, cf = CFrame.lookAt(Vector3.new(30, 34, -44), Vector3.new(0, 6, 0)) },
-		{ t = 3.9, cf = CFrame.lookAt(Vector3.new(-22, 24, -92), Vector3.new(4, 2, -56)) },
-		{ t = 6.4, cf = CFrame.lookAt(Vector3.new(s.x + 16, 12, s.z - 20), Vector3.new(s.x, 2.5, s.z)) },
-		{ t = 7.8, cf = CFrame.lookAt(Vector3.new(s.x + 13, 10, s.z - 17), Vector3.new(s.x, 2.5, s.z)) },
+		{ t = 0.01, cf = CFrame.lookAt(W(0, 70, -110), W(0, 6, 10)) },
+		{ t = 2.2, cf = CFrame.lookAt(W(-6, 26, -34), W(-4, 4, 16)) },
+		{ t = 4.4, cf = CFrame.lookAt(W(gen.x + 8, 9, gen.z - 14), W(gen.x - 2, 3, gen.z + 4)) },
+		{ t = 6.6, cf = CFrame.lookAt(W(wb.x + 4, 9, wb.z - 15), W(wb.x, 2, wb.z)) },
+		{ t = 8.0, cf = CFrame.lookAt(W(wb.x + 3, 8, wb.z - 13), W(wb.x, 2, wb.z)) },
 	}
 	local fired = {}
 	local done = false
@@ -1559,6 +1611,7 @@ function Base.victoryScene(startCf: CFrame, onDone, onDrill)
 		done = true
 		scene = nil
 		setLamps(true, true)
+		setBulbs(true)
 		tween(sg.top, 0.35, { Position = UDim2.fromScale(0, -0.11) })
 		tween(sg.bottom, 0.35, { Position = UDim2.fromScale(0, 1.11) })
 		task.delay(0.4, function()
@@ -1576,64 +1629,38 @@ function Base.victoryScene(startCf: CFrame, onDone, onDrill)
 				fn()
 			end
 		end
-		at(0.2, function()
-			caption(sg, "КРАТЕР ЗАЧИЩЕН", "Рой отступил в пасть титана")
-		end)
-		at(1.5, function()
-			-- the drill comes alive
-			local top = Vector3.new(0, 14, 0)
-			Fx.ring(Vector3.new(0, 0.4, 0), 26, C.cyan, 1.2)
-			Fx.light(top, C.cyan, 60, 1.6)
-			Fx.emitWith("flash", top, 1, 3, C.cyan)
-			for i = 1, 6 do
-				local a = i / 6 * math.pi * 2
-				Fx.emitWith("streak", top, 4, 1.2, C.cyan, Vector3.new(math.cos(a), 1.4, math.sin(a)).Unit)
+		at(0.05, function()
+			if onReturn then
+				onReturn()
 			end
-			Audio.play("evolve", 0.8, 0.8)
-			if onDrill then
-				onDrill()
-			end
-			caption(
-				sg,
-				"БУР ЗАПУЩЕН",
-				"Кратер Цветения теперь твой аванпост",
-				C.cyan
-			)
+			caption(sg, "ГЕНЕРАТОР ДОБЫТ", "Дорога домой, в зелёную рощу")
 		end)
 		at(3.0, function()
-			setLamps(true)
+			-- the generator coughs to life and the shelter wakes up
+			restoredShown.GENERATOR = true
+			showSpot("GENERATOR", true, true)
+			Audio.play("evolve", 0.8, 0.7)
+			caption(sg, "УБЕЖИЩЕ ОЖИВАЕТ", "Свет, тепло и гирлянды над двором", C.gold)
 		end)
 		at(3.6, function()
-			local pad = stationParts.launch
-			Fx.ring(pad.pad.Position + Vector3.yAxis * 0.3, 7, C.lime, 0.8)
-			Audio.play("level", 0.5, 1.2)
+			setLamps(true)
+			setBulbs(true)
 		end)
-		at(4.3, function()
-			showGoalMarker(
-				Meta.FirstSocket,
-				"STING",
-				"ЖАЛО",
-				"Здесь встанет первая турель",
-				true
-			)
-			Fx.ring(Vector3.new(s.x, 0.4, s.z), 6, Meta.Structures.STING.color, 0.8)
+		at(5.0, function()
+			local def = Meta.Home.WORKBENCH
+			showGoalMarker(W(wb.x, 0, wb.z), wb.color, def.name, "Починить · ◆ " .. def.cost, def.icon)
+			Fx.ring(W(wb.x, 0.4, wb.z), 6, wb.color, 0.8)
 			Audio.play("level", 0.7, 1.5)
-			caption(
-				sg,
-				"ДОБЫЧИ ХВАТИТ НА ПЕРВУЮ ТУРЕЛЬ",
-				"Поставь «Жало» на базе — и рой пожалеет, что вернулся",
-				C.gold
-			)
+			caption(sg, "ДОБЫЧИ ХВАТИТ НА МАСТЕРСКУЮ", "На верстаке соберёшь оборону для бура", C.cyan)
 		end)
 		if t >= keys[#keys].t + 0.6 then
 			task.defer(finish)
 		end
-		-- camera along the keys
-		for i = 1, #keys - 1 do
-			local a, b = keys[i], keys[i + 1]
+		for k = 1, #keys - 1 do
+			local a, b = keys[k], keys[k + 1]
 			if t <= b.t then
-				local k = ease(math.clamp((t - a.t) / (b.t - a.t), 0, 1))
-				return a.cf:Lerp(b.cf, k)
+				local e = ease(math.clamp((t - a.t) / math.max(0.01, b.t - a.t), 0, 1))
+				return a.cf:Lerp(b.cf, e)
 			end
 		end
 		return keys[#keys].cf

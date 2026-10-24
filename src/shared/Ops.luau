@@ -94,16 +94,17 @@ local XP_O01 = { 4, 32, 80 }
 --   O07 ПОЖИРАТЕЛЬ    chapter finale.
 -- Ids are profile keys; their meaning shifted in the reboot (old O02..O06 became O03..O07).
 
--- O01 «ВЫСАДКА» — the first ninety seconds of the game (DD-051). One enemy type, one rule (stay alive),
+-- O01 «ГЕНЕРАТОР» (was «ВЫСАДКА») — the first ninety seconds of the game (DD-051): a sortie for the
+-- generator the shelter needs (DD-057). One enemy type, one rule (stay alive),
 -- exactly three cards (the first is the guided «Расщепление»), one big enemy (the Alpha, ~0:55) and a
 -- short final swarm. Winning it opens the outpost: the first turret is bought with this hunt's loot.
 Ops.O01 = {
 	id = "O01",
 	index = 1,
 	code = "O01",
-	name = "ВЫСАДКА",
+	name = "ГЕНЕРАТОР",
 	map = "MAP_REACTOR_YARD",
-	brief = "Кратер кишит роем. Стреляй, расти в силе и убей Альфу.",
+	brief = "В руинах станции — генератор для убежища. Продержись и убей Альфу, что гнездится на нём.",
 	goal = "Продержись",
 	objective = "carrier",
 	playerDamageMult = 0.6,

@@ -20,6 +20,7 @@ local Arena = require(script.Parent.Arena)
 local ArtLoader = require(script.Parent.ArtLoader)
 local Profile = require(script.Parent.Profile)
 local Outposts = require(script.Parent.Outposts)
+local Home = require(script.Parent.Home)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 local Squads = require(script.Parent.Squads)
@@ -91,11 +92,23 @@ local function buildArena(mapId: string)
 	if builtMap ~= mapId then
 		builtMap = mapId
 		Arena.build(Maps.get(mapId))
+		Home.build() -- the arena rebuild clears all terrain, the grove's too
+	end
+end
+
+-- One server, two lights (DD-057): the grove's afternoon between runs, the arena's during a run.
+local function setLight(home: boolean)
+	if home then
+		Home.lighting()
+	else
+		Home.clearClouds()
+		Arena.lighting(Maps.get(builtMap or "MAP_REACTOR_YARD").theme)
 	end
 end
 -- Mesh art first (bounded wait): the arena prefers it and falls back to primitives per asset.
 ArtLoader.load(15)
 buildArena(Ops.get(lobby.op).map)
+setLight(true)
 
 -- Helpers ---------------------------------------------------------------------------------------------
 local function finite(n): boolean
@@ -257,8 +270,14 @@ local function startRun()
 		opts.opDef = Ops.makeFirstStrike()
 		opts.structures = hostData.outpost.slots
 		opts.threat = 1
+	elseif lobby.mode == "siege" and hostData and not hostData.tut.strike then
+		-- the first voluntary defence of the drill is the short lesson (DD-057: no longer forced)
+		opts.opDef = Ops.makeFirstStrike()
+		opts.structures = hostData.outpost.slots
+		opts.threat = 1
 	elseif lobby.mode == "siege" and hostData then
-		opts.opDef = Ops.makeSiege(hostData.outpost.siege)
+		local f = Profile.features(hostData)
+		opts.opDef = Ops.makeSiege(if f.siegeLadder then hostData.outpost.siege else 1)
 		opts.structures = hostData.outpost.slots
 		opts.threat = 1
 		opts.anomaly = todaysAnomaly()
@@ -273,6 +292,7 @@ local function startRun()
 		opts.structures = hostData.outpost.slots
 	end
 	world = World.new(opts)
+	setLight(false)
 	mode = "RUN"
 	lobby.countdown = nil
 	lobby.hold = false
@@ -334,7 +354,9 @@ end
 
 -- Between hunts the squad is on its base (DD-052): the yard between the dropship and the drill. They
 -- arrive facing the drill, with the armory left, the launch pad behind and the outpost ahead.
-local LOBBY_SPOTS = { { 0, -58 }, { -5, -60 }, { 5, -60 }, { 0, -63 } }
+-- (DD-057: now the shelter in the grove, Meta.HomeOrigin; coordinates below are relative to it)
+local LOBBY_SPOTS = { { 0, -4 }, { -5, -6 }, { 5, -6 }, { 0, -9 } }
+local HOME = Meta.HomeOrigin
 local LOBBY_FACING = math.pi
 local function toHub(player: Player)
 	if (mode ~= "LOBBY" and mode ~= "HUB") or not player.Parent then
@@ -345,11 +367,11 @@ local function toHub(player: Player)
 		-- the camp can hold a crowd: a loose ring in the yard
 		local a = (i - 1) * 2.4
 		local r = if i == 1 then 0 else 4 + (i % 3) * 3
-		prepareCharacter(player, math.cos(a) * r, -58 + math.sin(a) * r * 0.6, LOBBY_FACING)
+		prepareCharacter(player, HOME.X + math.cos(a) * r, HOME.Z - 4 + math.sin(a) * r * 0.6, LOBBY_FACING)
 		return
 	end
 	local spot = LOBBY_SPOTS[(i - 1) % #LOBBY_SPOTS + 1]
-	prepareCharacter(player, spot[1], spot[2], LOBBY_FACING)
+	prepareCharacter(player, HOME.X + spot[1], HOME.Z + spot[2], LOBBY_FACING)
 end
 
 local function backToLobby()
@@ -369,6 +391,7 @@ local function backToLobby()
 	end
 	world = nil
 	mode = "LOBBY"
+	setLight(true)
 	table.clear(participants)
 	table.clear(tracking)
 	for _, player in Players:GetPlayers() do
@@ -517,6 +540,7 @@ local function toCamp(player: Player): boolean
 		return false
 	end
 	mode = "HUB"
+	setLight(true)
 	sessionHostId = nil
 	table.clear(lobby.ready)
 	lobby.countdown = nil
@@ -798,30 +822,6 @@ function handlers.revenge(player: Player, uid)
 	return true
 end
 
--- The first turret on a host's outpost calls the swarm: «Первый натиск» starts by itself (DD-052).
-local function maybeStrike(player: Player)
-	local d = Profile.get(player)
-	if not d or d.tut.strike then
-		return
-	end
-	if mode == "HUB" then
-		-- built in the camp: the hunter drops into their own short defence
-		local sq = squads:squadOf(player)
-		if sq and not sq.launching and not sq.strikeAt then
-			if #sq.members > 1 then
-				sq = squads:solo(player, nextOpFor(player))
-			end
-			sq.strikeAt = os.clock() + STRIKE_DELAY
-		end
-		return
-	end
-	if player ~= host() or mode ~= "LOBBY" or lobby.strikeAt then
-		return
-	end
-	lobby.strikeAt = os.clock() + STRIKE_DELAY
-	lobby.countdown = nil
-end
-
 function handlers.tut(player: Player, key)
 	return type(key) == "string" and Profile.markTut(player, key)
 end
@@ -834,9 +834,12 @@ function handlers.hold(player: Player, on)
 	return true
 end
 
+function handlers.restore(player: Player, id)
+	return lobbyOnly() and type(id) == "string" and Profile.restore(player, id)
+end
+
 function handlers.build(player: Player, slot, id)
 	if lobbyOnly() and finite(slot) and type(id) == "string" and Profile.build(player, slot, id) then
-		maybeStrike(player)
 		funnelStep(player, 5)
 		return true
 	end
