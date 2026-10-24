@@ -10,6 +10,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Meta = require(Shared:WaitForChild("Meta"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local Theme = require(script.Parent.Theme)
+local Icons = require(script.Parent.Icons)
 local Audio = require(script.Parent.Audio)
 local Preview = require(script.Parent.Preview)
 local Defs = require(Shared:WaitForChild("Defs"))
@@ -127,7 +128,7 @@ local function buildOutpost()
 			ZIndex = 44,
 			Parent = map,
 		})
-		local stroke = new("UIStroke", { Color = C.white, Transparency = 0.7, Thickness = 2, Parent = b })
+		local stroke = new("UIStroke", { Color = C.white, Transparency = 0.7, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = b })
 		local holder = new("Frame", { Size = UDim2.fromScale(1, 1), ZIndex = 45, Parent = b })
 		b.Activated:Connect(function()
 			selectedSocket = i
@@ -190,16 +191,9 @@ local function row(parent, order: number, h: number)
 end
 
 local function iconDisc(parent, iconName: string, color: Color3, size: number, pos: UDim2)
-	local d = new("Frame", {
-		Position = pos,
-		Size = UDim2.fromOffset(size, size),
-		BackgroundColor3 = color,
-		BackgroundTransparency = 0.8,
-		Corner = UDim.new(1, 0),
-		ZIndex = 44,
-		Parent = parent,
-	})
-	H.icon(iconName, math.floor(size * 0.58), color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 45, Parent = d })
+	local d = Icons.disc(iconName, size, color, 44)
+	d.Position = pos
+	d.Parent = parent
 	return d
 end
 

@@ -1,6 +1,7 @@
 --!nonstrict
--- Vector icon set drawn with GUI primitives in a 100×100 design box (no uploaded images needed).
--- Icons.new(name, sizePx, color, cutoutColor?) -> Frame. Recolor with Icons.recolor(frame, color).
+-- Icon set. Icons.new(name, sizePx, color, cutoutColor?) -> Frame. Recolor with Icons.recolor(frame, color).
+-- Main path: a white, shaded, outlined atlas (tools/icons, 8×6 cells of 128 px) tinted with ImageColor3.
+-- Names missing from the atlas fall back to the primitive vector specs below.
 -- Primitive spec: {kind, ...} where kind is
 --   L x1 y1 x2 y2 thick      line (rounded caps)
 --   C x y r                   filled circle
@@ -11,7 +12,28 @@
 --   P x y w h                 pill (fully rounded box)
 -- Kinds suffixed with "2" draw in the cutout color (holes, details).
 
+local ContentProvider = game:GetService("ContentProvider")
+
 local Icons = {}
+
+local ATLAS = "rbxassetid://106607045724159"
+local CELL, COLS = 128, 8
+-- Same order as `node tools/icons/build.js` prints.
+local ORDER = { "chain", "ricochet", "pierce", "fire", "burst", "drop", "snow", "fan", "chevrons", "crosshair", "dashbolt", "shield", "plus", "battery", "dash", "sun", "evolve", "reload", "heart", "skull", "timer", "level", "core", "hammer", "reactor", "hive", "crown", "elite", "coil", "gear", "threat", "pin", "reroll", "banish", "lock", "magnet", "eye", "xp", "star", "check", "swords", "boom", "play", "topdown", "person", "users" }
+local CELLS = {}
+for i, name in ORDER do
+	CELLS[name] = Vector2.new((i - 1) % COLS * CELL, (i - 1) // COLS * CELL)
+end
+
+-- White textures for UI art (tinted by ImageColor3).
+Icons.Tex = {
+	glow = "rbxassetid://72977969815661", -- soft radial glow
+	hex = "rbxassetid://98100621436240", -- hex-cell pattern fading downwards
+}
+
+task.defer(function()
+	pcall(ContentProvider.PreloadAsync, ContentProvider, { ATLAS, Icons.Tex.glow, Icons.Tex.hex })
+end)
 
 local SPECS = {}
 
@@ -107,13 +129,30 @@ local function round(f, scale)
 end
 
 function Icons.new(name: string, size: number, color: Color3, cutout: Color3?, zIndex: number?)
-	local spec = SPECS[name] or SPECS.xp
 	local holder = Instance.new("Frame")
 	holder.Name = "Icon_" .. name
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromOffset(size, size)
 	holder:SetAttribute("Icon", name)
 	local z = zIndex or 1
+	local cell = CELLS[name]
+	if cell then
+		-- the atlas cell has a margin for the outline and shadow: draw it a bit larger than the box
+		local img = Instance.new("ImageLabel")
+		img.Name = "Glyph"
+		img.BackgroundTransparency = 1
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.Position = UDim2.fromScale(0.5, 0.5)
+		img.Size = UDim2.fromScale(1.28, 1.28)
+		img.Image = ATLAS
+		img.ImageRectOffset = cell
+		img.ImageRectSize = Vector2.new(CELL, CELL)
+		img.ImageColor3 = color
+		img.ZIndex = z
+		img.Parent = holder
+		return holder
+	end
+	local spec = SPECS[name] or SPECS.xp
 	local cut = cutout or Color3.fromRGB(11, 18, 29)
 	local px = size / 100
 	for _, s in spec do
@@ -186,7 +225,9 @@ end
 
 function Icons.recolor(holder: Frame, color: Color3, cutout: Color3?)
 	for _, f in holder:GetChildren() do
-		if f:IsA("Frame") then
+		if f:IsA("ImageLabel") then
+			f.ImageColor3 = color
+		elseif f:IsA("Frame") then
 			local isCut = f:GetAttribute("Cut")
 			local c = if isCut then (cutout or f.BackgroundColor3) else color
 			f.BackgroundColor3 = c
@@ -205,7 +246,7 @@ function Icons.swap(old: Frame, name: string, color: Color3, cutout: Color3?)
 		return old
 	end
 	local size = old.AbsoluteSize.X > 0 and old.Size.X.Offset or 32
-	local new = Icons.new(name, size, color, cutout, (old:FindFirstChildWhichIsA("Frame") or old).ZIndex)
+	local new = Icons.new(name, size, color, cutout, (old:FindFirstChildWhichIsA("GuiObject") or old).ZIndex)
 	new.AnchorPoint = old.AnchorPoint
 	new.Position = old.Position
 	new.Size = old.Size
@@ -214,6 +255,42 @@ function Icons.swap(old: Frame, name: string, color: Color3, cutout: Color3?)
 	new.Parent = old.Parent
 	old:Destroy()
 	return new
+end
+
+-- Icon medallion: dark disc, colour ring, inner glow, icon. Shared by cards, tiles and results.
+function Icons.disc(name: string, size: number, color: Color3, zIndex: number?)
+	local z = zIndex or 1
+	local d = Instance.new("Frame")
+	d.Name = "Disc_" .. name
+	d.Size = UDim2.fromOffset(size, size)
+	d.BackgroundColor3 = Color3.fromRGB(11, 8, 20):Lerp(color, 0.12)
+	d.BorderSizePixel = 0
+	d.ZIndex = z
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = d
+	local ring = Instance.new("UIStroke")
+	ring.Color = color
+	ring.Thickness = math.max(1.5, size / 30)
+	ring.Transparency = 0.25
+	ring.Parent = d
+	local glow = Instance.new("ImageLabel")
+	glow.Name = "Glow"
+	glow.BackgroundTransparency = 1
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.fromScale(0.5, 0.5)
+	glow.Size = UDim2.fromScale(1, 1)
+	glow.Image = Icons.Tex.glow
+	glow.ImageColor3 = color
+	glow.ImageTransparency = 0.35
+	glow.ZIndex = z
+	glow.Parent = d
+	local ic = Icons.new(name, math.floor(size * 0.6), color, nil, z + 1)
+	ic.AnchorPoint = Vector2.new(0.5, 0.5)
+	ic.Position = UDim2.fromScale(0.5, 0.5)
+	ic.ZIndex = z + 1
+	ic.Parent = d
+	return d
 end
 
 Icons.Specs = SPECS

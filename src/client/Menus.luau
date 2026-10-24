@@ -465,7 +465,7 @@ local function buildLobby()
 	ui.play.Parent = safe
 	ui.playLabel.Position = UDim2.fromOffset(26, 0)
 	ui.playIcon = icon("play", 34, C.ink, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 34, 0.5, 0), ZIndex = 3, Parent = ui.play })
-	ui.playGlow = new("UIStroke", { Color = C.lime, Thickness = 6, Transparency = 0.6, Parent = ui.play })
+	ui.playGlow = new("UIStroke", { Color = C.lime, Thickness = 6, Transparency = 0.6, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = ui.play })
 	ui.playStatus = label("", {
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -10, 1, 0),
@@ -963,17 +963,10 @@ function Menus.refreshUpgrades()
 			Stroke = { Color = if can then def.color else C.white, Transparency = if can then 0.3 else 0.88 },
 			Parent = ui.upgradesGrid,
 		})
-		local disc = new("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 14),
-			Size = UDim2.fromOffset(60, 60),
-			BackgroundColor3 = def.color,
-			BackgroundTransparency = 0.82,
-			Corner = UDim.new(1, 0),
-			ZIndex = 43,
-			Parent = tile,
-		})
-		icon(def.icon, 34, def.color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 44, Parent = disc })
+		local disc = Icons.disc(def.icon, 60, def.color, 43)
+		disc.AnchorPoint = Vector2.new(0.5, 0)
+		disc.Position = UDim2.new(0.5, 0, 0, 14)
+		disc.Parent = tile
 		label(def.name, {
 			Position = UDim2.fromOffset(8, 80),
 			Size = UDim2.new(1, -16, 0, 20),
@@ -1100,7 +1093,7 @@ local function buildSettings()
 end
 
 -- Level-up cards ----------------------------------------------------------------------------------------
-local CARD_W, CARD_H, CARD_GAP = 252, 350, 22
+local CARD_W, CARD_H, CARD_GAP, ART_H = 256, 360, 22, 168
 
 local function cardInfo(me, id: string)
 	local def = Defs.Upgrades[id]
@@ -1168,44 +1161,88 @@ local function buildOffer()
 		local card = new("TextButton", {
 			AnchorPoint = Vector2.new(0.5, 0),
 			Size = UDim2.fromOffset(CARD_W, CARD_H),
-			BackgroundColor3 = C.ink,
-			BackgroundTransparency = 0.04,
+			BackgroundColor3 = C.white,
+			BackgroundTransparency = 0.02,
 			Text = "",
-			Corner = 22,
+			Corner = 20,
 			ClipsDescendants = false,
 			ZIndex = 12,
 			Parent = body,
 		})
-		local stroke = new("UIStroke", { Thickness = 2.5, Transparency = 0.2, Parent = card })
+		-- body: dark, washed with the upgrade colour at the top
+		local cardGrad = new("UIGradient", { Rotation = 90, Parent = card })
+		local stroke = new("UIStroke", { Thickness = 2.5, Color = C.white, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = card })
+		local strokeGrad = new("UIGradient", { Rotation = 90, Parent = stroke })
 		local scale = new("UIScale", { Parent = card })
-		-- art: colour wash + glowing disc + icon
+		-- outer glow behind the card (a sibling under it), follows the card and grows with focus
+		local aura = new("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(CARD_W + 220, CARD_H + 200),
+			Image = Icons.Tex.glow,
+			ImageTransparency = 1,
+			ZIndex = 11,
+			Parent = body,
+		})
+		-- art panel: colour wash + hex cells + glow + ring + big icon
 		local art = new("Frame", {
-			Size = UDim2.new(1, 0, 0, 158),
+			Position = UDim2.fromOffset(6, 6),
+			Size = UDim2.new(1, -12, 0, ART_H),
 			BackgroundColor3 = C.white,
-			Corner = 22,
+			Corner = 15,
+			ClipsDescendants = true,
 			ZIndex = 12,
 			Parent = card,
 		})
 		local artGrad = new("UIGradient", {
 			Rotation = 90,
-			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 1) }),
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.7, 0.85), NumberSequenceKeypoint.new(1, 1) }),
+			Parent = art,
+		})
+		local hex = new("ImageLabel", {
+			Size = UDim2.new(1, 0, 0, 240),
+			Image = Icons.Tex.hex,
+			ScaleType = Enum.ScaleType.Crop,
+			ImageTransparency = 0.55,
+			ZIndex = 12,
+			Parent = art,
+		})
+		local glow = new("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0, ART_H * 0.48),
+			Size = UDim2.fromOffset(250, 250),
+			Image = Icons.Tex.glow,
+			ImageTransparency = 0.2,
+			ZIndex = 12,
+			Parent = art,
+		})
+		local core = new("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0, ART_H * 0.48),
+			Size = UDim2.fromOffset(120, 120),
+			Image = Icons.Tex.glow,
+			ImageTransparency = 0.55,
+			ZIndex = 12,
 			Parent = art,
 		})
 		local halo = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0, 86),
-			Size = UDim2.fromOffset(112, 112),
-			BackgroundColor3 = C.ink,
-			BackgroundTransparency = 0.15,
+			Position = UDim2.new(0.5, 0, 0, 6 + ART_H * 0.48),
+			Size = UDim2.fromOffset(126, 126),
+			BackgroundTransparency = 1,
 			Corner = UDim.new(1, 0),
 			ZIndex = 13,
 			Parent = card,
 		})
-		local haloStroke = new("UIStroke", { Thickness = 3, Transparency = 0.15, Parent = halo })
+		local haloStroke = new("UIStroke", { Thickness = 2, Transparency = 0.35, Parent = halo })
+		new("UIGradient", {
+			Rotation = 90,
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 0) }),
+			Parent = haloStroke,
+		})
 		local iconHolder = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(70, 70),
+			Size = UDim2.fromOffset(96, 96),
 			ZIndex = 14,
 			Parent = halo,
 		})
@@ -1235,40 +1272,66 @@ local function buildOffer()
 				d.ZIndex = 16
 			end
 		end
-		local name = label("", {
-			Position = UDim2.fromOffset(16, 162),
-			Size = UDim2.new(1, -32, 0, 30),
-			FontFace = F.display,
-			TextSize = 20,
-			TextScaled = true,
-			ZIndex = 13,
-			Parent = card,
-		})
-		new("UITextSizeConstraint", { MaxTextSize = 20, Parent = name })
+		-- rank pips: diamonds on the bottom edge of the art panel
 		local pips = {}
 		for k = 1, 3 do
 			pips[k] = new("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, (k - 2) * 22, 0, 198),
-				Size = UDim2.fromOffset(16, 5),
-				Corner = UDim.new(1, 0),
-				ZIndex = 13,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, (k - 2) * 20, 0, ART_H - 6),
+				Size = UDim2.fromOffset(11, 11),
+				Rotation = 45,
+				Corner = 2,
+				Stroke = { Color = C.ink, Thickness = 1.5, Transparency = 0.2 },
+				ZIndex = 15,
 				Parent = card,
 			})
 		end
-		local stat = label("", {
-			Position = UDim2.fromOffset(14, 212),
+		local name = label("", {
+			Position = UDim2.fromOffset(14, ART_H + 12),
 			Size = UDim2.new(1, -28, 0, 30),
 			FontFace = F.display,
-			TextSize = 18,
+			TextSize = 22,
 			TextScaled = true,
 			ZIndex = 13,
 			Parent = card,
 		})
-		new("UITextSizeConstraint", { MaxTextSize = 19, Parent = stat })
+		new("UITextSizeConstraint", { MaxTextSize = 22, Parent = name })
+		new("UIStroke", { Color = C.ink, Thickness = 1.5, Transparency = 0.3, Parent = name })
+		local divider = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, ART_H + 46),
+			Size = UDim2.new(1, -40, 0, 2),
+			ZIndex = 13,
+			Parent = card,
+		})
+		new("UIGradient", {
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.1), NumberSequenceKeypoint.new(1, 1) }),
+			Parent = divider,
+		})
+		local statPill = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, ART_H + 56),
+			Size = UDim2.new(1, -28, 0, 30),
+			BackgroundTransparency = 0.82,
+			Corner = UDim.new(1, 0),
+			ZIndex = 13,
+			Parent = card,
+		})
+		local statStroke = new("UIStroke", { Thickness = 1, Transparency = 0.55, Parent = statPill })
+		local stat = label("", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -18, 1, -6),
+			FontFace = F.display,
+			TextSize = 17,
+			TextScaled = true,
+			ZIndex = 14,
+			Parent = statPill,
+		})
+		new("UITextSizeConstraint", { MaxTextSize = 17, Parent = stat })
 		local desc = label("", {
-			Position = UDim2.fromOffset(16, 246),
-			Size = UDim2.new(1, -32, 0, 96),
+			Position = UDim2.fromOffset(16, ART_H + 96),
+			Size = UDim2.new(1, -32, 1, -(ART_H + 104)),
 			FontFace = F.body,
 			TextSize = 15,
 			TextWrapped = true,
@@ -1281,18 +1344,25 @@ local function buildOffer()
 			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = C.red,
 			BackgroundTransparency = 0.6,
-			Corner = 22,
+			Corner = 20,
 			Visible = false,
 			ZIndex = 20,
 			Parent = card,
 		})
-		label("ИЗГНАТЬ", { Size = UDim2.fromScale(1, 1), FontFace = F.display, TextSize = 26, ZIndex = 21, Parent = banOverlay })
+		icon("banish", 64, C.white, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.4), ZIndex = 21, Parent = banOverlay })
+		label("ИЗГНАТЬ", { Position = UDim2.fromScale(0, 0.5), Size = UDim2.new(1, 0, 0, 40), FontFace = F.display, TextSize = 26, ZIndex = 21, Parent = banOverlay })
 		local c = {
 			card = card,
+			cardGrad = cardGrad,
 			stroke = stroke,
+			strokeGrad = strokeGrad,
 			scale = scale,
+			aura = aura,
 			art = art,
 			artGrad = artGrad,
+			hex = hex,
+			glow = glow,
+			core = core,
 			halo = halo,
 			haloStroke = haloStroke,
 			iconHolder = iconHolder,
@@ -1301,6 +1371,9 @@ local function buildOffer()
 			key = key,
 			name = name,
 			pips = pips,
+			divider = divider,
+			statPill = statPill,
+			statStroke = statStroke,
 			stat = stat,
 			desc = desc,
 			banOverlay = banOverlay,
@@ -1439,24 +1512,39 @@ function Menus.showOffer(me, run)
 	for i, c in ui.offerCards do
 		local id = offer.choices[i]
 		c.card.Visible = id ~= nil
+		c.aura.Visible = id ~= nil
 		if id then
 			local name, iconName, color, text, rank, stat = cardInfo(me, id)
 			c.name.Text = name
 			clear(c.iconHolder)
-			icon(iconName, 70, color, { ZIndex = 15, Parent = c.iconHolder })
-			c.stroke.Color = color
+			icon(iconName, 96, color, { ZIndex = 15, Parent = c.iconHolder })
+			local deep = C.ink:Lerp(color, 0.16)
+			c.cardGrad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, deep), ColorSequenceKeypoint.new(0.55, C.ink), ColorSequenceKeypoint.new(1, C.ink) })
+			c.strokeGrad.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, color:Lerp(C.white, 0.45)),
+				ColorSequenceKeypoint.new(0.45, color),
+				ColorSequenceKeypoint.new(1, color:Lerp(C.ink, 0.6)),
+			})
 			c.art.BackgroundColor3 = color
+			c.hex.ImageColor3 = color
+			c.glow.ImageColor3 = color
+			c.core.ImageColor3 = color:Lerp(C.white, 0.6)
+			c.aura.ImageColor3 = color
 			c.haloStroke.Color = color
+			c.divider.BackgroundColor3 = color
+			c.statPill.BackgroundColor3 = color
+			c.statStroke.Color = color
 			c.stat.Text = stat
-			c.stat.TextColor3 = color
+			c.stat.TextColor3 = color:Lerp(C.white, 0.25)
+			c.statPill.Visible = stat ~= ""
 			c.desc.Text = text
 			c.key.Visible = device == "pc"
 			c.badgeText.Text = if rank == 0 then "БОНУС" elseif rank == 1 then "НОВОЕ" else "РАНГ " .. rank
 			c.badge.BackgroundColor3 = if rank == 0 then C.dim elseif rank == 1 then C.lime else C.gold
 			for k = 1, 3 do
 				c.pips[k].Visible = rank > 0
-				c.pips[k].BackgroundColor3 = if k <= rank then color else C.white
-				c.pips[k].BackgroundTransparency = if k <= rank then 0 else 0.8
+				c.pips[k].BackgroundColor3 = if k <= rank then color:Lerp(C.white, 0.2) else C.ink
+				c.pips[k].BackgroundTransparency = if k <= rank then 0 else 0.2
 			end
 			local syn = if simple then nil else synergyFor(me, id)
 			if syn then
@@ -1755,17 +1843,10 @@ end
 
 local function unlockCard(iconName: string, tag: string, text: string, color: Color3, order: number)
 	local t = Theme.panel({ Size = UDim2.fromOffset(320, 96), CornerRadius = 20, LayoutOrder = order, ZIndex = 22, Parent = ui.resUnlocks }, color)
-	local disc = new("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 16, 0.5, 0),
-		Size = UDim2.fromOffset(62, 62),
-		BackgroundColor3 = color,
-		BackgroundTransparency = 0.82,
-		Corner = UDim.new(1, 0),
-		ZIndex = 23,
-		Parent = t,
-	})
-	icon(iconName, 30, color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 24, Parent = disc })
+	local disc = Icons.disc(iconName, 62, color, 23)
+	disc.AnchorPoint = Vector2.new(0, 0.5)
+	disc.Position = UDim2.new(0, 16, 0.5, 0)
+	disc.Parent = t
 	label(tag, {
 		Position = UDim2.fromOffset(92, 18),
 		Size = UDim2.new(1, -104, 0, 16),
@@ -2068,10 +2149,15 @@ function Menus.update(dt: number)
 			if c.card.Visible then
 				local target = if i == offerFocus and currentOfferId then 1 else 0
 				c.lift += (target - c.lift) * math.min(1, dt * 14)
-				c.stroke.Thickness = 2.5 + c.lift * 2
-				c.stroke.Transparency = 0.25 - c.lift * 0.25
+				c.stroke.Thickness = 2.5 + c.lift * 1.5
+				c.stroke.Transparency = 0.3 - c.lift * 0.3
+				c.aura.ImageTransparency = 1 - c.lift * 0.6
+				c.aura.Position = c.card.Position + UDim2.fromOffset(0, CARD_H * 0.45)
 				c.halo.Rotation = math.sin(now * 2 + i) * 4 * c.lift
-				c.haloStroke.Transparency = 0.3 - c.lift * 0.3 + math.sin(now * 5 + i) * 0.1
+				c.haloStroke.Transparency = 0.45 - c.lift * 0.35 + math.sin(now * 5 + i) * 0.08
+				c.iconHolder.Position = UDim2.new(0.5, 0, 0.5, math.sin(now * 2.2 + i * 1.3) * (2 + c.lift * 2))
+				c.glow.ImageTransparency = 0.3 - c.lift * 0.2 + math.sin(now * 3 + i) * 0.05
+				c.core.ImageTransparency = 0.6 - c.lift * 0.25
 			end
 		end
 	end
