@@ -409,9 +409,13 @@ function EnemyView.kill(id: number, dirX: number?, dirZ: number?)
 			v = v,
 			spin = Vector3.new(math.random() * 12 - 6, math.random() * 12 - 6, math.random() * 12 - 6),
 			cf = p.CFrame,
-			color = p.Color,
+			color = m.specs[i].color,
 		}
 		p.Color = Color3.new(1, 1, 1)
+		-- textured pieces drop the texture so the white flash and the darkening show (release restores it)
+		if p:IsA("MeshPart") and p.TextureID ~= "" then
+			p.TextureID = ""
+		end
 	end
 	table.insert(
 		dying,

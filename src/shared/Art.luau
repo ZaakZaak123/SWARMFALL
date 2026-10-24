@@ -33,6 +33,8 @@ Art.Meshes = {
 	ARC = { mesh = "rbxassetid://98095369516956", tex = "rbxassetid://79042425410058", size = Vector3.new(4.46, 8.00, 4.37) },
 	MORTAR = { mesh = "rbxassetid://111403659986596", tex = "rbxassetid://139055413227105", size = Vector3.new(3.31, 5.00, 5.15) },
 	SHIELD = { mesh = "rbxassetid://76777776984180", tex = "rbxassetid://130063375754441", size = Vector3.new(3.98, 8.46, 4.00) },
+	-- XP gem (drawn Neon, coloured by tier)
+	GEM = { mesh = "rbxassetid://82319770548580", tex = "rbxassetid://106570994593008", size = Vector3.new(0.62, 1.60, 0.57) },
 	HARVEST = { mesh = "rbxassetid://71957833199002", tex = "rbxassetid://137686635194541", size = Vector3.new(5.00, 4.45, 3.80) },
 }
 

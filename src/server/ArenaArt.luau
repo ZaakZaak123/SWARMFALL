@@ -145,7 +145,7 @@ function ArenaArt.dropship(map, decor, H): boolean
 	end
 	-- landing pad: a faint ring and a slightly darker floor (it sat under the old raised terrain, DD-049)
 	H.disc(decor, Vector3.new(0, 0.03, o.z + 14), 30, 0.05, rgb(255, 150, 40), Enum.Material.Neon, 0.9)
-	H.disc(decor, Vector3.new(0, 0.04, o.z + 14), 28, 0.05, rgb(70, 64, 92), Enum.Material.Slate, 0.45)
+	H.disc(decor, Vector3.new(0, 0.04, o.z + 14), 28, 0.05, rgb(70, 64, 92), Enum.Material.SmoothPlastic, 0.55)
 	return true
 end
 
@@ -172,7 +172,7 @@ function ArenaArt.extractor(o, decor, H): boolean
 	end
 	-- the plaza: a slightly darker floor and a faint ring marking the defend zone
 	H.disc(decor, c + Vector3.new(0, 0.03, 0), 28, 0.06, rgb(150, 30, 120), Enum.Material.Neon, 0.82)
-	H.disc(decor, c + Vector3.new(0, 0.05, 0), 25, 0.06, rgb(64, 54, 86), Enum.Material.Basalt, 0.35)
+	H.disc(decor, c + Vector3.new(0, 0.05, 0), 25, 0.06, rgb(64, 54, 86), Enum.Material.SmoothPlastic, 0.45)
 	return true
 end
 

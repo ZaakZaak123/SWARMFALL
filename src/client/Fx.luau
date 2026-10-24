@@ -6,6 +6,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Codec = require(Shared:WaitForChild("Codec"))
 local Settings = require(script.Parent.Settings)
 local Theme = require(script.Parent.Theme)
+local Icons = require(script.Parent.Icons)
 
 local SH = Codec.Shape
 local rgb = Color3.fromRGB
@@ -13,6 +14,21 @@ local HIDDEN = CFrame.new(0, -400, 0)
 local CYL_UP = CFrame.Angles(0, 0, math.pi / 2)
 
 local Fx = {}
+local WHITE = Color3.new(1, 1, 1)
+
+-- Combat FX textures (tools/fx/fx_tex.py): white or greyscale unless noted, tinted per effect.
+local TEX = {
+	fire = "rbxassetid://94008130307529", -- coloured fireball flipbook 4x4
+	blast = "rbxassetid://91326832601422", -- energy burst flipbook 4x4
+	smoke = "rbxassetid://104301633759511", -- smoke puff flipbook 4x4
+	spark = "rbxassetid://94181833669586", -- streak (VelocityParallel)
+	glow = "rbxassetid://103328093760587",
+	ring = "rbxassetid://89155913974432",
+	splat = "rbxassetid://125235908704386", -- goo splat decal
+	scorch = "rbxassetid://132225583850793", -- burn mark decal (dark, untinted)
+	goo = "rbxassetid://131179954752220", -- droplet
+}
+Fx.Tex = TEX
 
 local folder: Folder
 local pools = { block = {}, cyl = {}, ball = {} }
@@ -25,7 +41,6 @@ local numberAnchor: Part
 local numberPool = {}
 local numberIndex = 0
 local orbs = {}
-local splats = {}
 
 local function newPart(kind: string): Part
 	local p = Instance.new("Part")
@@ -112,7 +127,7 @@ local function emitter(name: string, props)
 		e[k] = v
 	end
 	e.Parent = att
-	emitters[name] = { att = att, e = e }
+	emitters[name] = { att = att, e = e, props = props }
 end
 
 function Fx.init()
@@ -141,9 +156,11 @@ function Fx.init()
 	end
 	local function goo(name, color)
 		emitter(name, {
-			Texture = P .. "sparkles_main.dds",
+			Texture = TEX.goo,
 			Color = ColorSequence.new(color),
-			Size = seq(0.9, 0),
+			Size = seq(0.75, 0.2),
+			Rotation = NumberRange.new(0, 360),
+			LightInfluence = 0.8,
 			Lifetime = NumberRange.new(0.25, 0.5),
 			Speed = NumberRange.new(14, 30),
 			SpreadAngle = Vector2.new(60, 60),
@@ -154,9 +171,12 @@ function Fx.init()
 	end
 	local function spark(name, color, size, speed, spread, life)
 		emitter(name, {
-			Texture = P .. "sparkles_main.dds",
+			Texture = TEX.spark,
+			Orientation = Enum.ParticleOrientation.VelocityParallel,
+			Squash = NumberSequence.new(1.6),
+			LightInfluence = 0,
 			Color = ColorSequence.new(color),
-			Size = seq(size, 0),
+			Size = seq(size * 0.9, 0.05),
 			Lifetime = NumberRange.new(life * 0.5, life),
 			Speed = NumberRange.new(speed * 0.5, speed),
 			SpreadAngle = Vector2.new(spread, spread),
@@ -226,9 +246,12 @@ function Fx.init()
 		Drag = 6,
 	})
 	emitter("sparkGold", {
-		Texture = P .. "sparkles_main.dds",
+		Texture = TEX.spark,
+		Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Squash = NumberSequence.new(1.8),
+		LightInfluence = 0,
 		Color = ColorSequence.new(rgb(255, 210, 90)),
-		Size = seq(0.9, 0),
+		Size = seq(0.8, 0.05),
 		Lifetime = NumberRange.new(0.2, 0.45),
 		Speed = NumberRange.new(20, 45),
 		SpreadAngle = Vector2.new(180, 180),
@@ -270,6 +293,84 @@ function Fx.init()
 		Speed = NumberRange.new(0, 0),
 		Transparency = seq(0.2, 1),
 		Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+	})
+	-- Custom textures (tools/fx/fx_tex.py, DD-050). Flipbooks play once over a particle's life.
+	local function fb(name, tex, props)
+		props.Texture = tex
+		props.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+		props.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		emitter(name, props)
+	end
+	fb("fireball", TEX.fire, {
+		Size = seq(1, 1.4),
+		Lifetime = NumberRange.new(0.45, 0.7),
+		Speed = NumberRange.new(2, 8),
+		SpreadAngle = Vector2.new(180, 180),
+		Drag = 5,
+		Acceleration = Vector3.new(0, 6, 0),
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-60, 60),
+		LightEmission = 0.8,
+		LightInfluence = 0,
+		Brightness = 2,
+		ZOffset = 4,
+	})
+	fb("blast", TEX.blast, {
+		Size = seq(1, 1.15),
+		Lifetime = NumberRange.new(0.32, 0.36),
+		Speed = NumberRange.new(0, 0),
+		Rotation = NumberRange.new(0, 360),
+		LightEmission = 0.6,
+		LightInfluence = 0,
+		ZOffset = 6,
+	})
+	fb("smokePuff", TEX.smoke, {
+		Size = seq(1, 1.7),
+		Lifetime = NumberRange.new(1.1, 1.8),
+		Speed = NumberRange.new(2, 6),
+		SpreadAngle = Vector2.new(180, 60),
+		Drag = 2,
+		Acceleration = Vector3.new(0, 3, 0),
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-20, 20),
+		Color = ColorSequence.new(rgb(46, 40, 54)),
+		LightEmission = 0,
+		LightInfluence = 0.4,
+	})
+	emitter("streak", {
+		Texture = TEX.spark,
+		Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Squash = NumberSequence.new(2),
+		Size = seq(0.5, 0.05),
+		Lifetime = NumberRange.new(0.18, 0.45),
+		Speed = NumberRange.new(30, 70),
+		SpreadAngle = Vector2.new(70, 70),
+		Acceleration = Vector3.new(0, -45, 0),
+		Drag = 3,
+		LightEmission = 1,
+		LightInfluence = 0,
+	})
+	emitter("flash", {
+		Texture = TEX.glow,
+		Size = seq(1, 1.3),
+		Lifetime = NumberRange.new(0.14, 0.18),
+		Speed = NumberRange.new(0, 0),
+		Transparency = seq(0, 1),
+		LightEmission = 1,
+		LightInfluence = 0,
+		ZOffset = 8, -- big camera-facing quads near the floor: pull toward the camera so the ground never clips them
+	})
+	emitter("gooBlob", {
+		Texture = TEX.goo,
+		Size = seq(0.7, 0.25),
+		Lifetime = NumberRange.new(0.4, 0.75),
+		Speed = NumberRange.new(12, 28),
+		SpreadAngle = Vector2.new(55, 55),
+		Acceleration = Vector3.new(0, -75, 0),
+		Drag = 2,
+		Rotation = NumberRange.new(0, 360),
+		LightEmission = 0.15,
+		LightInfluence = 0.8,
 	})
 	for i = 1, 6 do
 		local holder = newPart("ball")
@@ -332,6 +433,43 @@ function Fx.emit(name: string, pos: Vector3, count: number, dir: Vector3?)
 	end
 end
 
+-- Emit with a size scale and/or colour. A ParticleEmitter's Size and Color apply to its live particles
+-- too, so each (scale, colour) pair gets its own emitter, built once from the base one and cached.
+-- Scales are snapped to ~8% steps so the cache stays small.
+local function variant(name: string, scale: number?, color: Color3?)
+	local s = if scale and scale > 0 then math.floor(math.log(scale) / math.log(1.08) + 0.5) else 0
+	local key = name .. "|" .. s .. "|" .. (if color then color:ToHex() else "")
+	local em = emitters[key]
+	if em then
+		return key
+	end
+	local base = emitters[name]
+	if not base then
+		return nil
+	end
+	local props = table.clone(base.props)
+	if s ~= 0 then
+		local k = 1.08 ^ s
+		local kps = {}
+		for _, kp in base.e.Size.Keypoints do
+			table.insert(kps, NumberSequenceKeypoint.new(kp.Time, kp.Value * k, kp.Envelope * k))
+		end
+		props.Size = NumberSequence.new(kps)
+	end
+	if color then
+		props.Color = ColorSequence.new(color)
+	end
+	emitter(key, props)
+	return key
+end
+
+function Fx.emitWith(name: string, pos: Vector3, count: number, scale: number?, color: Color3?, dir: Vector3?)
+	local key = variant(name, scale, color)
+	if key then
+		Fx.emit(key, pos, count, dir)
+	end
+end
+
 function Fx.light(pos: Vector3, color: Color3, range: number, life: number)
 	if Settings.quality < 2 then
 		return
@@ -360,29 +498,201 @@ function Fx.tracer(a: Vector3, b: Vector3, color: Color3, width: number, life: n
 	end, { { "block", p } })
 end
 
--- Explosions ----------------------------------------------------------------------------------------
-function Fx.boom(pos: Vector3, radius: number, color: Color3)
-	local ball = take("ball")
-	ball.Color = color
-	ball.Transparency = 0.1
-	ball.Size = Vector3.one * radius * 0.4
-	ball.CFrame = CFrame.new(pos)
-	local ring = take("cyl")
-	ring.Color = color
-	ring.Transparency = 0.2
-	flatCyl(ring, pos.X, 0.12, pos.Z, radius * 0.3, 0.1)
-	spawn(0.32, function(_, k)
-		local e = 1 - (1 - k) ^ 3
-		ball.Size = Vector3.one * radius * (0.4 + 1.3 * e)
-		ball.Transparency = 0.1 + 0.9 * k
-		flatCyl(ring, pos.X, 0.12, pos.Z, radius * 2 * (0.3 + 0.8 * e), 0.1)
-		ring.Transparency = 0.2 + 0.8 * k
-	end, { { "ball", ball }, { "cyl", ring } })
-	Fx.emit("sparkGold", pos + Vector3.yAxis, math.floor(radius * 1.5))
-	if radius >= 8 then
-		Fx.emit("smoke", pos + Vector3.yAxis * 2, 4)
+-- Floor decals --------------------------------------------------------------------------------------
+-- Splats and scorch marks: thin invisible parts carrying a top-face Decal (textured, tinted, rotated),
+-- recycled oldest-first and faded out over their last third.
+local decals = {}
+local decalFree = {}
+local DECAL_CAP = { 0, 24, 60 }
+
+local function takeDecal(): (Part, Decal)
+	local p = table.remove(decalFree)
+	if not p then
+		p = Instance.new("Part")
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		local d = Instance.new("Decal")
+		d.Name = "D"
+		d.Face = Enum.NormalId.Top
+		d.Parent = p
+		p.Parent = folder
 	end
-	Fx.light(pos + Vector3.yAxis * 3, color, radius * 3, 0.3)
+	return p, p:FindFirstChild("D") :: Decal
+end
+
+local decalLayer = 0
+function Fx.decal(tex: string, pos: Vector3, size: number, color: Color3, life: number, alpha: number)
+	local cap = DECAL_CAP[Settings.quality] or 0
+	if cap == 0 then
+		return
+	end
+	local p, d
+	if #decals >= cap then
+		local old = table.remove(decals, 1)
+		p, d = old.p, old.d
+	else
+		p, d = takeDecal()
+	end
+	-- stacked decals get a hair of height each so they never z-fight
+	decalLayer = (decalLayer + 1) % 20
+	p.Size = Vector3.new(size, 0.04, size)
+	p.CFrame = CFrame.new(pos.X, 0.1 + decalLayer * 0.004, pos.Z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	d.Texture = tex
+	d.Color3 = color
+	d.Transparency = alpha
+	table.insert(decals, { p = p, d = d, t = 0, life = life, a = alpha })
+end
+
+local function updateDecals(dt: number)
+	local i = 1
+	while i <= #decals do
+		local e = decals[i]
+		e.t += dt
+		local k = e.t / e.life
+		if k >= 1 then
+			e.p.CFrame = HIDDEN
+			table.insert(decalFree, e.p)
+			table.remove(decals, i)
+		else
+			if k > 0.66 then
+				e.d.Transparency = e.a + (1 - e.a) * (k - 0.66) / 0.34
+			end
+			i += 1
+		end
+	end
+end
+
+-- Ground rings --------------------------------------------------------------------------------------
+-- A glowing textured ring racing over the floor (SurfaceGui on a thin part: emissive, tinted, scales
+-- with the part). Shockwaves, explosion fronts and splashes all use it.
+local ringFree: { Part } = {}
+local function takeRing(): (Part, ImageLabel)
+	local p = table.remove(ringFree)
+	if not p then
+		p = Instance.new("Part")
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		local gui = Instance.new("SurfaceGui")
+		gui.Name = "G"
+		gui.Face = Enum.NormalId.Top
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+		gui.CanvasSize = Vector2.new(256, 256)
+		gui.LightInfluence = 0
+		gui.Brightness = 2.5
+		gui.Parent = p
+		local img = Instance.new("ImageLabel")
+		img.Name = "I"
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromScale(1, 1)
+		img.Image = TEX.ring
+		img.Parent = gui
+		p.Parent = folder
+	end
+	return p, (p:FindFirstChild("G") :: SurfaceGui):FindFirstChild("I") :: ImageLabel
+end
+
+function Fx.ring(pos: Vector3, radius: number, color: Color3, life: number?)
+	local p, img = takeRing()
+	img.ImageColor3 = color
+	img.ImageTransparency = 0
+	-- rendered terrain sits a little above its collision surface: keep the ring clear of it
+	local y = 0.3 + math.random() * 0.06
+	local e = spawn(life or 0.4, function(_, k)
+		local d = math.max(0.2, radius * 2 * (1 - (1 - k) ^ 2.2))
+		p.Size = Vector3.new(d, 0.05, d)
+		p.CFrame = CFrame.new(pos.X, y, pos.Z)
+		img.ImageTransparency = k ^ 1.5
+	end, {})
+	e.done = function()
+		p.CFrame = HIDDEN
+		table.insert(ringFree, p)
+	end
+end
+
+-- Debris ----------------------------------------------------------------------------------------------
+-- Rock chunks thrown by explosions: gravity, a couple of bounces, fade.
+function Fx.debris(pos: Vector3, n: number, color: Color3, speed: number)
+	if Settings.quality < 2 or Fx.busy(n) then
+		return
+	end
+	for _ = 1, n do
+		local p = take("block")
+		p.Material = Enum.Material.Basalt
+		p.Color = color
+		p.Transparency = 0
+		local s = 0.25 + math.random() * 0.45
+		p.Size = Vector3.new(s, s * (0.6 + math.random() * 0.4), s * (0.7 + math.random() * 0.5))
+		local v = Vector3.new(math.random() * 2 - 1, 0.9 + math.random() * 0.8, math.random() * 2 - 1).Unit * speed * (0.6 + math.random() * 0.4)
+		local spin = Vector3.new(math.random() * 16 - 8, math.random() * 16 - 8, math.random() * 16 - 8)
+		local at = pos
+		local rot = CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6)
+		spawn(1.1, function(_, k, dt)
+			v += Vector3.new(0, -80 * dt, 0)
+			at += v * dt
+			if at.Y < s * 0.5 then
+				at = Vector3.new(at.X, s * 0.5, at.Z)
+				v = Vector3.new(v.X * 0.45, math.abs(v.Y) * 0.3, v.Z * 0.45)
+				spin *= 0.5
+			end
+			rot *= CFrame.Angles(spin.X * dt, spin.Y * dt, spin.Z * dt)
+			p.CFrame = CFrame.new(at) * rot
+			p.Transparency = math.max(0, (k - 0.75) / 0.25)
+		end, { { "block", p } })
+	end
+end
+
+-- Explosions ----------------------------------------------------------------------------------------
+-- Layered: a white flash, then a fireball (warm colours) or a tinted energy burst, a ring racing over
+-- the floor, streak sparks, smoke that lingers, flying rock and a scorch mark left behind.
+local function isWarm(c: Color3): boolean
+	return c.R > 0.75 and c.B < 0.5
+end
+
+function Fx.boom(pos: Vector3, radius: number, color: Color3)
+	local ground = Vector3.new(pos.X, 0, pos.Z)
+	local mid = ground + Vector3.yAxis * math.min(radius * 0.35, 4)
+	local fire = isWarm(color)
+	Fx.emitWith("flash", mid, 1, radius * 1.4, if fire then rgb(255, 236, 190) else color:Lerp(WHITE, 0.5))
+	if fire then
+		Fx.emitWith("fireball", mid, math.clamp(math.floor(radius * 0.7), 3, 14), radius * 0.55)
+	else
+		Fx.emitWith("blast", mid, 1, radius * 1.4, color)
+		Fx.emitWith("flash", mid, 1, radius * 0.7, color:Lerp(WHITE, 0.3))
+	end
+	Fx.ring(ground, radius * 1.3, if fire then rgb(255, 190, 110) else color, 0.38)
+	Fx.emitWith("streak", mid, math.clamp(math.floor(radius * 1.6), 6, 30), 0.6 + radius * 0.04, if fire then rgb(255, 210, 120) else color:Lerp(WHITE, 0.3))
+	if radius >= 5 then
+		Fx.emitWith("smokePuff", ground + Vector3.yAxis * 1.5, math.clamp(math.floor(radius * 0.3), 2, 6), radius * 0.35)
+	end
+	if radius >= 6 then
+		Fx.debris(mid, math.clamp(math.floor(radius * 0.6), 3, 10), rgb(40, 34, 48), 18 + radius)
+	end
+	if fire then
+		Fx.decal(TEX.scorch, ground, radius * 1.5, WHITE, 8, 0.15)
+	end
+	Fx.light(mid + Vector3.yAxis * 2, color, radius * 2.2, 0.3)
+end
+
+-- A creature bursting: droplets of its ichor (sprayed along the killing shot), a few bright streaks,
+-- an energy pop and ring for the big ones, and a splat left on the floor.
+function Fx.gore(pos: Vector3, size: number, color: Color3, dir: Vector3?, big: boolean)
+	local spray = if dir then (dir + Vector3.yAxis * 1.1).Unit else nil
+	local at = pos + Vector3.yAxis
+	Fx.emitWith("gooBlob", at, if big then 26 else 10, size, color, spray)
+	Fx.emitWith("streak", at, if big then 12 else 4, 0.5 * size, color:Lerp(WHITE, 0.35), spray)
+	if big then
+		Fx.emitWith("blast", pos + Vector3.yAxis * 2, 1, size * 4.5, color)
+		Fx.ring(pos, size * 4.5, color, 0.35)
+	end
+	Fx.decal(TEX.splat, Vector3.new(pos.X, 0, pos.Z), (if big then 9 else 4.5) * (0.85 + math.random() * 0.35), color:Lerp(Color3.new(0, 0, 0), 0.35), 7, 0.08)
 end
 
 -- Spore pod (DD-033): a glowing seed falls from the sky on a slant, slams into the ground and bursts.
@@ -472,14 +782,7 @@ function Fx.pod(x: number, z: number, big: boolean?)
 end
 
 function Fx.shockwave(pos: Vector3, radius: number, color: Color3, life: number?)
-	local ring = take("cyl")
-	ring.Color = color
-	ring.Transparency = 0.1
-	spawn(life or 0.5, function(_, k)
-		local e = 1 - (1 - k) ^ 2
-		flatCyl(ring, pos.X, 0.15, pos.Z, radius * 2 * e, 0.15)
-		ring.Transparency = 0.1 + 0.9 * k
-	end, { { "cyl", ring } })
+	Fx.ring(pos, radius, color, life or 0.5)
 end
 
 -- Telegraphs: outline + fill that completes exactly when the attack lands ----------------------------
@@ -581,48 +884,55 @@ end
 
 -- Spit projectile -------------------------------------------------------------------------------------
 function Fx.spit(from: Vector3, to: Vector3, flight: number)
+	local acid = rgb(170, 255, 70)
 	local ball = take("ball")
-	ball.Color = rgb(170, 255, 80)
-	ball.Transparency = 0
-	ball.Size = Vector3.one * 1.4
-	spawn(flight, function(_, k)
+	ball.Color = acid
+	ball.Transparency = 0.05
+	ball.Size = Vector3.one * 1.3
+	local halo = take("ball")
+	halo.Color = acid
+	halo.Transparency = 0.75
+	halo.Size = Vector3.one * 2.4
+	local drip = 0
+	local e = spawn(flight, function(_, k, dt)
 		local pos = from:Lerp(to, k) + Vector3.yAxis * (math.sin(k * math.pi) * 14 + 2 * (1 - k))
+		-- squash along the flight a little so it reads as a glob, not a ball
 		ball.CFrame = CFrame.new(pos)
-	end, { { "ball", ball } })
+		halo.CFrame = CFrame.new(pos)
+		drip += dt
+		if drip > 0.06 then
+			drip = 0
+			Fx.emitWith("gooBlob", pos, 1, 0.5, acid)
+		end
+	end, { { "ball", ball }, { "ball", halo } })
+	e.done = function()
+		local ground = Vector3.new(to.X, 0, to.Z)
+		Fx.emitWith("gooBlob", ground + Vector3.yAxis * 0.6, 8, 0.8, acid, Vector3.yAxis)
+		Fx.ring(ground, 2.6, acid, 0.3)
+		Fx.decal(TEX.splat, ground, 4.5, rgb(110, 170, 40), 5, 0.15)
+	end
 end
 
 -- Splats & numbers ----------------------------------------------------------------------------------
 function Fx.splat(pos: Vector3, color: Color3, size: number)
-	local cap = if Settings.quality >= 3 then 40 elseif Settings.quality == 2 then 18 else 0
-	if cap == 0 then
-		return
-	end
-	local p
-	if #splats >= cap then
-		p = table.remove(splats, 1)
-	else
-		p = take("cyl")
-	end
-	p.Material = Enum.Material.SmoothPlastic
-	p.Color = color
-	p.Transparency = 0.25
-	flatCyl(p, pos.X + (math.random() - 0.5), 0.06 + math.random() * 0.01, pos.Z + (math.random() - 0.5), size, 0.03)
-	table.insert(splats, p)
-	local born = os.clock()
-	p:SetAttribute("Born", born)
-	task.delay(5, function()
-		local idx = table.find(splats, p)
-		if idx and p:GetAttribute("Born") == born then
-			table.remove(splats, idx)
-			give("cyl", p)
-		end
-	end)
+	Fx.decal(TEX.splat, Vector3.new(pos.X, 0, pos.Z), size * 1.3, color, 7, 0.1)
 end
 
+-- Damage numbers are capped per moment: in a dense fight dozens of identical small hits otherwise pile
+-- into one unreadable stack over the swarm. Crits always show.
+local numberTimes = {}
 function Fx.number(pos: Vector3, amount: number, color: Color3, big: boolean)
 	if not Settings.numbers then
 		return
 	end
+	local now = os.clock()
+	while numberTimes[1] and now - numberTimes[1] > 0.25 do
+		table.remove(numberTimes, 1)
+	end
+	if not big and #numberTimes >= 5 then
+		return
+	end
+	table.insert(numberTimes, now)
 	numberIndex = numberIndex % #numberPool + 1
 	local n = numberPool[numberIndex]
 	n.t = 0
@@ -631,33 +941,115 @@ function Fx.number(pos: Vector3, amount: number, color: Color3, big: boolean)
 	n.vel = Vector3.new((math.random() - 0.5) * 6, 14, 0)
 	n.label.Text = tostring(math.floor(amount + 0.5))
 	n.label.TextColor3 = color
-	local s = math.clamp(0.7 + amount / 120, 0.7, 1.6) * (if big then 1.5 else 1)
+	local s = math.clamp(0.55 + amount / 140, 0.55, 1.4) * (if big then 1.5 else 1)
 	n.size = s
 	n.gui.Size = UDim2.fromOffset(70 * s, 26 * s)
 	n.gui.Enabled = true
 end
 
 -- Orbs ----------------------------------------------------------------------------------------------
+-- XP gems are the generated GEM mesh drawn Neon (cyan / violet / gold by value) inside a faint halo;
+-- heal and magnet drops are glowing spheres carrying their HUD icon. A drop pops out of the kill with
+-- a little hop, idles bobbing and turning, and on pickup streaks into the collector and flashes.
 local ORB_COLORS = { [0] = rgb(84, 238, 255), [1] = rgb(110, 255, 140), [2] = rgb(200, 120, 255) }
+local ORB_ICONS = { [1] = "plus", [2] = "magnet" }
+local gemFree: { MeshPart } = {}
+local guiFree: { BillboardGui } = {}
+
+local function gemPart(): BasePart
+	local p = table.remove(gemFree)
+	if p then
+		return p
+	end
+	local art = game:GetService("ReplicatedStorage"):FindFirstChild("ArtTemplates")
+	local tpl = art and art:FindFirstChild("GEM")
+	if not tpl then
+		return take("block")
+	end
+	local g = tpl:Clone()
+	g.TextureID = ""
+	g.Material = Enum.Material.Neon
+	g.CastShadow = false
+	g.Parent = folder
+	return g
+end
+
+local function iconGui(name: string, color: Color3): BillboardGui
+	local gui = table.remove(guiFree)
+	if not gui then
+		gui = Instance.new("BillboardGui")
+		gui.Size = UDim2.fromScale(2.2, 2.2)
+		gui.StudsOffset = Vector3.new(0, 1.7, 0) -- above the sphere, not buried in it
+		gui.LightInfluence = 0
+		gui.AlwaysOnTop = false
+		gui.Parent = folder
+	end
+	for _, c in gui:GetChildren() do
+		c:Destroy()
+	end
+	local ic = Icons.new(name, 40, Color3.new(1, 1, 1))
+	ic.Size = UDim2.fromScale(0.7, 0.7)
+	ic.AnchorPoint = Vector2.new(0.5, 0.5)
+	ic.Position = UDim2.fromScale(0.5, 0.5)
+	ic.Parent = gui
+	gui.Enabled = true
+	return gui
+end
+
+local function releaseOrb(o)
+	if o.gem then
+		o.p.CFrame = HIDDEN
+		table.insert(gemFree, o.p)
+	else
+		give(o.kind, o.p)
+	end
+	if o.halo then
+		give("ball", o.halo)
+	end
+	if o.gui then
+		o.gui.Enabled = false
+		o.gui.Adornee = nil
+		table.insert(guiFree, o.gui)
+	end
+end
 
 function Fx.orb(id: number, x: number, z: number, kind: number, value: number)
-	local p = take(if kind == 0 then "block" else "ball")
 	local color = ORB_COLORS[kind]
-	local size = 0.8
+	local o = { x = x, z = z, born = os.clock(), phase = math.random() * 6, color = color }
 	if kind == 0 then
+		local h = 1.1
 		if value >= 20 then
-			color, size = rgb(255, 200, 60), 1.6
+			color, h = rgb(255, 200, 60), 2.1
 		elseif value >= 5 then
-			color, size = rgb(190, 120, 255), 1.2
+			color, h = rgb(190, 120, 255), 1.5
+		end
+		o.color = color
+		local p = gemPart()
+		o.gem = p:IsA("MeshPart")
+		o.kind = "block"
+		o.p = p
+		p.Color = color
+		p.Transparency = 0
+		p.Size = if o.gem then Vector3.new(0.62, 1.6, 0.57) * (h / 1.6) else Vector3.one * h * 0.6
+		o.size = p.Size
+		if h > 1.2 then
+			local halo = take("ball")
+			halo.Color = color
+			halo.Transparency = 0.93
+			halo.Size = Vector3.one * h * 1.1
+			o.halo = halo
 		end
 	else
-		size = 1.8
+		local p = take("ball")
+		p.Color = color
+		p.Transparency = 0.15
+		p.Size = Vector3.one * 1.2
+		o.p, o.kind, o.size = p, "ball", p.Size
+		o.gui = iconGui(ORB_ICONS[kind], color)
+		o.gui.Adornee = p
 	end
-	p.Color = color
-	p.Transparency = 0
-	p.Size = Vector3.one * size
-	orbs[id] = { p = p, kind = if kind == 0 then "block" else "ball", x = x, z = z, born = os.clock(), phase = math.random() * 6, y = 0 }
-	Fx.emit("sparkCyan", Vector3.new(x, 1, z), 2)
+	orbs[id] = o
+	Fx.emitWith("streak", Vector3.new(x, 1, z), 3, 0.35, color)
 end
 
 function Fx.collectOrb(id: number, target: () -> Vector3?)
@@ -667,16 +1059,32 @@ function Fx.collectOrb(id: number, target: () -> Vector3?)
 	end
 	orbs[id] = nil
 	local start = o.p.Position
-	spawn(0.22, function(_, k)
-		local goal = target() or start
-		o.p.CFrame = CFrame.new(start:Lerp(goal + Vector3.yAxis, k * k)) * CFrame.Angles(k * 6, k * 9, 0)
-		o.p.Size = o.p.Size * (1 - k * 0.05)
-	end, { { o.kind, o.p } })
+	local trail = take("block")
+	trail.Color = o.color
+	trail.Transparency = 0.3
+	local last = start
+	local e = spawn(0.24, function(_, k)
+		local goal = (target() or start) + Vector3.yAxis
+		local pos = start:Lerp(goal, k * k)
+		o.p.CFrame = CFrame.new(pos) * CFrame.Angles(k * 6, k * 9, 0)
+		o.p.Size = o.size * (1 - k * 0.4)
+		if o.halo then
+			o.halo.CFrame = CFrame.new(pos)
+		end
+		segment(trail, last, pos, 0.18 * (1 - k * 0.5))
+		last = last:Lerp(pos, 0.6)
+	end, { { "block", trail } })
+	e.done = function()
+		local goal = (target() or start) + Vector3.yAxis
+		Fx.emitWith("flash", goal, 1, 2.2, o.color)
+		Fx.emitWith("streak", goal, 3, 0.3, o.color)
+		releaseOrb(o)
+	end
 end
 
 function Fx.clearOrbs()
 	for id, o in orbs do
-		give(o.kind, o.p)
+		releaseOrb(o)
 		orbs[id] = nil
 	end
 end
@@ -685,8 +1093,34 @@ function Fx.orbIds()
 	return orbs
 end
 
+local function updateOrbs(now: number)
+	for _, o in orbs do
+		local age = now - o.born
+		local y, s
+		if age < 0.35 then
+			-- the pop: a hop out of the corpse, growing in
+			local k = age / 0.35
+			y = 0.4 + math.sin(k * math.pi) * 2.4
+			s = 0.3 + 0.7 * k
+		else
+			y = 1 + math.sin(now * 4 + o.phase) * 0.3
+			s = 1
+		end
+		local cf = CFrame.new(o.x, y, o.z)
+		o.p.CFrame = cf * CFrame.Angles(0, now * 2.2 + o.phase, if o.gem then 0.25 else 0)
+		if s < 1 then
+			o.p.Size = o.size * s
+		elseif o.p.Size ~= o.size then
+			o.p.Size = o.size
+		end
+		if o.halo then
+			o.halo.CFrame = cf
+			o.halo.Transparency = 0.92 + math.sin(now * 5 + o.phase) * 0.03
+		end
+	end
+end
+
 -- Weapon presentation -----------------------------------------------------------------------------------
-local WHITE = Color3.new(1, 1, 1)
 
 local function rnd(a: number, b: number): number
 	return a + math.random() * (b - a)
@@ -1213,6 +1647,7 @@ end
 function Fx.update(dt: number)
 	updateShells(dt)
 	updateScorches(dt)
+	updateDecals(dt)
 	local i = 1
 	while i <= #active do
 		local e = active[i]
@@ -1258,17 +1693,18 @@ function Fx.update(dt: number)
 			end
 		end
 	end
-	local now = os.clock()
-	for _, o in orbs do
-		local bob = math.sin(now * 4 + o.phase) * 0.3
-		o.p.CFrame = CFrame.new(o.x, 1 + bob, o.z) * CFrame.Angles(0.6, now * 2 + o.phase, 0.6)
-	end
+	updateOrbs(os.clock())
 end
 
 function Fx.clear()
 	for _, e in active do
 		for _, entry in e.parts do
 			give(entry[1], entry[2])
+		end
+	end
+	for _, e in active do
+		if e.done then
+			pcall(e.done)
 		end
 	end
 	table.clear(active)
@@ -1285,10 +1721,11 @@ function Fx.clear()
 		give("cyl", sc.p)
 	end
 	table.clear(scorches)
-	for _, p in splats do
-		give("cyl", p)
+	for _, e in decals do
+		e.p.CFrame = HIDDEN
+		table.insert(decalFree, e.p)
 	end
-	table.clear(splats)
+	table.clear(decals)
 end
 
 return Fx

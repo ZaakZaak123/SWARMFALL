@@ -472,15 +472,20 @@ local function nearMe(pos: Vector3, radius: number): boolean
 		and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(pos.X, 0, pos.Z)).Magnitude < radius
 end
 
-local KILL_GOO = { "goo1", "goo2", "goo3", "goo4", "goo5", "goo6", "goo7" }
-local SPLAT_COLOR = {
-	Color3.fromRGB(110, 40, 20),
-	Color3.fromRGB(70, 30, 90),
-	Color3.fromRGB(80, 120, 30),
-	Color3.fromRGB(40, 50, 70),
-	Color3.fromRGB(120, 90, 30),
-	Color3.fromRGB(60, 30, 70),
-	Color3.fromRGB(70, 110, 30),
+-- Ichor of each species (DD-050): droplets, streaks and the splat left on the floor.
+local BLOOD = {
+	Color3.fromRGB(255, 110, 40), -- runner
+	Color3.fromRGB(230, 60, 150), -- leaper
+	Color3.fromRGB(170, 255, 70), -- spitter
+	Color3.fromRGB(90, 200, 255), -- bulwark
+	Color3.fromRGB(255, 190, 70), -- elite
+	Color3.fromRGB(170, 255, 80), -- hive
+	Color3.fromRGB(255, 90, 170), -- broodmother
+	Color3.fromRGB(255, 150, 40), -- bomber
+	Color3.fromRGB(170, 255, 80), -- devourer
+	Color3.fromRGB(255, 170, 60), -- alpha
+	Color3.fromRGB(200, 140, 255), -- node
+	Color3.fromRGB(170, 255, 80), -- acid source
 }
 
 local handlers = {}
@@ -507,7 +512,7 @@ handlers[E.DMG] = function(id, amount, flags, fromX, fromZ)
 		-- goo spatters out the far side of the wound
 		local d = Vector3.new(pos.X - fromX, 0, pos.Z - fromZ)
 		if d.Magnitude > 0.01 then
-			Fx.emit(KILL_GOO[rec.kind] or "goo1", pos, 2, (d.Unit + Vector3.yAxis * 0.8).Unit)
+			Fx.emitWith("gooBlob", pos, 2, 0.7, BLOOD[rec.kind] or BLOOD[1], (d.Unit + Vector3.yAxis * 0.8).Unit)
 		end
 	end
 	local crit = bit32.band(flags, Codec.DF.CRIT) ~= 0
@@ -550,18 +555,18 @@ handlers[E.KILL] = function(id, kind, x, z, killer, cause, fromX, fromZ)
 		Fx.emit("smoke", pos, 8)
 		return
 	end
-	local spray = if dir then (dir + Vector3.yAxis * 1.1).Unit else nil
-	Fx.emit(KILL_GOO[kind] or "goo1", pos + Vector3.yAxis, if kind >= 4 then 30 else 14, spray)
+	local big = kind >= 4 and kind ~= 8
+	local blood = BLOOD[kind] or BLOOD[1]
+	local size = if kind == 7 or kind == 9 then 2.2 elseif kind == 5 or kind >= 10 then 1.6 elseif big then 1.2 else 0.9
+	Fx.gore(pos, size, blood, dir, big)
 	if Settings.quality >= 2 then
-		Fx.emit("dust", pos, if kind >= 4 then 4 else 1)
+		Fx.emit("dust", pos, if big then 4 else 1)
 	end
-	Fx.splat(pos, SPLAT_COLOR[kind] or SPLAT_COLOR[1], if kind >= 4 then 9 else 4.5)
-	if kind >= 4 then
-		Fx.boom(
-			pos,
-			if kind == 7 then 20 elseif kind == 5 or kind >= 10 then 12 else 7,
-			Theme.Code[if kind == 6 or kind == 12 then 5 elseif kind == 11 then 3 else 2]
-		)
+	if big then
+		Fx.light(pos + Vector3.yAxis * 3, blood, size * 10, 0.25)
+		if kind == 7 or kind == 9 then
+			Fx.debris(pos + Vector3.yAxis * 3, 10, blood:Lerp(Color3.new(0, 0, 0), 0.6), 26)
+		end
 		Audio.at("killBig", pos, 1)
 		if nearMe(pos, 60) then
 			CameraRig.shake(if kind >= 5 then 0.6 else 0.3)
