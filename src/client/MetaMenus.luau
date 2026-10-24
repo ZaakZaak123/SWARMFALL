@@ -315,9 +315,21 @@ function MetaMenus.refreshOutpost()
 	end
 end
 
-function MetaMenus.showOutpost()
+function MetaMenus.showOutpost(slot: number?)
+	if slot and Meta.Sockets[slot] then
+		selectedSocket = slot
+	end
 	MetaMenus.refreshOutpost()
 	ui.outpost.show()
+end
+
+function MetaMenus.anyVisible(): boolean
+	for _, m in { ui.outpost, ui.swarm, ui.log, ui.boards } do
+		if m and m.shade.Visible then
+			return true
+		end
+	end
+	return false
 end
 
 -- Swarm -------------------------------------------------------------------------------------------------

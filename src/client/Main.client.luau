@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Codec = require(Shared:WaitForChild("Codec"))
 local Maps = require(Shared:WaitForChild("Maps"))
+local Meta = require(Shared:WaitForChild("Meta"))
 
 local Theme = require(script.Parent:WaitForChild("Theme"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
@@ -26,6 +27,8 @@ local Controls = require(script.Parent:WaitForChild("Controls"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Preview = require(script.Parent:WaitForChild("Preview"))
 local Menus = require(script.Parent:WaitForChild("Menus"))
+local MetaMenus = require(script.Parent:WaitForChild("MetaMenus"))
+local Base = require(script.Parent:WaitForChild("Base"))
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
 local WeaponFeel = require(script.Parent:WaitForChild("WeaponFeel"))
@@ -66,6 +69,58 @@ Fx.init()
 Hud.init(playerGui)
 Controls.init(playerGui)
 Menus.init(playerGui, send)
+-- The base between sorties (DD-052): the stations open the same windows as the HUD buttons.
+local function goalAction()
+	local g = Base.goal()
+	if not g then
+		return
+	end
+	local prof = Menus.profile()
+	if g.station == "build" then
+		local def = g.structure and Meta.Structures[g.structure]
+		if g.key == "upgrade" and g.slot then
+			send("upgrade", g.slot)
+		elseif def and g.slot and g.key ~= "strike" and prof and (prof.scrap or 0) >= def.cost[1] then
+			send("build", g.slot, g.structure)
+		else
+			MetaMenus.showOutpost(g.slot)
+		end
+	elseif g.station == "launch" then
+		Menus.openLaunch()
+	elseif g.station == "armory" then
+		Menus.showUpgrades()
+	end
+end
+Base.init(playerGui, send, {
+	armory = function()
+		Menus.showUpgrades()
+	end,
+	build = function()
+		MetaMenus.showOutpost()
+	end,
+	socket = function(i)
+		MetaMenus.showOutpost(i)
+	end,
+	launch = function()
+		Menus.openLaunch()
+	end,
+	swarm = function()
+		MetaMenus.showSwarm()
+	end,
+	settings = function()
+		Menus.showSettings()
+	end,
+	goal = goalAction,
+	play = function()
+		if Base.ready() then
+			send("unready")
+			Audio.play("ui", 0.8, 0.85)
+		else
+			send("ready", Menus.selectedWeapon())
+			Audio.play("level", 0.7, 1.1)
+		end
+	end,
+})
 Shots.setHud(Hud)
 Fx.setShellSound(function(pos, kind)
 	if kind == "cellMag" then
@@ -396,6 +451,7 @@ local function leaveRun()
 end
 
 local showOutpost, outpostKeyOf -- outpost views (defined with the turret handlers below)
+local sceneSeen = false -- the first-victory scene plays once per session at most
 stateRemote.OnClientEvent:Connect(function(buf, info)
 	if type(info) ~= "table" then
 		return
@@ -404,12 +460,17 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		if inRun then
 			leaveRun()
 		end
+		if mode ~= "LOBBY" then
+			Base.resetCamera()
+		end
 		mode = "LOBBY"
 		Menus.showLobby(info.lobby, myId, Controls.device)
+		Base.setLobby(info.lobby, myId)
 		local slots = info.lobby and info.lobby.outpost
 		showOutpost(slots, "L" .. outpostKeyOf(slots))
 		return
 	end
+	Base.leaveLobby()
 	mode = "RUN"
 	if not inRun then
 		enterRun()
@@ -430,7 +491,9 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	debugExtra.rejected = info.rejected
 	if typeof(buf) == "buffer" then
 		local n = Codec.decodeEnemies(buf, decodeBuf)
-		EnemyView.snapshot(decodeBuf, n)
+		if not Base.sceneActive() then
+			EnemyView.snapshot(decodeBuf, n)
+		end
 	end
 	if me and me.offer and me.alive and run.phase == "ACTIVE" then
 		Menus.showOffer(me, run)
@@ -438,8 +501,27 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Menus.hideOffer()
 	end
 	if run.result then
-		Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)])
 		Hud.setVisible(false)
+		-- DD-052: the first hunt ever won plays the outpost scene before the results.
+		local prof = Menus.profile()
+		if run.result.victory and run.result.op == "O01" and prof and not (prof.tut and prof.tut.drill) and not sceneSeen then
+			sceneSeen = true
+			Menus.hideOffer()
+			Base.victoryScene(workspace.CurrentCamera.CFrame, function()
+				send("tut", "drill")
+			end, function()
+				-- the drill's first pulse sweeps the leftover swarm away
+				for _, rec in EnemyView.records do
+					local pos = Vector3.new(rec.dx, 1, rec.dz)
+					Fx.emitWith("gooBlob", pos, 3, 0.8, Color3.fromRGB(255, 120, 60))
+					Fx.emitWith("flash", pos, 1, 0.8, C.cyan)
+				end
+				EnemyView.clear()
+			end)
+		end
+		if not Base.sceneActive() then
+			Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)])
+		end
 	end
 	if run.phase == "COUNTDOWN" and run.waiting then
 		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — РОЙ УЖЕ БЛИЗКО")
@@ -855,29 +937,41 @@ end
 -- Outpost structures (DD-037/038): your turrets in sieges and in the lobby; enemy turrets in raids are
 -- EnemyView records (negative refs). One shot handler for both sides.
 local Structures = require(script.Parent:WaitForChild("Structures"))
-local Meta = require(Shared:WaitForChild("Meta"))
 local outpostFolder = Instance.new("Folder")
 outpostFolder.Name = "OutpostView"
 outpostFolder.Parent = workspace
 local outpostModels = {} -- slot -> model
 local outpostKey = nil
+local lastLobbySlots = nil -- what stood on the base last time: new pieces rise out of the ground
 showOutpost = function(slots, key: string?)
 	if key == outpostKey then
 		return
 	end
+	local inLobby = key ~= nil and key:sub(1, 1) == "L"
+	local before = if inLobby and outpostKey and outpostKey:sub(1, 1) == "L" then lastLobbySlots else nil
 	outpostKey = key
 	outpostFolder:ClearAllChildren()
 	table.clear(outpostModels)
+	local seen = {}
 	for slot, s in slots or {} do
 		local sock = Meta.Sockets[tonumber(slot)]
 		local id, lvl = s.id or s[2], s.lvl or s[3]
 		if sock and id then
 			local m = Structures.model(id, lvl, false)
 			local face = math.atan2(sock.x, sock.z) -- look outward, at the swarm
-			m:PivotTo(CFrame.new(sock.x, 0, sock.z) * CFrame.Angles(0, face + math.pi, 0))
+			local cf = CFrame.new(sock.x, 0, sock.z) * CFrame.Angles(0, face + math.pi, 0)
+			m:PivotTo(cf)
 			m.Parent = outpostFolder
 			outpostModels[tonumber(slot)] = m
+			local tag = tostring(slot) .. id .. tostring(lvl)
+			seen[tag] = true
+			if before and not before[tag] then
+				Base.buildAnim(m, cf, Meta.Structures[id].color)
+			end
 		end
+	end
+	if inLobby then
+		lastLobbySlots = seen
 	end
 end
 outpostKeyOf = function(slots): string
@@ -1008,6 +1102,7 @@ end)
 profileRemote.OnClientEvent:Connect(function(pub)
 	if type(pub) == "table" then
 		Menus.setProfile(pub)
+		Base.setProfile(pub)
 	end
 end)
 send("profile")
@@ -1415,10 +1510,12 @@ local function frame(dt: number)
 	end
 
 	-- Movement & facing
+	local walkingBase = mode == "LOBBY" and Base.isActive()
 	if hum then
 		local frozen = not isPlaying or choosing
 		local slow = if me and me.slow then me.slow else 0
-		hum.WalkSpeed = if frozen then 0 else Defs.Player.Speed * (1 - slow)
+		hum.WalkSpeed = if walkingBase then Defs.Player.Speed elseif frozen then 0 else Defs.Player.Speed * (1 - slow)
+		hum.AutoRotate = walkingBase
 	end
 	if root and linearVelocity then
 		local dashing = now < dashUntil and isPlaying
@@ -1527,8 +1624,23 @@ local function frame(dt: number)
 		updateFade(dt, workspace.CurrentCamera, focus)
 	else
 		local lroot = myRoot()
-		CameraRig.update(dt, "lobby", nil, 0, 1, 0, nil, if lroot then lroot.Position else nil)
+		if Menus.lobbyVisible() or not lroot then
+			CameraRig.update(dt, "lobby", nil, 0, 1, 0, nil, if lroot then lroot.Position else nil)
+		else
+			-- walking the base
+			cam.CameraType = Enum.CameraType.Scriptable
+			cam.FieldOfView = 55
+			cam.CFrame = Base.camera(dt, lroot.Position)
+		end
 	end
+	local sceneCf = Base.sceneCamera(dt)
+	if sceneCf then
+		cam.CameraType = Enum.CameraType.Scriptable
+		cam.CFrame = sceneCf
+	end
+	local onBase = mode == "LOBBY" and not Menus.modalOpen() and not Base.sceneActive()
+	Base.setActive(onBase)
+	Base.update(dt, if root then root.Position else nil)
 
 	-- Overdrive grade
 	local grade = Lighting:FindFirstChild("Grade")
@@ -1618,7 +1730,7 @@ if RunService:IsStudio() then
 			Controls.actions[action]()
 		end
 		if autoPick and Menus.offerVisible() then
-			Menus.pick(1)
+			Menus.confirm()
 		end
 		local ok, err = pcall(frame, dt)
 		return if ok then "" else tostring(err), EnemyView.count()

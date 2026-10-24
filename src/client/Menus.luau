@@ -19,6 +19,7 @@ local Icons = require(script.Parent.Icons)
 local Preview = require(script.Parent.Preview)
 local MetaMenus = require(script.Parent.MetaMenus)
 local Meta = require(Shared:WaitForChild("Meta"))
+local Goals = require(Shared:WaitForChild("Goals"))
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
 local C, F = Theme.C, Theme.F
@@ -36,6 +37,7 @@ local selectedWeapon = "W_ARC_RIFLE"
 local currentOfferId = nil
 local offerFocus = 1
 local banishMode = false
+local offerLock: number? = nil -- DD-051: the only card that can be taken (first card of the first hunt)
 local blur
 local amReady = false
 
@@ -485,6 +487,13 @@ local function buildLobby()
 			Audio.play("level", 0.7, 1.1)
 		end
 	end)
+	-- DD-052: this panel is the launch pad of the base; back to walking the base
+	ui.back, ui.backLabel = Theme.button("‹  НА БАЗУ", { Name = "Back", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -346, 1, -36), Size = UDim2.fromOffset(190, 64), TextSize = 16 })
+	ui.back.Parent = safe
+	ui.back.Activated:Connect(function()
+		Audio.play("ui", 0.8, 0.9)
+		Menus.closeLaunch()
+	end)
 	ui.huntPrev.Activated:Connect(function()
 		Menus.stepHunt(-1)
 	end)
@@ -642,9 +651,9 @@ function Menus.refreshLobby()
 	local list = unlockedOps()
 	local isHost = info.host == myId
 	-- tabs
-	local tabCount = 1 + (if features.outpost then 1 else 0) + (if features.raids then 1 else 0)
+	local tabCount = 1 + (if features.siege then 1 else 0) + (if features.raids then 1 else 0)
 	ui.tabs.Visible = tabCount > 1
-	ui.tabButtons.siege.button.Visible = features.outpost == true
+	ui.tabButtons.siege.button.Visible = features.siege == true
 	ui.tabButtons.raid.button.Visible = features.raids == true
 	for key, t in ui.tabButtons do
 		local on = key == mode
@@ -743,8 +752,8 @@ function Menus.refreshLobby()
 	ui.xeniteAmount.Text = Theme.commas(prof and prof.scrap or 0)
 	ui.upgradesBtn.Visible = runs > 0
 	ui.swarmBtn.Visible = features.swarm == true
-	ui.logBtn.Visible = features.outpost == true
-	ui.boardsBtn.Visible = features.outpost == true
+	ui.logBtn.Visible = features.siege == true
+	ui.boardsBtn.Visible = features.siege == true
 	local harvest = prof and prof.outpost and prof.outpost.harvest or 0
 	ui.harvest.Visible = harvest > 0
 	ui.harvest.Label.Text = "СОБРАТЬ  +" .. harvest
@@ -873,20 +882,47 @@ function Menus.showLobby(info, id: number, dev: string)
 		end
 	end
 	MetaMenus.setLobby(info)
-	if not ui.lobby.Visible then
-		ui.lobby.Visible = true
-		ui.lobbySafe.Position = UDim2.fromOffset(-40, 0)
-		tween(ui.lobbySafe, 0.6, { Position = UDim2.fromOffset(0, 0) })
-		ui.logoScale.Scale = 1.15
-		tween(ui.logoScale, 0.8, { Scale = 1 }, Enum.EasingStyle.Back)
-		ui.weaponsKey = nil
-		setBlur(0)
+	if ui.lobby.Visible then
+		local k = math.max(0.72, viewportScale(Vector2.new(1280, 760)))
+		ui.lobbyScale.Scale = k
+		ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
+		Menus.refreshLobby()
 	end
-	-- A UIScale on a full-screen frame scales it past the screen edge: shrink the frame by the same factor.
-	local k = math.max(0.72, viewportScale(Vector2.new(1280, 760)))
-	ui.lobbyScale.Scale = k
-	ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
-	Menus.refreshLobby()
+end
+
+-- The launch pad (hunt choice, weapons, В БОЙ): opened from the base station or button (DD-052).
+function Menus.openLaunch()
+	if ui.lobby.Visible or not lobbyState then
+		return
+	end
+	ui.lobby.Visible = true
+	ui.lobbySafe.Position = UDim2.fromOffset(-40, 0)
+	tween(ui.lobbySafe, 0.6, { Position = UDim2.fromOffset(0, 0) })
+	ui.logoScale.Scale = 1.15
+	tween(ui.logoScale, 0.8, { Scale = 1 }, Enum.EasingStyle.Back)
+	ui.weaponsKey = nil
+	setBlur(0)
+	Menus.showLobby(lobbyState, myId, device)
+end
+
+function Menus.closeLaunch()
+	ui.lobby.Visible = false
+end
+
+-- Any full-screen window over the base (the player should not walk behind it).
+function Menus.modalOpen(): boolean
+	return ui.lobby.Visible
+		or (ui.upgrades ~= nil and ui.upgrades.shade.Visible)
+		or (ui.settings ~= nil and ui.settings.shade.Visible)
+		or MetaMenus.anyVisible()
+end
+
+function Menus.selectedWeapon(): string
+	return selectedWeapon
+end
+
+function Menus.showSettings()
+	ui.settings.show()
 end
 
 function Menus.hideLobby()
@@ -1351,6 +1387,40 @@ local function buildOffer()
 		})
 		icon("banish", 64, C.white, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.4), ZIndex = 21, Parent = banOverlay })
 		label("ИЗГНАТЬ", { Position = UDim2.fromScale(0, 0.5), Size = UDim2.new(1, 0, 0, 40), FontFace = F.display, TextSize = 26, ZIndex = 21, Parent = banOverlay })
+		-- DD-051 guided first card: the others are shown but closed this once
+		local lockShade = new("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = C.bg,
+			BackgroundTransparency = 0.3,
+			Corner = 20,
+			Visible = false,
+			ZIndex = 20,
+			Parent = card,
+		})
+		icon("lock", 44, C.dim, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.36), ZIndex = 21, Parent = lockShade })
+		label("В СЛЕДУЮЩИЙ РАЗ", { Position = UDim2.fromScale(0, 0.47), Size = UDim2.new(1, 0, 0, 22), FontFace = F.head, TextSize = 14, TextColor3 = C.dim, ZIndex = 21, Parent = lockShade })
+		-- ribbon + bouncing pointer over the guided card
+		local guide = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 1, 16),
+			Size = UDim2.fromOffset(CARD_W + 30, 30),
+			BackgroundColor3 = C.gold,
+			Corner = UDim.new(1, 0),
+			Visible = false,
+			ZIndex = 22,
+			Parent = card,
+		})
+		label("ВОЗЬМИ ЭТО", { Size = UDim2.fromScale(1, 1), FontFace = F.head, TextSize = 15, TextColor3 = C.ink, ZIndex = 23, Parent = guide })
+		local guideArrow = label("▲", {
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 0, 4),
+			Size = UDim2.fromOffset(30, 20),
+			FontFace = F.head,
+			TextSize = 18,
+			TextColor3 = C.gold,
+			ZIndex = 23,
+			Parent = guide,
+		})
 		local c = {
 			card = card,
 			cardGrad = cardGrad,
@@ -1377,6 +1447,9 @@ local function buildOffer()
 			stat = stat,
 			desc = desc,
 			banOverlay = banOverlay,
+			lockShade = lockShade,
+			guide = guide,
+			guideArrow = guideArrow,
 			lift = 0,
 		}
 		card.MouseEnter:Connect(function()
@@ -1429,9 +1502,9 @@ function Menus.refreshOfferModes()
 	if not me then
 		return
 	end
-	ui.rerollBtn.Visible = (me.rerolls or 0) > 0
+	ui.rerollBtn.Visible = (me.rerolls or 0) > 0 and not offerLock
 	ui.rerollLabel.Text = "ПЕРЕБРОС  " .. (me.rerolls or 0)
-	ui.banishBtn.Visible = (me.banishes or 0) > 0
+	ui.banishBtn.Visible = (me.banishes or 0) > 0 and not offerLock
 	ui.banishLabel.Text = if banishMode then "ОТМЕНА" else "ИЗГНАТЬ  " .. (me.banishes or 0)
 	for i, c in ui.offerCards do
 		local id = me.offer and me.offer.choices[i]
@@ -1446,6 +1519,14 @@ function Menus.pick(index: number)
 	end
 	local c = ui.offerCards[index]
 	if not c or not c.card.Visible then
+		return
+	end
+	if offerLock and index ~= offerLock then
+		-- closed this once: nudge toward the guided card
+		Audio.play("warn", 0.5, 1.4)
+		c.scale.Scale = 0.96
+		tween(c.scale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+		offerFocus = offerLock
 		return
 	end
 	if banishMode then
@@ -1470,7 +1551,7 @@ end
 
 function Menus.focusMove(delta: number)
 	if ui.offer.Visible then
-		offerFocus = math.clamp(offerFocus + delta, 1, ui.offerCount or 3)
+		offerFocus = if offerLock then offerLock else math.clamp(offerFocus + delta, 1, ui.offerCount or 3)
 		Audio.play("uiHover")
 	end
 end
@@ -1487,6 +1568,9 @@ function Menus.showOffer(me, run)
 	ui.offerSub.Text = if run.solo
 		then "Выбери одно  ·  время остановлено"
 		else string.format("Выбери одно  ·  отряд ждёт  ·  %d с", math.max(0, math.ceil(Defs.Run.ChoiceTimeoutCoop - run.pauseClock)))
+	if offer.lock then
+		ui.offerSub.Text = "Первое улучшение: пуль станет три — бери «Расщепление». Дальше выбираешь сам"
+	end
 	if offer.id == ui.shownOfferId and ui.offer.Visible then
 		Menus.refreshOfferModes()
 		return
@@ -1494,7 +1578,8 @@ function Menus.showOffer(me, run)
 	local fresh = not ui.offer.Visible
 	ui.shownOfferId = offer.id
 	currentOfferId = offer.id
-	offerFocus = 1
+	offerLock = offer.lock
+	offerFocus = offerLock or 1
 	banishMode = false
 	ui.offer.Visible = true
 	setBlur(16)
@@ -1550,6 +1635,8 @@ function Menus.showOffer(me, run)
 			if syn then
 				c.desc.Text = text .. '\n<font color="#C9A2FF"><b>+ ' .. syn.name .. ":</b> " .. syn.text .. "</font>"
 			end
+			c.lockShade.Visible = offerLock ~= nil and i ~= offerLock
+			c.guide.Visible = offerLock == i
 			local x = (i - (count + 1) / 2) * (CARD_W + CARD_GAP)
 			c.card.BackgroundTransparency = 0.04
 			c.card.Position = UDim2.new(0.5, x, 0, 170)
@@ -1605,6 +1692,7 @@ function Menus.hideOffer()
 		ui.offer.Visible = false
 		ui.shownOfferId = nil
 		currentOfferId = nil
+		offerLock = nil
 		banishMode = false
 		if not (ui.results and ui.results.Visible) then
 			setBlur(0)
@@ -1708,7 +1796,7 @@ local function buildResults()
 	local body = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(900, 660),
+		Size = UDim2.fromOffset(900, 740),
 		ZIndex = 21,
 		Parent = r,
 	})
@@ -1788,7 +1876,12 @@ local function buildResults()
 		Parent = ui.resList,
 		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 12) },
 	})
-	ui.resButton, ui.resButtonLabel = Theme.button("ДАЛЬШЕ", {
+	ui.resGoal = Theme.panel({ LayoutOrder = 8, Size = UDim2.fromOffset(560, 84), CornerRadius = 18, ZIndex = 22, Parent = ui.resList }, C.lime)
+	ui.resGoalIcon = new("Frame", { Position = UDim2.fromOffset(14, 20), Size = UDim2.fromOffset(44, 44), ZIndex = 23, Parent = ui.resGoal })
+	label("ДАЛЬШЕ", { Position = UDim2.fromOffset(70, 8), Size = UDim2.fromOffset(120, 14), FontFace = F.head, TextSize = 10, TextColor3 = C.lime, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.resGoal })
+	ui.resGoalTitle = label("", { Position = UDim2.fromOffset(70, 22), Size = UDim2.new(1, -84, 0, 20), FontFace = F.display, TextSize = 17, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.resGoal })
+	ui.resGoalText = label("", { Position = UDim2.fromOffset(70, 43), Size = UDim2.new(1, -84, 0, 34), FontFace = F.body, TextSize = 13, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 23, Parent = ui.resGoal })
+	ui.resButton, ui.resButtonLabel = Theme.button("НА БАЗУ", {
 		Name = "Continue",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -24),
@@ -1936,11 +2029,11 @@ function Menus.showResults(result, votes, id: number, reward)
 	Menus.hideOffer()
 	ui.results.Visible = true
 	setBlur(18)
-	ui.resScale.Scale = viewportScale(Vector2.new(940, 700))
+	ui.resScale.Scale = viewportScale(Vector2.new(940, 780))
 	local op = Ops.get(result.op)
 	if first then
 		ui.resClicked = false
-		ui.resButtonLabel.Text = "ДАЛЬШЕ"
+		ui.resButtonLabel.Text = "НА БАЗУ"
 		ui.resTitleScale.Scale = 1.6
 		tween(ui.resTitleScale, 0.6, { Scale = 1 }, Enum.EasingStyle.Back)
 		ui.resShade.BackgroundTransparency = 1
@@ -1948,7 +2041,10 @@ function Menus.showResults(result, votes, id: number, reward)
 		Audio.play(if result.victory then "evolve" else "warn", 0.7, if result.victory then 1.1 else 0.8)
 	end
 	local mode = result.mode or "hunt"
-	if mode == "siege" then
+	if result.op == "STRIKE" then
+		ui.resTag.Text = "АВАНПОСТ  ·  ПЕРВЫЙ НАТИСК"
+		ui.resTitle.Text = if result.victory then "НАТИСК ОТБИТ" else "БУР ПОВРЕЖДЁН"
+	elseif mode == "siege" then
 		ui.resTag.Text = "ОСАДА АВАНПОСТА  ·  УРОВЕНЬ " .. (result.siege or 1)
 		ui.resTitle.Text = if result.victory then "ОСАДА ОТБИТА" else "БУР ПАЛ"
 	elseif mode == "raid" then
@@ -2039,7 +2135,12 @@ function Menus.showResults(result, votes, id: number, reward)
 		unlockCard("crown", "РЕЙТИНГ ВТОРЖЕНИЙ", string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now), if d >= 0 then C.gold else C.red, k)
 	end
 	-- A first story win that opens a meta mode (the next hunt unlocking is the signal).
-	local newly = { O03 = { "pin", "НОВЫЙ РЕЖИМ", "Аванпост и осада" }, O04 = { "hive", "НОВЫЙ РЕЖИМ", "Свой рой" }, O05 = { "skull", "НОВЫЙ РЕЖИМ", "Вторжения на чужие аванпосты" } }
+	local newly = {
+		O02 = { "shield", "ОТКРЫТО", "Аванпост: первая турель" },
+		O03 = { "threat", "НОВЫЙ РЕЖИМ", "Осада аванпоста" },
+		O04 = { "hive", "НОВЫЙ РЕЖИМ", "Свой рой" },
+		O05 = { "skull", "НОВЫЙ РЕЖИМ", "Вторжения на чужие аванпосты" },
+	}
 	for _, u in reward and reward.unlocked or {} do
 		local f = u[1] == "op" and newly[u[2]]
 		if f then
@@ -2056,6 +2157,17 @@ function Menus.showResults(result, votes, id: number, reward)
 		end
 	end
 	ui.resUnlocks.Visible = k > 0
+	-- DD-052: one nearest goal under the loot, so the next step is obvious before leaving the screen
+	local g = Goals.next(profile)
+	ui.resGoal.Visible = g ~= nil
+	if g then
+		ui.resGoalTitle.Text = g.title
+		ui.resGoalText.Text = g.text
+		clear(ui.resGoalIcon)
+		local col = if g.structure then Meta.Structures[g.structure].color else C.lime
+		local d = Icons.disc(g.icon, 44, col, 23)
+		d.Parent = ui.resGoalIcon
+	end
 end
 
 function Menus.hideResults()
@@ -2148,6 +2260,10 @@ function Menus.update(dt: number)
 		for i, c in ui.offerCards do
 			if c.card.Visible then
 				local target = if i == offerFocus and currentOfferId then 1 else 0
+				if c.guide.Visible then
+					target = 0.8 + math.sin(now * 4) * 0.2
+					c.guideArrow.Position = UDim2.new(0.5, 0, 0, 4 - math.abs(math.sin(now * 5)) * 8)
+				end
 				c.lift += (target - c.lift) * math.min(1, dt * 14)
 				c.stroke.Thickness = 2.5 + c.lift * 1.5
 				c.stroke.Transparency = 0.3 - c.lift * 0.3

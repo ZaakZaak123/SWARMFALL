@@ -1,6 +1,6 @@
 -- Operation playtests: the bot plays operations end to end and checks objective rules.
 -- Usage (repo root):  lune run tests/ops_run [op|all] [weapon] [seed]
--- O01 (DD-024/DD-032): ~3 min first hunt, nothing to guard, the Alpha, Runners only. O02: the S01 lesson.
+-- O01 (DD-051): ~1:30 first hunt with exactly three cards, nothing to guard, the Alpha, Runners only. O02: the S01 lesson.
 -- O03+: each hunt resolves and, when the bot wins, its objective was met.
 
 local process = require("@lune/process")
@@ -35,8 +35,15 @@ end
 if opArg == "O01" or opArg == "all" then
 	print("=== O01 ВЫСАДКА")
 	-- DD-032: the first hunt has no objective to guard and no S01 lesson — shoot, cards, the Alpha.
-	local out = Bot.run(weapon, 1, seed, false, nil, 1, nil, { op = "O01", orbit = 32, s01 = false })
+	local out = Bot.run(weapon, 1, seed, false, nil, 1, nil, { op = "O01", orbit = 32, s01 = false, firstHunt = true })
 	report("newcomer", out)
+	local lv = {}
+	for _, t in out.milestones.levels or {} do
+		table.insert(lv, fmt(t))
+	end
+	print("  level-ups at " .. table.concat(lv, ", "))
+	check(#lv == 3, "exactly three cards in the first hunt (" .. #lv .. ")")
+	check(out.milestones.lockedCard == "UPG_MULTISHOT", "the first card is the guided «Расщепление»")
 	local me = out.result.players[1]
 	check(out.result ~= nil, "run finishes")
 	check(out.milestones.firstKill ~= nil and out.milestones.firstKill < 15, "first kill within 15 s")
@@ -45,7 +52,7 @@ if opArg == "O01" or opArg == "all" then
 	check(out.result.victory, "a newcomer bot wins the first hunt")
 	if out.result.victory then
 		check(out.result.eliteKilled, "the Alpha is killed")
-		check(out.result.time > 150 and out.result.time < 240, "victory lands in the 2:30–4:00 window (DD-024)")
+		check(out.result.time > 70 and out.result.time < 120, "victory lands in the 1:10–2:00 window (DD-051)")
 	else
 		print("  NOTE newcomer bot lost: " .. out.result.reason)
 	end

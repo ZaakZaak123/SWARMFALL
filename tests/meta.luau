@@ -4,6 +4,7 @@ local process = require("@lune/process")
 local H = require("./harness")
 local Meta = H.require("src/shared/Meta")
 local Ops = H.require("src/shared/Ops")
+local Goals = H.require("src/shared/Goals")
 local Maps = H.require("src/shared/Maps")
 local Nav = H.require("src/server/Sim/Nav")
 local World = H.require("src/server/Sim/World")
@@ -82,6 +83,54 @@ do -- mutations change the body and leave something behind
 	local before = #w.hazards
 	w:kill(e, nil, 0, 0)
 	check(#w.hazards == before + 1, "Кислотная кровь leaves an acid pool")
+end
+
+print("=== next goal")
+do
+	local pub = { winsByOp = {}, ops = { O01 = 1 }, scrap = 0, outpost = { slots = {}, siege = 1 }, tut = {} }
+	local function step(tag)
+		local g = Goals.next(pub)
+		print(string.format("  %-14s %s · %s  [%s%s]", tag, g.title, g.text, g.station, if g.slot then " #" .. g.slot else ""))
+		return g
+	end
+	check(step("new").key == "hunt1", "goal 1: the first hunt")
+	pub.winsByOp.O01, pub.ops.O02, pub.scrap = 1, 1, 150
+	local g = step("won O01")
+	check(g.key == "sting" and g.station == "build" and g.slot == Meta.FirstSocket, "goal 2: the first turret on the lit socket")
+	pub.outpost.slots[Meta.FirstSocket] = { id = "STING", lvl = 1 }
+	pub.scrap = 30
+	check(step("built").key == "strike", "goal 3: the first defence")
+	pub.tut.strike = true
+	g = step("defended")
+	check(g.key == "op_O02" and g.structure == "ARC" and g.text:find("Разрядник") ~= nil, "goal 4: next hunt opens the Разрядник")
+	pub.winsByOp.O02, pub.ops.O03, pub.scrap = 1, 1, 400
+	check(step("won O02").key == "build_ARC", "goal 5: build the Разрядник when affordable")
+	pub.scrap = 100
+	check(step("poor").key == "op_O03", "goal 6: otherwise the next hunt")
+	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")
+end
+
+print("=== first strike")
+do
+	local first = { [4] = { id = "STING", lvl = 1 } }
+	local out = Bot.run("W_ARC_RIFLE", 1, 77, false, nil, 1, nil, { opDef = Ops.makeFirstStrike(), structures = first, orbit = 22, s01 = false })
+	local r = out.result
+	print(string.format("  strike: %s (%s) at %s  kills %d  level %d  bur %s", if r.victory then "VICTORY" else "DEFEAT", r.reason, fmt(r.time), r.kills, r.level, if r.reactor then math.floor(r.reactor * 100) .. "%" else "-"))
+	check(r.victory and r.time >= 25 and r.time <= 60, "«Первый натиск» is a short won defence (25–60 s)")
+	check(r.level == 1, "no cards in «Первый натиск» (it is a scene, not a run)")
+	-- A player who just stands at the base spawn: the turret alone must not lose the lesson.
+	local w = World.new({ seed = 5, players = { { id = 1, name = "IDLE", weapon = "W_ARC_RIFLE", s01 = false } }, opDef = Ops.makeFirstStrike(), structures = first })
+	w:setPlayerPosition(1, 0, -58)
+	local t = 0
+	while w.phase ~= "RESULTS" and t < 200 do
+		w:step(1 / 30)
+		w:drainEvents()
+		w:setPlayerPosition(1, 0, -58)
+		t += 1 / 30
+	end
+	local ir = w.result
+	print(string.format("  idle: %s (%s) at %s  bur %s", if ir and ir.victory then "VICTORY" else "DEFEAT", ir and ir.reason or "-", fmt(t), if ir and ir.reactor then math.floor(ir.reactor * 100) .. "%" else "-"))
+	check(ir ~= nil and (ir.reactor or 0) > 0.3 or (ir ~= nil and ir.victory), "the drill survives a hesitant player for the whole lesson")
 end
 
 if not quick then

@@ -51,13 +51,13 @@ Meta.Structures = {
 		icon = "crosshair",
 		color = rgb(255, 196, 70),
 		kind = "turret",
-		cost = { 150, 350, 700 },
+		cost = { 120, 350, 700 },
 		dna = { 0, 0, 10 },
 		range = 34,
 		every = { 0.34, 0.27, 0.21 },
 		damage = { 9, 12, 16 },
 		enemyIndex = 13,
-		unlock = "O02",
+		unlock = "O01", -- the first hunt's loot buys it (DD-052)
 	},
 	ARC = {
 		id = "ARC",
@@ -153,6 +153,10 @@ Meta.Structures = {
 Meta.StructureOrder = { "STING", "ARC", "MORTAR", "CRYO", "ACID", "SHIELD", "HARVEST" }
 Meta.HarvestCapHours = 12
 Meta.SellRefund = 0.5
+-- Onboarding (DD-052): the socket the first turret goes to (inner ring, south-east: in view from the base
+-- spawn) and the payout of «Первый натиск».
+Meta.FirstSocket = 4
+Meta.StrikeReward = 40
 
 -- Hostile turrets in raids hit players this much softer than they hit the swarm.
 Meta.RaidTurretPlayerMult = 0.3

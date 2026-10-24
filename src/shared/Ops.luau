@@ -77,9 +77,12 @@ export type OpDef = {
 	target: any?, -- raid target snapshot (generated op)
 	mode: string?, -- "siege" | "raid" for generated ops
 	anomaly: any?, -- Meta anomaly applied to this run
+	xpTable: { number }?, -- fixed XP per level; past its end the level is capped (O01: three cards)
 }
 
 local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
+-- O01 levels: cards near 0:12, 0:35 and 1:05 (TUNABLE against tests/ops_run O01).
+local XP_O01 = { 4, 32, 80 }
 
 -- SPOREFALL hunts (DD-032): one new idea per hunt.
 --   O01 ВЫСАДКА       shoot, level up, pick cards; one big enemy at the end. No objective to guard.
@@ -91,8 +94,9 @@ local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 --   O07 ПОЖИРАТЕЛЬ    chapter finale.
 -- Ids are profile keys; their meaning shifted in the reboot (old O02..O06 became O03..O07).
 
--- O01 «ВЫСАДКА» — the first three minutes of the game. One enemy type, one rule (stay alive), cards,
--- one big enemy (the Alpha, ~2:05) and a short final swarm.
+-- O01 «ВЫСАДКА» — the first ninety seconds of the game (DD-051). One enemy type, one rule (stay alive),
+-- exactly three cards (the first is the guided «Расщепление»), one big enemy (the Alpha, ~0:55) and a
+-- short final swarm. Winning it opens the outpost: the first turret is bought with this hunt's loot.
 Ops.O01 = {
 	id = "O01",
 	index = 1,
@@ -105,21 +109,21 @@ Ops.O01 = {
 	playerDamageMult = 0.6,
 	eliteName = "АЛЬФА",
 	eliteGoal = "Убей Альфу",
-	eliteHpMult = 0.45, -- first big enemy of the game: a 15–25 s fight, not a sponge
+	eliteHpMult = 0.3, -- first big enemy of the game: a 10–20 s fight, not a sponge
 	runEvolution = false,
-	finaleTime = 20,
-	deadline = 300,
-	hardLimit = 360,
-	finale = { at = 0, label = "ПОСЛЕДНЯЯ ВОЛНА", rate = 9.0, cap = 80, dirs = ALL, w = { EN_RUNNER = 1 } },
+	finaleTime = 12,
+	deadline = 200,
+	hardLimit = 240,
+	xpTable = XP_O01,
+	finale = { at = 0, label = "ПОСЛЕДНЯЯ ВОЛНА", rate = 9.0, cap = 70, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
-		{ at = 0, label = "КОНТАКТ", rate = 2.6, cap = 24, dirs = { "N", "NE", "NW" }, w = { EN_RUNNER = 1 }, quiet = true },
-		{ at = 25, label = "НАРАСТАНИЕ", rate = 4.0, cap = 40, dirs = { "N", "E", "NE", "W", "NW" }, w = { EN_RUNNER = 1 } },
-		{ at = 70, label = "СО ВСЕХ СТОРОН", rate = 4.8, cap = 56, dirs = ALL, w = { EN_RUNNER = 1 } },
-		{ at = 100, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 70, dirs = ALL, w = { EN_RUNNER = 1 } },
-		{ at = 122, label = "АЛЬФА", rate = 2.6, cap = 36, dirs = ALL, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 0, label = "КОНТАКТ", rate = 3.0, cap = 26, dirs = { "N", "NE", "NW" }, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 16, label = "НАРАСТАНИЕ", rate = 4.4, cap = 44, dirs = { "N", "E", "NE", "W", "NW" }, w = { EN_RUNNER = 1 } },
+		{ at = 34, label = "СО ВСЕХ СТОРОН", rate = 5.4, cap = 60, dirs = ALL, w = { EN_RUNNER = 1 } },
+		{ at = 52, label = "АЛЬФА", rate = 2.6, cap = 36, dirs = ALL, w = { EN_RUNNER = 1 }, quiet = true },
 	},
 	beats = {
-		{ at = 125, type = "elite" },
+		{ at = 55, type = "elite" },
 	},
 	unlocks = { "O02" },
 }
@@ -479,6 +483,44 @@ function Ops.makeSiege(level: number): OpDef
 		beats = beats,
 		unlocks = {},
 		siege = level,
+		mode = "siege",
+	}
+end
+
+-- «ПЕРВЫЙ НАТИСК» (DD-052): right after the first turret is built the swarm comes for the drill — one
+-- short wave from the north, straight into the new turret's field of fire. About 40 seconds, cannot be
+-- replayed (Profile `tut.strike`), pays a little and shows what the outpost is for.
+function Ops.makeFirstStrike(): OpDef
+	return {
+		id = "STRIKE",
+		index = 0,
+		code = "АВАНПОСТ",
+		name = "ПЕРВЫЙ НАТИСК",
+		map = "MAP_REACTOR_YARD",
+		brief = "Рой услышал бур. Держись у турели — она стреляет вместе с тобой.",
+		goal = "Защити бур",
+		objective = "carrier",
+		reactor = { hp = 4000, name = "БУР" }, -- a lesson, not a test: the drill holds even if the player hesitates
+		playerDamageMult = 0.4,
+		eliteName = "ВОЖАК",
+		eliteGoal = "Убей вожака",
+		eliteHpMult = 0.18,
+		runEvolution = false,
+		finaleTime = 6,
+		deadline = 120,
+		hardLimit = 150,
+		xpTable = {},
+		finale = { at = 0, label = "ДОБИТЬ", rate = 5, cap = 40, dirs = { "N", "NE", "NW" }, w = { EN_RUNNER = 1 } },
+		phases = {
+			{ at = 2, label = "РОЙ ИДЁТ НА БУР", rate = 3.4, cap = 34, dirs = { "N", "NE", "NW" }, w = { EN_RUNNER = 1 } },
+		},
+		beats = {
+			{ at = 6, type = "assault", count = 6 },
+			{ at = 13, type = "assault", count = 8 },
+			{ at = 19, type = "elite" },
+		},
+		unlocks = {},
+		siege = 0,
 		mode = "siege",
 	}
 end

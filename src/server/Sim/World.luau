@@ -121,6 +121,7 @@ local function newPlayer(map, info, index: number, count: number)
 		synergies = {}, -- synergies already announced this run
 		novaReady = 0,
 		newbie = info.s01 == false, -- first-ever O01 (soft tutorial draft, 02.4 §4)
+		firstHunt = info.firstHunt == true, -- has never won O01: the first card is the guided «Расщепление» (DD-051)
 		seenMulti = false,
 	}
 	if info.loadout then
@@ -218,7 +219,7 @@ function World.new(opts: Options)
 	self.events = {}
 	self.level = 1
 	self.xp = 0
-	self.xpNeed = Defs.xpToNext(1)
+	self.xpNeed = self:xpFor(1)
 	self.phaseIndex = 0
 	self.phaseLabel = "ВЫСАДКА"
 	self.spawnAcc = 0
@@ -948,15 +949,28 @@ function World:updateOrbs()
 end
 
 -- Progression ---------------------------------------------------------------------------------------
+-- An operation can fix its own level curve (O01: exactly three cards, DD-051). Past the table the bar is
+-- full and stays there (math.huge never fills).
+function World:xpFor(level: number): number
+	local table_ = self.op.xpTable
+	if table_ then
+		return table_[level] or math.huge
+	end
+	return Defs.xpToNext(level)
+end
+
 function World:gainXp(amount: number)
 	if self.anomaly and self.anomaly.xp then
 		amount *= self.anomaly.xp
+	end
+	if self.xpNeed == math.huge then
+		return
 	end
 	self.xp += amount
 	while self.xp >= self.xpNeed do
 		self.xp -= self.xpNeed
 		self.level += 1
-		self.xpNeed = Defs.xpToNext(self.level)
+		self.xpNeed = self:xpFor(self.level)
 		self:emit(E.LEVEL, self.level)
 		for _, p in self.playerList do
 			if p.alive then
@@ -988,7 +1002,7 @@ end
 -- Re-deal the current offer (perk-limited).
 function World:reroll(id: number): boolean
 	local p = self.players[id]
-	if not p or not p.offer or p.rerolls <= 0 then
+	if not p or not p.offer or p.rerolls <= 0 or p.offer.lock then
 		return false
 	end
 	p.rerolls -= 1
@@ -1000,7 +1014,7 @@ end
 -- Remove a card from the pool for the rest of the run and re-deal. Evolution keys can't be banished.
 function World:banish(id: number, offerId: number, index: number): boolean
 	local p = self.players[id]
-	if not p or not p.offer or p.offer.id ~= offerId or p.banishes <= 0 then
+	if not p or not p.offer or p.offer.id ~= offerId or p.banishes <= 0 or p.offer.lock then
 		return false
 	end
 	local choice = p.offer.choices[index]
@@ -1020,7 +1034,7 @@ function World:choose(id: number, offerId: number, index: number): boolean
 		return false
 	end
 	local choice = p.offer.choices[index]
-	if not choice then
+	if not choice or (p.offer.lock and p.offer.lock ~= index) then
 		return false
 	end
 	p.offer = nil
@@ -1756,7 +1770,7 @@ function World:publicState()
 		solo = self.solo,
 		level = self.level,
 		xp = self.xp,
-		xpNeed = self.xpNeed,
+		xpNeed = if self.xpNeed == math.huge then 0 else self.xpNeed, -- 0 = level cap (bar stays full)
 		label = self.phaseLabel,
 		boss = boss,
 		hive = if self.hive.state == "active" then self.hive.remaining else nil,

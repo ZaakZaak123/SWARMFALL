@@ -874,9 +874,25 @@ function Combat.makeOffer(w, p)
 	if #choices < cards then
 		table.insert(choices, "FB_CHARGE")
 	end
+	-- DD-051: the very first card of the very first hunt is «Расщепление», and only it can be taken, so
+	-- the first upgrade is one the player sees at once (two bullets become three). Shown with its rivals.
+	local lock = nil
+	if p.firstHunt and p.offersMade == 0 and w.op.id == "O01" and rank(p, "UPG_MULTISHOT") == 0 then
+		local at = table.find(choices, "UPG_MULTISHOT")
+		if not at then
+			at = math.min(2, #choices + 1)
+			if at <= #choices then
+				choices[at] = "UPG_MULTISHOT"
+			else
+				table.insert(choices, "UPG_MULTISHOT")
+			end
+		end
+		lock = at
+		p.seenMulti = true
+	end
 	p.offerSeq += 1
 	p.offersMade += 1
-	p.offer = { id = p.offerSeq, choices = choices }
+	p.offer = { id = p.offerSeq, choices = choices, lock = lock }
 end
 
 function Combat.applyChoice(w, p, choice: string)

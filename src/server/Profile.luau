@@ -65,6 +65,7 @@ local function defaults()
 		brood = {}, -- up to 3 strains { kind, muts }
 		raid = { rating = Meta.StartRating, wins = 0, losses = 0, defWins = 0, defLosses = 0 },
 		lastDay = 0,
+		tut = {}, -- one-time onboarding beats (DD-052): drill = victory scene seen, strike = first defence done
 	}
 end
 
@@ -241,6 +242,7 @@ function Profile.public(player: Player)
 		brood = d.brood,
 		raid = d.raid,
 		raidLog = e.raidLog,
+		tut = d.tut,
 	}
 end
 
@@ -488,8 +490,10 @@ end
 -- Modes open one at a time with the story (Progressive Discovery).
 function Profile.features(d)
 	local won = d.wins_by_op or {}
+	-- DD-052: the outpost (building) opens with the first hunt won, the siege ladder with the second.
 	return {
-		outpost = (won.O02 or 0) > 0,
+		outpost = (won.O01 or 0) > 0,
+		siege = (won.O02 or 0) > 0,
 		swarm = (won.O03 or 0) > 0,
 		raids = (won.O04 or 0) > 0,
 	}
@@ -526,6 +530,18 @@ function Profile.collectHarvest(player: Player): number
 	end
 	mark(player)
 	return amount
+end
+
+-- One-time onboarding flags the client may set (the victory scene was watched).
+local CLIENT_TUT = { drill = true }
+function Profile.markTut(player: Player, key: string): boolean
+	local d = Profile.get(player)
+	if not d or not CLIENT_TUT[key] or d.tut[key] then
+		return false
+	end
+	d.tut[key] = true
+	mark(player)
+	return true
 end
 
 function Profile.build(player: Player, slot: number, id: string): boolean
@@ -681,6 +697,17 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	local reward = Defs.runReward(result, threat, d.perks.PK_SALVAGE or 0, if mine then mine.kills else nil)
 	if d.lastRun == runId then
 		return d.lastReward or reward
+	end
+	-- «Первый натиск» (DD-052): a one-time scene with a small fixed payout; won or lost, it is done.
+	if opId == "STRIKE" then
+		reward = { total = Meta.StrikeReward, lines = { { if result.victory then "crown" else "timer", Meta.StrikeReward } }, mult = 1 }
+		d.tut.strike = true
+		d.lastRun = runId
+		d.lastReward = reward
+		d.scrap += reward.total
+		d.kills += result.kills
+		mark(player)
+		return reward
 	end
 	-- Mode rewards (DD-038/039): sieges and raids pay by their own rules; anomalies and squads add on top.
 	local mode = result.mode or "hunt"

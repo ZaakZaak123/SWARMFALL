@@ -870,7 +870,7 @@ function Hud.update(run, me, extra, dt: number)
 		Icons.recolor(ui.objIcon, if flash then C.red else col)
 	end
 	-- XP and level
-	local xpFrac = math.clamp(run.xp / math.max(1, run.xpNeed), 0, 1)
+	local xpFrac = if run.xpNeed <= 0 then 1 else math.clamp(run.xp / math.max(1, run.xpNeed), 0, 1)
 	local cur = ui.xpFill.Size.X.Scale
 	ui.xpFill.Size = UDim2.fromScale(if xpFrac < cur then xpFrac else cur + (xpFrac - cur) * math.min(1, dt * 10), 1)
 	ui.level.Text = tostring(run.level)

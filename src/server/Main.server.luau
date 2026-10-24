@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local AnalyticsService = game:GetService("AnalyticsService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
@@ -37,13 +38,15 @@ local profileRemote = remote(Codec.Remotes.Profile)
 remotes.Parent = ReplicatedStorage
 
 local SNAPSHOT_RATE = 15
-local LOBBY_GATHER = 6
+local SQUAD_GATHER = 25 -- others on the base are not ready yet: time to join in (DD-052)
+local JOIN_GRACE = 15 -- a player who just arrived gets at least this long before the drop
+local STRIKE_DELAY = 5 -- first turret built -> the swarm comes (the build animation plays meanwhile)
 local RESULTS_TIMEOUT = 60
 
 -- Server state ----------------------------------------------------------------------------------------
 local mode = "LOBBY" -- LOBBY | RUN
 -- mode: "hunt" (story operations) | "siege" (host's outpost) | "raid" (lobby.target, chosen by the host)
-local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1, mode = "hunt", target = nil, candidates = nil }
+local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1, mode = "hunt", target = nil, candidates = nil, hold = false, strikeAt = nil :: number? }
 
 -- Anomaly of the day (DD-041): hunts from the third one on, and sieges. First hunts stay readable.
 local function todaysAnomaly()
@@ -161,6 +164,18 @@ local function prepareCharacter(player: Player, x: number, z: number, facing: nu
 	tracking[player] = { x = x, z = z, y = 3.2 }
 end
 
+-- Onboarding funnel (DD-052): where new players drop off, step by step, in the Creator Dashboard.
+local FUNNEL = { "Вошёл", "Первая охота", "Первая карточка", "Первая победа", "Первая турель", "Первый натиск", "Вторая охота" }
+local funnel: { [Player]: { [number]: boolean } } = {}
+local function funnelStep(player: Player, step: number)
+	local done = funnel[player]
+	if not done or done[step] then
+		return
+	end
+	done[step] = true
+	pcall(AnalyticsService.LogOnboardingFunnelStepEvent, AnalyticsService, player, step, FUNNEL[step])
+end
+
 -- Run lifecycle ---------------------------------------------------------------------------------------
 local function startRun()
 	local infos = {}
@@ -184,12 +199,18 @@ local function startRun()
 				weapon = weapon,
 				perks = perks,
 				s01 = data ~= nil and data.s01 == true,
+				firstHunt = data ~= nil and ((data.wins_by_op or {}).O01 or 0) == 0,
 				form = Profile.equippedForm(player, weapon),
 				tech = if data then table.clone(data.tech) else {},
 				loadout = Profile.loadoutFor(player, weapon),
 				s01Spec = Profile.s01Spec(player),
 			})
 			participants[player.UserId] = player
+			if lobby.mode == "hunt" and lobby.op == "O01" then
+				funnelStep(player, 2)
+			elseif lobby.mode == "hunt" and lobby.op == "O02" then
+				funnelStep(player, 7)
+			end
 		end
 	end
 	if #infos == 0 then
@@ -203,7 +224,11 @@ local function startRun()
 	local hostData = hostPlayer and Profile.get(hostPlayer)
 	local replay = hostData ~= nil and hostData.wins_by_op ~= nil and (hostData.wins_by_op[lobby.op] or 0) > 0
 	local opts = { seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay }
-	if lobby.mode == "siege" and hostData then
+	if lobby.mode == "strike" and hostData then
+		opts.opDef = Ops.makeFirstStrike()
+		opts.structures = hostData.outpost.slots
+		opts.threat = 1
+	elseif lobby.mode == "siege" and hostData then
 		opts.opDef = Ops.makeSiege(hostData.outpost.siege)
 		opts.structures = hostData.outpost.slots
 		opts.threat = 1
@@ -214,9 +239,18 @@ local function startRun()
 	elseif Ops.get(lobby.op).index >= 3 then
 		opts.anomaly = todaysAnomaly()
 	end
+	-- The outpost is in this crater: the host's turrets fight in hunts too (DD-052).
+	if lobby.mode == "hunt" and hostData and Ops.get(lobby.op).map == "MAP_REACTOR_YARD" then
+		opts.structures = hostData.outpost.slots
+	end
 	world = World.new(opts)
 	mode = "RUN"
 	lobby.countdown = nil
+	lobby.hold = false
+	lobby.strikeAt = nil
+	if lobby.mode == "strike" then
+		lobby.mode = "hunt"
+	end
 	table.clear(lobby.ready)
 	table.clear(continueVotes)
 	table.clear(rewards)
@@ -228,7 +262,7 @@ local function startRun()
 			task.spawn(prepareCharacter, player, p.x, p.z)
 		end
 	end
-	print(string.format("[SWARMFALL] run start %s threat=%d seed=%d players=%d", lobby.op, lobby.threat, world.seed, #infos))
+	print(string.format("[SWARMFALL] run start %s threat=%d seed=%d players=%d", world.op.id, lobby.threat, world.seed, #infos))
 end
 
 local function settle()
@@ -241,6 +275,11 @@ local function settle()
 	for userId, player in participants do
 		if player.Parent then
 			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat)
+			if r.victory and world.op.id == "O01" then
+				funnelStep(player, 4)
+			elseif world.op.id == "STRIKE" then
+				funnelStep(player, 6)
+			end
 		end
 	end
 	-- Raids: tell the owner what happened to their outpost (they may be offline), refresh targets.
@@ -264,11 +303,10 @@ local function settle()
 	end
 end
 
--- Between hunts the squad stands at the dropship ramp. They turn three-quarters toward the lobby camera
--- (which sits in front of the hull, right of the hero) so the hero shows a face, not a back, with the
--- crater behind.
-local LOBBY_SPOTS = { { -2, -84 }, { -7, -86 }, { 3, -86 }, { -12, -88 } }
-local LOBBY_FACING = -1.4
+-- Between hunts the squad is on its base (DD-052): the yard between the dropship and the drill. They
+-- arrive facing the drill, with the armory left, the launch pad behind and the outpost ahead.
+local LOBBY_SPOTS = { { 0, -58 }, { -5, -60 }, { 5, -60 }, { 0, -63 } }
+local LOBBY_FACING = math.pi
 local function toHub(player: Player)
 	if mode ~= "LOBBY" or not player.Parent then
 		return
@@ -317,7 +355,14 @@ local function autoDeploy(player: Player)
 		end
 		task.wait(0.25)
 	end
-	if mode ~= "LOBBY" or not player.Parent or not isNewcomer(player) then
+	if not player.Parent or not isNewcomer(player) then
+		return
+	end
+	if not funnel[player] then
+		funnel[player] = {}
+		funnelStep(player, 1)
+	end
+	if mode ~= "LOBBY" then
 		return
 	end
 	for _, other in Players:GetPlayers() do
@@ -349,11 +394,17 @@ Players.PlayerAdded:Connect(function(player)
 	task.wait(1)
 	if mode == "LOBBY" then
 		toHub(player)
+		if lobby.countdown then
+			lobby.countdown = math.max(lobby.countdown, JOIN_GRACE)
+		end
 		autoDeploy(player)
 	end
 end)
 for _, player in Players:GetPlayers() do
-	task.spawn(toHub, player)
+	task.spawn(function()
+		toHub(player)
+		autoDeploy(player)
+	end)
 end
 
 -- Input -----------------------------------------------------------------------------------------------
@@ -378,7 +429,7 @@ function handlers.ready(player: Player, weapon)
 	if all then
 		startRun()
 	elseif not lobby.countdown then
-		lobby.countdown = LOBBY_GATHER
+		lobby.countdown = SQUAD_GATHER
 	end
 	return true
 end
@@ -425,7 +476,7 @@ function handlers.mode(player: Player, m)
 		return false
 	end
 	local f = Profile.features(Profile.get(player) or {})
-	if (m == "siege" and not f.outpost) or (m == "raid" and not f.raids) then
+	if (m == "siege" and not f.siege) or (m == "raid" and not f.raids) then
 		return false
 	end
 	lobby.mode = m
@@ -477,8 +528,35 @@ function handlers.revenge(player: Player, uid)
 	return true
 end
 
+-- The first turret on a host's outpost calls the swarm: «Первый натиск» starts by itself (DD-052).
+local function maybeStrike(player: Player)
+	local d = Profile.get(player)
+	if not d or d.tut.strike or player ~= host() or mode ~= "LOBBY" or lobby.strikeAt then
+		return
+	end
+	lobby.strikeAt = os.clock() + STRIKE_DELAY
+	lobby.countdown = nil
+end
+
+function handlers.tut(player: Player, key)
+	return type(key) == "string" and Profile.markTut(player, key)
+end
+
+function handlers.hold(player: Player, on)
+	if not hostOnly(player) or type(on) ~= "boolean" then
+		return false
+	end
+	lobby.hold = on
+	return true
+end
+
 function handlers.build(player: Player, slot, id)
-	return lobbyOnly() and finite(slot) and type(id) == "string" and Profile.build(player, slot, id)
+	if lobbyOnly() and finite(slot) and type(id) == "string" and Profile.build(player, slot, id) then
+		maybeStrike(player)
+		funnelStep(player, 5)
+		return true
+	end
+	return false
 end
 
 function handlers.upgrade(player: Player, slot)
@@ -595,7 +673,11 @@ end
 
 function handlers.choose(player: Player, offerId, index)
 	local p = participant(player)
-	return p ~= nil and finite(offerId) and finite(index) and index % 1 == 0 and world:choose(p.id, offerId, index)
+	if p ~= nil and finite(offerId) and finite(index) and index % 1 == 0 and world:choose(p.id, offerId, index) then
+		funnelStep(player, 3)
+		return true
+	end
+	return false
 end
 
 function handlers.reroll(player: Player)
@@ -793,6 +875,8 @@ local function lobbyInfo()
 	return {
 		players = list,
 		countdown = lobby.countdown,
+		hold = lobby.hold,
+		strike = if lobby.strikeAt then math.max(0, lobby.strikeAt - os.clock()) else nil,
 		op = lobby.op,
 		map = Ops.get(lobby.op).map,
 		threat = lobby.threat,
@@ -834,7 +918,17 @@ end
 
 RunService.Heartbeat:Connect(function(dt)
 	if mode == "LOBBY" then
-		if lobby.countdown then
+		if lobby.strikeAt and os.clock() >= lobby.strikeAt then
+			-- Everyone on the base defends: the whole server is pulled into «Первый натиск».
+			lobby.mode = "strike"
+			for _, player in Players:GetPlayers() do
+				if Profile.get(player) then
+					lobby.ready[player] = true
+					lobby.weapon[player] = lobby.weapon[player] or "W_ARC_RIFLE"
+				end
+			end
+			startRun()
+		elseif lobby.countdown and not lobby.hold then
 			lobby.countdown -= dt
 			if lobby.countdown <= 0 then
 				startRun()
@@ -874,6 +968,7 @@ for _, player in Players:GetPlayers() do
 end
 
 Players.PlayerRemoving:Connect(function(player)
+	funnel[player] = nil
 	buckets[player] = nil
 	lobby.ready[player] = nil
 	lobby.weapon[player] = nil

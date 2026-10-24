@@ -684,7 +684,7 @@ function Mission:update(dt: number)
 	end
 	if self.state == "FINALE" and w.t >= self.finaleUntil then
 		self.state = "DONE"
-		w:finish(true, if self.op.mode == "siege" then "Осада отбита" else "Кратер удержан")
+		w:finish(true, if self.op.id == "STRIKE" then "Аванпост выстоял" elseif self.op.mode == "siege" then "Осада отбита" else "Кратер удержан")
 	end
 end
 

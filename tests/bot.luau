@@ -30,7 +30,7 @@ function Bot.run(
 	opts = opts or {}
 	local infos = {}
 	for i = 1, players do
-		table.insert(infos, { id = i, name = "BOT" .. i, weapon = weapon, perks = perks, s01 = (opts or {}).s01 })
+		table.insert(infos, { id = i, name = "BOT" .. i, weapon = weapon, perks = perks, s01 = (opts or {}).s01, firstHunt = (opts or {}).firstHunt })
 	end
 	local w = World.new({
 		seed = runSeed,
@@ -95,6 +95,10 @@ function Bot.run(
 								break
 							end
 						end
+					end
+					if p.offer.lock then
+						pickIndex = p.offer.lock
+						milestones.lockedCard = p.offer.choices[pickIndex]
 					end
 					local ok = w:choose(p.id, p.offer.id, pickIndex)
 					assert(ok, "choose failed")
@@ -237,8 +241,10 @@ function Bot.run(
 		local ev = w:drainEvents()
 		eventCount += #ev
 		for _, e in ev do
-			if e[1] == Codec.E.LEVEL and not milestones.firstLevel then
-				milestones.firstLevel = w.t
+			if e[1] == Codec.E.LEVEL then
+				milestones.levels = milestones.levels or {}
+				table.insert(milestones.levels, w.t)
+				milestones.firstLevel = milestones.firstLevel or w.t
 			elseif e[1] == Codec.E.KILL and e[2] and not milestones.firstKill then
 				milestones.firstKill = w.t
 			elseif e[1] == Codec.E.COMPONENT then
