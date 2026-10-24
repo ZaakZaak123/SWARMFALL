@@ -40,6 +40,12 @@ local P = CFrame.new
 local BLUEPRINT = {}
 Creatures.Blueprints = BLUEPRINT
 
+-- Generated art meshes (Shared.Art, DD-042) replicated by the server; nil until they arrive.
+local function art(key: string): MeshPart?
+	local folder = game:GetService("ReplicatedStorage"):FindFirstChild("ArtTemplates")
+	return folder and folder:FindFirstChild(key) or nil
+end
+
 -- Blender meshes (assets/enemy_models, built by assets/models/<kind>/build_*.py). Template coordinates
 -- are the imported FBX: head -Z, feet at Y=0, creature origin at ROOT. Missing asset -> part blueprint.
 local templates = nil
@@ -407,6 +413,29 @@ end
 
 BLUEPRINT[9] = function() -- Devourer: armored maw + 7 trailing segments (placed along a trail by EnemyView)
 	local plate, dark, glow, eye = rgb(78, 52, 40), rgb(32, 20, 18), rgb(170, 255, 80), rgb(255, 70, 50)
+	local head, ring = art("WORM_HEAD"), art("WORM_SEG")
+	if head and ring then
+		-- the generated maw; a red glow in the throat, the weak node on its crown
+		local hs = head.Size * (13 / head.Size.X)
+		local s = {
+			{ size = hs, cf = P(0, hs.Y / 2 - 0.4, -1), color = plate, mat = M.SmoothPlastic, mesh = head, role = "body" },
+			blk(Vector3.new(4, 1.2, 0.3), P(0, hs.Y * 0.32, -1 - hs.Z * 0.36), eye, M.Neon, "eye"),
+			{ size = Vector3.one * 3, cf = P(0, hs.Y + 0.6, 2), color = glow, mat = M.Neon, shape = Enum.PartType.Ball, role = "node" },
+		}
+		-- armoured rings around a dark core, trailing along the path
+		for i = 1, 7 do
+			local d = 10.5 - i * 0.7
+			local z = 6 + i * 6.5
+			table.insert(s, { size = Vector3.one * d * 0.82, cf = P(0, d / 2 - 0.5, z), color = dark, mat = M.Slate, shape = Enum.PartType.Ball, seg = i })
+			local rs = ring.Size * (d / ring.Size.X)
+			rs = Vector3.new(rs.X, rs.Y, rs.Z * 1.25)
+			table.insert(s, { size = rs, cf = P(0, d / 2 - 0.5, z), color = plate, mat = M.SmoothPlastic, mesh = ring, seg = i })
+			if i % 2 == 1 then
+				table.insert(s, { size = Vector3.one * 1.4, cf = P(0, d + 0.2, z), color = glow, mat = M.Neon, shape = Enum.PartType.Ball, seg = i, role = "node" })
+			end
+		end
+		return s, 0.5
+	end
 	local s = {
 		ball(12, P(0, 5, 0), dark, M.Slate, "body"),
 		blk(Vector3.new(12, 3, 9), P(0, 9.5, 0.5), plate, M.Slate, "body"),
@@ -519,6 +548,20 @@ end
 
 BLUEPRINT[11] = function() -- Power node: a crystal pylon feeding the hive, pulsing violet
 	local base, crystal, core = rgb(40, 30, 54), rgb(150, 90, 255), rgb(220, 170, 255)
+	local node = art("NODE")
+	if node then
+		local ns = node.Size * (12 / node.Size.Y)
+		local s = {
+			{ size = ns, cf = P(0, ns.Y / 2, 0), color = crystal, mat = M.SmoothPlastic, mesh = node, role = "body" },
+			-- the pulsing heart inside the crystals
+			{ size = Vector3.new(1.1, 7, 1.1), cf = P(0, 6, 0), color = core, mat = M.Neon, role = "sac", transparency = 0.35 },
+		}
+		for i = 1, 4 do
+			local a = i / 4 * math.pi * 2 + 0.4
+			table.insert(s, blk(Vector3.new(0.4, 0.4, 5), P(math.cos(a) * 4.5, 0.25, math.sin(a) * 4.5) * A(0, -a + math.pi / 2, 0), core, M.Neon))
+		end
+		return s, 0
+	end
 	local s = {
 		blk(Vector3.new(8, 1.2, 8), P(0, 0.6, 0) * A(0, math.rad(45), 0), base, M.Slate, "body"),
 		blk(Vector3.new(5, 1.6, 5), P(0, 1.8, 0), base, M.Slate, "body"),
@@ -561,6 +604,20 @@ end
 
 BLUEPRINT[12] = function() -- Acid source: a cracked mound venting a bubbling green pool
 	local rock, slime, acid = rgb(46, 58, 36), rgb(90, 130, 40), rgb(170, 255, 80)
+	local mound = art("ACID_MOUND")
+	if mound then
+		local ms = mound.Size * (10 / mound.Size.X)
+		local s = {
+			{ size = ms, cf = P(0, ms.Y / 2 - 0.2, 0), color = rock, mat = M.SmoothPlastic, mesh = mound, role = "body" },
+			-- the pool surface glows and pulses (sac), bubbles pop above it
+			{ size = Vector3.new(0.2, ms.X * 0.45, ms.Z * 0.45), cf = P(0, ms.Y * 0.86, 0) * A(0, 0, math.rad(90)), color = acid, mat = M.Neon, shape = Enum.PartType.Cylinder, role = "sac", transparency = 0.35 },
+		}
+		for i = 1, 5 do
+			local a = i / 5 * math.pi * 2
+			table.insert(s, { size = Vector3.one * 0.9, cf = P(math.cos(a) * 1.6, ms.Y + 0.2 + (i % 2) * 0.5, math.sin(a) * 1.6), color = acid, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac" })
+		end
+		return s, 0
+	end
 	local s = {
 		ball(8.5, P(0, 0.8, 0), rock, M.Slate, "body"),
 		ball(5.5, P(1.4, 3.6, -0.8), slime, M.SmoothPlastic, "body"),

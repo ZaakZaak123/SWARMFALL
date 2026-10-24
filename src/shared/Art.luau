@@ -23,6 +23,11 @@ Art.Meshes = {
 	NEST = { mesh = "rbxassetid://117090663428529", tex = "rbxassetid://72630042741257", size = Vector3.new(10.82, 7.46, 11.00) },
 	POD = { mesh = "rbxassetid://128575161451927", tex = "rbxassetid://123339923204332", size = Vector3.new(2.47, 4.00, 2.47) },
 	PYLON = { mesh = "rbxassetid://101158805342441", tex = "rbxassetid://70501120745256", size = Vector3.new(5.00, 8.63, 4.77) },
+	-- the Devourer (head mouth along -Z, segment ring along Z) and objective props
+	WORM_HEAD = { mesh = "rbxassetid://79671816990444", tex = "rbxassetid://105313698074617", size = Vector3.new(12.00, 11.47, 13.85) },
+	WORM_SEG = { mesh = "rbxassetid://74734924143594", tex = "rbxassetid://102711938528429", size = Vector3.new(10.00, 10.00, 5.79) },
+	ACID_MOUND = { mesh = "rbxassetid://139925648626653", tex = "rbxassetid://110939098198125", size = Vector3.new(10.00, 3.88, 8.55) },
+	NODE = { mesh = "rbxassetid://72526567722949", tex = "rbxassetid://78275345757328", size = Vector3.new(7.00, 11.88, 6.99) },
 	-- outpost structures
 	STING = { mesh = "rbxassetid://80090267900953", tex = "rbxassetid://103192068127186", size = Vector3.new(2.19, 5.00, 3.33) },
 	ARC = { mesh = "rbxassetid://98095369516956", tex = "rbxassetid://79042425410058", size = Vector3.new(4.46, 8.00, 4.37) },

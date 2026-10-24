@@ -130,6 +130,9 @@ local function release(m)
 		p.Transparency = spec.transparency or 0
 		p.Color = spec.color
 		p.Size = spec.size
+		if spec.mesh and spec.mesh:IsA("MeshPart") and spec.mesh.TextureID ~= "" then
+			p.TextureID = spec.mesh.TextureID -- a flash may have been cut short
+		end
 	end
 	pools[m.kind] = pools[m.kind] or {}
 	table.insert(pools[m.kind], m)
@@ -629,11 +632,18 @@ function EnemyView.update(dt: number, camPos: Vector3)
 				tint = rgb(170, 255, 80)
 			end
 			for _, i in m.bodies do
-				local c = m.specs[i].color
+				local spec = m.specs[i]
+				local c = spec.color
 				if tint then
 					c = c:Lerp(tint, 0.45)
 				end
-				m.parts[i].Color = if flash > 0 then c:Lerp(WHITE, 0.2 + 0.6 * flash) else c
+				local p = m.parts[i]
+				p.Color = if flash > 0 then c:Lerp(WHITE, 0.2 + 0.6 * flash) else c
+				-- a texture ignores Color: textured art meshes (DD-042) drop it for the flash frames
+				local tex = spec.mesh and spec.mesh:IsA("MeshPart") and spec.mesh.TextureID
+				if tex and tex ~= "" then
+					p.TextureID = if flash > 0 then "" else tex
+				end
 			end
 		end
 		-- Blinking
