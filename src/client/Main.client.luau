@@ -134,7 +134,14 @@ Base.init(playerGui, send, {
 		if not home[id] then
 			local def = Meta.Home[id]
 			if def and (prof.scrap or 0) < def.cost then
-				HubMenus.toast(string.format("Не хватает утиля: нужно %d, у тебя %d. Утиль приносят вылазки.", def.cost, prof.scrap or 0), C.orange)
+				HubMenus.toast(
+					string.format(
+						"Не хватает утиля: нужно %d, у тебя %d. Утиль приносят вылазки.",
+						def.cost,
+						prof.scrap or 0
+					),
+					C.orange
+				)
 				Audio.play("warn", 0.4)
 				return
 			end
@@ -602,7 +609,13 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Hud.setVisible(false)
 		-- DD-052: the first hunt ever won plays the outpost scene before the results.
 		local prof = Menus.profile()
-		if run.result.victory and run.result.op == "O01" and prof and not (prof.tut and prof.tut.drill) and not sceneSeen then
+		if
+			run.result.victory
+			and run.result.op == "O01"
+			and prof
+			and not (prof.tut and prof.tut.drill)
+			and not sceneSeen
+		then
 			sceneSeen = true
 			Menus.hideOffer()
 			Base.victoryScene(workspace.CurrentCamera.CFrame, function()
@@ -660,7 +673,12 @@ if ReplicatedStorage:GetAttribute("TestPlace") then
 	task.spawn(function()
 		while g.Parent do
 			local role = ReplicatedStorage:GetAttribute("ServerRole")
-			tag.Text = string.format("ТЕСТОВОЕ МЕСТО  ·  %s  ·  сервер %s  ·  игроков %d", if role == "SESSION" then "СЕРВЕР ОТРЯДА" else "ЛАГЕРЬ", string.sub(game.JobId, 1, 6), #Players:GetPlayers())
+			tag.Text = string.format(
+				"ТЕСТОВОЕ МЕСТО  ·  %s  ·  сервер %s  ·  игроков %d",
+				if role == "SESSION" then "СЕРВЕР ОТРЯДА" else "ЛАГЕРЬ",
+				string.sub(game.JobId, 1, 6),
+				#Players:GetPlayers()
+			)
 			task.wait(1)
 		end
 	end)
@@ -674,7 +692,12 @@ HubMenus.init(Menus.helpers(), {
 		if not prof then
 			return {}
 		end
-		return require(Shared:WaitForChild("Showcase")).titles({ wins_by_op = prof.winsByOp, outpost = prof.outpost, home = prof.home, saves = prof.saves })
+		return require(Shared:WaitForChild("Showcase")).titles({
+			wins_by_op = prof.winsByOp,
+			outpost = prof.outpost,
+			home = prof.home,
+			saves = prof.saves,
+		})
 	end,
 	visit = function(uid: number)
 		visitingUid = uid
@@ -712,12 +735,23 @@ local function plateFor(char: Model, uid: number)
 	g.MaxDistance = 90
 	g.AlwaysOnTop = true
 	g.Adornee = head
-	local name = Theme.label("", { Size = UDim2.new(1, 0, 0, 24), FontFace = Theme.F.display, TextSize = 18, Parent = g })
+	local name =
+		Theme.label("", { Size = UDim2.new(1, 0, 0, 24), FontFace = Theme.F.display, TextSize = 18, Parent = g })
 	local st = Instance.new("UIStroke")
 	st.Thickness = 2.5
 	st.Color = C.ink
 	st.Parent = name
-	local title = Theme.label("", { Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 18), FontFace = Theme.F.head, TextSize = 12, TextColor3 = C.gold, Parent = g })
+	local title = Theme.label(
+		"",
+		{
+			Position = UDim2.fromOffset(0, 24),
+			Size = UDim2.new(1, 0, 0, 18),
+			FontFace = Theme.F.head,
+			TextSize = 12,
+			TextColor3 = C.gold,
+			Parent = g,
+		}
+	)
 	local st2 = Instance.new("UIStroke")
 	st2.Thickness = 2
 	st2.Color = C.ink
@@ -746,7 +780,17 @@ ownShowcase = function()
 	if not prof then
 		return nil
 	end
-	local d = { wins_by_op = prof.winsByOp, mastery = prof.mastery, outpost = prof.outpost, raid = prof.raid, wins = prof.wins, home = prof.home, research = prof.research, saves = prof.saves, title = prof.title }
+	local d = {
+		wins_by_op = prof.winsByOp,
+		mastery = prof.mastery,
+		outpost = prof.outpost,
+		raid = prof.raid,
+		wins = prof.wins,
+		home = prof.home,
+		research = prof.research,
+		saves = prof.saves,
+		title = prof.title,
+	}
 	local weapon = Menus.selectedWeapon()
 	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])
 end
@@ -1537,7 +1581,8 @@ local function updateFade(dt: number, cam: Camera, focus: Vector3?)
 			local t = math.clamp(rel:Dot(dir), 0, len)
 			local d = (rel - dir * t).Magnitude
 			if d < f.r and t < len - 1 then
-				want = 0.72
+				-- glowing parts still bloom through a partial fade: they go almost all the way
+				want = if p.Material == Enum.Material.Neon then 0.95 else 0.72
 			end
 		end
 		local cur = p.LocalTransparencyModifier
@@ -1584,7 +1629,22 @@ local function animateArena(now: number)
 		table.clear(fadeParts)
 		for _, d in decor:GetDescendants() do
 			if d:IsA("BasePart") and d:GetAttribute("Fade") then
-				table.insert(fadeParts, { part = d, r = math.max(d.Size.X, d.Size.Z) * 0.5 + 3 })
+				-- a tall piece covers more of the screen than its footprint (the drill rig leans over half
+				-- the view from the hero's side), so its reach grows with its height
+				table.insert(fadeParts, { part = d, r = math.max(d.Size.X, d.Size.Z) * 0.5 + 3 + d.Size.Y * 0.45 })
+			end
+		end
+		-- the drill fades as a whole: its glowing rings go with the rig, not on their own (other decor
+		-- models hold many scattered pieces, which fade one by one)
+		local reach = 0
+		for _, f in fadeParts do
+			if f.part.Parent == reactorModel then
+				reach = math.max(reach, f.r)
+			end
+		end
+		for _, f in fadeParts do
+			if f.part.Parent == reactorModel then
+				f.r = reach
 			end
 		end
 		animated.rings2 = {}
@@ -1609,7 +1669,9 @@ local function animateArena(now: number)
 			* CFrame.Angles(now * (0.4 + i * 0.25) * (if i % 2 == 0 then -1 else 1), 0, 0)
 	end
 	for _, ring in animated.rings2 do
-		ring[1].CFrame = ring[2] * CFrame.new(math.sin(now * 2 + ring[3]) * 0.4, 0, 0) * CFrame.Angles(0, math.sin(now * 1.3 + ring[3]) * 0.18, math.sin(now * 1.7 + ring[3] * 2) * 0.18)
+		ring[1].CFrame = ring[2]
+			* CFrame.new(math.sin(now * 2 + ring[3]) * 0.4, 0, 0)
+			* CFrame.Angles(0, math.sin(now * 1.3 + ring[3]) * 0.18, math.sin(now * 1.7 + ring[3] * 2) * 0.18)
 	end
 	if animated.core then
 		animated.core.Transparency = 0.45 + (math.sin(now * 2.5) + 1) * 0.08
@@ -1649,7 +1711,7 @@ local arrowList = {}
 local function computeArrows(cam: Camera)
 	table.clear(arrowList)
 	local size = cam.ViewportSize
-	local margin = 46
+	local margin = 64 -- the arrow and its tag stay fully on screen
 	local function add(pos: Vector3, color: Color3, text: string)
 		if #arrowList >= 6 then
 			return
@@ -1778,7 +1840,15 @@ local function frame(dt: number)
 		end
 	end
 	if mode == "LOBBY" or mode == "HUB" then
-		Range.update(dt, if root then root.Position else nil, player.Character, Menus.selectedWeapon(), Controls.aimX, Controls.aimZ, Controls.firing and ranging)
+		Range.update(
+			dt,
+			if root then root.Position else nil,
+			player.Character,
+			Menus.selectedWeapon(),
+			Controls.aimX,
+			Controls.aimZ,
+			Controls.firing and ranging
+		)
 	end
 	if root and (isPlaying or ranging) then
 		local look = Vector3.new(Controls.aimX, 0, Controls.aimZ)
@@ -1900,7 +1970,10 @@ local function frame(dt: number)
 	local baseWorld = mode ~= "RUN" or Base.sceneActive()
 	Base.setWorldVisible(baseWorld)
 	Range.setVisible(mode ~= "RUN")
-	local onBase = (mode == "LOBBY" or mode == "HUB") and not Menus.modalOpen() and not HubMenus.anyVisible() and not Base.sceneActive()
+	local onBase = (mode == "LOBBY" or mode == "HUB")
+		and not Menus.modalOpen()
+		and not HubMenus.anyVisible()
+		and not Base.sceneActive()
 	Base.setActive(onBase)
 	Base.update(dt, if root then root.Position else nil)
 

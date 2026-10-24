@@ -34,6 +34,17 @@ local Creatures = require(script.Parent.Creatures)
 local BLUEPRINT = Creatures.Blueprints
 
 -- Instances ----------------------------------------------------------------------------------------
+-- Threat rings (DD-064): every kind that is not a plain runner carries a coloured ring on the ground, so
+-- it reads in a crowd of runners and on dark ground whatever the colour of its own art.
+local RING_COLORS = {
+	[2] = rgb(255, 70, 90), -- jumper: the lunge
+	[3] = rgb(190, 255, 60), -- spitter: acid from range
+	[4] = rgb(120, 170, 255), -- armoured
+	[5] = rgb(255, 200, 60), -- elite
+	[8] = rgb(255, 150, 40), -- bomber: keep away
+	[10] = rgb(255, 200, 60), -- the Alpha
+}
+
 local function buildModel(kind: number)
 	local specs, gaitScale = BLUEPRINT[kind]()
 	local model =
@@ -71,6 +82,29 @@ local function buildModel(kind: number)
 		elseif spec.role == "sac" then
 			table.insert(model.sacs, i)
 		end
+	end
+	local ringColor = RING_COLORS[kind]
+	local def = Defs.EnemyByIndex[kind]
+	if ringColor and def then
+		local d = (def.radius or 2) * 2.9 -- wide enough to show around the body of the big ones
+		local ring = Instance.new("Part")
+		ring.Name = "ThreatRing"
+		ring.Anchored = true
+		ring.CanCollide = false
+		ring.CanQuery = false
+		ring.CanTouch = false
+		ring.CastShadow = false
+		ring.Transparency = 1
+		ring.Size = Vector3.new(d, 0.05, d)
+		ring.CFrame = HIDDEN
+		local decal = Instance.new("Decal")
+		decal.Face = Enum.NormalId.Top
+		decal.Texture = Fx.Tex.ring
+		decal.Color3 = ringColor
+		decal.Transparency = 0.3
+		decal.Parent = ring
+		ring.Parent = folder
+		model.ring = ring
 	end
 	return model
 end
@@ -396,6 +430,9 @@ function EnemyView.kill(id: number, dirX: number?, dirZ: number?)
 		dirX, dirZ = rec.lastHitDx, rec.lastHitDz
 	end
 	local m = rec.model
+	if m.ring then
+		m.ring.CFrame = HIDDEN
+	end
 	local parts = {}
 	local scatter = Settings.quality >= 2 and rec.kind ~= 7
 	for i, p in m.parts do
@@ -417,16 +454,13 @@ function EnemyView.kill(id: number, dirX: number?, dirZ: number?)
 			p.TextureID = ""
 		end
 	end
-	table.insert(
-		dying,
-		{
-			model = m,
-			parts = parts,
-			t = 0,
-			life = if rec.kind == 7 or rec.kind == 9 then 1.6 elseif rec.kind >= 4 then 0.8 else 0.6,
-			scatter = scatter,
-		}
-	)
+	table.insert(dying, {
+		model = m,
+		parts = parts,
+		t = 0,
+		life = if rec.kind == 7 or rec.kind == 9 then 1.6 elseif rec.kind >= 4 then 0.8 else 0.6,
+		scatter = scatter,
+	})
 	return Vector3.new(rec.dx, 1, rec.dz)
 end
 
@@ -622,6 +656,12 @@ function EnemyView.update(dt: number, camPos: Vector3)
 			n += 1
 			moveParts[n] = p
 			moveCFs[n] = cf
+		end
+		if m.ring then
+			-- flat on the ground under the body (not tilted with it); hidden while still underground
+			n += 1
+			moveParts[n] = m.ring
+			moveCFs[n] = if y < -1 then HIDDEN else CFrame.new(rec.dx + rec.kx, 0.08, rec.dz + rec.kz)
 		end
 		-- Footstep dust for heavies.
 		if HEAVY[rec.kind] and animate and not far and sf > 0.3 then

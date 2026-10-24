@@ -630,7 +630,9 @@ function Fx.debris(pos: Vector3, n: number, color: Color3, speed: number)
 		p.Transparency = 0
 		local s = 0.25 + math.random() * 0.45
 		p.Size = Vector3.new(s, s * (0.6 + math.random() * 0.4), s * (0.7 + math.random() * 0.5))
-		local v = Vector3.new(math.random() * 2 - 1, 0.9 + math.random() * 0.8, math.random() * 2 - 1).Unit * speed * (0.6 + math.random() * 0.4)
+		local v = Vector3.new(math.random() * 2 - 1, 0.9 + math.random() * 0.8, math.random() * 2 - 1).Unit
+			* speed
+			* (0.6 + math.random() * 0.4)
 		local spin = Vector3.new(math.random() * 16 - 8, math.random() * 16 - 8, math.random() * 16 - 8)
 		local at = pos
 		local rot = CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6)
@@ -668,9 +670,20 @@ function Fx.boom(pos: Vector3, radius: number, color: Color3)
 		Fx.emitWith("flash", mid, 1, radius * 0.7, color:Lerp(WHITE, 0.3))
 	end
 	Fx.ring(ground, radius * 1.3, if fire then rgb(255, 190, 110) else color, 0.38)
-	Fx.emitWith("streak", mid, math.clamp(math.floor(radius * 1.6), 6, 30), 0.6 + radius * 0.04, if fire then rgb(255, 210, 120) else color:Lerp(WHITE, 0.3))
+	Fx.emitWith(
+		"streak",
+		mid,
+		math.clamp(math.floor(radius * 1.6), 6, 30),
+		0.6 + radius * 0.04,
+		if fire then rgb(255, 210, 120) else color:Lerp(WHITE, 0.3)
+	)
 	if radius >= 5 then
-		Fx.emitWith("smokePuff", ground + Vector3.yAxis * 1.5, math.clamp(math.floor(radius * 0.3), 2, 6), radius * 0.35)
+		Fx.emitWith(
+			"smokePuff",
+			ground + Vector3.yAxis * 1.5,
+			math.clamp(math.floor(radius * 0.3), 2, 6),
+			radius * 0.35
+		)
 	end
 	if radius >= 6 then
 		Fx.debris(mid, math.clamp(math.floor(radius * 0.6), 3, 10), rgb(40, 34, 48), 18 + radius)
@@ -692,7 +705,14 @@ function Fx.gore(pos: Vector3, size: number, color: Color3, dir: Vector3?, big: 
 		Fx.emitWith("blast", pos + Vector3.yAxis * 2, 1, size * 4.5, color)
 		Fx.ring(pos, size * 4.5, color, 0.35)
 	end
-	Fx.decal(TEX.splat, Vector3.new(pos.X, 0, pos.Z), (if big then 9 else 4.5) * (0.85 + math.random() * 0.35), color:Lerp(Color3.new(0, 0, 0), 0.35), 7, 0.08)
+	Fx.decal(
+		TEX.splat,
+		Vector3.new(pos.X, 0, pos.Z),
+		(if big then 9 else 4.5) * (0.85 + math.random() * 0.35),
+		color:Lerp(Color3.new(0, 0, 0), 0.35),
+		7,
+		0.08
+	)
 end
 
 -- Spore pod (DD-033): a glowing seed falls from the sky on a slant, slams into the ground and bursts.
@@ -763,7 +783,8 @@ function Fx.pod(x: number, z: number, big: boolean?)
 		if pod then
 			-- planted upright, a little tilted, then sinks away
 			local h = pod.Size.Y
-			local planted = CFrame.new(x, h * 0.35, z) * CFrame.Angles(math.random(-12, 12) / 100, math.random() * 6.28, math.random(-12, 12) / 100)
+			local planted = CFrame.new(x, h * 0.35, z)
+				* CFrame.Angles(math.random(-12, 12) / 100, math.random() * 6.28, math.random(-12, 12) / 100)
 			pod.CFrame = planted
 			task.delay(1.6, function()
 				local t0 = os.clock()
@@ -786,38 +807,57 @@ function Fx.shockwave(pos: Vector3, radius: number, color: Color3, life: number?
 end
 
 -- Telegraphs: outline + fill that completes exactly when the attack lands ----------------------------
-function Fx.telegraph(shape: number, x: number, z: number, dx: number, dz: number, a: number, b: number, duration: number, color: Color3, activeTime: number)
+function Fx.telegraph(
+	shape: number,
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+	a: number,
+	b: number,
+	duration: number,
+	color: Color3,
+	activeTime: number
+)
 	local parts = {}
 	local y = 0.09
 	local yaw = math.atan2(dx, dz)
 	if shape == SH.CIRCLE then
+		-- light washes: the ring carries the boundary, the creatures inside must stay readable
 		local outline = take("cyl")
 		outline.Color = color
-		outline.Transparency = 0.7
+		outline.Transparency = 0.84
 		flatCyl(outline, x, y, z, a * 2, 0.04)
 		local fill = take("cyl")
 		fill.Color = color
-		fill.Transparency = 0.45
-		local edge = take("cyl")
-		edge.Color = color
-		edge.Transparency = 0.1
-		flatCyl(edge, x, y - 0.01, z, a * 2 + 0.5, 0.03)
-		parts = { { "cyl", outline }, { "cyl", fill }, { "cyl", edge } }
+		fill.Transparency = 0.62
+		-- the edge is a ring, not another solid disc: three stacked discs painted the ground under the
+		-- swarm an opaque yellow and hid what stood in the zone
+		local edge, edgeImg = takeRing()
+		edgeImg.ImageColor3 = color
+		edgeImg.ImageTransparency = 0.05
+		edge.Size = Vector3.new(a * 2 + 0.6, 0.05, a * 2 + 0.6)
+		edge.CFrame = CFrame.new(x, y + 0.03, z)
+		parts = { { "cyl", outline }, { "cyl", fill } }
 		local total = duration + activeTime
-		spawn(total, function(_, k, _, t)
+		local e = spawn(total, function(_, k, _, t)
 			if t < duration then
 				local f = t / duration
 				flatCyl(fill, x, y + 0.01, z, a * 2 * f, 0.05)
-				outline.Transparency = 0.7 - 0.2 * math.sin(t * 20)
+				outline.Transparency = 0.84 - 0.1 * math.sin(t * 20)
 			else
 				-- active acid pool
 				local f = (t - duration) / math.max(0.01, activeTime)
 				flatCyl(fill, x, y + 0.01, z, a * 2, 0.05)
-				fill.Transparency = 0.3 + 0.15 * math.sin(t * 12) + f * 0.5
-				outline.Transparency = 0.5 + f * 0.5
-				edge.Transparency = 0.2 + f * 0.8
+				fill.Transparency = 0.45 + 0.12 * math.sin(t * 12) + f * 0.45
+				outline.Transparency = 0.6 + f * 0.4
+				edgeImg.ImageTransparency = 0.2 + f * 0.8
 			end
 		end, parts)
+		e.done = function()
+			edge.CFrame = HIDDEN
+			table.insert(ringFree, edge)
+		end
 	elseif shape == SH.LINE then
 		local cf = CFrame.new(x, y, z) * CFrame.Angles(0, yaw, 0)
 		local outline = take("block")
@@ -941,7 +981,8 @@ function Fx.number(pos: Vector3, amount: number, color: Color3, big: boolean)
 	n.vel = Vector3.new((math.random() - 0.5) * 6, 14, 0)
 	n.label.Text = tostring(math.floor(amount + 0.5))
 	n.label.TextColor3 = color
-	local s = math.clamp(0.55 + amount / 140, 0.55, 1.4) * (if big then 1.5 else 1)
+	-- readable at the top-down camera: even a small hit is a clear number, big ones grow from there
+	local s = math.clamp(0.8 + amount / 120, 0.8, 1.6) * (if big then 1.45 else 1)
 	n.size = s
 	n.gui.Size = UDim2.fromOffset(70 * s, 26 * s)
 	n.gui.Enabled = true
@@ -1193,7 +1234,15 @@ function Fx.muzzle(cf: CFrame, style: string, color: Color3, size: number, life:
 end
 
 -- Travelling streak (bolt / pellet): head flies at `speed`, tail of `length`; onArrive at the end.
-function Fx.projectile(from: Vector3, to: Vector3, color: Color3, width: number, speed: number, length: number, onArrive)
+function Fx.projectile(
+	from: Vector3,
+	to: Vector3,
+	color: Color3,
+	width: number,
+	speed: number,
+	length: number,
+	onArrive
+)
 	local delta = to - from
 	local dist = delta.Magnitude
 	if dist < 0.05 then
@@ -1571,7 +1620,14 @@ function Fx.beamDraw(key: any, from: Vector3, to: Vector3, color: Color3, width:
 	local b = beams[key]
 	if not b then
 		local strands = if Settings.quality >= 3 then 14 elseif Settings.quality == 2 then 8 else 0
-		b = { core = take("cyl"), sheath = take("cyl"), outer = take("cyl"), tip = take("ball"), mouth = take("ball"), helix = {} }
+		b = {
+			core = take("cyl"),
+			sheath = take("cyl"),
+			outer = take("cyl"),
+			tip = take("ball"),
+			mouth = take("ball"),
+			helix = {},
+		}
 		for i = 1, strands * 2 do
 			b.helix[i] = take("block")
 		end

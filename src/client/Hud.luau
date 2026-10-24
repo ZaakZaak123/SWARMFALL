@@ -105,7 +105,12 @@ local function chip(parent, iconName: string, color: Color3, props)
 		BackgroundTransparency = 0.72,
 		Parent = f,
 	})
-	local ic = icon(iconName, 28, color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), ZIndex = 3, Parent = f })
+	local ic = icon(
+		iconName,
+		28,
+		color,
+		{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), ZIndex = 3, Parent = f }
+	)
 	local key = label("", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -2),
@@ -257,7 +262,8 @@ function Hud.init(playerGui: PlayerGui)
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Parent = ui.obj,
 	})
-	ui.objBack, ui.objFill = bar(ui.obj, { Position = UDim2.fromOffset(28, 17), Size = UDim2.new(1, -28, 0, 9) }, C.cyan)
+	ui.objBack, ui.objFill =
+		bar(ui.obj, { Position = UDim2.fromOffset(28, 17), Size = UDim2.new(1, -28, 0, 9) }, C.cyan)
 	-- Boss bar
 	ui.boss = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -284,7 +290,8 @@ function Hud.init(playerGui: PlayerGui)
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Parent = ui.boss,
 	})
-	ui.bossBack, ui.bossFill, ui.bossTrail = bar(ui.boss, { Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 14) }, C.red, true)
+	ui.bossBack, ui.bossFill, ui.bossTrail =
+		bar(ui.boss, { Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 14) }, C.red, true)
 	new("UIStroke", { Color = C.red, Transparency = 0.4, Thickness = 1.5, Parent = ui.bossBack })
 
 	-- Top left: build tiles ---------------------------------------------------------------------------
@@ -380,7 +387,8 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = root,
 	})
 	ui.vitals = vit
-	ui.hpBack, ui.hpFill, ui.hpTrail = bar(vit, { Position = UDim2.fromOffset(0, 16), Size = UDim2.new(1, 0, 0, 24) }, C.hp, true)
+	ui.hpBack, ui.hpFill, ui.hpTrail =
+		bar(vit, { Position = UDim2.fromOffset(0, 16), Size = UDim2.new(1, 0, 0, 24) }, C.hp, true)
 	ui.hpStroke = new("UIStroke", { Color = C.white, Transparency = 0.8, Thickness = 1.5, Parent = ui.hpBack })
 	ui.shieldFill = new("Frame", {
 		Name = "Shield",
@@ -414,11 +422,13 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = vit,
 	})
 	ui.reloadText = label("", {
-		Position = UDim2.fromOffset(0, 0),
-		Size = UDim2.new(1, 0, 0, 14),
-		FontFace = F.head,
-		TextSize = 11,
+		Position = UDim2.fromOffset(0, -6),
+		Size = UDim2.new(1, 0, 0, 18),
+		FontFace = F.display,
+		TextSize = 16,
 		TextColor3 = C.gold,
+		TextStrokeTransparency = 0.3,
+		TextStrokeColor3 = C.ink,
 		Parent = vit,
 	})
 	-- Ability chips (PC / gamepad) to the right of the vitals
@@ -469,21 +479,34 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = ui.howTo,
 	})
 	-- View toggle (kept for the V key / gamepad; hidden in the minimal HUD)
-	ui.view = new("TextButton", { Name = "View", Size = UDim2.fromOffset(1, 1), Text = "", BackgroundTransparency = 1, Visible = false, Parent = root })
+	ui.view = new(
+		"TextButton",
+		{
+			Name = "View",
+			Size = UDim2.fromOffset(1, 1),
+			Text = "",
+			BackgroundTransparency = 1,
+			Visible = false,
+			Parent = root,
+		}
+	)
 
 	-- Centre: banner -------------------------------------------------------------------------------------
 	ui.banner = new("Frame", {
 		Name = "Banner",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.3),
+		-- just under the top bar: the middle of the screen belongs to the hero and the swarm around them
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 166),
 		Size = UDim2.fromOffset(760, 110),
 		Visible = false,
 		Parent = root,
 	})
 	ui.bannerScale = new("UIScale", { Parent = ui.banner })
+	-- the picture (an icon, or the creature turning) stands left of the title, not above it: above is
+	-- the boss bar, below is the hero
 	ui.bannerVisual = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, 6),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0.5, -150, 0, 40),
 		Size = UDim2.fromOffset(56, 56),
 		Parent = ui.banner,
 	})
@@ -491,7 +514,7 @@ function Hud.init(playerGui: PlayerGui)
 		Position = UDim2.fromOffset(0, 8),
 		Size = UDim2.new(1, 0, 0, 52),
 		FontFace = F.display,
-		TextSize = 44,
+		TextSize = 40,
 		TextStrokeTransparency = 0.35,
 		TextStrokeColor3 = C.ink,
 		Parent = ui.banner,
@@ -515,7 +538,7 @@ function Hud.init(playerGui: PlayerGui)
 	})
 	ui.burst = label("", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.42),
+		Position = UDim2.fromScale(0.5, 0.7),
 		Size = UDim2.fromOffset(600, 50),
 		FontFace = F.display,
 		TextSize = 30,
@@ -527,7 +550,10 @@ function Hud.init(playerGui: PlayerGui)
 	ui.burstScale = new("UIScale", { Parent = ui.burst })
 
 	-- Overlay: reticle, hit marker, reload ring, vignette, arrows ---------------------------------------
-	ui.reticle = new("Frame", { Name = "Reticle", AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(60, 60), Parent = overlay })
+	ui.reticle = new(
+		"Frame",
+		{ Name = "Reticle", AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(60, 60), Parent = overlay }
+	)
 	new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -550,7 +576,16 @@ function Hud.init(playerGui: PlayerGui)
 		})
 		table.insert(ui.reticleTicks, t)
 	end
-	ui.hit = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(30, 30), Visible = false, Parent = ui.reticle })
+	ui.hit = new(
+		"Frame",
+		{
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(30, 30),
+			Visible = false,
+			Parent = ui.reticle,
+		}
+	)
 	for i = 0, 3 do
 		local a = math.rad(45 + i * 90)
 		new("Frame", {
@@ -563,15 +598,27 @@ function Hud.init(playerGui: PlayerGui)
 			Parent = ui.hit,
 		})
 	end
-	ui.reloadRing = icon("reload", 34, C.gold, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Visible = false, Parent = ui.reticle })
+	ui.reloadRing = icon(
+		"reload",
+		34,
+		C.gold,
+		{
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Visible = false,
+			Parent = ui.reticle,
+		}
+	)
 	-- Vignette: soft red edges on hurt / low health
 	ui.vignette = {}
-	for i, spec in {
-		{ UDim2.fromScale(1, 0.14), UDim2.fromScale(0, 0), 90 },
-		{ UDim2.fromScale(1, 0.14), UDim2.fromScale(0, 0.86), -90 },
-		{ UDim2.fromScale(0.1, 1), UDim2.fromScale(0, 0), 0 },
-		{ UDim2.fromScale(0.1, 1), UDim2.fromScale(0.9, 0), 180 },
-	} do
+	for i, spec in
+		{
+			{ UDim2.fromScale(1, 0.14), UDim2.fromScale(0, 0), 90 },
+			{ UDim2.fromScale(1, 0.14), UDim2.fromScale(0, 0.86), -90 },
+			{ UDim2.fromScale(0.1, 1), UDim2.fromScale(0, 0), 0 },
+			{ UDim2.fromScale(0.1, 1), UDim2.fromScale(0.9, 0), 180 },
+		}
+	do
 		local f = new("Frame", {
 			Size = spec[1],
 			Position = spec[2],
@@ -589,14 +636,22 @@ function Hud.init(playerGui: PlayerGui)
 	end
 	-- Off-screen arrows
 	for i = 1, 6 do
-		local f = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(90, 60), Visible = false, Parent = overlay })
-		local head = icon("chevrons", 26, C.red, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Parent = f })
+		local f = new(
+			"Frame",
+			{ AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(120, 72), Visible = false, Parent = overlay }
+		)
+		local head = icon(
+			"chevrons",
+			36,
+			C.red,
+			{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Parent = f }
+		)
 		local tag = label("", {
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0.35, 16),
-			Size = UDim2.fromOffset(90, 14),
-			FontFace = F.head,
-			TextSize = 10,
+			Position = UDim2.new(0.5, 0, 0.35, 21),
+			Size = UDim2.fromOffset(120, 16),
+			FontFace = F.display,
+			TextSize = 14,
 			TextStrokeTransparency = 0.4,
 			TextStrokeColor3 = C.ink,
 			Parent = f,
@@ -639,7 +694,7 @@ local function setBannerVisual(visual: string?, color: Color3)
 	if visual:sub(1, 1) == "@" then
 		local kind = tonumber(visual:sub(2))
 		if kind then
-			ui.bannerVisual.Size = UDim2.fromOffset(120, 120)
+			ui.bannerVisual.Size = UDim2.fromOffset(96, 96)
 			Preview.creature(ui.bannerVisual, kind, { spin = true, zoom = 0.95 })
 		end
 	else
@@ -661,6 +716,8 @@ local function nextBanner()
 	ui.bannerLine.BackgroundColor3 = b.color
 	ui.bannerSub.Text = b.sub
 	setBannerVisual(b.visual, b.color)
+	-- the picture sits just left of the title, however long the title is
+	ui.bannerVisual.Position = UDim2.new(0.5, -ui.bannerText.TextBounds.X / 2 - 14, 0, 34)
 	ui.bannerText.TextTransparency = 1
 	ui.bannerSub.TextTransparency = 1
 	ui.bannerLine.Size = UDim2.fromOffset(0, 3)
@@ -704,7 +761,8 @@ function Hud.hitmarker(kill: boolean)
 	hitKill = kill
 end
 
-local BURST_WORDS = { { 25, "ОПУСТОШЕНИЕ", C.red }, { 15, "МЯСОРУБКА", C.orange }, { 0, "РАЗГРОМ", C.gold } }
+local BURST_WORDS =
+	{ { 25, "ОПУСТОШЕНИЕ", C.red }, { 15, "МЯСОРУБКА", C.orange }, { 0, "РАЗГРОМ", C.gold } }
 function Hud.burst(n: number)
 	for _, w in BURST_WORDS do
 		if n >= w[1] then
@@ -717,7 +775,13 @@ function Hud.burst(n: number)
 	ui.burst.TextStrokeTransparency = 0.3
 	ui.burstScale.Scale = 1.4
 	tween(ui.burstScale, 0.2, { Scale = 1 }, Enum.EasingStyle.Back)
-	tween(ui.burst, 1, { TextTransparency = 1, TextStrokeTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	tween(
+		ui.burst,
+		1,
+		{ TextTransparency = 1, TextStrokeTransparency = 1 },
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.In
+	)
 end
 
 function Hud.hurt()
@@ -761,7 +825,12 @@ local function updateBuild(me)
 				})
 			end
 			s = { frame = f, stroke = stroke, pips = pips, scale = new("UIScale", { Parent = f }) }
-			icon(def.icon, 26, def.color, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 5), Parent = f })
+			icon(
+				def.icon,
+				26,
+				def.color,
+				{ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 5), Parent = f }
+			)
 			ui.slots[i] = s
 			s.scale.Scale = 1.6
 			tween(s.scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
@@ -813,7 +882,11 @@ function Hud.update(run, me, extra, dt: number)
 		goal = goal .. "  ·  " .. Theme.fmtTime(mission.deadlineLeft)
 	end
 	if mission and mission.relay and mission.relay.alive and mission.state == "FIGHT" then
-		goal = goal .. string.format("  ·  пилон %d%%", math.ceil(mission.relay.hp / math.max(1, mission.relay.max) * 100))
+		goal = goal
+			.. string.format(
+				"  ·  пилон %d%%",
+				math.ceil(mission.relay.hp / math.max(1, mission.relay.max) * 100)
+			)
 	end
 	if run.hive then
 		goal = string.format("Ульи %d/3  ·  %d с", run.hive, math.ceil(run.hiveEnds or 0))
@@ -824,7 +897,10 @@ function Hud.update(run, me, extra, dt: number)
 	ui.goal.Visible = goal ~= ""
 	ui.goalText.Text = goal
 	local urgent = mission and mission.deadlineLeft and mission.deadlineLeft <= 60
-	ui.goalDot.BackgroundColor3 = if urgent then C.red elseif mission and mission.state == "FINALE" then C.gold else C.lime
+	ui.goalDot.BackgroundColor3 = if urgent
+		then C.red
+		elseif mission and mission.state == "FINALE" then C.gold
+		else C.lime
 	ui.goalDot.BackgroundTransparency = 0.5 + math.sin(now * 5) * 0.5
 	ui.goalText.TextColor3 = if urgent then C.red else C.text
 	-- Boss (or the enemy extractor in a raid)
@@ -835,7 +911,8 @@ function Hud.update(run, me, extra, dt: number)
 		local frac = math.clamp(run.core.hp, 0, 1)
 		ui.bossFill.Size = UDim2.fromScale(frac, 1)
 		local trail = ui.bossTrail.Size.X.Scale
-		ui.bossTrail.Size = UDim2.fromScale(if trail > frac then trail - (trail - frac) * math.min(1, dt * 2) else frac, 1)
+		ui.bossTrail.Size =
+			UDim2.fromScale(if trail > frac then trail - (trail - frac) * math.min(1, dt * 2) else frac, 1)
 		ui.bossTag.Text = "ВРАЖЕСКИЙ БУР"
 		ui.bossTag.TextColor3 = C.orange
 	end
@@ -847,7 +924,8 @@ function Hud.update(run, me, extra, dt: number)
 		local frac = math.clamp(run.boss.hp, 0, 1)
 		ui.bossFill.Size = UDim2.fromScale(frac, 1)
 		local trail = ui.bossTrail.Size.X.Scale
-		ui.bossTrail.Size = UDim2.fromScale(if trail > frac then trail - (trail - frac) * math.min(1, dt * 2) else frac, 1)
+		ui.bossTrail.Size =
+			UDim2.fromScale(if trail > frac then trail - (trail - frac) * math.min(1, dt * 2) else frac, 1)
 		ui.bossTag.Text = if run.boss.invulnerable
 			then "НЕУЯЗВИМ"
 			elseif run.boss.exposed then "УЯЗВИМ ×1.8"
@@ -865,7 +943,9 @@ function Hud.update(run, me, extra, dt: number)
 		ui.objFill.Size = UDim2.fromScale(frac, 1)
 		ui.objFill.BackgroundColor3 = if flash then C.white else col
 		ui.objName.Text = string.upper(rc.name or "БУР")
-		ui.objPct.Text = (if (rc.shield or 0) > 0 then "ЩИТ " .. rc.shield .. "  ·  " else "") .. math.ceil(frac * 100) .. "%"
+		ui.objPct.Text = (if (rc.shield or 0) > 0 then "ЩИТ " .. rc.shield .. "  ·  " else "")
+			.. math.ceil(frac * 100)
+			.. "%"
 		ui.objPct.TextColor3 = col
 		Icons.recolor(ui.objIcon, if flash then C.red else col)
 	end
@@ -945,7 +1025,8 @@ function Hud.update(run, me, extra, dt: number)
 		local hpFrac = math.clamp(me.hp / me.maxHp, 0, 1)
 		ui.hpFill.Size = UDim2.fromScale(hpFrac, 1)
 		local trail = ui.hpTrail.Size.X.Scale
-		ui.hpTrail.Size = UDim2.fromScale(if trail > hpFrac then trail - (trail - hpFrac) * math.min(1, dt * 3) else hpFrac, 1)
+		ui.hpTrail.Size =
+			UDim2.fromScale(if trail > hpFrac then trail - (trail - hpFrac) * math.min(1, dt * 3) else hpFrac, 1)
 		ui.hpFill.BackgroundColor3 = if hpFrac < 0.3 then C.red else C.hp
 		ui.shieldFill.Size = UDim2.fromScale(math.clamp(me.shield / me.maxHp, 0, 1), 0.3)
 		ui.hpText.Text = string.format(
@@ -977,7 +1058,10 @@ function Hud.update(run, me, extra, dt: number)
 			ui.magFill.Size = UDim2.fromScale(if me.reload > 0 then me.reload else me.ammo / math.max(1, me.mag), 1)
 			local low = me.ammo / math.max(1, me.mag) < 0.25
 			ui.magFill.BackgroundColor3 = if me.reload > 0 then C.gold elseif low then C.orange else C.cyan
-			ui.reloadText.Text = if me.reload > 0 then "ПЕРЕЗАРЯДКА" elseif me.ammo == 0 then "ПУСТО" else ""
+			ui.reloadText.Text = if me.reload > 0
+				then "ПЕРЕЗАРЯДКА"
+				elseif me.ammo == 0 then "ПУСТО"
+				else ""
 			ui.reloadText.TextColor3 = C.gold
 		end
 		ui.ammo.TextColor3 = if me.reload > 0 or me.overheated then C.dim else C.text
@@ -999,7 +1083,9 @@ function Hud.update(run, me, extra, dt: number)
 		if howTo then
 			ui.howToText.Text = if touch
 				then "Левый палец — бег   ·   правый — огонь"
-				elseif extra.device == "gamepad" then "Левый стик — бег   ·   правый стик — огонь   ·   B — рывок"
+				elseif
+					extra.device == "gamepad"
+				then "Левый стик — бег   ·   правый стик — огонь   ·   B — рывок"
 				else "WASD — бег   ·   мышь — огонь   ·   ПРОБЕЛ — рывок"
 			local k = if run.waiting then 0 else math.clamp((run.t - 7) / 3, 0, 1)
 			ui.howToText.TextTransparency = k
@@ -1012,7 +1098,10 @@ function Hud.update(run, me, extra, dt: number)
 			ui.evolveText.Text = "ГРАВИМОЛОТ — УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")
 		elseif me.canEvolve then
 			ui.evolveScale.Scale = 1 + math.sin(now * 6) * 0.04
-			ui.evolveText.Text = "ЭВОЛЮЦИЯ — " .. Defs.Evolutions[wdef.evolution].name .. "  " .. keyLabel(extra.device, "[F]", "[X]")
+			ui.evolveText.Text = "ЭВОЛЮЦИЯ — "
+				.. Defs.Evolutions[wdef.evolution].name
+				.. "  "
+				.. keyLabel(extra.device, "[F]", "[X]")
 		end
 		-- Kill streak
 		local combo = me.combo or 0

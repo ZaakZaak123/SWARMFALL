@@ -12,7 +12,10 @@ public class W32 {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 }
 "@
-$p = Get-Process RobloxStudioBeta | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+$all = Get-Process RobloxStudioBeta | Where-Object { $_.MainWindowHandle -ne 0 }
+# several Studios may be open: prefer the one with this project's place
+$p = $all | Where-Object { $_.MainWindowTitle -like "*SWARMFALL*" } | Select-Object -First 1
+if (-not $p) { $p = $all | Select-Object -First 1 }
 $r = New-Object W32+RECT
 [W32]::GetWindowRect($p.MainWindowHandle, [ref]$r) | Out-Null
 $w = $r.R - $r.L; $h = $r.B - $r.T
