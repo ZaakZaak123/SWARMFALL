@@ -42,6 +42,7 @@ local function glowLight(parent, pos: Vector3, color: Color3, range: number, bri
 	l.Color = color
 	l.Range = range
 	l.Brightness = brightness
+	l:SetAttribute("Ambient", true) -- clients may switch it off on lower quality (DecorLod)
 	l.Parent = a
 	return l
 end

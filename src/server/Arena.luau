@@ -952,7 +952,7 @@ local function buildDressing(map, decor)
 			local a = rnd(0, 6.28)
 			disc(model, pos + Vector3.new(math.cos(a) * p[3] * 0.6, 0.1, math.sin(a) * p[3] * 0.6), rnd(1, 2.5), 0.04, rgb(200, 255, 245), M.Neon, 0.5)
 		end
-		light(model, pos + Vector3.new(0, 3, 0), PAL.teal, p[3] * 2.4, 1.2)
+		light(model, pos + Vector3.new(0, 3, 0), PAL.teal, p[3] * 2.4, 1.2):SetAttribute("Ambient", true)
 	end
 	-- basalt rubble
 	for i = 1, 60 do

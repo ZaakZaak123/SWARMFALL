@@ -21,6 +21,7 @@ local EnemyView = require(script.Parent:WaitForChild("EnemyView"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local Gear = require(script.Parent:WaitForChild("Gear"))
 local CameraRig = require(script.Parent:WaitForChild("CameraRig"))
+local DecorLod = require(script.Parent:WaitForChild("DecorLod"))
 local Controls = require(script.Parent:WaitForChild("Controls"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Preview = require(script.Parent:WaitForChild("Preview"))
@@ -1229,6 +1230,7 @@ local function animateArena(now: number)
 			end
 		end
 		animated.heart = decor:FindFirstChild("Heart")
+		DecorLod.scan(decor)
 		table.clear(fadeParts)
 		for _, d in decor:GetDescendants() do
 			if d:IsA("BasePart") and d:GetAttribute("Fade") then
