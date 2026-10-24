@@ -112,6 +112,15 @@ local function runnerMesh()
 end
 
 BLUEPRINT[1] = function() -- Runner
+	-- the generated species first (DD-048): the Blender runner's mesh assets no longer render
+	local gen = Creatures.species and Creatures.species("RUNNER", {
+		scale = 1.6,
+		colors = { default = rgb(235, 110, 50) },
+		eyes = { piece = "body", color = rgb(255, 230, 90), size = 0.15, up = -0.05, apart = 0.14 },
+	})
+	if gen then
+		return gen, 1.0
+	end
 	local mesh = runnerMesh()
 	if mesh then
 		return mesh, 1.0
@@ -866,6 +875,185 @@ BLUEPRINT[10] = function() -- The Alpha: leader of the pack — huge, gold, crow
 		return s, 0.6
 	end
 	return LEGACY[10]()
+end
+
+-- Distinct species (DD-048) -------------------------------------------------------------------------------
+-- Each species is its own generated creature (Shared.Art.Creatures): own anatomy, silhouette and size,
+-- so the swarm reads by shape before colour. Pieces named leg/scythe/pincer swing on the gait (a tripod:
+-- diagonal pairs in phase), sacs pulse, the rest is body. Two neon eyes on the head carry the wind-up
+-- telegraph (they turn red). `color` is each piece's average tone: a texture ignores Color, so hit
+-- flashes and status tints swap the texture out for that tone. Any missing piece -> the older blueprint.
+local ArtDefs = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Art"))
+
+local LIMB = { "leg", "scythe", "pincer", "claw" }
+local SAC = { "sac", "bulb" }
+
+local function has(name: string, words): boolean
+	for _, w in words do
+		if name:find(w) then
+			return true
+		end
+	end
+	return false
+end
+
+-- o = { scale, colors = { [piece name] = Color3, default = Color3 }, eyes = { piece, color, size }?,
+--       glow = { piece, color, scale, transparency }? (a neon core inside a sac: textures do not glow), extras }
+local function species(key: string, o)
+	local parts = ArtDefs.Creatures[key]
+	if not parts then
+		return nil
+	end
+	local k = o.scale
+	local s = {}
+	local eyeAt
+	for i, part in parts do
+		local tpl = art("CR_" .. key .. "_" .. i)
+		if not tpl then
+			return nil
+		end
+		local size = part.size * k
+		local pos = part.pos * k
+		local spec = {
+			mesh = tpl,
+			name = part.name,
+			size = size,
+			cf = P(pos),
+			color = o.colors[part.name] or o.colors.default,
+			mat = M.SmoothPlastic,
+			role = "body",
+		}
+		if has(part.name, LIMB) then
+			-- hinge at the inner top of the piece, toward the body centre
+			local side = if pos.X >= 0 then 1 else -1
+			local hip = Vector3.new(pos.X - side * size.X * 0.3, pos.Y + size.Y * 0.3, pos.Z)
+			spec.role = "leg"
+			spec.hip = P(hip)
+			spec.loc = P(pos - hip)
+			-- tripod gait: diagonal pairs move together
+			spec.phase = if (pos.X >= 0) == (pos.Z >= 0) then 0 else math.pi
+		elseif has(part.name, SAC) and not o.glow then
+			spec.role = "sac"
+		end
+		if o.glow and part.name == o.glow.piece then
+			local d = math.min(size.X, size.Y, size.Z) * o.glow.scale
+			table.insert(s, glowBall(d, P(pos), o.glow.color, "sac", o.glow.transparency))
+		end
+		if part.name == (o.eyes and o.eyes.piece) then
+			eyeAt = { pos = pos, size = size }
+		end
+		table.insert(s, spec)
+	end
+	if eyeAt then
+		local d = o.eyes.size * k
+		local front = eyeAt.pos + Vector3.new(0, eyeAt.size.Y * (o.eyes.up or 0.1), -eyeAt.size.Z * 0.46)
+		for _, side in { -1, 1 } do
+			table.insert(s, glowBall(d, P(front + Vector3.new(side * eyeAt.size.X * (o.eyes.apart or 0.22), 0, 0)), o.eyes.color, "eye"))
+		end
+	end
+	for _, e in o.extras or {} do
+		table.insert(s, e)
+	end
+	return s
+end
+
+Creatures.species = species
+
+-- Sizes (native generation -> game): the leaper stands tall and thin, the spitter squat and wide, the
+-- bomber is the smallest thing in the swarm, armour grows long and low, the elite towers, the Alpha
+-- is long, the Broodmother dwarfs everything. Runner (base monster) stays the reference: ~5.5 long.
+BLUEPRINT[2] = function() -- Leaper: a crimson mantis on jumping legs, scythes raised
+	local s = species("STALKER", {
+		scale = 1.45,
+		colors = { default = rgb(200, 44, 92), body = rgb(170, 30, 70) },
+		eyes = { piece = "head", color = rgb(255, 120, 230), size = 0.2, apart = 0.25 },
+	})
+	if s then
+		return s, 1.2
+	end
+	return LEGACY[2]()
+end
+
+BLUEPRINT[3] = function() -- Spitter: a squat mustard toad-beetle with a glowing acid bubble
+	local s = species("SPITTER", {
+		scale = 1.2,
+		colors = { default = rgb(170, 140, 50), sac = rgb(170, 255, 70) },
+		eyes = { piece = "head", color = rgb(190, 255, 80), size = 0.24, up = 0.15 },
+		glow = { piece = "sac", color = rgb(170, 255, 70), scale = 1.02, transparency = 0.45 },
+	})
+	if s then
+		return s, 0.9
+	end
+	return LEGACY[3]()
+end
+
+BLUEPRINT[8] = function() -- Bomber: a small waddling beetle under a molten bulb (the fuse flashes it)
+	local s = species("BOMBER", {
+		scale = 1.05,
+		colors = { default = rgb(96, 52, 30), bulb = rgb(255, 150, 40) },
+		eyes = { piece = "head", color = rgb(255, 230, 120), size = 0.2 },
+		glow = { piece = "bulb", color = rgb(255, 150, 40), scale = 1.05, transparency = 0.3 },
+	})
+	if s then
+		return s, 1.4
+	end
+	return LEGACY[8]()
+end
+
+BLUEPRINT[4] = function() -- Bulwark: a slate-blue armoured rhino beetle behind a front shield
+	local s = species("BULWARK", {
+		scale = 1.75,
+		colors = { default = rgb(84, 100, 136) },
+		eyes = { piece = "body", color = rgb(255, 90, 50), size = 0.24, up = -0.05, apart = 0.16 },
+	})
+	if s then
+		return s, 0.6
+	end
+	return LEGACY[4]()
+end
+
+BLUEPRINT[5] = function() -- Elite bulwark: a towering gold siege beetle with a horned crest
+	local s = species("ELITE", {
+		scale = 1.75,
+		colors = { default = rgb(200, 150, 64) },
+		eyes = { piece = "horn crest", color = rgb(255, 210, 90), size = 0.3, up = -0.35 },
+	})
+	if s then
+		return s, 0.5
+	end
+	return LEGACY[5]()
+end
+
+BLUEPRINT[10] = function() -- The Alpha: an orange-gold scorpion with a xenite stinger (its weak node)
+	local k = 1.6
+	local s = species("ALPHA", {
+		scale = k,
+		colors = { default = rgb(230, 130, 50) },
+		eyes = { piece = "body", color = rgb(255, 250, 200), size = 0.22, up = 0.22, apart = 0.16 },
+		extras = { glowBall(0.9 * k, P(Vector3.new(0, 6.1, 2.4) * k), rgb(255, 90, 200), "node", 0.1) },
+	})
+	if s then
+		return s, 0.6
+	end
+	return LEGACY[10]()
+end
+
+BLUEPRINT[7] = function() -- Broodmother: a colossal spider queen; three weak nodes on her back
+	local k = 1.6
+	local extras = {}
+	for _, off in { { -1.3, 9.6, 3.4 }, { 1.3, 9.6, 3.4 }, { 0, 7.4, 3.7 } } do
+		table.insert(extras, glowBall(1.5 * k, P(Vector3.new(off[1], off[2], off[3]) * k), rgb(170, 255, 80), "node"))
+	end
+	local s = species("BROOD", {
+		scale = k,
+		colors = { default = rgb(110, 44, 130) },
+		eyes = { piece = "body", color = rgb(255, 60, 70), size = 0.35, up = 0.2, apart = 0.18 },
+		extras = extras,
+	})
+	if s then
+		return s, 0.3
+	end
+	return LEGACY[7]()
 end
 
 -- Raid outposts (DD-039): another player's turrets and extractor are enemies. Bodies come from the

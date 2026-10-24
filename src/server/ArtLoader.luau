@@ -72,6 +72,8 @@ function ArtLoader.load(timeout: number?)
 		n += 1
 	end
 	print(string.format("[SPOREFALL] art: %d meshes ready in %.1fs", n, os.clock() - t0))
+	-- clients wait for this before building pooled enemies, or they would pool the fallback bodies
+	folder:SetAttribute("Ready", true)
 	return n
 end
 

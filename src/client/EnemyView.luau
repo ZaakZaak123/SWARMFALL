@@ -207,14 +207,23 @@ function EnemyView.init()
 	folder = Instance.new("Folder")
 	folder.Name = "SwarmView"
 	folder.Parent = workspace
-	-- Warm pools so the first waves never hitch.
-	local warm = { [1] = 40, [2] = 10, [3] = 8, [4] = 6 }
-	for kind, n in warm do
-		pools[kind] = pools[kind] or {}
-		for _ = 1, n do
-			table.insert(pools[kind], buildModel(kind))
+	-- Warm pools so the first waves never hitch, once the server's art templates have arrived: a body
+	-- built before that is the fallback one and would stay in the pool for the whole session.
+	task.spawn(function()
+		local art = game:GetService("ReplicatedStorage"):WaitForChild("ArtTemplates", 20)
+		local t0 = os.clock()
+		while art and not art:GetAttribute("Ready") and os.clock() - t0 < 20 do
+			task.wait(0.2)
 		end
-	end
+		local warm = { [1] = 40, [2] = 10, [3] = 8, [4] = 6 }
+		for kind, n in warm do
+			pools[kind] = pools[kind] or {}
+			for _ = 1, n do
+				table.insert(pools[kind], buildModel(kind))
+			end
+			task.wait()
+		end
+	end)
 end
 
 EnemyView.records = records
@@ -639,10 +648,11 @@ function EnemyView.update(dt: number, camPos: Vector3)
 				end
 				local p = m.parts[i]
 				p.Color = if flash > 0 then c:Lerp(WHITE, 0.2 + 0.6 * flash) else c
-				-- a texture ignores Color: textured art meshes (DD-042) drop it for the flash frames
+				-- a texture ignores Color: textured art meshes (DD-042) drop it for the flash frames and
+				-- while a status tints them (burning / frozen / corroded must read on every species)
 				local tex = spec.mesh and spec.mesh:IsA("MeshPart") and spec.mesh.TextureID
 				if tex and tex ~= "" then
-					p.TextureID = if flash > 0 then "" else tex
+					p.TextureID = if flash > 0 or tint then "" else tex
 				end
 			end
 		end
@@ -680,8 +690,13 @@ function EnemyView.update(dt: number, camPos: Vector3)
 				local p = m.parts[i]
 				p.Transparency = if fuse then 0 else (m.specs[i].transparency or 0) + pulse * 0.3
 				if rec.kind == 8 then
-					p.Color = if fuse and pulse > 0.5 then Color3.new(1, 1, 1) else m.specs[i].color
+					local white = fuse and pulse > 0.5
+					p.Color = if white then Color3.new(1, 1, 1) else m.specs[i].color
 					p.Size = m.specs[i].size * (if fuse then 1 + pulse * 0.25 else 1)
+					local tex = m.specs[i].mesh and m.specs[i].mesh.TextureID
+					if tex and tex ~= "" then
+						p.TextureID = if white then "" else tex
+					end
 				end
 			end
 		end
