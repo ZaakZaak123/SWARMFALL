@@ -43,6 +43,8 @@ Art.Meshes = {
 	BOARD = { mesh = "rbxassetid://76491411634190", tex = "rbxassetid://88214790030886", size = Vector3.new(6.46, 7.00, 1.84) },
 	RADAR = { mesh = "rbxassetid://89625350262556", tex = "rbxassetid://73147736121457", size = Vector3.new(6.00, 8.43, 4.85) },
 	FLOODLIGHT = { mesh = "rbxassetid://116061092931530", tex = "rbxassetid://91763926511926", size = Vector3.new(3.00, 4.50, 1.20) },
+	CRATES = { mesh = "rbxassetid://94138031272825", tex = "rbxassetid://136163660888408", size = Vector3.new(3.50, 4.00, 3.32) },
+	HABITAT = { mesh = "rbxassetid://134465806873246", tex = "rbxassetid://116198100759129", size = Vector3.new(7.44, 3.70, 7.00) },
 	PLINTH = { mesh = "rbxassetid://123821428304518", tex = "rbxassetid://83838900429311", size = Vector3.new(4.04, 2.00, 4.05) },
 }
 

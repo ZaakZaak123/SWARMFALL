@@ -330,6 +330,16 @@ end
 
 -- Each station: its model at the back of the pad, front to the camera; the bare beam goes away once
 -- the model is there.
+local PROPS = { -- { art, height, x, z, yaw }
+	{ "HABITAT", 4.6, -38, -58, 0.5 },
+	{ "HABITAT", 4.2, -32, -86, -0.3 },
+	{ "CRATES", 3.4, 14, -84, 0.2 },
+	{ "CRATES", 2.8, -10, -86, -0.6 },
+	{ "CRATES", 3.2, 28, -92, 1.1 },
+	{ "CRATES", 2.6, -44, -72, 0.9 },
+}
+local propsDone = false
+
 local function dressStations()
 	for _, sp in stationParts do
 		local def = sp.def
@@ -342,6 +352,16 @@ local function dressStations()
 				sp.model = m
 				sp.beam.Transparency = 1
 				sp.beam.Parent = nil
+			end
+		end
+	end
+	-- camp life around the edges of the yard: habitats and supply crates (solid, base only)
+	if not propsDone then
+		propsDone = true
+		for _, pr in PROPS do
+			local m = artModel(pr[1], pr[2], CFrame.new(pr[3], 0, pr[4]) * CFrame.Angles(0, pr[5], 0), folder)
+			if m then
+				m.CanCollide = true
 			end
 		end
 	end
