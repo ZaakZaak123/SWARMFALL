@@ -604,6 +604,31 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 end)
 
+-- Test place only (test.project.json): which server am I on — camp or a squad's server.
+if ReplicatedStorage:GetAttribute("TestPlace") then
+	local g = Instance.new("ScreenGui")
+	g.Name = "SporeTestTag"
+	g.ResetOnSpawn = false
+	g.DisplayOrder = 50
+	g.Parent = playerGui
+	local tag = Theme.label("", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -4),
+		Size = UDim2.fromOffset(520, 18),
+		FontFace = Theme.F.head,
+		TextSize = 12,
+		TextColor3 = C.gold,
+		Parent = g,
+	})
+	task.spawn(function()
+		while g.Parent do
+			local role = ReplicatedStorage:GetAttribute("ServerRole")
+			tag.Text = string.format("ТЕСТОВОЕ МЕСТО  ·  %s  ·  сервер %s  ·  игроков %d", if role == "SESSION" then "СЕРВЕР ОТРЯДА" else "ЛАГЕРЬ", string.sub(game.JobId, 1, 6), #Players:GetPlayers())
+			task.wait(1)
+		end
+	end)
+end
+
 -- Camp (DD-053) ------------------------------------------------------------------------------------------
 -- Visiting an outpost swaps what stands on the sockets for this client only; walking the yard stays shared.
 HubMenus.init(Menus.helpers(), {

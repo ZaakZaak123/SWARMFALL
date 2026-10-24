@@ -1,0 +1,117 @@
+{
+  "name": "SPOREFALL_TEST",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "WeaponAssets": {
+        "$path": "assets/weapon_models"
+      },
+      "EnemyAssets": {
+        "$path": "assets/enemy_models"
+      },
+      "$attributes": {
+        "TestPlace": true
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CharacterUseJumpPower": true,
+        "CharacterJumpPower": 0,
+        "CharacterWalkSpeed": 18,
+        "CameraMaxZoomDistance": 128,
+        "EnableMouseLockOption": false,
+        "AutoJumpEnabled": false
+      },
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      },
+      "StarterCharacterScripts": {
+        "$path": "src/startercharacter"
+      }
+    },
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false,
+        "RespawnTime": 3
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "ClockTime": 0.4,
+        "GlobalShadows": true
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FallenPartsDestroyHeight": -60,
+        "Gravity": 196.2
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "MaterialService": {
+      "SporeSoil": {
+        "$className": "MaterialVariant",
+        "$properties": {
+          "BaseMaterial": "Ground",
+          "StudsPerTile": 22,
+          "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://135672221704874",
+          "NormalMap": "rbxassetid://83111937273398",
+          "RoughnessMap": "rbxassetid://118598640683361",
+          "MetalnessMap": "rbxassetid://121555023171350"
+        }
+      },
+      "SporeMoss": {
+        "$className": "MaterialVariant",
+        "$properties": {
+          "BaseMaterial": "Grass",
+          "StudsPerTile": 16,
+          "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://105684393375471",
+          "NormalMap": "rbxassetid://85736542805910",
+          "RoughnessMap": "rbxassetid://88214952733945",
+          "MetalnessMap": "rbxassetid://114302192781630"
+        }
+      },
+      "SporeBasalt": {
+        "$className": "MaterialVariant",
+        "$properties": {
+          "BaseMaterial": "Basalt",
+          "StudsPerTile": 12,
+          "MaterialPattern": "Regular",
+          "ColorMap": "rbxassetid://76810751350245",
+          "NormalMap": "rbxassetid://78527806830495",
+          "RoughnessMap": "rbxassetid://111934362240543",
+          "MetalnessMap": "rbxassetid://85145720669487"
+        }
+      },
+      "SporeCliff": {
+        "$className": "MaterialVariant",
+        "$properties": {
+          "BaseMaterial": "Slate",
+          "StudsPerTile": 14,
+          "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://103441784055610",
+          "NormalMap": "rbxassetid://84641872574874",
+          "RoughnessMap": "rbxassetid://95178601832946",
+          "MetalnessMap": "rbxassetid://88095077886843"
+        }
+      }
+    }
+  }
+}

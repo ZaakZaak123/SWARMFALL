@@ -63,6 +63,8 @@ local sessionPlan = nil -- { members = {userId}, autostart, since } until the se
 
 -- Server state ----------------------------------------------------------------------------------------
 local mode = if IS_SESSION then "LOBBY" else "HUB" -- HUB | LOBBY | RUN
+ReplicatedStorage:SetAttribute("ServerRole", if IS_SESSION then "SESSION" else "HUB")
+print(string.format("[SWARMFALL] role %s  place %d  job %s", if IS_SESSION then "SESSION" else "HUB", game.PlaceId, game.JobId))
 -- mode: "hunt" (story operations) | "siege" (host's outpost) | "raid" (lobby.target, chosen by the host)
 local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1, mode = "hunt", target = nil, candidates = nil, hold = false, strikeAt = nil :: number? }
 local serverLobby = lobby -- `lobby` is swapped to a camp squad while its handlers run
@@ -471,6 +473,7 @@ local function launch(sq)
 	for _, m in members do
 		social(m, "launch", Ops.get(sq.op).name)
 	end
+	print(string.format("[SWARMFALL] launch squad %d: %d hunters, %s %s", sq.id, #members, sq.mode, sq.op))
 	task.spawn(function()
 		local options = Instance.new("TeleportOptions")
 		options.ShouldReserveServer = true
@@ -541,6 +544,7 @@ local function sessionJoin(player: Player)
 	end
 	sessionHostId = tonumber(data.host)
 	sessionPlan = { members = {}, since = os.clock(), data = data }
+	print(string.format("[SWARMFALL] session plan from %s: host %d, %s %s", player.Name, sessionHostId, tostring(data.mode), tostring(data.op)))
 	for _, uid in (if type(data.members) == "table" then data.members else {}) do
 		if tonumber(uid) then
 			table.insert(sessionPlan.members, tonumber(uid))
