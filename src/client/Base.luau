@@ -36,20 +36,92 @@ local function W(x: number, y: number, z: number): Vector3
 	return Vector3.new(O.X + x, y, O.Z + z)
 end
 local STATIONS = {
-	{ key = "armory", art = "ARMORY", h = 6.5, name = "ОРУЖЕЙНАЯ", sub = "Оружие и улучшения", icon = "swords", color = C.gold, x = -26, z = 12 },
-	{ key = "launch", art = "BEACON", h = 9, name = "ВЫЛАЗКА", sub = "Ворота в пустошь · в бой", icon = "play", color = C.lime, x = 0, z = -30 },
+	{
+		key = "armory",
+		art = "ARMORY",
+		h = 6.5,
+		name = "ОРУЖЕЙНАЯ",
+		sub = "Оружие и улучшения",
+		icon = "swords",
+		color = C.gold,
+		x = -26,
+		z = 12,
+	},
+	{
+		key = "launch",
+		art = "BEACON",
+		h = 9,
+		name = "ВЫЛАЗКА",
+		sub = "Ворота в пустошь · в бой",
+		icon = "play",
+		color = C.lime,
+		x = 0,
+		z = -30,
+	},
 	-- camp only (DD-053): the settlement's shared posts
-	{ key = "board", art = "BOARD", h = 6.5, name = "ДОСКА ОТРЯДОВ", sub = "Найди напарников", icon = "users", color = C.orange, x = -15, z = -27, camp = true },
-	{ key = "outposts", art = "RADAR", h = 7.5, name = "УБЕЖИЩА", sub = "Дома других выживших", icon = "eye", color = C.pink, x = 15, z = -27, camp = true },
+	{
+		key = "board",
+		art = "BOARD",
+		h = 6.5,
+		name = "ДОСКА ОТРЯДОВ",
+		sub = "Найди напарников",
+		icon = "users",
+		color = C.orange,
+		x = -15,
+		z = -27,
+		camp = true,
+	},
+	{
+		key = "outposts",
+		art = "RADAR",
+		h = 7.5,
+		name = "УБЕЖИЩА",
+		sub = "Дома других выживших",
+		icon = "eye",
+		color = C.pink,
+		x = 15,
+		z = -27,
+		camp = true,
+	},
 }
 -- Prepared spots of the shelter (Meta.Home): rubble until restored, then the thing itself. A restored
 -- spot is also a station: the workshop builds the drill's defences, the radio picks the drill defence,
 -- the lab shows the samples.
 local SPOTS = {
 	GENERATOR = { art = "GENERATOR", h = 4.2, x = -11, z = 19, yaw = 0.3, color = C.gold },
-	WORKBENCH = { art = "WORKBENCH", h = 5, x = 13, z = 13, yaw = -0.25, color = C.cyan, station = "build", stationName = "МАСТЕРСКАЯ", stationSub = "Оборона бура: турели, ловушки" },
-	RADIO = { art = "RADIO", h = 6.5, x = -24, z = -3, yaw = 0.35, color = C.orange, station = "radio", stationName = "РАДИОСТАНЦИЯ", stationSub = "Оборона бура по уровням" },
-	LAB = { art = "TANK_FRAME", h = 7.5, x = 27, z = 9, yaw = -0.3, color = C.violet, station = "swarm", stationName = "ЛАБОРАТОРИЯ", stationSub = "Образцы роя" },
+	WORKBENCH = {
+		art = "WORKBENCH",
+		h = 5,
+		x = 13,
+		z = 13,
+		yaw = -0.25,
+		color = C.cyan,
+		station = "build",
+		stationName = "МАСТЕРСКАЯ",
+		stationSub = "Оборона бура: турели, ловушки",
+	},
+	RADIO = {
+		art = "RADIO",
+		h = 6.5,
+		x = -24,
+		z = -3,
+		yaw = 0.35,
+		color = C.orange,
+		station = "radio",
+		stationName = "РАДИОСТАНЦИЯ",
+		stationSub = "Оборона бура по уровням",
+	},
+	LAB = {
+		art = "TANK_FRAME",
+		h = 7.5,
+		x = 27,
+		z = 9,
+		yaw = -0.3,
+		color = C.violet,
+		station = "swarm",
+		stationName = "ЛАБОРАТОРИЯ",
+		stationSub = "Образцы роя",
+	},
 	GARDEN = { art = "GARDEN", h = 4, x = -14, z = -14, yaw = 0.2, color = C.lime },
 }
 local LAMPS = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
@@ -132,17 +204,14 @@ local function ringPart(name: string, radius: number, color: Color3, y: number, 
 		Parent = parent,
 	})
 	r.CFrame = CFrame.new(0, y, 0)
-	new(
-		"Decal",
-		{
-			Name = "Glow",
-			Face = Enum.NormalId.Top,
-			Texture = Fx.Tex.ring,
-			Color3 = color,
-			Transparency = 0.2,
-			Parent = r,
-		}
-	)
+	new("Decal", {
+		Name = "Glow",
+		Face = Enum.NormalId.Top,
+		Texture = Fx.Tex.ring,
+		Color3 = color,
+		Transparency = 0.2,
+		Parent = r,
+	})
 	return r
 end
 
@@ -278,18 +347,15 @@ local function buildWorld()
 			Parent = m,
 		})
 		head.CFrame = CFrame.new(W(xz[1], 11.2, xz[2])) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
-		local spot = new(
-			"SpotLight",
-			{
-				Face = Enum.NormalId.Front,
-				Angle = 75,
-				Range = 40,
-				Brightness = 0,
-				Color = Color3.fromRGB(255, 236, 200),
-				Shadows = false,
-				Parent = head,
-			}
-		)
+		local spot = new("SpotLight", {
+			Face = Enum.NormalId.Front,
+			Angle = 75,
+			Range = 40,
+			Brightness = 0,
+			Color = Color3.fromRGB(255, 236, 200),
+			Shadows = false,
+			Parent = head,
+		})
 		lamps[i] = { head = head, light = spot, pole = pole, yaw = yaw }
 	end
 end
@@ -327,7 +393,8 @@ local function dressStations()
 		local def = sp.def
 		if def.art and not sp.model then
 			local yaw = math.clamp(-def.x / 60, -0.35, 0.35)
-			local m = artModel(def.art, def.h, CFrame.new(W(def.x, 0.25, def.z + 1.6)) * CFrame.Angles(0, yaw, 0), sp.holder)
+			local m =
+				artModel(def.art, def.h, CFrame.new(W(def.x, 0.25, def.z + 1.6)) * CFrame.Angles(0, yaw, 0), sp.holder)
 			if m then
 				sp.model = m
 				sp.beam.Transparency = 1
@@ -348,12 +415,19 @@ local function dressStations()
 	for _, l in lamps do
 		if not l.model then
 			local pos = l.head.Position
-			local m = artModel("FLOODLIGHT", 11, CFrame.new(pos.X, 0, pos.Z) * CFrame.Angles(0, l.yaw + math.pi, 0), l.head.Parent)
+			local m = artModel(
+				"FLOODLIGHT",
+				11,
+				CFrame.new(pos.X, 0, pos.Z) * CFrame.Angles(0, l.yaw + math.pi, 0),
+				l.head.Parent
+			)
 			if m then
 				l.model = m
 				l.pole.Transparency = 1
 				l.head.Transparency = 1
-				l.head.CFrame = CFrame.new(pos.X, 10.4, pos.Z) * CFrame.Angles(0, l.yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
+				l.head.CFrame = CFrame.new(pos.X, 10.4, pos.Z)
+					* CFrame.Angles(0, l.yaw, 0)
+					* CFrame.Angles(math.rad(-35), 0, 0)
 			end
 		end
 	end
@@ -371,7 +445,10 @@ local function buildSpots()
 		local holder = new("Model", { Name = "Spot_" .. id, Parent = folder })
 		local ring = ringPart("Ring", 4, sd.color, 0.3, holder)
 		ring.CFrame = CFrame.new(W(sd.x, 0.3, sd.z))
-		local light = new("PointLight", { Color = Color3.fromRGB(255, 214, 160), Range = 12, Brightness = 0, Shadows = false, Parent = ring })
+		local light = new(
+			"PointLight",
+			{ Color = Color3.fromRGB(255, 214, 160), Range = 12, Brightness = 0, Shadows = false, Parent = ring }
+		)
 		local bb = board(ring, def.icon, def.name, "", sd.color, 7.5)
 		local pr = prompt(ring, "Восстановить", def.name, function()
 			if actions and actions.spot then
@@ -382,7 +459,8 @@ local function buildSpots()
 		spotParts[id] = { holder = holder, ring = ring, board = bb, prompt = pr, light = light, def = def, sd = sd }
 	end
 	-- string lights across the courtyard, from the bunker's corners to the front lamps
-	local runs = { { W(-7, 7, 21.5), W(-32, 10, -20) }, { W(7, 7, 21.5), W(32, 10, -22) }, { W(-7, 7, 21.5), W(7, 7, 21.5) } }
+	local runs =
+		{ { W(-7, 7, 21.5), W(-32, 10, -20) }, { W(7, 7, 21.5), W(32, 10, -22) }, { W(-7, 7, 21.5), W(7, 7, 21.5) } }
 	for _, r in runs do
 		local a, b = r[1], r[2]
 		local n = math.floor((b - a).Magnitude / 3)
@@ -392,11 +470,24 @@ local function buildSpots()
 			local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * 2.2, 0)
 			if prev then
 				-- the wire the bulbs hang on
-				local wire = part({ Name = "Wire", Size = Vector3.new(0.06, 0.06, (p - prev).Magnitude), Color = Color3.fromRGB(30, 28, 26), Material = Enum.Material.SmoothPlastic, Parent = folder })
+				local wire = part({
+					Name = "Wire",
+					Size = Vector3.new(0.06, 0.06, (p - prev).Magnitude),
+					Color = Color3.fromRGB(30, 28, 26),
+					Material = Enum.Material.SmoothPlastic,
+					Parent = folder,
+				})
 				wire.CFrame = CFrame.lookAt((p + prev) / 2, p)
 			end
 			prev = p
-			local bulb = part({ Name = "Bulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.34, 0.34, 0.34), Color = Color3.fromRGB(90, 80, 70), Material = Enum.Material.SmoothPlastic, Parent = folder })
+			local bulb = part({
+				Name = "Bulb",
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.new(0.34, 0.34, 0.34),
+				Color = Color3.fromRGB(90, 80, 70),
+				Material = Enum.Material.SmoothPlastic,
+				Parent = folder,
+			})
 			bulb.CFrame = CFrame.new(p)
 			table.insert(bulbs, bulb)
 		end
@@ -426,8 +517,24 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 				local metal = Color3.fromRGB(70, 74, 80)
 				local brass = Color3.fromRGB(196, 150, 70)
 				local holder = new("Model", { Name = "Tank", Parent = sp.holder })
-				local function cyl(name: string, h: number, d: number, y: number, color: Color3, mat, transparency: number?)
-					local c = part({ Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, d, d), Color = color, Material = mat, Transparency = transparency or 0, Parent = holder })
+				local function cyl(
+					name: string,
+					h: number,
+					d: number,
+					y: number,
+					color: Color3,
+					mat,
+					transparency: number?
+				)
+					local c = part({
+						Name = name,
+						Shape = Enum.PartType.Cylinder,
+						Size = Vector3.new(h, d, d),
+						Color = color,
+						Material = mat,
+						Transparency = transparency or 0,
+						Parent = holder,
+					})
 					c.CFrame = base * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90))
 					c.CastShadow = transparency == nil
 					return c
@@ -440,10 +547,25 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 				cyl("Cap", 0.9, 4.3, 7.4, metal, Enum.Material.Metal)
 				cyl("Valve", 0.6, 1.2, 8.1, brass, Enum.Material.Metal)
 				for k = 0, 1 do
-					local pipe = part({ Name = "Pipe", Size = Vector3.new(0.35, 7.5, 0.35), Color = metal, Material = Enum.Material.Metal, Parent = holder })
+					local pipe = part({
+						Name = "Pipe",
+						Size = Vector3.new(0.35, 7.5, 0.35),
+						Color = metal,
+						Material = Enum.Material.Metal,
+						Parent = holder,
+					})
 					pipe.CFrame = base * CFrame.new(if k == 0 then -2.3 else 2.3, 4.1, 0.6)
 				end
-				new("PointLight", { Color = Color3.fromRGB(140, 255, 180), Range = 10, Brightness = 1.2, Shadows = false, Parent = liquid })
+				new(
+					"PointLight",
+					{
+						Color = Color3.fromRGB(140, 255, 180),
+						Range = 10,
+						Brightness = 1.2,
+						Shadows = false,
+						Parent = liquid,
+					}
+				)
 				holder.PrimaryPart = glass
 				sp.model = holder
 				sp.tank = { glass = glass, liquid = liquid, base = base }
@@ -462,7 +584,14 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 			Fx.emitWith("dust", pos, 14, 1.6)
 			for k = 1, 6 do
 				local a = k / 6 * math.pi * 2
-				Fx.emitWith("streak", pos + Vector3.yAxis, 3, 0.8, sd.color, Vector3.new(math.cos(a), 1.2, math.sin(a)).Unit)
+				Fx.emitWith(
+					"streak",
+					pos + Vector3.yAxis,
+					3,
+					0.8,
+					sd.color,
+					Vector3.new(math.cos(a), 1.2, math.sin(a)).Unit
+				)
 			end
 			Fx.ring(W(sd.x, 0.4, sd.z), 7, sd.color, 0.8)
 			Fx.light(pos + Vector3.yAxis * 3, Color3.fromRGB(255, 220, 170), 24, 1.2)
@@ -522,8 +651,17 @@ updateTank = function()
 	if stage == 1 then
 		-- first samples: tissue floating in the liquid
 		for k = 1, 6 do
-			local blob = part({ Name = "Sample", Shape = Enum.PartType.Ball, Size = Vector3.one * (0.35 + k * 0.06), Color = Color3.fromRGB(200, 255, 90), Material = Enum.Material.Neon, Transparency = 0.2, Parent = content })
-			blob.CFrame = CFrame.new(centre + Vector3.new(math.cos(k * 1.7) * 0.9, (k - 3.5) * 0.6, math.sin(k * 1.7) * 0.9))
+			local blob = part({
+				Name = "Sample",
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.one * (0.35 + k * 0.06),
+				Color = Color3.fromRGB(200, 255, 90),
+				Material = Enum.Material.Neon,
+				Transparency = 0.2,
+				Parent = content,
+			})
+			blob.CFrame =
+				CFrame.new(centre + Vector3.new(math.cos(k * 1.7) * 0.9, (k - 3.5) * 0.6, math.sin(k * 1.7) * 0.9))
 			table.insert(tankBits, { part = blob, base = blob.CFrame, phase = k })
 		end
 	elseif stage >= 2 then
@@ -560,8 +698,16 @@ updateTank = function()
 			-- exemplary: gold rings on the tank and a brighter, clearer liquid
 			liquidColor = Color3.fromRGB(150, 255, 210)
 			for _, dy in { -1, 1 } do
-				local ring = part({ Name = "GoldRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 3.9, 3.9), Color = Color3.fromRGB(232, 182, 72), Material = Enum.Material.Metal, Parent = content })
-				ring.CFrame = CFrame.new(centre + Vector3.new(0, dy * tank.glass.Size.X * 0.42, 0)) * CFrame.Angles(0, 0, math.rad(90))
+				local ring = part({
+					Name = "GoldRing",
+					Shape = Enum.PartType.Cylinder,
+					Size = Vector3.new(0.3, 3.9, 3.9),
+					Color = Color3.fromRGB(232, 182, 72),
+					Material = Enum.Material.Metal,
+					Parent = content,
+				})
+				ring.CFrame = CFrame.new(centre + Vector3.new(0, dy * tank.glass.Size.X * 0.42, 0))
+					* CFrame.Angles(0, 0, math.rad(90))
 			end
 		end
 	end
@@ -573,7 +719,13 @@ local function labText(n: number): string
 	local stage = sampleStage(n)
 	local t = Defs.Research[SAMPLE_KIND]
 	local nextNeed = t[math.min(#t, math.max(1, stage))]
-	local names = { "нужны образцы", "первые образцы", "силуэт", "полный экземпляр", "образцовый экземпляр" }
+	local names = {
+		"нужны образцы",
+		"первые образцы",
+		"силуэт",
+		"полный экземпляр",
+		"образцовый экземпляр",
+	}
 	local base = "Плевун · " .. names[stage + 1]
 	if stage < 4 then
 		base ..= string.format(" · %d/%d", n, if stage == 0 then t[1] else nextNeed)
@@ -615,7 +767,14 @@ local function setShelf(slots, workshop: boolean)
 	local at = W(sd.x + 7.5, 0, sd.z + 2.5)
 	shelfFolder = new("Model", { Name = "Shelf", Parent = folder })
 	local shelf = artModel("SHELF", 4.6, CFrame.new(at) * CFrame.Angles(0, -0.25, 0), shelfFolder)
-	local anchor = shelf or part({ Name = "ShelfAnchor", Size = Vector3.new(6, 0.4, 1.6), Color = Color3.fromRGB(110, 80, 50), Material = Enum.Material.Wood, Parent = shelfFolder })
+	local anchor = shelf
+		or part({
+			Name = "ShelfAnchor",
+			Size = Vector3.new(6, 0.4, 1.6),
+			Color = Color3.fromRGB(110, 80, 50),
+			Material = Enum.Material.Wood,
+			Parent = shelfFolder,
+		})
 	if not shelf then
 		anchor.CFrame = CFrame.new(at + Vector3.new(0, 2, 0))
 	end
@@ -639,22 +798,56 @@ local function setShelf(slots, workshop: boolean)
 			pcall(m.ScaleTo, m, m:GetScale() * (0.95 / math.max(size.X, size.Y, size.Z, 0.1)))
 			local cf, sz = m:GetBoundingBox()
 			m.WorldPivot = CFrame.new(cf.X, cf.Y - sz.Y / 2, cf.Z)
-			m:PivotTo(base * CFrame.new(-1.4 + col * 0.93, ({ 3.05, 1.65, 0.3 })[row + 1] or 0.3, 0) * CFrame.Angles(0, math.pi, 0))
+			m:PivotTo(
+				base
+					* CFrame.new(-1.4 + col * 0.93, ({ 3.05, 1.65, 0.3 })[row + 1] or 0.3, 0)
+					* CFrame.Angles(0, math.pi, 0)
+			)
 			m.Parent = shelfFolder
 		end
 	end
 	local holder = shelf or anchor
-	local b = new("BillboardGui", { Size = UDim2.fromOffset(170, 34), StudsOffsetWorldSpace = Vector3.new(0, 3.6, 0), LightInfluence = 0, MaxDistance = 70, Adornee = holder, Parent = holder })
-	local t = label(string.format("ДЛЯ БУРА · %d/%d", #list, Meta.SocketCount), { Size = UDim2.new(1, 0, 0, 18), FontFace = F.display, TextSize = 13, TextColor3 = C.cyan, Parent = b })
+	-- the label sits at the shelf's foot, on the camera side: above it the workshop's own sign covers it
+	local at = new("Attachment", { Name = "Label", Parent = holder })
+	at.WorldCFrame = CFrame.new(W(sd.x + 7.5, 0.6, sd.z - 0.6))
+	local b = new(
+		"BillboardGui",
+		{
+			Size = UDim2.fromOffset(190, 36),
+			LightInfluence = 0,
+			AlwaysOnTop = true,
+			MaxDistance = 100,
+			Adornee = at,
+			Parent = holder,
+		}
+	)
+	local t = label(
+		string.format("ДЛЯ БУРА · %d/%d", #list, Meta.SocketCount),
+		{ Size = UDim2.new(1, 0, 0, 20), FontFace = F.display, TextSize = 16, TextColor3 = C.cyan, Parent = b }
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 2, Parent = t })
-	local s2 = label(if #list == 0 then "Собери первую турель на верстаке" else "Стоит у бура в опасной зоне", { Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 14), FontFace = F.bodyBold, TextSize = 11, TextColor3 = C.dim, Parent = b })
+	local s2 = label(
+		if #list == 0
+			then "Собери первую турель на верстаке"
+			else "Стоит у бура в опасной зоне",
+		{
+			Position = UDim2.fromOffset(0, 20),
+			Size = UDim2.new(1, 0, 0, 16),
+			FontFace = F.bodyBold,
+			TextSize = 12,
+			TextColor3 = C.dim,
+			Parent = b,
+		}
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 1.5, Parent = s2 })
 end
 
 local function setBulbs(on: boolean)
 	for i, b in bulbs do
 		b.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		b.Color = if on then (if i % 3 == 0 then Color3.fromRGB(230, 140, 70) else Color3.fromRGB(220, 170, 90)) else Color3.fromRGB(90, 80, 70)
+		b.Color = if on
+			then (if i % 3 == 0 then Color3.fromRGB(230, 140, 70) else Color3.fromRGB(220, 170, 90))
+			else Color3.fromRGB(90, 80, 70)
 	end
 end
 
@@ -726,7 +919,9 @@ local spinners = {} -- { model, cf, height }
 -- Scale to a height and move the pivot to the bottom centre, so it stands and spins in place.
 local function fitTo(model: Model, height: number, longest: boolean?)
 	local _, size = model:GetBoundingBox()
-	local k = if longest then height / math.max(size.X, size.Y, size.Z, 0.1) else height / math.max(size.Y, size.X * 0.6, size.Z * 0.6, 0.1)
+	local k = if longest
+		then height / math.max(size.X, size.Y, size.Z, 0.1)
+		else height / math.max(size.Y, size.X * 0.6, size.Z * 0.6, 0.1)
 	pcall(model.ScaleTo, model, model:GetScale() * k)
 	local cf, sz = model:GetBoundingBox()
 	model.WorldPivot = CFrame.new(cf.X, cf.Y - sz.Y / 2, cf.Z)
@@ -759,17 +954,34 @@ local function pedestal(x: number, color: Color3, lit: boolean): BasePart
 end
 
 local function plaque(base: BasePart, title: string, sub: string, color: Color3)
+	-- the pedestal is a cylinder lying on its side, so an offset from it would go sideways: hang the
+	-- plaque from a point above it instead
+	local at = new("Attachment", { Name = "Plaque", Parent = base })
+	at.WorldCFrame = CFrame.new(base.Position + Vector3.new(0, 7.5, 0))
 	local b = new("BillboardGui", {
-		Size = UDim2.fromOffset(150, 34),
-		StudsOffsetWorldSpace = Vector3.new(0, 7.5, 0),
+		Size = UDim2.fromOffset(190, 42),
 		LightInfluence = 0,
+		AlwaysOnTop = true, -- the statues stand in front of it from the camp camera
 		MaxDistance = 90,
-		Adornee = base,
+		Adornee = at,
 		Parent = base,
 	})
-	local t = label(title, { Size = UDim2.new(1, 0, 0, 18), FontFace = F.display, TextSize = 13, TextColor3 = color, Parent = b })
+	local t = label(
+		title,
+		{ Size = UDim2.new(1, 0, 0, 22), FontFace = F.display, TextSize = 17, TextColor3 = color, Parent = b }
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 2, Parent = t })
-	local s2 = label(sub, { Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 14), FontFace = F.bodyBold, TextSize = 11, TextColor3 = C.dim, Parent = b })
+	local s2 = label(
+		sub,
+		{
+			Position = UDim2.fromOffset(0, 22),
+			Size = UDim2.new(1, 0, 0, 16),
+			FontFace = F.bodyBold,
+			TextSize = 13,
+			TextColor3 = C.dim,
+			Parent = b,
+		}
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 1.5, Parent = s2 })
 end
 
@@ -784,14 +996,21 @@ local function statue(model: Model, gold: boolean)
 				d.Material = Enum.Material.Metal
 				d.Color = Color3.fromRGB(232, 182, 72)
 			else
-				d.Material = Enum.Material.Neon
-				d.Color = C.violet
-				d.Transparency = math.max(d.Transparency, 0.8)
+				-- not beaten yet: a pale stone silhouette, a goal rather than an alien hologram
+				d.Material = Enum.Material.SmoothPlastic
+				d.Color = Color3.fromRGB(150, 162, 170)
+				d.Transparency = math.max(d.Transparency, 0.6)
 			end
 			if d:IsA("MeshPart") then
 				d.TextureID = ""
 			end
-		elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") or d:IsA("Light") or d:IsA("ParticleEmitter") then
+		elseif
+			d:IsA("Decal")
+			or d:IsA("Texture")
+			or d:IsA("SurfaceAppearance")
+			or d:IsA("Light")
+			or d:IsA("ParticleEmitter")
+		then
 			d:Destroy()
 		end
 	end
@@ -805,7 +1024,12 @@ function Base.setShowcase(entry)
 		labShown = nil
 		updateTank()
 	end
-	local key = if entry then table.concat({ entry.id, entry.weapon, tostring(entry.form), entry.mastery, entry.siege, tostring(entry.trophyKey) }, "|") else "none"
+	local key = if entry
+		then table.concat(
+			{ entry.id, entry.weapon, tostring(entry.form), entry.mastery, entry.siege, tostring(entry.trophyKey) },
+			"|"
+		)
+		else "none"
 	if key == showKey then
 		return
 	end
@@ -837,26 +1061,41 @@ function Base.setShowcase(entry)
 			gun.Parent = showFolder
 			table.insert(spinners, { model = gun, cf = CFrame.new(W(-2, 2.2, SHOW_Z)), speed = 0.6 })
 		end
-		plaque(base, if evo then evo.name else wdef.name, string.format("Любимое оружие · M%d", entry.mastery or 1), C.cyan)
+		plaque(
+			base,
+			if evo then evo.name else wdef.name,
+			string.format("Любимое оружие · M%d", entry.mastery or 1),
+			C.cyan
+		)
 	end
 	-- the trophies
 	for i, t in TROPHIES do
 		local x = 8 + (i - 1) * 9
 		local won = entry.won and entry.won[t.op]
-		local base = pedestal(x, if won then C.gold else C.violet, won)
+		local base = pedestal(x, if won then C.gold else C.dim, won)
 		local ok, m = pcall(Models.creature, t.kind)
 		if ok and m then
 			statue(m, won)
-			fitTo(m, if t.kind == 10 then 5 else 6)
+			fitTo(m, if t.kind == 10 then 5 else 6, t.kind == 9) -- the Devourer is long: fit its length
 			m.Parent = showFolder
 			table.insert(spinners, { model = m, cf = CFrame.new(W(x, 1.3, SHOW_Z)), speed = if won then 0.25 else 0.1 })
 		end
-		plaque(base, t.name, if won then "Повержен · " .. t.hunt else t.hunt .. " · трофей", if won then C.gold else C.dim)
+		plaque(
+			base,
+			t.name,
+			if won then "Повержен · " .. t.hunt else t.hunt .. " · трофей",
+			if won then C.gold else C.dim
+		)
 	end
 	-- the siege record on the drill-side
 	if (entry.siege or 0) > 0 then
 		local base = pedestal(-26, C.orange, true)
-		plaque(base, "ОБОРОНА " .. entry.siege, "Лучший удержанный уровень бура", C.orange)
+		plaque(
+			base,
+			"ОБОРОНА " .. entry.siege,
+			"Лучший удержанный уровень бура",
+			C.orange
+		)
 	end
 end
 
@@ -893,51 +1132,64 @@ local function buildHud(playerGui: PlayerGui)
 	local safe = new("Frame", { Name = "Safe", Size = UDim2.fromScale(1, 1), Parent = gui })
 	ui.scale = new("UIScale", { Parent = safe })
 	ui.safe = safe
-	new(
-		"UIPadding",
-		{
-			PaddingLeft = UDim.new(0, 24),
-			PaddingRight = UDim.new(0, 24),
-			PaddingTop = UDim.new(0, 16),
-			PaddingBottom = UDim.new(0, 20),
-			Parent = safe,
-		}
-	)
+	new("UIPadding", {
+		PaddingLeft = UDim.new(0, 24),
+		PaddingRight = UDim.new(0, 24),
+		PaddingTop = UDim.new(0, 16),
+		PaddingBottom = UDim.new(0, 20),
+		Parent = safe,
+	})
 	-- top-left: whose outpost
-	ui.tag = label(
-		"АВАНПОСТ",
-		{
-			Position = UDim2.fromOffset(4, 0),
-			Size = UDim2.fromOffset(420, 16),
-			FontFace = F.head,
-			TextSize = 12,
-			TextColor3 = C.lime,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = safe,
-		}
-	)
-	ui.owner = label(
-		"",
-		{
-			Position = UDim2.fromOffset(2, 16),
-			Size = UDim2.fromOffset(520, 40),
-			FontFace = F.display,
-			TextSize = 34,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			Parent = safe,
-		}
-	)
+	ui.tag = label("АВАНПОСТ", {
+		Position = UDim2.fromOffset(4, 0),
+		Size = UDim2.fromOffset(420, 16),
+		FontFace = F.head,
+		TextSize = 12,
+		TextColor3 = C.lime,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = safe,
+	})
+	ui.owner = label("", {
+		Position = UDim2.fromOffset(2, 16),
+		Size = UDim2.fromOffset(520, 40),
+		FontFace = F.display,
+		TextSize = 34,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Parent = safe,
+	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.owner })
 	-- tap your name: your own card (titles to wear, what others see)
-	local ownerBtn = new("TextButton", { Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(420, 58), BackgroundTransparency = 1, Text = "", Parent = safe })
+	local ownerBtn = new(
+		"TextButton",
+		{
+			Position = UDim2.fromOffset(0, 0),
+			Size = UDim2.fromOffset(420, 58),
+			BackgroundTransparency = 1,
+			Text = "",
+			Parent = safe,
+		}
+	)
 	ownerBtn.Activated:Connect(function()
 		Audio.play("ui")
 		if actions and actions.card then
 			actions.card()
 		end
 	end)
-	ui.ownerNote = label("", { Position = UDim2.fromOffset(4, 246), Size = UDim2.fromOffset(440, 30), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = safe })
+	ui.ownerNote = label(
+		"",
+		{
+			Position = UDim2.fromOffset(4, 246),
+			Size = UDim2.fromOffset(440, 30),
+			FontFace = F.body,
+			TextSize = 12,
+			TextColor3 = C.dim,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			Parent = safe,
+		}
+	)
 	-- goal card
 	local card = Theme.panel(
 		{ Name = "Goal", Position = UDim2.fromOffset(0, 68), Size = UDim2.fromOffset(440, 168), CornerRadius = 18 },
@@ -945,46 +1197,37 @@ local function buildHud(playerGui: PlayerGui)
 	)
 	card.Parent = safe
 	ui.goal = card
-	ui.goalTag = label(
-		"СЛЕДУЮЩАЯ ЦЕЛЬ",
-		{
-			Position = UDim2.fromOffset(18, 12),
-			Size = UDim2.fromOffset(260, 14),
-			FontFace = F.head,
-			TextSize = 11,
-			TextColor3 = C.lime,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = card,
-		}
-	)
+	ui.goalTag = label("СЛЕДУЮЩАЯ ЦЕЛЬ", {
+		Position = UDim2.fromOffset(18, 12),
+		Size = UDim2.fromOffset(260, 14),
+		FontFace = F.head,
+		TextSize = 11,
+		TextColor3 = C.lime,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = card,
+	})
 	ui.goalIcon = new("Frame", { Position = UDim2.fromOffset(16, 34), Size = UDim2.fromOffset(46, 46), Parent = card })
-	ui.goalTitle = label(
-		"",
-		{
-			Position = UDim2.fromOffset(72, 32),
-			Size = UDim2.new(1, -184, 0, 24),
-			FontFace = F.display,
-			TextSize = 19,
-			TextScaled = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = card,
-		}
-	)
+	ui.goalTitle = label("", {
+		Position = UDim2.fromOffset(72, 32),
+		Size = UDim2.new(1, -184, 0, 24),
+		FontFace = F.display,
+		TextSize = 19,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = card,
+	})
 	new("UITextSizeConstraint", { MaxTextSize = 19, Parent = ui.goalTitle })
-	ui.goalText = label(
-		"",
-		{
-			Position = UDim2.fromOffset(72, 58),
-			Size = UDim2.new(1, -184, 0, 66),
-			FontFace = F.body,
-			TextSize = 13,
-			TextColor3 = C.dim,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			Parent = card,
-		}
-	)
+	ui.goalText = label("", {
+		Position = UDim2.fromOffset(72, 58),
+		Size = UDim2.new(1, -184, 0, 66),
+		FontFace = F.body,
+		TextSize = 13,
+		TextColor3 = C.dim,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Parent = card,
+	})
 	-- the structure this goal is about, turning slowly
 	ui.goalView = new("ViewportFrame", {
 		AnchorPoint = Vector2.new(1, 0),
@@ -998,16 +1241,12 @@ local function buildHud(playerGui: PlayerGui)
 	})
 	ui.goalCam = new("Camera", { FieldOfView = 32, Parent = ui.goalView })
 	ui.goalView.CurrentCamera = ui.goalCam
-	ui.goalBtn, ui.goalBtnLabel = Theme.button(
-		"",
-		{
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 72, 1, -12),
-			Size = UDim2.fromOffset(170, 34),
-			TextSize = 13,
-		},
-		"primary"
-	)
+	ui.goalBtn, ui.goalBtnLabel = Theme.button("", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 72, 1, -12),
+		Size = UDim2.fromOffset(170, 34),
+		TextSize = 13,
+	}, "primary")
 	ui.goalBtn.Parent = card
 	ui.goalBtn.Activated:Connect(function()
 		Audio.play("ui")
@@ -1016,15 +1255,12 @@ local function buildHud(playerGui: PlayerGui)
 		end
 	end)
 	-- top-right: xenite, settings, invite, squad
-	local tr = new(
-		"Frame",
-		{
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.fromScale(1, 0),
-			Size = UDim2.fromOffset(420, 360),
-			Parent = safe,
-		}
-	)
+	local tr = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.fromOffset(420, 360),
+		Parent = safe,
+	})
 	ui.gear = new("TextButton", {
 		Name = "Settings",
 		AnchorPoint = Vector2.new(1, 0),
@@ -1063,67 +1299,51 @@ local function buildHud(playerGui: PlayerGui)
 		},
 	})
 	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 16), Parent = ui.xenite })
-	new(
-		"Frame",
-		{
-			Size = UDim2.fromOffset(15, 15),
-			Rotation = 45,
-			BackgroundColor3 = C.pink,
-			Corner = 3,
-			LayoutOrder = 1,
-			Parent = ui.xenite,
-		}
-	)
-	ui.xeniteAmount = label(
-		"0",
-		{
-			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.fromOffset(0, 40),
-			FontFace = F.numHeavy,
-			TextSize = 18,
-			LayoutOrder = 2,
-			Parent = ui.xenite,
-		}
-	)
-	ui.invite = Theme.button(
-		"ПОЗВАТЬ ДРУГА",
-		{
-			Name = "Invite",
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 54),
-			Size = UDim2.fromOffset(212, 40),
-			TextSize = 12,
-		}
-	)
+	new("Frame", {
+		Size = UDim2.fromOffset(15, 15),
+		Rotation = 45,
+		BackgroundColor3 = C.pink,
+		Corner = 3,
+		LayoutOrder = 1,
+		Parent = ui.xenite,
+	})
+	ui.xeniteAmount = label("0", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 40),
+		FontFace = F.numHeavy,
+		TextSize = 18,
+		LayoutOrder = 2,
+		Parent = ui.xenite,
+	})
+	ui.invite = Theme.button("ПОЗВАТЬ ДРУГА", {
+		Name = "Invite",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 54),
+		Size = UDim2.fromOffset(212, 40),
+		TextSize = 12,
+	})
 	ui.invite.Parent = tr
 	ui.invite.Activated:Connect(function()
 		Audio.play("ui")
 		Base.invite()
 	end)
-	ui.inviteSub = label(
-		"Отбейте бур вместе",
-		{
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -4, 0, 96),
-			Size = UDim2.fromOffset(260, 14),
-			FontFace = F.body,
-			TextSize = 11,
-			TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			Parent = tr,
-		}
-	)
-	ui.harvest = Theme.button(
-		"СОБРАТЬ",
-		{
-			Name = "Harvest",
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 118),
-			Size = UDim2.fromOffset(212, 40),
-			TextSize = 12,
-		},
-		"primary"
-	)
+	ui.inviteSub = label("Отбейте бур вместе", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -4, 0, 96),
+		Size = UDim2.fromOffset(260, 14),
+		FontFace = F.body,
+		TextSize = 11,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Parent = tr,
+	})
+	ui.harvest = Theme.button("СОБРАТЬ", {
+		Name = "Harvest",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 118),
+		Size = UDim2.fromOffset(212, 40),
+		TextSize = 12,
+	}, "primary")
 	ui.harvest.Parent = tr
 	ui.harvest.Visible = false
 	ui.harvest.Activated:Connect(function()
@@ -1156,16 +1376,13 @@ local function buildHud(playerGui: PlayerGui)
 		b.Size = UDim2.fromOffset(156, 56)
 	end
 	-- session base: back to the public camp
-	ui.toCamp, ui.toCampLabel = Theme.button(
-		"В ЛАГЕРЬ",
-		{
-			Name = "ToCamp",
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -224, 0, 54),
-			Size = UDim2.fromOffset(150, 40),
-			TextSize = 12,
-		}
-	)
+	ui.toCamp, ui.toCampLabel = Theme.button("В ЛАГЕРЬ", {
+		Name = "ToCamp",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -224, 0, 54),
+		Size = UDim2.fromOffset(150, 40),
+		TextSize = 12,
+	})
 	ui.toCamp.Parent = tr
 	ui.toCamp.Visible = false
 	ui.toCamp.Activated:Connect(function()
@@ -1175,17 +1392,13 @@ local function buildHud(playerGui: PlayerGui)
 		end
 	end)
 	-- bottom-right: go
-	ui.play, ui.playLabel = Theme.button(
-		"В БОЙ",
-		{
-			Name = "Play",
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, 0, 1, -24),
-			Size = UDim2.fromOffset(300, 84),
-			TextSize = 32,
-		},
-		"primary"
-	)
+	ui.play, ui.playLabel = Theme.button("В БОЙ", {
+		Name = "Play",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, 0, 1, -24),
+		Size = UDim2.fromOffset(300, 84),
+		TextSize = 32,
+	}, "primary")
 	ui.play.Parent = safe
 	ui.playLabel.Position = UDim2.fromOffset(22, -8)
 	ui.playIcon = Icons.new("play", 30, C.ink)
@@ -1193,89 +1406,75 @@ local function buildHud(playerGui: PlayerGui)
 	ui.playIcon.Position = UDim2.new(0, 30, 0.5, 0)
 	ui.playIcon.ZIndex = 3
 	ui.playIcon.Parent = ui.play
-	ui.playSub = label(
-		"",
-		{
-			Position = UDim2.new(0, 22, 1, -30),
-			Size = UDim2.new(1, -22, 0, 18),
-			FontFace = F.head,
-			TextSize = 12,
-			TextColor3 = C.ink,
-			TextTransparency = 0.25,
-			ZIndex = 3,
-			Parent = ui.play,
-		}
-	)
-	ui.playGlow = new(
-		"UIStroke",
-		{
-			Color = C.lime,
-			Thickness = 5,
-			Transparency = 0.6,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-			Parent = ui.play,
-		}
-	)
+	ui.playSub = label("", {
+		Position = UDim2.new(0, 22, 1, -30),
+		Size = UDim2.new(1, -22, 0, 18),
+		FontFace = F.head,
+		TextSize = 12,
+		TextColor3 = C.ink,
+		TextTransparency = 0.25,
+		ZIndex = 3,
+		Parent = ui.play,
+	})
+	ui.playGlow = new("UIStroke", {
+		Color = C.lime,
+		Thickness = 5,
+		Transparency = 0.6,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = ui.play,
+	})
 	ui.play.Activated:Connect(function()
 		if actions and actions.play then
 			actions.play()
 		end
 	end)
-	ui.status = label(
-		"",
-		{
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, -8, 1, 0),
-			Size = UDim2.fromOffset(420, 20),
-			FontFace = F.bodyBold,
-			TextSize = 15,
-			TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			Parent = safe,
-		}
-	)
-	ui.hold, ui.holdLabel = Theme.button(
-		"ЖДАТЬ ДРУЗЕЙ",
-		{
-			Name = "Hold",
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, -310, 1, -24),
-			Size = UDim2.fromOffset(170, 44),
-			TextSize = 12,
-		}
-	)
+	ui.status = label("", {
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -8, 1, 0),
+		Size = UDim2.fromOffset(420, 20),
+		FontFace = F.bodyBold,
+		TextSize = 15,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Parent = safe,
+	})
+	ui.hold, ui.holdLabel = Theme.button("ЖДАТЬ ДРУЗЕЙ", {
+		Name = "Hold",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -310, 1, -24),
+		Size = UDim2.fromOffset(170, 44),
+		TextSize = 12,
+	})
 	ui.hold.Parent = safe
+	-- small text straight over the bright grass needs an outline to be read
+	for _, l in { ui.status, ui.inviteSub, ui.ownerNote, ui.tag } do
+		new("UIStroke", { Color = C.ink, Thickness = 1.6, Transparency = 0.25, Parent = l })
+	end
 	ui.hold.Visible = false
 	ui.hold.Activated:Connect(function()
 		Audio.play("ui")
 		send("hold", not (lobby and lobby.hold))
 	end)
 	-- centre: the swarm is coming (first turret built)
-	ui.strike = new(
-		"Frame",
-		{
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 120),
-			Size = UDim2.fromOffset(640, 110),
-			Visible = false,
-			Parent = gui,
-		}
-	)
+	ui.strike = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 120),
+		Size = UDim2.fromOffset(640, 110),
+		Visible = false,
+		Parent = gui,
+	})
 	ui.strikeTitle = label(
 		"РОЙ УСЛЫШАЛ БУР",
 		{ Size = UDim2.new(1, 0, 0, 64), FontFace = F.display, TextSize = 54, TextColor3 = C.red, Parent = ui.strike }
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 4, Transparency = 0.15, Parent = ui.strikeTitle })
-	ui.strikeSub = label(
-		"",
-		{
-			Position = UDim2.fromOffset(0, 66),
-			Size = UDim2.new(1, 0, 0, 26),
-			FontFace = F.head,
-			TextSize = 20,
-			Parent = ui.strike,
-		}
-	)
+	ui.strikeSub = label("", {
+		Position = UDim2.fromOffset(0, 66),
+		Size = UDim2.new(1, 0, 0, 26),
+		FontFace = F.head,
+		TextSize = 20,
+		Parent = ui.strike,
+	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.strikeSub })
 end
 
@@ -1376,11 +1575,20 @@ function Base.refresh()
 			title.Text = if restored and sd.stationName then sd.stationName else def.name
 		end
 		if sub then
-			sub.Text = if restored and id == "LAB" and labSample >= 0 then labText(labSample)
+			sub.Text = if restored
+					and id == "LAB"
+					and labSample >= 0
+				then labText(labSample)
 				elseif restored then (sd.stationSub or "Восстановлено")
 				elseif def.free then "Заработает после вылазки 1"
-				elseif not open then "Откроется после вылазки " .. tostring(tonumber(def.unlock:sub(2)) or "")
-				else string.format("Починить · ◆ %d%s", def.cost, if affordable then "" else " (не хватает)")
+				elseif not open then "Откроется после вылазки " .. tostring(
+					tonumber(def.unlock:sub(2)) or ""
+				)
+				else string.format(
+					"Починить · ◆ %d%s",
+					def.cost,
+					if affordable then "" else " (не хватает)"
+				)
 		end
 		sp.canRestore = visitHome == nil and not restored and open and not def.free
 		sp.isStation = visitHome == nil and restored and sd.station ~= nil
@@ -1395,7 +1603,13 @@ function Base.refresh()
 	elseif goal and goal.station == "build" and f.outpost then
 		local sd = SPOTS.WORKBENCH
 		local def = goal.structure and Meta.Structures[goal.structure]
-		showGoalMarker(W(sd.x, 0, sd.z), C.cyan, if def then "СОБРАТЬ: " .. def.name else "МАСТЕРСКАЯ", if def then "Для бура · ◆ " .. def.cost[1] else "", if def then def.icon else "gear")
+		showGoalMarker(
+			W(sd.x, 0, sd.z),
+			C.cyan,
+			if def then "СОБРАТЬ: " .. def.name else "МАСТЕРСКАЯ",
+			if def then "Для бура · ◆ " .. def.cost[1] else "",
+			if def then def.icon else "gear"
+		)
 	else
 		clearGoalMarker()
 	end
@@ -1419,9 +1633,12 @@ function Base.refresh()
 		ui.owner.Text = if #players > 1
 			then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players)
 			else "ТВОЁ УБЕЖИЩЕ"
-		ui.ownerNote.Text = "Убежище у каждого своё: другие выжившие видят здесь своё. Чужое — через «Убежища»."
+		ui.ownerNote.Text =
+			"Убежище у каждого своё: другие выжившие видят здесь своё. Чужое — через «Убежища»."
 	else
-		ui.tag.Text = if isHost or hostName == "" then "ТВОЁ УБЕЖИЩЕ" else "УБЕЖИЩЕ ОТРЯДА · у каждого своё"
+		ui.tag.Text = if isHost or hostName == ""
+			then "ТВОЁ УБЕЖИЩЕ"
+			else "УБЕЖИЩЕ ОТРЯДА · у каждого своё"
 		ui.owner.Text = Players.LocalPlayer.DisplayName
 		ui.ownerNote.Text = ""
 	end
@@ -1435,7 +1652,8 @@ function Base.refresh()
 		for _, c in ui.goalIcon:GetChildren() do
 			c:Destroy()
 		end
-		local col = if goal.structure then Meta.Structures[goal.structure].color
+		local col = if goal.structure
+			then Meta.Structures[goal.structure].color
 			elseif goal.spot and SPOTS[goal.spot] then SPOTS[goal.spot].color
 			else C.lime
 		local d = Icons.disc(goal.icon, 46, col, 2)
@@ -1466,6 +1684,8 @@ function Base.refresh()
 	ui.harvest.Visible = harvest > 0
 	ui.harvest.Label.Text = "СОБРАТЬ  +" .. harvest
 	ui.stArmory.Visible = (profile.runs or 0) > 0
+	-- choosing a sortie only makes sense once there is more than one; before that «В БОЙ» is the way out
+	ui.stLaunch.Visible = (profile.winsByOp and (profile.winsByOp.O01 or 0) > 0) == true
 	ui.stBuild.Visible = f.outpost == true
 	ui.stSwarm.Visible = f.swarm == true
 	-- squad and the go button
@@ -1490,7 +1710,9 @@ function Base.refresh()
 	ui.amReady = amReady
 	local op = lobby and Ops.get(lobby.op)
 	local modeName = if lobby and lobby.mode == "siege"
-		then "ОБОРОНА БУРА · " .. (if profile.tut and profile.tut.strike then "УРОВЕНЬ " .. (lobby.siege or 1) else "ПЕРВЫЙ НАТИСК")
+		then "ОБОРОНА БУРА · " .. (if profile.tut and profile.tut.strike
+			then "УРОВЕНЬ " .. (lobby.siege or 1)
+			else "ПЕРВЫЙ НАТИСК")
 		elseif lobby and lobby.mode == "raid" then "ВТОРЖЕНИЕ"
 		elseif op then "ВЫЛАЗКА " .. op.index .. " · " .. op.name
 		else ""
@@ -1503,12 +1725,7 @@ function Base.refresh()
 	local cd = lobby and lobby.countdown
 	ui.status.Text = if cd and lobby.hold
 		then string.format("Ждём друзей  ·  готовы %d/%d", ready, n)
-		elseif cd then string.format(
-			"Выход через %d  ·  готовы %d/%d",
-			math.ceil(cd),
-			ready,
-			n
-		)
+		elseif cd then string.format("Выход через %d  ·  готовы %d/%d", math.ceil(cd), ready, n)
 		elseif n > 1 then string.format("Отряд %d  ·  готовы %d/%d", n, ready, n)
 		else "Соло  ·  до 4 игроков"
 	ui.status.TextColor3 = if cd and not amReady then C.gold else C.dim
@@ -1697,9 +1914,14 @@ function Base.update(_dt: number, _root: Vector3?)
 	for id, sp in spotParts do
 		local usable = active and (sp.canRestore or sp.isStation)
 		sp.prompt.Enabled = usable == true
-		sp.prompt.ActionText = if sp.isStation then (sp.sd.stationName or sp.def.name) else "Починить · ◆ " .. sp.def.cost
+		sp.prompt.ActionText = if sp.isStation
+			then (sp.sd.stationName or sp.def.name)
+			else "Починить · ◆ " .. sp.def.cost
 		sp.board.Enabled = active or scene ~= nil
-		local glow = if sp.canRestore then 0.25 + math.sin(now * 3 + sp.sd.x) * 0.15 elseif sp.isStation then 0.45 else 0.85
+		local glow = if sp.canRestore
+			then 0.25 + math.sin(now * 3 + sp.sd.x) * 0.15
+			elseif sp.isStation then 0.45
+			else 0.85
 		setRing(sp.ring, glow)
 		if sp.tank and sp.tank.liquid.Parent then
 			sp.tank.liquid.Transparency = (if labShown == 2 then 0.62 else 0.74) + math.sin(now * 1.3) * 0.04
@@ -1712,7 +1934,10 @@ function Base.update(_dt: number, _root: Vector3?)
 		elseif b.model and b.model.Parent then
 			local c = spotParts.LAB and spotParts.LAB.tank and spotParts.LAB.tank.glass
 			if c then
-				b.model:PivotTo(CFrame.new(c.Position + Vector3.new(0, math.sin(now * 0.6) * 0.3, 0)) * CFrame.Angles(0, now * 0.15, 0))
+				b.model:PivotTo(
+					CFrame.new(c.Position + Vector3.new(0, math.sin(now * 0.6) * 0.3, 0))
+						* CFrame.Angles(0, now * 0.15, 0)
+				)
 			end
 		end
 	end
@@ -1725,7 +1950,6 @@ function Base.update(_dt: number, _root: Vector3?)
 		local pulse = 0.5 + math.sin(now * 3.2) * 0.5
 		setRing(goalMarker.ring, pulse * 0.4, 3.6 + pulse * 0.8)
 		goalMarker.beam.Transparency = 0.55 + pulse * 0.25
-
 	end
 	if gui and gui.Enabled then
 		ui.playGlow.Transparency = 0.45 + math.sin(now * 3) * 0.25
@@ -1776,60 +2000,46 @@ local function buildSceneGui()
 		"ScreenGui",
 		{ Name = "SporeScene", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Parent = gui.Parent }
 	)
-	local top = new(
-		"Frame",
-		{
-			Size = UDim2.new(1, 0, 0.11, 0),
-			Position = UDim2.fromScale(0, -0.11),
-			BackgroundColor3 = Color3.new(0, 0, 0),
-			Parent = g,
-		}
-	)
-	local bottom = new(
-		"Frame",
-		{
-			AnchorPoint = Vector2.new(0, 1),
-			Size = UDim2.new(1, 0, 0.11, 0),
-			Position = UDim2.fromScale(0, 1.11),
-			BackgroundColor3 = Color3.new(0, 0, 0),
-			Parent = g,
-		}
-	)
-	local cap = label(
-		"",
-		{
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 0.86, 0),
-			Size = UDim2.new(0.9, 0, 0, 44),
-			FontFace = F.display,
-			TextSize = 34,
-			TextTransparency = 1,
-			Parent = g,
-		}
-	)
+	local top = new("Frame", {
+		Size = UDim2.new(1, 0, 0.11, 0),
+		Position = UDim2.fromScale(0, -0.11),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		Parent = g,
+	})
+	local bottom = new("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Size = UDim2.new(1, 0, 0.11, 0),
+		Position = UDim2.fromScale(0, 1.11),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		Parent = g,
+	})
+	local cap = label("", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0.86, 0),
+		Size = UDim2.new(0.9, 0, 0, 44),
+		FontFace = F.display,
+		TextSize = 34,
+		TextTransparency = 1,
+		Parent = g,
+	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = cap })
-	local sub = label(
-		"",
-		{
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0.86, 4),
-			Size = UDim2.new(0.9, 0, 0, 24),
-			FontFace = F.bodyBold,
-			TextSize = 18,
-			TextColor3 = C.dim,
-			TextTransparency = 1,
-			Parent = g,
-		}
-	)
-	local skip, skipLabel = Theme.button(
-		"ПРОПУСТИТЬ  ›",
-		{
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -24, 0.945, 0),
-			Size = UDim2.fromOffset(190, 40),
-			TextSize = 13,
-		}
-	)
+	local sub = label("", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0.86, 4),
+		Size = UDim2.new(0.9, 0, 0, 24),
+		FontFace = F.bodyBold,
+		TextSize = 18,
+		TextColor3 = C.text,
+		TextTransparency = 1,
+		Parent = g,
+	})
+	new("UIStroke", { Color = C.ink, Thickness = 2, Transparency = 0.2, Parent = sub })
+	local skip, skipLabel = Theme.button("ПРОПУСТИТЬ  ›", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -24, 0.945, 0),
+		Size = UDim2.fromOffset(190, 40),
+		TextSize = 13,
+	})
 	skip.Parent = g
 	skipLabel.ZIndex = 3
 	tween(top, 0.5, { Position = UDim2.fromScale(0, 0) })
@@ -1905,7 +2115,12 @@ function Base.victoryScene(startCf: CFrame, onDone, onReturn)
 			restoredShown.GENERATOR = true
 			showSpot("GENERATOR", true, true)
 			Audio.play("evolve", 0.8, 0.7)
-			caption(sg, "УБЕЖИЩЕ ОЖИВАЕТ", "Свет, тепло и гирлянды над двором", C.gold)
+			caption(
+				sg,
+				"УБЕЖИЩЕ ОЖИВАЕТ",
+				"Свет, тепло и гирлянды над двором",
+				C.gold
+			)
 		end)
 		at(3.6, function()
 			setLamps(true)
@@ -1916,7 +2131,12 @@ function Base.victoryScene(startCf: CFrame, onDone, onReturn)
 			showGoalMarker(W(wb.x, 0, wb.z), wb.color, def.name, "Починить · ◆ " .. def.cost, def.icon)
 			Fx.ring(W(wb.x, 0.4, wb.z), 6, wb.color, 0.8)
 			Audio.play("level", 0.7, 1.5)
-			caption(sg, "ДОБЫЧИ ХВАТИТ НА МАСТЕРСКУЮ", "На верстаке соберёшь оборону для бура", C.cyan)
+			caption(
+				sg,
+				"ДОБЫЧИ ХВАТИТ НА МАСТЕРСКУЮ",
+				"На верстаке соберёшь оборону для бура",
+				C.cyan
+			)
 		end)
 		if t >= keys[#keys].t + 0.6 then
 			task.defer(finish)

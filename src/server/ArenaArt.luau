@@ -84,14 +84,23 @@ function ArenaArt.titan(map, decor, H): boolean
 	local mouth = H.W(0, 0, 128)
 	H.disc(model, mouth + Vector3.new(0, 0.05, 0), 24, 0.05, rgb(255, 90, 40), Enum.Material.Neon, 0.55)
 	H.light(model, mouth + Vector3.new(0, 6, -4), rgb(255, 120, 50), 44, 3)
-	local vent = H.part(model, { Name = "Wound", Size = Vector3.new(18, 1, 10), CFrame = CFrame.new(mouth + Vector3.new(0, 1, 4)), Transparency = 1 })
+	local vent = H.part(
+		model,
+		{
+			Name = "Wound",
+			Size = Vector3.new(18, 1, 10),
+			CFrame = CFrame.new(mouth + Vector3.new(0, 1, 4)),
+			Transparency = 1,
+		}
+	)
 	H.spores(vent, rgb(255, 120, 50), 10, 0.8, 2)
 	-- ribs: one arch per pair of feet, spanning the corridor
 	for _, o in map.obstacles do
 		if o.name:match("^RibW") then
 			local span = math.abs(o.x) * 2 + 10
 			local s = ArtLoader.get("RIB").Size
-			local rib = put("RIB", model, Vector3.new(0, 0, o.z), Vector3.new(span / s.X, (30 + (110 - o.z) * 0.2) / s.Y, 1.3))
+			local rib =
+				put("RIB", model, Vector3.new(0, 0, o.z), Vector3.new(span / s.X, (30 + (110 - o.z) * 0.2) / s.Y, 1.3))
 			H.fade(rib)
 		end
 	end
@@ -134,7 +143,15 @@ function ArenaArt.dropship(map, decor, H): boolean
 	for _, s in { -1, 1 } do
 		local base = Vector3.new(o.x + s * 22, 0, o.z + 12)
 		H.rod(model, base, base + Vector3.new(0, 9, 0), 0.7, rgb(52, 56, 66), Enum.Material.Metal)
-		local head = H.part(model, { Size = Vector3.new(2.4, 1.2, 1.2), CFrame = CFrame.lookAt(base + Vector3.new(0, 9.4, 0), Vector3.new(0, 0, o.z + 60)), Color = rgb(255, 235, 200), Material = Enum.Material.Neon })
+		local head = H.part(
+			model,
+			{
+				Size = Vector3.new(2.4, 1.2, 1.2),
+				CFrame = CFrame.lookAt(base + Vector3.new(0, 9.4, 0), Vector3.new(0, 0, o.z + 60)),
+				Color = rgb(255, 235, 200),
+				Material = Enum.Material.Neon,
+			}
+		)
 		local sl = Instance.new("SpotLight")
 		sl.Angle = 60
 		sl.Range = 60
@@ -161,17 +178,35 @@ function ArenaArt.extractor(o, decor, H): boolean
 	local rig = put("EXTRACTOR", model, c, fitScale("EXTRACTOR", 22), 0)
 	rig.CastShadow = true
 	H.fade(rig)
-	-- an inner glow the client pulses
-	local core = H.part(model, { Name = "Core", Size = Vector3.new(3, 9, 3), CFrame = CFrame.new(c + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(45), 0), Color = rgb(255, 70, 190), Material = Enum.Material.Neon, Transparency = 0.6 })
+	-- an inner glow the client pulses: a working machine's warm amber, not the swarm's pink (DD-063)
+	local core = H.part(
+		model,
+		{
+			Name = "Core",
+			Size = Vector3.new(3, 9, 3),
+			CFrame = CFrame.new(c + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(45), 0),
+			Color = rgb(255, 168, 64),
+			Material = Enum.Material.Neon,
+			Transparency = 0.6,
+		}
+	)
 	H.fade(core)
-	H.light(model, c + Vector3.new(0, 7, 0), rgb(255, 110, 200), 14, 1, true)
+	H.light(model, c + Vector3.new(0, 7, 0), rgb(255, 196, 130), 14, 1, true)
 	for i = 1, 3 do
-		local ring = H.disc(model, c + Vector3.new(0, 3 + i * 4, 0), 18 - i * 2.6, 0.3, rgb(60, 245, 210), Enum.Material.Neon, 0.62)
+		local ring = H.disc(
+			model,
+			c + Vector3.new(0, 3 + i * 4, 0),
+			18 - i * 2.6,
+			0.3,
+			rgb(60, 245, 210),
+			Enum.Material.Neon,
+			0.62
+		)
 		ring.Name = "HaloRing" .. i
 		H.fade(ring)
 	end
 	-- the plaza: a slightly darker floor and a faint ring marking the defend zone
-	H.disc(decor, c + Vector3.new(0, 0.03, 0), 28, 0.06, rgb(150, 30, 120), Enum.Material.Neon, 0.82)
+	H.disc(decor, c + Vector3.new(0, 0.03, 0), 28, 0.06, rgb(210, 120, 36), Enum.Material.Neon, 0.84)
 	H.disc(decor, c + Vector3.new(0, 0.05, 0), 25, 0.06, rgb(64, 54, 86), Enum.Material.SmoothPlastic, 0.45)
 	return true
 end
@@ -187,7 +222,8 @@ function ArenaArt.grove(map, decor, H): boolean
 	local pink = rgb(255, 70, 190)
 	for _, o in map.obstacles do
 		if o.style == "crystal" then
-			local p = put("CRYSTALS", model, Vector3.new(o.x, 0, o.z), fitScale("CRYSTALS", o.w * 1.35), H.rnd(0, 6.28), 0.05)
+			local p =
+				put("CRYSTALS", model, Vector3.new(o.x, 0, o.z), fitScale("CRYSTALS", o.w * 1.35), H.rnd(0, 6.28), 0.05)
 			H.fade(p)
 			glowLight(p, Vector3.new(o.x, o.h * 0.6, o.z), pink, o.h * 1.5, 1.3)
 		end
@@ -222,7 +258,13 @@ function ArenaArt.forest(map, decor, H): boolean
 	local teal = rgb(60, 245, 210)
 	for _, o in map.obstacles do
 		if o.style == "mushroom" then
-			local p = put("MUSHROOM", model, Vector3.new(o.x, 0, o.z), o.h * 1.15 / ArtLoader.get("MUSHROOM").Size.Y, H.rnd(0, 6.28))
+			local p = put(
+				"MUSHROOM",
+				model,
+				Vector3.new(o.x, 0, o.z),
+				o.h * 1.15 / ArtLoader.get("MUSHROOM").Size.Y,
+				H.rnd(0, 6.28)
+			)
 			H.fade(p)
 			glowLight(p, Vector3.new(o.x, p.Size.Y * 0.62, o.z), teal, p.Size.X * 1.1, 1.2)
 		end
@@ -255,7 +297,17 @@ function ArenaArt.rim(map, decor, H): boolean
 		local r = H.boundary(map, a) + H.rnd(14, 34)
 		put("SPIRE", model, Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), H.rnd(1.1, 2.0), H.rnd(0, 6.28), 0.12)
 	end
-	local blooms = { { 112, 1.3 }, { 68, 1.6 }, { 128, 1.4 }, { 52, 1.2 }, { 236, 1.5 }, { 304, 1.3 }, { 298, 1.0 }, { 200, 1.2 }, { 340, 1.25 } }
+	local blooms = {
+		{ 112, 1.3 },
+		{ 68, 1.6 },
+		{ 128, 1.4 },
+		{ 52, 1.2 },
+		{ 236, 1.5 },
+		{ 304, 1.3 },
+		{ 298, 1.0 },
+		{ 200, 1.2 },
+		{ 340, 1.25 },
+	}
 	for _, b in blooms do
 		local a = math.rad(b[1])
 		local r = H.boundary(map, a) + H.rnd(26, 40)
@@ -327,9 +379,24 @@ function ArenaArt.wounds(map, decor, H): boolean
 			local len = H.rnd(6, 14)
 			local d2 = (-dir * math.cos(ang) + Vector3.new(-dir.Z, 0, dir.X) * math.sin(ang))
 			local base = at - dir * 3
-			H.part(model, { Size = Vector3.new(0.45, 0.08, len), CFrame = CFrame.lookAt(base + d2 * len / 2 + Vector3.new(0, 0.06, 0), base + d2 * len + Vector3.new(0, 0.06, 0)), Color = ember, Material = Enum.Material.Neon, Transparency = 0.35 })
+			H.part(
+				model,
+				{
+					Size = Vector3.new(0.45, 0.08, len),
+					CFrame = CFrame.lookAt(
+						base + d2 * len / 2 + Vector3.new(0, 0.06, 0),
+						base + d2 * len + Vector3.new(0, 0.06, 0)
+					),
+					Color = ember,
+					Material = Enum.Material.Neon,
+					Transparency = 0.35,
+				}
+			)
 		end
-		local vent = H.part(model, { Size = Vector3.new(6, 1, 6), CFrame = CFrame.new(inner + Vector3.new(0, 1, 0)), Transparency = 1 })
+		local vent = H.part(
+			model,
+			{ Size = Vector3.new(6, 1, 6), CFrame = CFrame.new(inner + Vector3.new(0, 1, 0)), Transparency = 1 }
+		)
 		H.spores(vent, ember, 3, 0.6, 1.5)
 	end
 	return true
@@ -342,7 +409,8 @@ function ArenaArt.boulders(map, decor, H): boolean
 	end
 	for _, o in map.obstacles do
 		if o.style == "boulder" then
-			local p = put("BOULDER", decor, Vector3.new(o.x, 0, o.z), fitScale("BOULDER", o.w * 1.25), H.rnd(0, 6.28), 0.12)
+			local p =
+				put("BOULDER", decor, Vector3.new(o.x, 0, o.z), fitScale("BOULDER", o.w * 1.25), H.rnd(0, 6.28), 0.12)
 			p.CastShadow = true
 			-- DD-062: the generated rock is painted violet-crystal; the ruined world wants plain stone
 			p.TextureID = ""
@@ -373,10 +441,19 @@ function ArenaArt.pylon(o, decor, index: number, H, padRadius: number): boolean
 	l.Brightness = 1.1
 	l.Parent = orb
 	for k = 1, 2 do
-		local ring = H.disc(model, c + Vector3.new(0, o.h * (0.35 + k * 0.22), 0), 4.6 - k * 0.8, 0.3, rgb(60, 245, 210), Enum.Material.Neon, 0.25)
+		local ring = H.disc(
+			model,
+			c + Vector3.new(0, o.h * (0.35 + k * 0.22), 0),
+			4.6 - k * 0.8,
+			0.3,
+			rgb(60, 245, 210),
+			Enum.Material.Neon,
+			0.25
+		)
 		ring.Name = "Ring"
 	end
-	local pad = H.disc(model, c + Vector3.new(0, 0.05, 0), padRadius * 2, 0.06, rgb(60, 245, 210), Enum.Material.Neon, 0.75)
+	local pad =
+		H.disc(model, c + Vector3.new(0, 0.05, 0), padRadius * 2, 0.06, rgb(60, 245, 210), Enum.Material.Neon, 0.75)
 	pad.Name = "Pad"
 	return true
 end

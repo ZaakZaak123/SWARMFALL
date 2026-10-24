@@ -135,8 +135,14 @@ function Goals.next(pub): Goal?
 			icon = bench.icon,
 			title = "ПОЧИНИ МАСТЕРСКУЮ",
 			text = if scrap >= bench.cost
-				then string.format("Добычи хватает (%d утиля). На верстаке соберёшь оборону для бура.", bench.cost)
-				else string.format("Нужно %d утиля — ещё одна вылазка, и хватит.", bench.cost),
+				then string.format(
+					"Утиля хватает: починка стоит %d. На верстаке соберёшь оборону для бура.",
+					bench.cost
+				)
+				else string.format(
+					"Нужно %d утиля — ещё одна вылазка, и хватит.",
+					bench.cost
+				),
 			station = if scrap >= bench.cost then "home" else "launch",
 			spot = "WORKBENCH",
 		}
@@ -149,7 +155,10 @@ function Goals.next(pub): Goal?
 			title = "ПЕРВАЯ ТУРЕЛЬ ДЛЯ БУРА",
 			text = if scrap >= cost
 				then "Собери «Жало» на верстаке — оно встанет у бура в опасной зоне."
-				else string.format("«Жало» стоит %d утиля — ещё одна вылазка, и хватит.", cost),
+				else string.format(
+					"«Жало» стоит %d утиля — ещё одна вылазка, и хватит.",
+					cost
+				),
 			station = if scrap >= cost then "build" else "launch",
 			slot = Meta.FirstSocket,
 			structure = "STING",
