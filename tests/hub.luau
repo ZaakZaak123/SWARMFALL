@@ -65,9 +65,16 @@ print("  title: " .. entry.title .. "  trophies: " .. #entry.trophies .. "  M" .
 check(entry.title == "Победил Мать роя", "title is the hardest deed")
 check(entry.slots["4"] ~= nil and entry.slots["4"].id == "STING", "outpost slots travel with string keys")
 check(entry.power > 0 and entry.likes == 3 and not entry.newbie, "power, likes, veteran")
-local fresh = Showcase.build(2, "New", { wins_by_op = {}, mastery = {}, outpost = { slots = {}, best = 0 } }, "W_ARC_RIFLE", nil)
-check(fresh.title == "Новобранец" and fresh.newbie and #fresh.trophies == 0, "a newcomer is «Новобранец», no trophies")
-check(Showcase.squadTitle("siege", "", 0, 4) == "Защитить мой аванпост · осада 4", "board line for a siege")
+local fresh =
+	Showcase.build(2, "New", { wins_by_op = {}, mastery = {}, outpost = { slots = {}, best = 0 } }, "W_ARC_RIFLE", nil)
+check(
+	fresh.title == "Новобранец" and fresh.newbie and #fresh.trophies == 0,
+	"a newcomer is «Новобранец», no trophies"
+)
+check(
+	Showcase.squadTitle("siege", "", 0, 4) == "Защитить мой аванпост · осада 4",
+	"board line for a siege"
+)
 
 if failures > 0 then
 	print(failures .. " FAILURE(S)")

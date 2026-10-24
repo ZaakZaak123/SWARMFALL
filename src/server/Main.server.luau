@@ -22,7 +22,6 @@ local Profile = require(script.Parent.Profile)
 local Outposts = require(script.Parent.Outposts)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
-local Goals = require(Shared:WaitForChild("Goals"))
 local Squads = require(script.Parent.Squads)
 
 Players.CharacterAutoLoads = false

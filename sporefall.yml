@@ -1,0 +1,16 @@
+---
+base: roblox
+# Overrides on top of the generated roblox std: selene 0.27 marks Instance.new's parent argument as
+# required (it is deprecated, not required).
+globals:
+  Instance.new:
+    args:
+      - type: string
+      - required: false
+        type:
+          display: Instance
+    must_use: true
+  Content.fromUri:
+    args:
+      - type: string
+    must_use: true

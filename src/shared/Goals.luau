@@ -127,7 +127,10 @@ function Goals.next(pub): Goal?
 			title = "ПЕРВАЯ ТУРЕЛЬ",
 			text = if scrap >= cost
 				then "Добычи хватает на «Жало». Поставь его на подсвеченное гнездо."
-				else string.format("«Жало» стоит %d ксенита — ещё одна охота, и хватит.", cost),
+				else string.format(
+					"«Жало» стоит %d ксенита — ещё одна охота, и хватит.",
+					cost
+				),
 			station = if scrap >= cost then "build" else "launch",
 			slot = Meta.FirstSocket,
 			structure = "STING",
@@ -170,7 +173,11 @@ function Goals.next(pub): Goal?
 			local structDef = structure and Meta.Structures[structure]
 			if structDef then
 				-- Lead with the headline structure, then the rest in one short tail.
-				text = string.format("Ещё одна охота — и откроется %s: %s", names[1], lowerFirst(structDef.text))
+				text = string.format(
+					"Ещё одна охота — и откроется %s: %s",
+					names[1],
+					lowerFirst(structDef.text)
+				)
 				if #names > 1 then
 					text ..= " Плюс " .. table.concat(names, ", ", 2) .. "."
 				end
@@ -202,7 +209,10 @@ function Goals.next(pub): Goal?
 			key = "upgrade",
 			icon = "level",
 			title = "УЛУЧШИ " .. best.name,
-			text = string.format("Хватает ксенита (%d) — турель станет сильнее в осадах и охотах.", bestCost),
+			text = string.format(
+				"Хватает ксенита (%d) — турель станет сильнее в осадах и охотах.",
+				bestCost
+			),
 			station = "build",
 			slot = bestSlot,
 			structure = best.id,

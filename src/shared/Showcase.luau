@@ -61,7 +61,10 @@ function Showcase.trophies(d, weapon: string, mastery: number): { { string } }
 		table.insert(out, { "shield", "Осада " .. best })
 	end
 	if mastery >= 5 then
-		table.insert(out, { "star", (Defs.Weapons[weapon] and Defs.Weapons[weapon].name or "Оружие") .. " M" .. mastery })
+		table.insert(
+			out,
+			{ "star", (Defs.Weapons[weapon] and Defs.Weapons[weapon].name or "Оружие") .. " M" .. mastery }
+		)
 	end
 	local raid = d.raid and d.raid.rating or 0
 	if (d.raid and d.raid.wins or 0) > 0 then

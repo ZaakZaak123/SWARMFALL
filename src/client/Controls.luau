@@ -120,10 +120,8 @@ function Controls.init(playerGui: PlayerGui)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local t = input.UserInputType
-		if Settings.touch and workspace:GetAttribute("DevTouch") then
-			-- Studio phone emulation: keep the touch layout while the developer's mouse moves around.
-			Controls.device = "touch"
-		elseif t == Enum.UserInputType.Touch then
+		-- Studio phone emulation keeps the touch layout while the developer's mouse moves around.
+		if t == Enum.UserInputType.Touch or (Settings.touch and workspace:GetAttribute("DevTouch")) then
 			Controls.device = "touch"
 		elseif t == Enum.UserInputType.Keyboard or t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.MouseMovement then
 			Controls.device = "pc"

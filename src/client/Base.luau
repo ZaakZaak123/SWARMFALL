@@ -28,12 +28,54 @@ local Base = {}
 -- just behind, the outpost terminal on the screen-left next to the first socket, the armory on the right,
 -- the drill and its sockets ahead. (The camera looks north from the south: screen-left is world +X.)
 local STATIONS = {
-	{ key = "armory", name = "ОРУЖЕЙНАЯ", sub = "Оружие и улучшения", icon = "swords", color = C.gold, x = -20, z = -56 },
-	{ key = "build", name = "ПОСТРОЙКИ", sub = "Турели аванпоста", icon = "shield", color = C.cyan, x = 22, z = -44 },
-	{ key = "launch", name = "ВЫСАДКА", sub = "Выбор охоты · в бой", icon = "play", color = C.lime, x = 0, z = -71 },
+	{
+		key = "armory",
+		name = "ОРУЖЕЙНАЯ",
+		sub = "Оружие и улучшения",
+		icon = "swords",
+		color = C.gold,
+		x = -20,
+		z = -56,
+	},
+	{
+		key = "build",
+		name = "ПОСТРОЙКИ",
+		sub = "Турели аванпоста",
+		icon = "shield",
+		color = C.cyan,
+		x = 22,
+		z = -44,
+	},
+	{
+		key = "launch",
+		name = "ВЫСАДКА",
+		sub = "Выбор охоты · в бой",
+		icon = "play",
+		color = C.lime,
+		x = 0,
+		z = -71,
+	},
 	-- camp only (DD-053)
-	{ key = "board", name = "ДОСКА ОТРЯДОВ", sub = "Найди напарников", icon = "users", color = C.orange, x = -17, z = -70, camp = true },
-	{ key = "outposts", name = "АВАНПОСТЫ", sub = "Базы других охотников", icon = "eye", color = C.pink, x = -24, z = -42, camp = true },
+	{
+		key = "board",
+		name = "ДОСКА ОТРЯДОВ",
+		sub = "Найди напарников",
+		icon = "users",
+		color = C.orange,
+		x = -17,
+		z = -70,
+		camp = true,
+	},
+	{
+		key = "outposts",
+		name = "АВАНПОСТЫ",
+		sub = "Базы других охотников",
+		icon = "eye",
+		color = C.pink,
+		x = -24,
+		z = -42,
+		camp = true,
+	},
 }
 local LAMPS = { { -32, -36 }, { 32, -36 }, { -30, -72 }, { 30, -72 } }
 
@@ -76,7 +118,17 @@ local function ringPart(name: string, radius: number, color: Color3, y: number, 
 		Parent = parent,
 	})
 	r.CFrame = CFrame.new(0, y, 0)
-	new("Decal", { Name = "Glow", Face = Enum.NormalId.Top, Texture = Fx.Tex.ring, Color3 = color, Transparency = 0.2, Parent = r })
+	new(
+		"Decal",
+		{
+			Name = "Glow",
+			Face = Enum.NormalId.Top,
+			Texture = Fx.Tex.ring,
+			Color3 = color,
+			Transparency = 0.2,
+			Parent = r,
+		}
+	)
 	return r
 end
 
@@ -90,7 +142,14 @@ local function setRing(r: BasePart, transparency: number, radius: number?)
 	end
 end
 
-local function board(parent: BasePart, iconName: string, title: string, sub: string, color: Color3, height: number): BillboardGui
+local function board(
+	parent: BasePart,
+	iconName: string,
+	title: string,
+	sub: string,
+	color: Color3,
+	height: number
+): BillboardGui
 	local b = new("BillboardGui", {
 		Size = UDim2.fromOffset(260, 74),
 		StudsOffsetWorldSpace = Vector3.new(0, height, 0),
@@ -172,26 +231,51 @@ local function buildWorld()
 			Parent = holder,
 		})
 		beam.CFrame = CFrame.new(def.x, 7, def.z) * CFrame.Angles(0, 0, math.rad(90))
-		local light = new("PointLight", { Color = def.color, Range = 14, Brightness = 1.2, Shadows = false, Parent = pad })
+		local light =
+			new("PointLight", { Color = def.color, Range = 14, Brightness = 1.2, Shadows = false, Parent = pad })
 		local bb = board(pad, def.icon, def.name, def.sub, def.color, 8.5)
 		local pr = prompt(pad, def.name, def.sub, function()
 			if actions and actions[def.key] then
 				actions[def.key]()
 			end
 		end)
-		stationParts[def.key] = { holder = holder, pad = pad, ring = ring, beam = beam, board = bb, prompt = pr, light = light, def = def }
+		stationParts[def.key] =
+			{ holder = holder, pad = pad, ring = ring, beam = beam, board = bb, prompt = pr, light = light, def = def }
 	end
 	-- floodlights over the yard (dark until the crater is ours)
 	for i, xz in LAMPS do
 		local m = new("Model", { Name = "Lamp" .. i, Parent = folder })
-		local pole = part({ Name = "Pole", Size = Vector3.new(0.7, 11, 0.7), Color = Color3.fromRGB(46, 40, 60), Material = Enum.Material.Metal, Parent = m })
+		local pole = part({
+			Name = "Pole",
+			Size = Vector3.new(0.7, 11, 0.7),
+			Color = Color3.fromRGB(46, 40, 60),
+			Material = Enum.Material.Metal,
+			Parent = m,
+		})
 		pole.CFrame = CFrame.new(xz[1], 5.5, xz[2])
 		pole.CastShadow = true
 		local toward = Vector3.new(0, 0, -54) - Vector3.new(xz[1], 0, xz[2])
 		local yaw = math.atan2(-toward.X, -toward.Z)
-		local head = part({ Name = "Head", Size = Vector3.new(1.6, 0.5, 0.9), Color = Color3.fromRGB(70, 64, 86), Material = Enum.Material.Neon, Parent = m })
+		local head = part({
+			Name = "Head",
+			Size = Vector3.new(1.6, 0.5, 0.9),
+			Color = Color3.fromRGB(70, 64, 86),
+			Material = Enum.Material.Neon,
+			Parent = m,
+		})
 		head.CFrame = CFrame.new(xz[1], 11.2, xz[2]) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
-		local spot = new("SpotLight", { Face = Enum.NormalId.Front, Angle = 75, Range = 40, Brightness = 0, Color = Color3.fromRGB(255, 236, 200), Shadows = false, Parent = head })
+		local spot = new(
+			"SpotLight",
+			{
+				Face = Enum.NormalId.Front,
+				Angle = 75,
+				Range = 40,
+				Brightness = 0,
+				Color = Color3.fromRGB(255, 236, 200),
+				Shadows = false,
+				Parent = head,
+			}
+		)
 		lamps[i] = { head = head, light = spot }
 	end
 	-- socket markers (empty sockets, once the outpost is open)
@@ -249,7 +333,13 @@ local function hologram(model: Model, color: Color3)
 			if d:IsA("MeshPart") then
 				d.TextureID = ""
 			end
-		elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") or d:IsA("Light") or d:IsA("ParticleEmitter") then
+		elseif
+			d:IsA("Decal")
+			or d:IsA("Texture")
+			or d:IsA("SurfaceAppearance")
+			or d:IsA("Light")
+			or d:IsA("ParticleEmitter")
+		then
 			d:Destroy()
 		end
 	end
@@ -289,18 +379,25 @@ local function showGoalMarker(slot: number, structureId: string?, title: string,
 		model.Parent = holder
 	end
 	local bb = board(ring, if def then def.icon else "pin", title, sub, color, 9)
-	local pr = prompt(ring, if buildable and def then "Поставить" else "Строить", if def then def.name else "Гнездо", function()
-		if actions and actions.goal then
-			actions.goal()
+	local pr = prompt(
+		ring,
+		if buildable and def then "Поставить" else "Строить",
+		if def then def.name else "Гнездо",
+		function()
+			if actions and actions.goal then
+				actions.goal()
+			end
 		end
-	end)
+	)
 	pr.MaxActivationDistance = 9
-	goalMarker = { holder = holder, ring = ring, beam = beam, board = bb, prompt = pr, model = model, key = key, slot = slot }
+	goalMarker =
+		{ holder = holder, ring = ring, beam = beam, board = bb, prompt = pr, model = model, key = key, slot = slot }
 end
 
 -- HUD -----------------------------------------------------------------------------------------------------
 local function stationButton(parent, key: string, text: string, iconName: string, color: Color3, order: number)
-	local b, bl = Theme.button(text, { Name = key, Size = UDim2.fromOffset(176, 56), TextSize = 14, LayoutOrder = order })
+	local b, bl =
+		Theme.button(text, { Name = key, Size = UDim2.fromOffset(176, 56), TextSize = 14, LayoutOrder = order })
 	b.Parent = parent
 	bl.Position = UDim2.fromOffset(20, 0)
 	local ic = Icons.new(iconName, 24, color)
@@ -330,20 +427,89 @@ local function buildHud(playerGui: PlayerGui)
 	local safe = new("Frame", { Name = "Safe", Size = UDim2.fromScale(1, 1), Parent = gui })
 	ui.scale = new("UIScale", { Parent = safe })
 	ui.safe = safe
-	new("UIPadding", { PaddingLeft = UDim.new(0, 24), PaddingRight = UDim.new(0, 24), PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 20), Parent = safe })
+	new(
+		"UIPadding",
+		{
+			PaddingLeft = UDim.new(0, 24),
+			PaddingRight = UDim.new(0, 24),
+			PaddingTop = UDim.new(0, 16),
+			PaddingBottom = UDim.new(0, 20),
+			Parent = safe,
+		}
+	)
 	-- top-left: whose outpost
-	ui.tag = label("АВАНПОСТ", { Position = UDim2.fromOffset(4, 0), Size = UDim2.fromOffset(420, 16), FontFace = F.head, TextSize = 12, TextColor3 = C.lime, TextXAlignment = Enum.TextXAlignment.Left, Parent = safe })
-	ui.owner = label("", { Position = UDim2.fromOffset(2, 16), Size = UDim2.fromOffset(520, 40), FontFace = F.display, TextSize = 34, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = safe })
+	ui.tag = label(
+		"АВАНПОСТ",
+		{
+			Position = UDim2.fromOffset(4, 0),
+			Size = UDim2.fromOffset(420, 16),
+			FontFace = F.head,
+			TextSize = 12,
+			TextColor3 = C.lime,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = safe,
+		}
+	)
+	ui.owner = label(
+		"",
+		{
+			Position = UDim2.fromOffset(2, 16),
+			Size = UDim2.fromOffset(520, 40),
+			FontFace = F.display,
+			TextSize = 34,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Parent = safe,
+		}
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.owner })
 	-- goal card
-	local card = Theme.panel({ Name = "Goal", Position = UDim2.fromOffset(0, 68), Size = UDim2.fromOffset(440, 168), CornerRadius = 18 }, C.lime)
+	local card = Theme.panel(
+		{ Name = "Goal", Position = UDim2.fromOffset(0, 68), Size = UDim2.fromOffset(440, 168), CornerRadius = 18 },
+		C.lime
+	)
 	card.Parent = safe
 	ui.goal = card
-	ui.goalTag = label("СЛЕДУЮЩАЯ ЦЕЛЬ", { Position = UDim2.fromOffset(18, 12), Size = UDim2.fromOffset(260, 14), FontFace = F.head, TextSize = 11, TextColor3 = C.lime, TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
+	ui.goalTag = label(
+		"СЛЕДУЮЩАЯ ЦЕЛЬ",
+		{
+			Position = UDim2.fromOffset(18, 12),
+			Size = UDim2.fromOffset(260, 14),
+			FontFace = F.head,
+			TextSize = 11,
+			TextColor3 = C.lime,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = card,
+		}
+	)
 	ui.goalIcon = new("Frame", { Position = UDim2.fromOffset(16, 34), Size = UDim2.fromOffset(46, 46), Parent = card })
-	ui.goalTitle = label("", { Position = UDim2.fromOffset(72, 32), Size = UDim2.new(1, -184, 0, 24), FontFace = F.display, TextSize = 19, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
+	ui.goalTitle = label(
+		"",
+		{
+			Position = UDim2.fromOffset(72, 32),
+			Size = UDim2.new(1, -184, 0, 24),
+			FontFace = F.display,
+			TextSize = 19,
+			TextScaled = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = card,
+		}
+	)
 	new("UITextSizeConstraint", { MaxTextSize = 19, Parent = ui.goalTitle })
-	ui.goalText = label("", { Position = UDim2.fromOffset(72, 58), Size = UDim2.new(1, -184, 0, 66), FontFace = F.body, TextSize = 13, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = card })
+	ui.goalText = label(
+		"",
+		{
+			Position = UDim2.fromOffset(72, 58),
+			Size = UDim2.new(1, -184, 0, 66),
+			FontFace = F.body,
+			TextSize = 13,
+			TextColor3 = C.dim,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			Parent = card,
+		}
+	)
 	-- the structure this goal is about, turning slowly
 	ui.goalView = new("ViewportFrame", {
 		AnchorPoint = Vector2.new(1, 0),
@@ -357,7 +523,16 @@ local function buildHud(playerGui: PlayerGui)
 	})
 	ui.goalCam = new("Camera", { FieldOfView = 32, Parent = ui.goalView })
 	ui.goalView.CurrentCamera = ui.goalCam
-	ui.goalBtn, ui.goalBtnLabel = Theme.button("", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 72, 1, -12), Size = UDim2.fromOffset(170, 34), TextSize = 13 }, "primary")
+	ui.goalBtn, ui.goalBtnLabel = Theme.button(
+		"",
+		{
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 72, 1, -12),
+			Size = UDim2.fromOffset(170, 34),
+			TextSize = 13,
+		},
+		"primary"
+	)
 	ui.goalBtn.Parent = card
 	ui.goalBtn.Activated:Connect(function()
 		Audio.play("ui")
@@ -366,7 +541,15 @@ local function buildHud(playerGui: PlayerGui)
 		end
 	end)
 	-- top-right: xenite, settings, invite, squad
-	local tr = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(420, 360), Parent = safe })
+	local tr = new(
+		"Frame",
+		{
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromScale(1, 0),
+			Size = UDim2.fromOffset(420, 360),
+			Parent = safe,
+		}
+	)
 	ui.gear = new("TextButton", {
 		Name = "Settings",
 		AnchorPoint = Vector2.new(1, 0),
@@ -398,19 +581,74 @@ local function buildHud(playerGui: PlayerGui)
 		Corner = UDim.new(1, 0),
 		Stroke = { Color = C.pink, Transparency = 0.5, Thickness = 1.5 },
 		Parent = tr,
-		List = { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8) },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		},
 	})
 	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 16), Parent = ui.xenite })
-	new("Frame", { Size = UDim2.fromOffset(15, 15), Rotation = 45, BackgroundColor3 = C.pink, Corner = 3, LayoutOrder = 1, Parent = ui.xenite })
-	ui.xeniteAmount = label("0", { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 40), FontFace = F.numHeavy, TextSize = 18, LayoutOrder = 2, Parent = ui.xenite })
-	ui.invite = Theme.button("ПОЗВАТЬ ДРУГА", { Name = "Invite", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 54), Size = UDim2.fromOffset(212, 40), TextSize = 12 })
+	new(
+		"Frame",
+		{
+			Size = UDim2.fromOffset(15, 15),
+			Rotation = 45,
+			BackgroundColor3 = C.pink,
+			Corner = 3,
+			LayoutOrder = 1,
+			Parent = ui.xenite,
+		}
+	)
+	ui.xeniteAmount = label(
+		"0",
+		{
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 40),
+			FontFace = F.numHeavy,
+			TextSize = 18,
+			LayoutOrder = 2,
+			Parent = ui.xenite,
+		}
+	)
+	ui.invite = Theme.button(
+		"ПОЗВАТЬ ДРУГА",
+		{
+			Name = "Invite",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, 54),
+			Size = UDim2.fromOffset(212, 40),
+			TextSize = 12,
+		}
+	)
 	ui.invite.Parent = tr
 	ui.invite.Activated:Connect(function()
 		Audio.play("ui")
 		Base.invite()
 	end)
-	ui.inviteSub = label("Защитите аванпост вместе", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -4, 0, 96), Size = UDim2.fromOffset(260, 14), FontFace = F.body, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = tr })
-	ui.harvest = Theme.button("СОБРАТЬ", { Name = "Harvest", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 118), Size = UDim2.fromOffset(212, 40), TextSize = 12 }, "primary")
+	ui.inviteSub = label(
+		"Защитите аванпост вместе",
+		{
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -4, 0, 96),
+			Size = UDim2.fromOffset(260, 14),
+			FontFace = F.body,
+			TextSize = 11,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Parent = tr,
+		}
+	)
+	ui.harvest = Theme.button(
+		"СОБРАТЬ",
+		{
+			Name = "Harvest",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, 118),
+			Size = UDim2.fromOffset(212, 40),
+			TextSize = 12,
+		},
+		"primary"
+	)
 	ui.harvest.Parent = tr
 	ui.harvest.Visible = false
 	ui.harvest.Activated:Connect(function()
@@ -444,7 +682,16 @@ local function buildHud(playerGui: PlayerGui)
 		b.Size = UDim2.fromOffset(156, 56)
 	end
 	-- session base: back to the public camp
-	ui.toCamp, ui.toCampLabel = Theme.button("В ЛАГЕРЬ", { Name = "ToCamp", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -224, 0, 54), Size = UDim2.fromOffset(150, 40), TextSize = 12 })
+	ui.toCamp, ui.toCampLabel = Theme.button(
+		"В ЛАГЕРЬ",
+		{
+			Name = "ToCamp",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -224, 0, 54),
+			Size = UDim2.fromOffset(150, 40),
+			TextSize = 12,
+		}
+	)
 	ui.toCamp.Parent = tr
 	ui.toCamp.Visible = false
 	ui.toCamp.Activated:Connect(function()
@@ -454,7 +701,17 @@ local function buildHud(playerGui: PlayerGui)
 		end
 	end)
 	-- bottom-right: go
-	ui.play, ui.playLabel = Theme.button("В БОЙ", { Name = "Play", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, -24), Size = UDim2.fromOffset(300, 84), TextSize = 32 }, "primary")
+	ui.play, ui.playLabel = Theme.button(
+		"В БОЙ",
+		{
+			Name = "Play",
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, 0, 1, -24),
+			Size = UDim2.fromOffset(300, 84),
+			TextSize = 32,
+		},
+		"primary"
+	)
 	ui.play.Parent = safe
 	ui.playLabel.Position = UDim2.fromOffset(22, -8)
 	ui.playIcon = Icons.new("play", 30, C.ink)
@@ -462,15 +719,57 @@ local function buildHud(playerGui: PlayerGui)
 	ui.playIcon.Position = UDim2.new(0, 30, 0.5, 0)
 	ui.playIcon.ZIndex = 3
 	ui.playIcon.Parent = ui.play
-	ui.playSub = label("", { Position = UDim2.new(0, 22, 1, -30), Size = UDim2.new(1, -22, 0, 18), FontFace = F.head, TextSize = 12, TextColor3 = C.ink, TextTransparency = 0.25, ZIndex = 3, Parent = ui.play })
-	ui.playGlow = new("UIStroke", { Color = C.lime, Thickness = 5, Transparency = 0.6, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = ui.play })
+	ui.playSub = label(
+		"",
+		{
+			Position = UDim2.new(0, 22, 1, -30),
+			Size = UDim2.new(1, -22, 0, 18),
+			FontFace = F.head,
+			TextSize = 12,
+			TextColor3 = C.ink,
+			TextTransparency = 0.25,
+			ZIndex = 3,
+			Parent = ui.play,
+		}
+	)
+	ui.playGlow = new(
+		"UIStroke",
+		{
+			Color = C.lime,
+			Thickness = 5,
+			Transparency = 0.6,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = ui.play,
+		}
+	)
 	ui.play.Activated:Connect(function()
 		if actions and actions.play then
 			actions.play()
 		end
 	end)
-	ui.status = label("", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, 0), Size = UDim2.fromOffset(420, 20), FontFace = F.bodyBold, TextSize = 15, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = safe })
-	ui.hold, ui.holdLabel = Theme.button("ЖДАТЬ ДРУЗЕЙ", { Name = "Hold", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -310, 1, -24), Size = UDim2.fromOffset(170, 44), TextSize = 12 })
+	ui.status = label(
+		"",
+		{
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -8, 1, 0),
+			Size = UDim2.fromOffset(420, 20),
+			FontFace = F.bodyBold,
+			TextSize = 15,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Parent = safe,
+		}
+	)
+	ui.hold, ui.holdLabel = Theme.button(
+		"ЖДАТЬ ДРУЗЕЙ",
+		{
+			Name = "Hold",
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -310, 1, -24),
+			Size = UDim2.fromOffset(170, 44),
+			TextSize = 12,
+		}
+	)
 	ui.hold.Parent = safe
 	ui.hold.Visible = false
 	ui.hold.Activated:Connect(function()
@@ -478,10 +777,31 @@ local function buildHud(playerGui: PlayerGui)
 		send("hold", not (lobby and lobby.hold))
 	end)
 	-- centre: the swarm is coming (first turret built)
-	ui.strike = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 120), Size = UDim2.fromOffset(640, 110), Visible = false, Parent = gui })
-	ui.strikeTitle = label("РОЙ УСЛЫШАЛ БУР", { Size = UDim2.new(1, 0, 0, 64), FontFace = F.display, TextSize = 54, TextColor3 = C.red, Parent = ui.strike })
+	ui.strike = new(
+		"Frame",
+		{
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 120),
+			Size = UDim2.fromOffset(640, 110),
+			Visible = false,
+			Parent = gui,
+		}
+	)
+	ui.strikeTitle = label(
+		"РОЙ УСЛЫШАЛ БУР",
+		{ Size = UDim2.new(1, 0, 0, 64), FontFace = F.display, TextSize = 54, TextColor3 = C.red, Parent = ui.strike }
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 4, Transparency = 0.15, Parent = ui.strikeTitle })
-	ui.strikeSub = label("", { Position = UDim2.fromOffset(0, 66), Size = UDim2.new(1, 0, 0, 26), FontFace = F.head, TextSize = 20, Parent = ui.strike })
+	ui.strikeSub = label(
+		"",
+		{
+			Position = UDim2.fromOffset(0, 66),
+			Size = UDim2.new(1, 0, 0, 26),
+			FontFace = F.head,
+			TextSize = 20,
+			Parent = ui.strike,
+		}
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.strikeSub })
 end
 
@@ -572,7 +892,11 @@ function Base.refresh()
 		local empty = not slots[i] and not slots[tostring(i)]
 		-- the first steps light one socket only; the rest of the ring appears after the first defence
 		local focused = goal ~= nil and (goal.key == "sting" or goal.key == "strike")
-		local show = f.outpost == true and empty and ownsBase and not focused and not (goal and goal.slot == i and goal.station == "build")
+		local show = f.outpost == true
+			and empty
+			and ownsBase
+			and not focused
+			and not (goal and goal.slot == i and goal.station == "build")
 		s.show = show
 	end
 	-- the goal socket
@@ -583,7 +907,15 @@ function Base.refresh()
 		if built then
 			clearGoalMarker()
 		else
-			showGoalMarker(goal.slot, goal.structure, if def then def.name else "ГНЕЗДО", if affordable then "Поставить · ◆ " .. def.cost[1] else "Нужно ◆ " .. (if def then def.cost[1] else 0), affordable)
+			showGoalMarker(
+				goal.slot,
+				goal.structure,
+				if def then def.name else "ГНЕЗДО",
+				if affordable
+					then "Поставить · ◆ " .. def.cost[1]
+					else "Нужно ◆ " .. (if def then def.cost[1] else 0),
+				affordable
+			)
 		end
 	else
 		clearGoalMarker()
@@ -601,7 +933,9 @@ function Base.refresh()
 	end
 	if camp then
 		ui.tag.Text = string.format("КРАТЕР ЦВЕТЕНИЯ  ·  ОХОТНИКОВ: %d", #(camp.hunters or {}))
-		ui.owner.Text = if #players > 1 then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players) else "ЛАГЕРЬ"
+		ui.owner.Text = if #players > 1
+			then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players)
+			else "ЛАГЕРЬ"
 	else
 		ui.tag.Text = if isHost or hostName == "" then "ТВОЙ АВАНПОСТ" else "АВАНПОСТ ОТРЯДА"
 		ui.owner.Text = if hostName ~= "" then hostName else Players.LocalPlayer.DisplayName
@@ -626,7 +960,10 @@ function Base.refresh()
 		elseif goal.station == "build" then
 			local def = goal.structure and Meta.Structures[goal.structure]
 			local affordable = def and (profile.scrap or 0) >= def.cost[if goal.key == "upgrade" then 2 else 1]
-			btn = if goal.key == "upgrade" then "УЛУЧШИТЬ" elseif affordable then "ПОСТАВИТЬ" else "ПОСТРОЙКИ"
+			btn = if goal.key == "upgrade"
+				then "УЛУЧШИТЬ"
+				elseif affordable then "ПОСТАВИТЬ"
+				else "ПОСТРОЙКИ"
 		elseif goal.station == "launch" then
 			btn = if goal.op then "К ВЫСАДКЕ" else "ВЫСАДКА"
 		end
@@ -664,7 +1001,8 @@ function Base.refresh()
 	end
 	ui.amReady = amReady
 	local op = lobby and Ops.get(lobby.op)
-	local modeName = if lobby and lobby.mode == "siege" then "ОСАДА · УРОВЕНЬ " .. (lobby.siege or 1)
+	local modeName = if lobby and lobby.mode == "siege"
+		then "ОСАДА · УРОВЕНЬ " .. (lobby.siege or 1)
 		elseif lobby and lobby.mode == "raid" then "ВТОРЖЕНИЕ"
 		elseif op then "ОХОТА " .. op.index .. " · " .. op.name
 		else ""
@@ -675,8 +1013,14 @@ function Base.refresh()
 	ui.playSub.TextColor3 = if amReady then C.dim else C.ink
 	Icons.recolor(ui.playIcon, if amReady then C.text else C.ink)
 	local cd = lobby and lobby.countdown
-	ui.status.Text = if cd and lobby.hold then string.format("Ждём друзей  ·  готовы %d/%d", ready, n)
-		elseif cd then string.format("Высадка через %d  ·  готовы %d/%d", math.ceil(cd), ready, n)
+	ui.status.Text = if cd and lobby.hold
+		then string.format("Ждём друзей  ·  готовы %d/%d", ready, n)
+		elseif cd then string.format(
+			"Высадка через %d  ·  готовы %d/%d",
+			math.ceil(cd),
+			ready,
+			n
+		)
 		elseif n > 1 then string.format("Отряд %d  ·  готовы %d/%d", n, ready, n)
 		else "Соло  ·  до 4 игроков"
 	ui.status.TextColor3 = if cd and not amReady then C.gold else C.dim
@@ -769,7 +1113,14 @@ function Base.buildAnim(model: Model, cf: CFrame, color: Color3)
 		local e = 1 - (1 - k) ^ 3
 		model:PivotTo(cf * CFrame.new(0, -4 * (1 - e), 0) * CFrame.Angles(0, (1 - e) * 1.2, 0))
 		if math.random() < 0.6 then
-			Fx.emitWith("streak", pos + Vector3.new(math.random() * 3 - 1.5, 0.4, math.random() * 3 - 1.5), 2, 0.6, color, Vector3.yAxis)
+			Fx.emitWith(
+				"streak",
+				pos + Vector3.new(math.random() * 3 - 1.5, 0.4, math.random() * 3 - 1.5),
+				2,
+				0.6,
+				color,
+				Vector3.yAxis
+			)
 		end
 		if k >= 1 then
 			conn:Disconnect()
@@ -781,7 +1132,7 @@ function Base.buildAnim(model: Model, cf: CFrame, color: Color3)
 end
 
 -- Per frame: prompts only while walking the base; markers breathe.
-function Base.update(dt: number, root: Vector3?)
+function Base.update(_dt: number, _root: Vector3?)
 	local now = os.clock()
 	for _, s in stationParts do
 		s.prompt.Enabled = active
@@ -804,7 +1155,10 @@ function Base.update(dt: number, root: Vector3?)
 		goalMarker.board.Enabled = active or scene ~= nil
 		if goalMarker.model then
 			local s = Meta.Sockets[goalMarker.slot]
-			goalMarker.model:PivotTo(CFrame.new(s.x, 0.15 + math.sin(now * 2) * 0.15, s.z) * CFrame.Angles(0, math.atan2(s.x, s.z) + math.pi + math.sin(now * 0.8) * 0.4, 0))
+			goalMarker.model:PivotTo(
+				CFrame.new(s.x, 0.15 + math.sin(now * 2) * 0.15, s.z)
+					* CFrame.Angles(0, math.atan2(s.x, s.z) + math.pi + math.sin(now * 0.8) * 0.4, 0)
+			)
 		end
 	end
 	if gui and gui.Enabled then
@@ -813,9 +1167,16 @@ function Base.update(dt: number, root: Vector3?)
 		if ui.goalModel then
 			local r = ui.goalRadius or 6
 			local a = now * 0.6
-			ui.goalCam.CFrame = CFrame.lookAt(Vector3.new(math.sin(a) * r * 1.6, r * 0.9, math.cos(a) * r * 1.6), Vector3.new(0, r * 0.32, 0))
+			ui.goalCam.CFrame = CFrame.lookAt(
+				Vector3.new(math.sin(a) * r * 1.6, r * 0.9, math.cos(a) * r * 1.6),
+				Vector3.new(0, r * 0.32, 0)
+			)
 		end
-		ui.scale.Scale = math.clamp(math.min(workspace.CurrentCamera.ViewportSize.X / 1280, workspace.CurrentCamera.ViewportSize.Y / 720), 0.62, 1.2)
+		ui.scale.Scale = math.clamp(
+			math.min(workspace.CurrentCamera.ViewportSize.X / 1280, workspace.CurrentCamera.ViewportSize.Y / 720),
+			0.62,
+			1.2
+		)
 		ui.safe.Size = UDim2.fromScale(1 / ui.scale.Scale, 1 / ui.scale.Scale)
 		if ui.strike.Visible then
 			ui.strikeTitle.TextTransparency = math.abs(math.sin(now * 5)) * 0.35
@@ -845,13 +1206,64 @@ function Base.sceneActive(): boolean
 end
 
 local function buildSceneGui()
-	local g = new("ScreenGui", { Name = "SporeScene", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Parent = gui.Parent })
-	local top = new("Frame", { Size = UDim2.new(1, 0, 0.11, 0), Position = UDim2.fromScale(0, -0.11), BackgroundColor3 = Color3.new(0, 0, 0), Parent = g })
-	local bottom = new("Frame", { AnchorPoint = Vector2.new(0, 1), Size = UDim2.new(1, 0, 0.11, 0), Position = UDim2.fromScale(0, 1.11), BackgroundColor3 = Color3.new(0, 0, 0), Parent = g })
-	local cap = label("", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0.86, 0), Size = UDim2.new(0.9, 0, 0, 44), FontFace = F.display, TextSize = 34, TextTransparency = 1, Parent = g })
+	local g = new(
+		"ScreenGui",
+		{ Name = "SporeScene", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Parent = gui.Parent }
+	)
+	local top = new(
+		"Frame",
+		{
+			Size = UDim2.new(1, 0, 0.11, 0),
+			Position = UDim2.fromScale(0, -0.11),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			Parent = g,
+		}
+	)
+	local bottom = new(
+		"Frame",
+		{
+			AnchorPoint = Vector2.new(0, 1),
+			Size = UDim2.new(1, 0, 0.11, 0),
+			Position = UDim2.fromScale(0, 1.11),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			Parent = g,
+		}
+	)
+	local cap = label(
+		"",
+		{
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 0.86, 0),
+			Size = UDim2.new(0.9, 0, 0, 44),
+			FontFace = F.display,
+			TextSize = 34,
+			TextTransparency = 1,
+			Parent = g,
+		}
+	)
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = cap })
-	local sub = label("", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.86, 4), Size = UDim2.new(0.9, 0, 0, 24), FontFace = F.bodyBold, TextSize = 18, TextColor3 = C.dim, TextTransparency = 1, Parent = g })
-	local skip, skipLabel = Theme.button("ПРОПУСТИТЬ  ›", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.945, 0), Size = UDim2.fromOffset(190, 40), TextSize = 13 })
+	local sub = label(
+		"",
+		{
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0.86, 4),
+			Size = UDim2.new(0.9, 0, 0, 24),
+			FontFace = F.bodyBold,
+			TextSize = 18,
+			TextColor3 = C.dim,
+			TextTransparency = 1,
+			Parent = g,
+		}
+	)
+	local skip, skipLabel = Theme.button(
+		"ПРОПУСТИТЬ  ›",
+		{
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -24, 0.945, 0),
+			Size = UDim2.fromOffset(190, 40),
+			TextSize = 13,
+		}
+	)
 	skip.Parent = g
 	skipLabel.ZIndex = 3
 	tween(top, 0.5, { Position = UDim2.fromScale(0, 0) })
@@ -928,7 +1340,12 @@ function Base.victoryScene(startCf: CFrame, onDone, onDrill)
 			if onDrill then
 				onDrill()
 			end
-			caption(sg, "БУР ЗАПУЩЕН", "Кратер Цветения теперь твой аванпост", C.cyan)
+			caption(
+				sg,
+				"БУР ЗАПУЩЕН",
+				"Кратер Цветения теперь твой аванпост",
+				C.cyan
+			)
 		end)
 		at(3.0, function()
 			setLamps(true)
@@ -939,10 +1356,21 @@ function Base.victoryScene(startCf: CFrame, onDone, onDrill)
 			Audio.play("level", 0.5, 1.2)
 		end)
 		at(4.3, function()
-			showGoalMarker(Meta.FirstSocket, "STING", "ЖАЛО", "Здесь встанет первая турель", true)
+			showGoalMarker(
+				Meta.FirstSocket,
+				"STING",
+				"ЖАЛО",
+				"Здесь встанет первая турель",
+				true
+			)
 			Fx.ring(Vector3.new(s.x, 0.4, s.z), 6, Meta.Structures.STING.color, 0.8)
 			Audio.play("level", 0.7, 1.5)
-			caption(sg, "ДОБЫЧИ ХВАТИТ НА ПЕРВУЮ ТУРЕЛЬ", "Поставь «Жало» на базе — и рой пожалеет, что вернулся", C.gold)
+			caption(
+				sg,
+				"ДОБЫЧИ ХВАТИТ НА ПЕРВУЮ ТУРЕЛЬ",
+				"Поставь «Жало» на базе — и рой пожалеет, что вернулся",
+				C.gold
+			)
 		end)
 		if t >= keys[#keys].t + 0.6 then
 			task.defer(finish)
