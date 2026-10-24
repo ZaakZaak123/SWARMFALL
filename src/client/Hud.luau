@@ -567,10 +567,10 @@ function Hud.init(playerGui: PlayerGui)
 	-- Vignette: soft red edges on hurt / low health
 	ui.vignette = {}
 	for i, spec in {
-		{ UDim2.fromScale(1, 0.22), UDim2.fromScale(0, 0), 90 },
-		{ UDim2.fromScale(1, 0.22), UDim2.fromScale(0, 0.78), -90 },
-		{ UDim2.fromScale(0.16, 1), UDim2.fromScale(0, 0), 0 },
-		{ UDim2.fromScale(0.16, 1), UDim2.fromScale(0.84, 0), 180 },
+		{ UDim2.fromScale(1, 0.14), UDim2.fromScale(0, 0), 90 },
+		{ UDim2.fromScale(1, 0.14), UDim2.fromScale(0, 0.86), -90 },
+		{ UDim2.fromScale(0.1, 1), UDim2.fromScale(0, 0), 0 },
+		{ UDim2.fromScale(0.1, 1), UDim2.fromScale(0.9, 0), 180 },
 	} do
 		local f = new("Frame", {
 			Size = spec[1],
@@ -1030,12 +1030,13 @@ function Hud.update(run, me, extra, dt: number)
 			comboShown = 0
 		end
 		-- Vignette
-		local hurtK = math.max(0, 1 - (now - hurtT) / 0.4)
-		local low = if lowHp then (0.5 + math.sin(now * 5) * 0.5) * 0.55 else 0
+		-- kept thin and soft: in a crowd hits land every frame and a strong flash tints the whole view
+		local hurtK = math.max(0, 1 - (now - hurtT) / 0.3) * 0.6
+		local low = if lowHp then (0.5 + math.sin(now * 3) * 0.5) * 0.8 else 0
 		local v = math.max(hurtK, low)
 		for _, f in ui.vignette do
 			f.Visible = v > 0.01
-			f.BackgroundTransparency = 1 - v * 0.55
+			f.BackgroundTransparency = 1 - v * 0.45
 		end
 	end
 	-- Reticle

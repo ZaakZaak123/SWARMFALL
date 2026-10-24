@@ -217,20 +217,21 @@ end
 -- Terrain -------------------------------------------------------------------------------------------------
 local function paintTerrain(map)
 	terrain:Clear()
-	-- Ground/Grass/Basalt/Slate carry the generated SporeX variants: their tint only shades the texture.
-	terrain:SetMaterialColor(M.Basalt, rgb(140, 128, 165))
-	terrain:SetMaterialColor(M.Slate, rgb(150, 136, 175))
-	terrain:SetMaterialColor(M.Rock, rgb(74, 58, 98))
-	terrain:SetMaterialColor(M.Grass, rgb(150, 200, 195))
-	terrain:SetMaterialColor(M.LeafyGrass, rgb(40, 150, 140))
-	terrain:SetMaterialColor(M.Mud, rgb(52, 38, 62))
-	terrain:SetMaterialColor(M.Ground, rgb(135, 122, 158))
-	terrain:SetMaterialColor(M.CrackedLava, rgb(200, 50, 150))
-	terrain:SetMaterialColor(M.Salt, rgb(150, 130, 175))
+	-- Readability first (DD-047): the walkable floor is one calm, mid-value, low-saturation surface so
+	-- the warm swarm, pickups and telegraphs own the colour; the rim is clearly darker so the edge of
+	-- the arena reads at a glance. Ground/Grass/Basalt/Slate carry generated variants: tint only shades.
+	terrain:SetMaterialColor(M.Ground, rgb(196, 194, 214))
+	terrain:SetMaterialColor(M.Grass, rgb(215, 240, 230))
+	terrain:SetMaterialColor(M.Mud, rgb(70, 62, 84))
+	terrain:SetMaterialColor(M.Basalt, rgb(92, 82, 116))
+	terrain:SetMaterialColor(M.Slate, rgb(96, 86, 122))
+	terrain:SetMaterialColor(M.Rock, rgb(54, 44, 74))
+	terrain:SetMaterialColor(M.LeafyGrass, rgb(46, 110, 104))
+	terrain:SetMaterialColor(M.Salt, rgb(104, 100, 124))
 	terrain:SetMaterialColor(M.Asphalt, rgb(40, 34, 52))
 	pcall(function()
-		terrain.Decoration = true
-		terrain.GrassLength = 0.7
+		-- animated grass blades shimmer under a top-down camera
+		terrain.Decoration = false
 	end)
 	terrain.WaterColor = PAL.teal
 	-- Bedrock floor, surface exactly at Y = 0.
@@ -240,35 +241,13 @@ local function paintTerrain(map)
 	local function patch(x: number, z: number, r: number, material)
 		terrain:FillCylinder(CFrame.new(W(x, -1, z)), 2, r, material)
 	end
-	-- north: the titan's shadow — dark mud and ash
-	for i = 1, 14 do
-		patch(rnd(-40, 40), rnd(60, 135), rnd(10, 20), M.Mud)
+	-- Zones are a few large, soft patches near the rim; the middle of the bowl stays one clean floor.
+	-- north: the titan's shadow — darker ash under the ribs
+	for i = 1, 6 do
+		patch(rnd(-30, 30), rnd(90, 135), rnd(16, 24), M.Mud)
 	end
-	-- west: mushroom forest moss
-	for i = 1, 22 do
-		patch(rnd(-135, -60), rnd(-60, 70), rnd(8, 18), if i % 3 == 0 then M.LeafyGrass else M.Grass)
-	end
-	-- east: xenite corruption veins
-	for i = 1, 12 do
-		patch(rnd(70, 135), rnd(-45, 60), rnd(5, 11), M.CrackedLava)
-	end
-	for i = 1, 10 do
-		patch(rnd(60, 130), rnd(-50, 65), rnd(8, 15), M.Slate)
-	end
-	-- south: the landing zone, scorched slate around the dropship
-	for i = 1, 8 do
-		patch(rnd(-35, 35), rnd(-135, -80), rnd(10, 18), M.Slate)
-	end
-	-- moss rings around the extractor plaza and scattered across the bowl
-	for i = 0, 15 do
-		local a = i / 16 * math.pi * 2 + rnd(-0.1, 0.1)
-		local r = rnd(24, 34)
-		patch(math.cos(a) * r, math.sin(a) * r, rnd(5, 9), M.Grass)
-	end
-	for i = 1, 30 do
-		local x, z = rnd(-125, 125), rnd(-125, 125)
-		patch(x, z, rnd(4, 9), if rnd() < 0.7 then M.Grass else M.Ground)
-	end
+	-- West and east read through their landmarks (mushrooms, xenite) and the moss on the rim columns;
+	-- coloured floor patches there looked like stains from the gameplay camera.
 	task.wait()
 	-- The rim: basalt columns stepping up from the walkable boundary (front row low, back rows tall),
 	-- with moss crowns. Reads as a deliberate formation rather than random rock.
@@ -816,45 +795,6 @@ local function buildRimFlora(map, decor)
 	end
 end
 
--- Glowing roots crawling over the floor from the forest toward the centre (teal) and from the grove
--- (pink): leading lines that make the floor read as alive and point at the middle.
-local function buildRoots(map, decor)
-	local model = Instance.new("Model")
-	model.Name = "Roots"
-	model.Parent = decor
-	local function root(x0, z0, x1, z1, color, width)
-		local pts = {}
-		local n = 9
-		local nx, nz = -(z1 - z0), x1 - x0
-		local len = math.sqrt(nx * nx + nz * nz)
-		nx, nz = nx / len, nz / len
-		for k = 0, n do
-			local t = k / n
-			local wob = math.sin(t * math.pi * 2 + rnd(0, 3)) * 4 * (1 - t)
-			table.insert(pts, W(x0 + (x1 - x0) * t + nx * wob, 0.06, z0 + (z1 - z0) * t + nz * wob))
-		end
-		for k = 1, n do
-			local a, b = pts[k], pts[k + 1]
-			local w = width * (1 - k / (n + 2))
-			part(model, {
-				Size = Vector3.new(w, 0.1, (b - a).Magnitude + w),
-				CFrame = CFrame.lookAt((a + b) / 2, b),
-				Color = color,
-				Material = M.Neon,
-				Transparency = 0.35,
-			})
-		end
-	end
-	for k = 0, 5 do
-		local z = -60 + k * 24 + rnd(-6, 6)
-		root(-130, z, -30 - rnd(0, 20), z * 0.4, PAL.teal, 1.1)
-	end
-	for k = 0, 4 do
-		local z = -50 + k * 26 + rnd(-6, 6)
-		root(130, z, 34 + rnd(0, 20), z * 0.35, PAL.pink, 0.9)
-	end
-end
-
 -- Spore pylons (relay coils): crystal flowers on a stalk. Client colours Ring / Orb / Pad by cooldown.
 local function buildPylon(o, decor, index)
 	local model = Instance.new("Model")
@@ -891,8 +831,8 @@ local function buildPylon(o, decor, index)
 	local l = Instance.new("PointLight")
 	l.Name = "Glow"
 	l.Color = PAL.teal
-	l.Range = 20
-	l.Brightness = 1.6
+	l.Range = 12 -- a halo on the pylon, not a pool across the lane
+	l.Brightness = 1.1
 	l.Parent = orb
 	local pad = disc(model, c + Vector3.new(0, 0.05, 0), Defs.Coil.Radius * 2, 0.06, PAL.teal, M.Neon, 0.75)
 	pad.Name = "Pad"
@@ -939,25 +879,24 @@ local function buildDressing(map, decor)
 	model.Name = "Dressing"
 	model.Parent = decor
 	-- bioluminescent pools (flat, walkable)
-	local pools = { { -44, 18, 9 }, { 46, -14, 8 }, { -18, -46, 7 }, { 24, 40, 6 }, { -86, -56, 10 }, { 80, 78, 8 }, { -100, 72, 7 } }
+	-- three quiet pools away from the fight lanes (more read as hazards and noise from above)
+	local pools = { { -86, -56, 10 }, { 80, 78, 8 }, { -100, 72, 7 } }
 	for _, p in pools do
 		local pos = W(p[1], 0, p[2])
 		if not clearOf(map, pos.X, pos.Z, p[3] / 2) then
 			continue
 		end
 		disc(model, pos + Vector3.new(0, 0.04, 0), p[3] * 2 + 1.6, 0.06, rgb(20, 60, 64), M.SmoothPlastic, 0)
-		local pool = disc(model, pos + Vector3.new(0, 0.08, 0), p[3] * 2, 0.06, PAL.teal, M.Neon, 0.45)
+		local pool = disc(model, pos + Vector3.new(0, 0.08, 0), p[3] * 2, 0.06, PAL.tealDeep, M.Neon, 0.55)
 		pool.Name = "Pool"
-		for k = 1, 4 do
-			local a = rnd(0, 6.28)
-			disc(model, pos + Vector3.new(math.cos(a) * p[3] * 0.6, 0.1, math.sin(a) * p[3] * 0.6), rnd(1, 2.5), 0.04, rgb(200, 255, 245), M.Neon, 0.5)
-		end
-		light(model, pos + Vector3.new(0, 3, 0), PAL.teal, p[3] * 2.4, 1.2):SetAttribute("Ambient", true)
+		light(model, pos + Vector3.new(0, 3, 0), PAL.teal, p[3] * 2.2, 0.8):SetAttribute("Ambient", true)
 	end
-	-- basalt rubble
-	for i = 1, 60 do
-		local x, z = rnd(-128, 128), rnd(-128, 128)
-		if clearOf(map, x, z, 2) and (x * x + z * z) > 400 then
+	-- basalt rubble: only along the edge, framing the floor instead of dotting it
+	for i = 1, 40 do
+		local a = rnd(0, 6.28)
+		local r = boundary(map, a) - rnd(2, 10)
+		local x, z = math.cos(a) * r, math.sin(a) * r
+		if clearOf(map, x, z, 2) then
 			local s = rnd(0.6, 2.4)
 			if ArtLoader.get("BOULDER") then
 				local rock = ArtLoader.place("BOULDER", model, CFrame.new(x, -s * 0.12, z) * CFrame.Angles(0, rnd(0, 6.28), 0), s * 0.22)
@@ -974,11 +913,10 @@ local function buildDressing(map, decor)
 	end
 	-- drifting motes over the whole bowl
 	local air = part(model, { Name = "Air", Size = Vector3.new(260, 1, 260), CFrame = CFrame.new(0, 2, 0), Transparency = 1 })
-	local e = spores(air, PAL.teal, 30, 0.35, 0.4)
+	-- sparse and faint: bright motes over the floor read as pickups or bullets
+	local e = spores(air, PAL.teal, 6, 0.3, 0.4)
 	e.Lifetime = NumberRange.new(6, 10)
-	local air2 = part(model, { Name = "Air2", Size = Vector3.new(260, 1, 260), CFrame = CFrame.new(0, 6, 0), Transparency = 1 })
-	local e2 = spores(air2, PAL.pink, 10, 0.3, 0.3)
-	e2.Lifetime = NumberRange.new(6, 10)
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.4, 0.6), NumberSequenceKeypoint.new(1, 1) })
 end
 
 -- Lighting ----------------------------------------------------------------------------------------------
@@ -994,12 +932,12 @@ function Arena.lighting(theme: string)
 	Lighting.ClockTime = if night then 17.9 else 17.75
 	Lighting.GeographicLatitude = 20
 	Lighting.Brightness = if night then 0.9 else 3
-	Lighting.Ambient = if night then rgb(96, 50, 80) else rgb(110, 90, 150)
-	Lighting.OutdoorAmbient = if night then rgb(160, 90, 130) else rgb(200, 170, 230)
+	Lighting.Ambient = if night then rgb(96, 50, 80) else rgb(104, 96, 132)
+	Lighting.OutdoorAmbient = if night then rgb(160, 90, 130) else rgb(182, 174, 206)
 	Lighting.ColorShift_Top = if night then rgb(255, 120, 140) else rgb(255, 170, 140)
 	Lighting.ColorShift_Bottom = if night then rgb(40, 0, 30) else rgb(40, 20, 80)
 	Lighting.EnvironmentDiffuseScale = 0.8
-	Lighting.EnvironmentSpecularScale = 0.8
+	Lighting.EnvironmentSpecularScale = 0.35 -- the painted pink sky otherwise mirrors in the floor
 	Lighting.ExposureCompensation = if night then 0.5 else 0.35
 	Lighting.GlobalShadows = true
 	Lighting.ShadowSoftness = 0.2
@@ -1009,12 +947,12 @@ function Arena.lighting(theme: string)
 		end
 	end
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = if night then 0.28 else 0.22
+	atmosphere.Density = if night then 0.24 else 0.16
 	atmosphere.Offset = 0.12
 	atmosphere.Color = if night then rgb(150, 40, 70) else rgb(230, 140, 170)
 	atmosphere.Decay = if night then rgb(50, 10, 40) else rgb(90, 60, 150)
 	atmosphere.Glare = if night then 0.2 else 0.6
-	atmosphere.Haze = if night then 0.8 else 0.4
+	atmosphere.Haze = if night then 0.6 else 0.25
 	atmosphere.Parent = Lighting
 	-- Painted skybox (tools/skybox.py): nebula band, ringed planet over the titan, the sunset glow sits
 	-- where the engine sun is at the dusk ClockTime. Stars and the moon are in the paint.
@@ -1030,15 +968,15 @@ function Arena.lighting(theme: string)
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "Bloom"
-	bloom.Intensity = 1
-	bloom.Size = 28
+	bloom.Intensity = 0.7
+	bloom.Size = 24
 	bloom.Threshold = 1.3 -- only emissive (neon, lights) blooms; white skin and bone stay readable
 	bloom.Parent = Lighting
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "Grade"
 	cc.Brightness = 0.02
-	cc.Contrast = 0.16
-	cc.Saturation = 0.2
+	cc.Contrast = 0.12
+	cc.Saturation = 0.02
 	cc.TintColor = if night then rgb(255, 225, 235) else rgb(255, 238, 250)
 	cc.Parent = Lighting
 	local rays = Instance.new("SunRaysEffect")
@@ -1107,7 +1045,6 @@ function Arena.build(map)
 	if not ArenaArt.rim(map, decor, H) then
 		buildRimFlora(map, decor)
 	end
-	buildRoots(map, decor)
 	buildDressing(map, decor)
 	return root
 end

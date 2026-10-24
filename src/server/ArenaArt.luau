@@ -35,9 +35,24 @@ local function put(key: string, parent, pos: Vector3, scale, yaw: number?, sink:
 end
 
 local function glowLight(parent, pos: Vector3, color: Color3, range: number, brightness: number)
+	-- An attachment only works under a BasePart, and WorldPosition only means world space once it is
+	-- parented (before that it is the local offset, which put these lights in the middle of the bowl).
+	if not parent:IsA("BasePart") then
+		local holder = Instance.new("Part")
+		holder.Name = "GlowHolder"
+		holder.Anchored = true
+		holder.CanCollide = false
+		holder.CanQuery = false
+		holder.CanTouch = false
+		holder.Transparency = 1
+		holder.Size = Vector3.one * 0.2
+		holder.CFrame = CFrame.new(pos)
+		holder.Parent = parent
+		parent = holder
+	end
 	local a = Instance.new("Attachment")
-	a.WorldPosition = pos
 	a.Parent = parent
+	a.WorldPosition = pos
 	local l = Instance.new("PointLight")
 	l.Color = color
 	l.Range = range
@@ -148,13 +163,13 @@ function ArenaArt.extractor(o, decor, H): boolean
 	-- an inner glow the client pulses
 	local core = H.part(model, { Name = "Core", Size = Vector3.new(3, 9, 3), CFrame = CFrame.new(c + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(45), 0), Color = rgb(255, 70, 190), Material = Enum.Material.Neon, Transparency = 0.6 })
 	H.fade(core)
-	H.light(model, c + Vector3.new(0, 7, 0), rgb(255, 70, 190), 30, 2, true)
+	H.light(model, c + Vector3.new(0, 7, 0), rgb(255, 110, 200), 14, 1, true)
 	for i = 1, 3 do
 		local ring = H.disc(model, c + Vector3.new(0, 3 + i * 4, 0), 18 - i * 2.6, 0.3, rgb(60, 245, 210), Enum.Material.Neon, 0.62)
 		ring.Name = "HaloRing" .. i
 		H.fade(ring)
 	end
-	H.disc(decor, c + Vector3.new(0, 0.03, 0), 30, 0.06, rgb(150, 30, 120), Enum.Material.Neon, 0.55)
+	H.disc(decor, c + Vector3.new(0, 0.03, 0), 28, 0.06, rgb(150, 30, 120), Enum.Material.Neon, 0.75)
 	H.disc(decor, c + Vector3.new(0, 0.05, 0), 25, 0.06, rgb(24, 18, 34), Enum.Material.Basalt, 0)
 	return true
 end
@@ -172,14 +187,16 @@ function ArenaArt.grove(map, decor, H): boolean
 		if o.style == "crystal" then
 			local p = put("CRYSTALS", model, Vector3.new(o.x, 0, o.z), fitScale("CRYSTALS", o.w * 1.35), H.rnd(0, 6.28), 0.05)
 			H.fade(p)
-			glowLight(p, Vector3.new(o.x, o.h * 0.6, o.z), pink, o.h * 2.2, 1.8)
+			glowLight(p, Vector3.new(o.x, o.h * 0.6, o.z), pink, o.h * 1.5, 1.3)
 		end
 	end
-	for i = 1, 26 do
-		local x, z = H.rnd(55, 132), H.rnd(-70, 75)
-		local wx = -x
+	-- small clusters hug the east edge only; the floor itself stays clear (DD-047)
+	for i = 1, 10 do
+		local a = math.rad(H.rnd(-50, 50))
+		local r = H.boundary(map, math.pi - a) - H.rnd(3, 9)
+		local wx, z = -math.cos(a) * r, math.sin(a) * r
 		if H.clearOf(map, wx, z, 3) then
-			put("CRYSTALS", model, Vector3.new(wx, 0, z), H.rnd(0.12, 0.3), H.rnd(0, 6.28), 0.1)
+			put("CRYSTALS", model, Vector3.new(wx, 0, z), H.rnd(0.18, 0.32), H.rnd(0, 6.28), 0.1)
 		end
 	end
 	for i = 1, 5 do
@@ -187,7 +204,7 @@ function ArenaArt.grove(map, decor, H): boolean
 		local r = H.rnd(160, 190)
 		local pos = H.W(math.cos(a) * r, 0, math.sin(a) * r)
 		local p = put("CRYSTALS", model, pos, H.rnd(2.4, 3.6), H.rnd(0, 6.28), 0.05)
-		glowLight(p, pos + Vector3.new(0, p.Size.Y * 0.6, 0), pink, 60, 1.2)
+		glowLight(p, pos + Vector3.new(0, p.Size.Y * 0.6, 0), pink, 36, 1)
 	end
 	return true
 end
@@ -205,16 +222,15 @@ function ArenaArt.forest(map, decor, H): boolean
 		if o.style == "mushroom" then
 			local p = put("MUSHROOM", model, Vector3.new(o.x, 0, o.z), o.h * 1.15 / ArtLoader.get("MUSHROOM").Size.Y, H.rnd(0, 6.28))
 			H.fade(p)
-			glowLight(p, Vector3.new(o.x, p.Size.Y * 0.62, o.z), teal, p.Size.X * 1.4, 1.6)
+			glowLight(p, Vector3.new(o.x, p.Size.Y * 0.62, o.z), teal, p.Size.X * 1.1, 1.2)
 		end
 	end
-	for i = 1, 60 do
-		local x, z = H.rnd(-135, -50), H.rnd(-75, 85)
-		if i > 40 then
-			x, z = H.rnd(-120, 120), H.rnd(-120, 120)
-		end
-		local wx = -x
-		if H.clearOf(map, wx, z, 3) and (math.abs(wx) > 30 or math.abs(z) > 30) then
+	-- undergrowth hugs the west edge only; the floor itself stays clear (DD-047)
+	for i = 1, 16 do
+		local a = math.rad(H.rnd(-55, 55))
+		local r = H.boundary(map, a) - H.rnd(3, 10)
+		local wx, z = math.cos(a) * r, math.sin(a) * r
+		if H.clearOf(map, wx, z, 3) then
 			local key = if i % 3 == 0 and ArtLoader.get("CORAL") then "CORAL" else "SHROOMS"
 			if ArtLoader.get(key) then
 				put(key, model, Vector3.new(wx, 0, z), H.rnd(0.8, 1.6), H.rnd(0, 6.28), 0.05)
@@ -243,7 +259,7 @@ function ArenaArt.rim(map, decor, H): boolean
 		local r = H.boundary(map, a) + H.rnd(26, 40)
 		local pos = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 		local p = put("BLOOM", model, pos, b[2], H.rnd(0, 6.28))
-		glowLight(p, pos + Vector3.new(0, p.Size.Y * 0.85, 0), rgb(255, 180, 90), 50, 1.6)
+		glowLight(p, pos + Vector3.new(0, p.Size.Y * 0.85, 0), rgb(255, 180, 90), 36, 1.2)
 	end
 	if ArtLoader.get("MUSHROOM") then
 		-- mostly behind the mushroom forest (world +X)
@@ -252,7 +268,7 @@ function ArenaArt.rim(map, decor, H): boolean
 			local r = H.boundary(map, a) + H.rnd(30, 46)
 			local pos = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 			local p = put("MUSHROOM", model, pos, H.rnd(1.8, 2.6), H.rnd(0, 6.28))
-			glowLight(p, pos + Vector3.new(0, p.Size.Y * 0.6, 0), rgb(60, 245, 210), 50, 1.2)
+			glowLight(p, pos + Vector3.new(0, p.Size.Y * 0.6, 0), rgb(60, 245, 210), 36, 1)
 		end
 	end
 	return true
@@ -323,8 +339,8 @@ function ArenaArt.pylon(o, decor, index: number, H, padRadius: number): boolean
 	local l = Instance.new("PointLight")
 	l.Name = "Glow"
 	l.Color = rgb(60, 245, 210)
-	l.Range = 20
-	l.Brightness = 1.6
+	l.Range = 12 -- a halo on the pylon, not a pool across the lane
+	l.Brightness = 1.1
 	l.Parent = orb
 	for k = 1, 2 do
 		local ring = H.disc(model, c + Vector3.new(0, o.h * (0.35 + k * 0.22), 0), 4.6 - k * 0.8, 0.3, rgb(60, 245, 210), Enum.Material.Neon, 0.25)

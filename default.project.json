@@ -39,15 +39,15 @@
     "MaterialService": {
       "SporeSoil": {
         "$className": "MaterialVariant",
-        "$properties": { "BaseMaterial": "Ground", "StudsPerTile": 14, "MaterialPattern": "Organic",
-          "ColorMap": "rbxassetid://104926590622361", "NormalMap": "rbxassetid://81156127785854",
-          "RoughnessMap": "rbxassetid://87161119110496", "MetalnessMap": "rbxassetid://108659045915588" }
+        "$properties": { "BaseMaterial": "Ground", "StudsPerTile": 22, "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://135672221704874", "NormalMap": "rbxassetid://83111937273398",
+          "RoughnessMap": "rbxassetid://118598640683361", "MetalnessMap": "rbxassetid://121555023171350" }
       },
       "SporeMoss": {
         "$className": "MaterialVariant",
-        "$properties": { "BaseMaterial": "Grass", "StudsPerTile": 10, "MaterialPattern": "Organic",
-          "ColorMap": "rbxassetid://136885279666172", "NormalMap": "rbxassetid://110818496532734",
-          "RoughnessMap": "rbxassetid://140542496872559", "MetalnessMap": "rbxassetid://80239998792877" }
+        "$properties": { "BaseMaterial": "Grass", "StudsPerTile": 16, "MaterialPattern": "Organic",
+          "ColorMap": "rbxassetid://105684393375471", "NormalMap": "rbxassetid://85736542805910",
+          "RoughnessMap": "rbxassetid://88214952733945", "MetalnessMap": "rbxassetid://114302192781630" }
       },
       "SporeBasalt": {
         "$className": "MaterialVariant",

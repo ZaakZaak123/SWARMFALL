@@ -1287,7 +1287,7 @@ local function animateArena(now: number)
 			if ready then
 				local pad = model:FindFirstChild("Pad")
 				if pad then
-					pad.Transparency = 0.55 + math.sin(now * 5 + i) * 0.2
+					pad.Transparency = 0.6 + math.sin(now * 2.4 + i) * 0.12
 				end
 			end
 		end
