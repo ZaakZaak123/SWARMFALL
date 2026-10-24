@@ -118,9 +118,13 @@ function Showcase.trophies(d, weapon: string, mastery: number): { { string } }
 			{ "star", (Defs.Weapons[weapon] and Defs.Weapons[weapon].name or "Оружие") .. " M" .. mastery }
 		)
 	end
-	local raid = d.raid and d.raid.rating or 0
+	local raid = d.raid and (d.raid.attack or d.raid.rating) or 0
 	if (d.raid and d.raid.wins or 0) > 0 then
-		table.insert(out, { "swords", "Рейтинг " .. raid })
+		table.insert(out, { "swords", "Налётчик " .. raid })
+	end
+	local held = d.raid and (d.raid.held or 0) or 0
+	if held > 0 then
+		table.insert(out, { "shield", "Отбито налётов: " .. held })
 	end
 	return out
 end

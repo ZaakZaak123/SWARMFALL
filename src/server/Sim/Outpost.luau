@@ -18,6 +18,11 @@ local Outpost = {}
 local KIND_CODE = { turret = 1, chain = 2, mortar = 3, shield = 4 }
 
 -- Allied structures (siege) ------------------------------------------------------------------------------
+-- A snapshot's defence strength (raid rewards and the raider's rating scale with it, DD-061).
+function Outpost.power(slots): number
+	return Meta.outpostPower(slots or {})
+end
+
 function Outpost.allied(slots)
 	local list = {}
 	for i, s in Meta.cleanOutpost(slots) do

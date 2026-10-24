@@ -129,6 +129,27 @@ do
 	check(team >= personal and team > 0, "each member is credited with every kill of the squad (no race for the last shot)")
 end
 
+print("=== raid settlement (DD-061)")
+do
+	local st = { attack = 1000, rating = 1000, wins = 0, losses = 0, day = 0, count = 0, pairs = {} }
+	local now = 1_000_000
+	local weak = Meta.settleRaid(st, { victory = true, uid = 1, power = 0, t = now - 10 * 3600 }, 5, now)
+	local strong = Meta.settleRaid(st, { victory = true, uid = 2, power = 5000, t = now - 10 * 3600 }, 5, now)
+	print(string.format("  empty outpost pays %d, strong one %d", weak.total, strong.total))
+	check(strong.total > weak.total * 4, "rewards scale with the defence power (an empty friend base is worth little)")
+	for uid = 3, 5 do
+		Meta.settleRaid(st, { victory = true, uid = uid, power = 1000, t = now - 10 * 3600 }, 5, now)
+	end
+	local sixth = Meta.settleRaid(st, { victory = true, uid = 6, power = 1000, t = now - 10 * 3600 }, 5, now)
+	check(sixth.capped == "day" and sixth.total == 0, "at most " .. Meta.RaidDailyCap .. " rewarded raids a day")
+	local tomorrow = Meta.settleRaid(st, { victory = true, uid = 1, power = 1000, t = now - 10 * 3600 }, 6, now)
+	check(tomorrow.total > 0, "a new day resets the caps")
+	local rival = Meta.settleRaid(st, { victory = false, rival = true, power = 900, t = now }, 6, now)
+	check(not rival.unrated and rival.delta < 0, "generated rivals always count for the rating")
+	local rev = Meta.settleRaid(st, { victory = true, uid = 9, power = 1000, t = now - 10 * 3600, revenge = true }, 6, now)
+	check(rev.total == math.floor(Meta.raidRewardFor(1000, true) * Meta.RevengeMult + 0.5), "a revenge raid pays ×" .. Meta.RevengeMult)
+end
+
 print("=== first strike")
 do
 	local first = { [4] = { id = "STING", lvl = 1 } }

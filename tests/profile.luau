@@ -21,6 +21,7 @@ H.stubs.RunService = { IsStudio = function()
 	return true
 end }
 
+local Meta = H.require("src/shared/Meta")
 local Profile = H.require("src/server/Profile")
 local Defs = H.require("src/shared/Defs")
 
@@ -126,6 +127,34 @@ do
 	e.s01 = false
 	Profile._reconcile(e)
 	check(e.ops.O05 == 3 and e.ops.O07 == 1 and e.s01 == true and e.v == 3, "v1 veterans keep the boss hunts (O05/O07) and get S01")
+end
+
+-- DD-061 raids: the raider's rating and the defence record are separate; nothing is taken from owners.
+do
+	print("=== raids (DD-061)")
+	local q = player(3)
+	Profile.load(q)
+	local e = Profile.get(q)
+	e.raid = { rating = 1234, wins = 3, losses = 1, defWins = 4, defLosses = 2 }
+	Profile._reconcile(e)
+	check(e.raid.attack == 1234 and e.raid.held == 4 and e.raid.pairs ~= nil, "migration: old rating becomes the raider rating, stopped raids the defence record")
+	local scrap, attack = e.scrap, e.raid.attack
+	Profile.applyDefense(q, { { won = true, delta = 20 } })
+	check(e.raid.attack == attack and e.scrap == scrap and e.raid.held == 4, "a breached defence costs the owner nothing (rating, utility, record)")
+	Profile.applyDefense(q, { { won = false, delta = 0 } })
+	check(e.raid.held == 5 and e.scrap == scrap + Meta.DefenseReward, "a held raid adds to the record and pays from the system")
+	local function raidResult(uid, power, ageHours, victory)
+		local r = result(victory, { id = 3 })
+		r.mode = "raid"
+		r.raid = { uid = uid, name = "X", power = power, t = os.time() - ageHours * 3600 }
+		return r
+	end
+	local a = Profile.grantRun(q, "raid-1", raidResult(99, 3000, 5, true), "RAID", 1)
+	check(a.total > 0 and a.rating.delta ~= 0 and not a.capped, "a won raid on an old snapshot pays and moves the raider rating")
+	local b = Profile.grantRun(q, "raid-2", raidResult(99, 3000, 5, true), "RAID", 1)
+	check(b.total == 0 and b.capped == "pair", "the same owner pays once a day")
+	local c = Profile.grantRun(q, "raid-3", raidResult(77, 3000, 0.5, true), "RAID", 1)
+	check(c.total > 0 and c.rating.unrated and c.rating.delta == 0, "a fresh snapshot pays but leaves the rating alone")
 end
 
 if failures > 0 then

@@ -566,7 +566,7 @@ local function ago(t: number): string
 end
 
 local function buildLog()
-	local m = H.modal("RaidLog", 720, 560, "ЖУРНАЛ АВАНПОСТА", C.orange)
+	local m = H.modal("RaidLog", 760, 560, "ЖУРНАЛ НАЛЁТОВ", C.orange)
 	ui.log = m
 	ui.logSub = label("", { Position = UDim2.fromOffset(28, 60), Size = UDim2.new(1, -56, 0, 20), FontFace = F.body, TextSize = 14, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42, Parent = m.panel })
 	ui.logList = new("ScrollingFrame", {
@@ -587,20 +587,26 @@ function MetaMenus.refreshLog()
 		return
 	end
 	local r = profile.raid or {}
-	ui.logSub.Text = string.format("Рейтинг %d  ·  атаки %d/%d  ·  оборона %d/%d", r.rating or 0, r.wins or 0, (r.wins or 0) + (r.losses or 0), r.defWins or 0, (r.defWins or 0) + (r.defLosses or 0))
+	ui.logSub.Text = string.format(
+		"Налётчик: рейтинг %d, атак %d/%d  ·  Защитник: отбито %d  ·  Налёты на тебя ничего у тебя не отнимают",
+		r.attack or r.rating or 0,
+		r.wins or 0,
+		(r.wins or 0) + (r.losses or 0),
+		r.held or r.defWins or 0
+	)
 	H.clear(ui.logList)
 	local log = profile.raidLog or {}
 	if #log == 0 then
-		label("На твой аванпост ещё никто не нападал. Построй оборону — её увидят другие охотники.", { Size = UDim2.new(1, 0, 0, 60), FontFace = F.body, TextSize = 15, TextColor3 = C.dim, TextWrapped = true, ZIndex = 43, Parent = ui.logList })
+		label("На твой бур ещё никто не нападал. Нападают на копию обороны: твоё убежище и утиль не трогают.", { Size = UDim2.new(1, 0, 0, 60), FontFace = F.body, TextSize = 15, TextColor3 = C.dim, TextWrapped = true, ZIndex = 43, Parent = ui.logList })
 	end
 	for i, entry in log do
 		local rr = row(ui.logList, i, 70)
 		local held = not entry.won
 		iconDisc(rr, if held then "shield" else "skull", if held then C.lime else C.red, 46, UDim2.fromOffset(12, 12))
 		label((entry.name or "Охотник") .. (if held then " — оборона выстояла" else " — прорвал оборону"), { Position = UDim2.fromOffset(70, 12), Size = UDim2.new(1, -230, 0, 22), FontFace = F.bodyBold, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = rr })
-		label(ago(entry.t) .. (if held then "  ·  +" .. Meta.DefenseReward .. " утиля" else "  ·  рейтинг −" .. math.abs(entry.delta or 0)), { Position = UDim2.fromOffset(70, 38), Size = UDim2.new(1, -230, 0, 18), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = rr })
+		label(ago(entry.t) .. (if held then "  ·  +" .. Meta.DefenseReward .. " утиля, +1 к рекорду обороны" else "  ·  ты ничего не потерял · ответный вызов даёт ×1.5"), { Position = UDim2.fromOffset(70, 38), Size = UDim2.new(1, -230, 0, 18), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = rr })
 		if (entry.attacker or 0) > 0 and profile.features and profile.features.raids then
-			local b, bl = Theme.button("ОТОМСТИТЬ", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 42), TextSize = 13, ZIndex = 44 }, if held then "ghost" else "danger")
+			local b, bl = Theme.button("ОТВЕТНЫЙ ВЫЗОВ", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 42), TextSize = 13, ZIndex = 44 }, if held then "ghost" else "danger")
 			b.Parent = rr
 			bl.ZIndex = 45
 			b.Activated:Connect(function()
@@ -622,15 +628,17 @@ local function buildBoards()
 	local m = H.modal("Boards", 760, 560, "РЕЙТИНГ", C.gold)
 	ui.boards = m
 	ui.boardCols = {}
-	for i, title in { "ВТОРЖЕНИЯ · РЕЙТИНГ", "ОСАДА · ЛУЧШИЙ УРОВЕНЬ" } do
-		label(title, { Position = UDim2.fromOffset(28 + (i - 1) * 360, 70), Size = UDim2.fromOffset(340, 18), FontFace = F.head, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42, Parent = m.panel })
-		ui.boardCols[i] = new("Frame", { Position = UDim2.fromOffset(28 + (i - 1) * 360, 96), Size = UDim2.fromOffset(340, 430), ZIndex = 42, Parent = m.panel, List = { Padding = UDim.new(0, 4) } })
+	-- DD-061: raiders (a rating only from raids you chose), defenders (raids held — it never drops),
+	-- and the drill defence record
+	for i, title in { "НАЛЁТЧИКИ · РЕЙТИНГ", "ЗАЩИТНИКИ · ОТБИТО", "ОБОРОНА БУРА" } do
+		label(title, { Position = UDim2.fromOffset(28 + (i - 1) * 236, 70), Size = UDim2.fromOffset(224, 18), FontFace = F.head, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42, Parent = m.panel })
+		ui.boardCols[i] = new("Frame", { Position = UDim2.fromOffset(28 + (i - 1) * 236, 96), Size = UDim2.fromOffset(224, 430), ZIndex = 42, Parent = m.panel, List = { Padding = UDim.new(0, 4) } })
 	end
 end
 
 function MetaMenus.showBoards()
 	local boards = lobby and lobby.boards or {}
-	for i, key in { "rating", "siege" } do
+	for i, key in { "rating", "held", "siege" } do
 		local col = ui.boardCols[i]
 		H.clear(col)
 		local rows = boards[key] or {}

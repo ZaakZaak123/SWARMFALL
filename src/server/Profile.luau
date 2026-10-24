@@ -64,7 +64,7 @@ local function defaults()
 		species = { EN_RUNNER = false }, -- unlocked strain species
 		mutations = {}, -- "SPECIES:MUT" -> true (unlocked for that species)
 		brood = {}, -- up to 3 strains { kind, muts }
-		raid = { rating = Meta.StartRating, wins = 0, losses = 0, defWins = 0, defLosses = 0 },
+		raid = { rating = Meta.StartRating, wins = 0, losses = 0, defWins = 0, defLosses = 0, attack = Meta.StartRating, held = 0, day = 0, count = 0, pairs = {} },
 		lastDay = 0,
 		likes = 0, -- «Крутой аванпост» marks from visitors (DD-053)
 		liked = {}, -- owner user id (string) -> day index of the last like given
@@ -103,6 +103,12 @@ local function reconcile(data)
 		if data.threat.MAP_HIVE_DEPTHS then
 			data.ops.O07 = math.max(data.ops.O07 or 1, data.threat.MAP_HIVE_DEPTHS)
 		end
+	end
+	-- v5 (DD-061): the old shared raid rating becomes the raider's own; the defence record starts from
+	-- the raids already stopped. (Before the defaults below fill `attack` with the start value.)
+	if type(data.raid) == "table" and data.raid.attack == nil then
+		data.raid.attack = data.raid.rating or Meta.StartRating
+		data.raid.held = data.raid.defWins or 0
 	end
 	-- v3: nested tables may be missing on older saves
 	for _, key in { "outpost", "raid" } do
@@ -746,13 +752,15 @@ function Profile.applyDefense(player: Player, entries): number
 	end
 	local gained = 0
 	for _, entry in entries do
+		-- DD-061: a raid the owner did not take part in never costs them anything — no rating, no
+		-- resources, no buildings. A stopped raid adds to the defence record and pays from the system.
 		if entry.won then
 			d.raid.defLosses += 1
 		else
 			d.raid.defWins += 1
+			d.raid.held = (d.raid.held or 0) + 1
 			gained += Meta.DefenseReward
 		end
-		d.raid.rating = math.max(0, d.raid.rating - (entry.delta or 0))
 	end
 	d.scrap += gained
 	mark(player)
@@ -805,16 +813,19 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		end
 		d.outpost.best = math.max(d.outpost.best or 0, if result.victory then level else 0)
 	elseif mode == "raid" and result.raid then
-		local delta = Meta.ratingDelta(d.raid.rating, result.raid.rating or Meta.StartRating, result.victory)
-		d.raid.rating = math.max(0, d.raid.rating + delta)
-		if result.victory then
-			d.raid.wins += 1
-		else
-			d.raid.losses += 1
-		end
-		reward.lines = { { if result.victory then "crown" else "timer", Meta.raidReward(result.raid.rating or 1000, result.victory) } }
-		reward.total = Meta.raidReward(result.raid.rating or 1000, result.victory)
-		reward.rating = { delta = delta, now = d.raid.rating }
+		local raid = result.raid
+		local s = Meta.settleRaid(d.raid, {
+			victory = result.victory,
+			uid = raid.uid,
+			rival = raid.rival,
+			power = raid.power or 0,
+			t = raid.t,
+			revenge = raid.revenge,
+		}, Meta.dayIndex(os.time()), os.time())
+		reward.lines = { { if result.victory then "crown" else "timer", s.total } }
+		reward.total = s.total
+		reward.capped = s.capped
+		reward.rating = { delta = s.delta, now = d.raid.attack, unrated = s.unrated }
 	end
 	local bonus = Meta.squadMult(result.squad or 1)
 	if result.anomaly then

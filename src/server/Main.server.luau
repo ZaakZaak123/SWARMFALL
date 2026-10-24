@@ -815,7 +815,10 @@ function handlers.revenge(player: Player, uid)
 		return false
 	end
 	lobby.mode = "raid"
-	lobby.target = snap
+	-- «Ответный вызов» (DD-061): a raid on the raider's snapshot pays the system bonus
+	local target = table.clone(snap)
+	target.revenge = true
+	lobby.target = target
 	return true
 end
 

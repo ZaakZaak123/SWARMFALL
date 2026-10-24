@@ -1520,7 +1520,17 @@ function World:finish(victory: boolean, reason: string)
 		reactor = if self.mission.reactor then self.mission.reactor.hp / self.mission.reactor.maxHp else nil,
 		mode = self.op.mode or "hunt",
 		siege = self.op.siege,
-		raid = if self.op.target then { uid = self.op.target.uid, name = self.op.target.name, rating = self.op.target.rating, rival = self.op.target.rival } else nil,
+		raid = if self.op.target
+			then {
+				uid = self.op.target.uid,
+				name = self.op.target.name,
+				rating = self.op.target.rating,
+				rival = self.op.target.rival,
+				power = Outpost.power(self.op.target.slots),
+				t = self.op.target.t,
+				revenge = self.op.target.revenge,
+			}
+			else nil,
 		core = if self.core then math.max(0, self.core.hp / self.core.maxHp) else nil,
 		anomaly = if self.anomaly then self.anomaly.id else nil,
 		squad = #self.playerList,

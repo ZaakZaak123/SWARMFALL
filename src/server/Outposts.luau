@@ -4,7 +4,7 @@
 --             raids load a snapshot, build it on the attacker's server and fight it there
 --   raid log  per-owner key the attacker's server appends to; the owner's server claims it on join
 --             (defence rewards, rating) and shows it in the lobby with a «revenge» button
---   boards    OrderedDataStores: raid rating and best siege level
+--   boards    OrderedDataStores: raiders (attack rating), defenders (raids held) and best siege level
 -- Without DataStore access (Studio, outage) everything degrades to generated rivals and a session log:
 -- nothing is written, nothing real can be lost.
 
@@ -19,17 +19,18 @@ local Outposts = {}
 
 local POOL_SIZE = 150
 local LOG_SIZE = 20
-local poolStore, logStore, ratingBoard, siegeBoard
+local poolStore, logStore, ratingBoard, siegeBoard, heldBoard
 pcall(function()
 	poolStore = DataStoreService:GetDataStore("SPOREFALL_OutpostPool_v1")
 	logStore = DataStoreService:GetDataStore("SPOREFALL_RaidLog_v1")
 	ratingBoard = DataStoreService:GetOrderedDataStore("SPOREFALL_RaidRating_v1")
 	siegeBoard = DataStoreService:GetOrderedDataStore("SPOREFALL_SiegeBest_v1")
+	heldBoard = DataStoreService:GetOrderedDataStore("SPOREFALL_RaidHeld_v1")
 end)
 
 local online = true -- flips off on the first DataStore failure for this server's lifetime
 local poolCache, poolAt = {}, -1e9
-local boardsCache, boardsAt = { rating = {}, siege = {} }, -1e9
+local boardsCache, boardsAt = { rating = {}, siege = {}, held = {} }, -1e9
 local publishAt: { [number]: number } = {}
 
 local function safe(fn)
@@ -48,7 +49,7 @@ local function snapshot(player: Player, d)
 	return {
 		uid = player.UserId,
 		name = "Аванпост " .. player.DisplayName,
-		rating = d.raid.rating,
+		rating = d.raid.attack or d.raid.rating,
 		slots = d.outpost.slots,
 		brood = d.brood,
 		t = os.time(),
@@ -84,7 +85,10 @@ function Outposts.publish(player: Player, force: boolean?)
 			end)
 		end)
 		safe(function()
-			ratingBoard:SetAsync(tostring(player.UserId), d.raid.rating)
+			ratingBoard:SetAsync(tostring(player.UserId), d.raid.attack or d.raid.rating)
+			if (d.raid.held or 0) > 0 then
+				heldBoard:SetAsync(tostring(player.UserId), d.raid.held)
+			end
 			if (d.outpost.best or 0) > 0 then
 				siegeBoard:SetAsync(tostring(player.UserId), d.outpost.best)
 			end
@@ -108,7 +112,8 @@ end
 -- Three raid targets near the attacker's rating: real outposts first, generated rivals fill the rest.
 function Outposts.candidates(player: Player)
 	local d = Profile.get(player)
-	local rating = if d then d.raid.rating else Meta.StartRating
+	-- targets near the raider's own rating, measured by their defence power (not the owner's rating)
+	local rating = if d then (d.raid.attack or d.raid.rating) else Meta.StartRating
 	local list = {}
 	for _, s in pool() do
 		if s.uid ~= player.UserId and Meta.outpostPower(s.slots) > 0 then
@@ -116,7 +121,7 @@ function Outposts.candidates(player: Player)
 		end
 	end
 	table.sort(list, function(a, b)
-		return math.abs(a.rating - rating) < math.abs(b.rating - rating)
+		return math.abs(Meta.powerRating(Meta.outpostPower(a.slots)) - rating) < math.abs(Meta.powerRating(Meta.outpostPower(b.slots)) - rating)
 	end)
 	local out = {}
 	for i = 1, math.min(3, #list) do
@@ -204,7 +209,7 @@ end
 
 -- Top 10 boards (cached a minute). Never yields: the refresh runs in the background.
 local function refreshBoards()
-		for key, store in { rating = ratingBoard, siege = siegeBoard } do
+		for key, store in { rating = ratingBoard, siege = siegeBoard, held = heldBoard } do
 			local ok, page = safe(function()
 				return store:GetSortedAsync(false, 10):GetCurrentPage()
 			end)

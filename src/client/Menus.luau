@@ -715,13 +715,19 @@ function Menus.refreshLobby()
 		end
 	elseif mode == "raid" then
 		local t = info.target
-		ui.huntTag.Text = "ВТОРЖЕНИЕ  ·  ТВОЙ РЕЙТИНГ " .. (if prof and prof.raid then prof.raid.rating else "—")
+		ui.huntTag.Text = "ВТОРЖЕНИЕ  ·  РЕЙТИНГ НАЛЁТЧИКА " .. (if prof and prof.raid then (prof.raid.attack or prof.raid.rating) else "—")
 		ui.huntName.Text = if t then t.name else "Ищем аванпосты…"
-		ui.huntBrief.Text = if t then string.format("Рейтинг %d  ·  мощь обороны %d. Разрушь бур в центре за 4 минуты.", t.rating or 0, t.power or 0) else ""
+		ui.huntBrief.Text = if t
+			then string.format(
+				"Мощь обороны %d · награда до ◆ %d. Разрушь бур за 4 минуты. Хозяин ничего не теряет — это копия его обороны.",
+				t.power or 0,
+				Meta.raidRewardFor(t.power or 0, true)
+			)
+			else ""
 		if rebuildRow and isHost and info.candidates and #info.candidates > 1 then
 			for i, c in info.candidates do
 				local on = t and c.uid == t.uid
-				local b, bl = Theme.button(tostring(c.rating), { Size = UDim2.fromOffset(84, 40), TextSize = 13 }, if on then "primary" else "ghost")
+				local b, bl = Theme.button("◆" .. tostring(c.power or 0), { Size = UDim2.fromOffset(84, 40), TextSize = 13 }, if on then "primary" else "ghost")
 				b.Parent = ui.modeRow
 				b.Activated:Connect(function()
 					send("raidPick", i)
@@ -2201,10 +2207,19 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		k += 1
 		unlockCard("threat", "ОСАДА", "Открыт уровень " .. reward.siegeUp, C.orange, k)
 	end
-	if reward and reward.rating then
+	if reward and reward.capped then
+		k += 1
+		unlockCard("timer", "БЕЗ НАГРАДЫ", if reward.capped == "pair" then "Этот бур уже приносил тебе утиль сегодня" else "Лимит налётов с наградой на сегодня: " .. Meta.RaidDailyCap, C.dim, k)
+	elseif reward and reward.rating then
 		k += 1
 		local d = reward.rating.delta
-		unlockCard("crown", "РЕЙТИНГ ВТОРЖЕНИЙ", string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now), if d >= 0 then C.gold else C.red, k)
+		unlockCard(
+			"crown",
+			"РЕЙТИНГ НАЛЁТЧИКА",
+			if reward.rating.unrated then "Свежий снимок обороны — без рейтинга" else string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now),
+			if d >= 0 then C.gold else C.red,
+			k
+		)
 	end
 	-- A first story win that opens a meta mode (the next hunt unlocking is the signal).
 	local newly = {

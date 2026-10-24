@@ -278,9 +278,6 @@ end
 -- Raids ------------------------------------------------------------------------------------------------
 Meta.StartRating = 1000
 
-function Meta.raidReward(targetRating: number, victory: boolean): number
-	return if victory then math.floor(160 + math.max(0, targetRating - 900) * 0.12) else 30
-end
 
 -- Rating change for attacker (win/lose) and defender (inverse), Elo-like with K = 32.
 function Meta.ratingDelta(attacker: number, defender: number, attackerWon: boolean): number
@@ -289,7 +286,74 @@ function Meta.ratingDelta(attacker: number, defender: number, attackerWon: boole
 	return math.floor(32 * (score - expect) + 0.5)
 end
 
-Meta.DefenseReward = 40 -- xenite to the owner for every raid their outpost stopped
+Meta.DefenseReward = 40 -- utility (scrap) to the owner for every raid their outpost stopped, from the system
+
+-- Raids, DD-061 (docs/RAIDS_PROPOSAL.md, approved). Two separate numbers on the profile's `raid` table:
+--   attack  the raider's Elo — moved only by raids the player chose, against the defence's strength
+--           (its power), never against the owner's rating;
+--   held    the owner's defence record — raids their outpost stopped; it only grows.
+-- Nothing moves between players: every reward is minted by the system. Against arranged fights: one
+-- rewarded raid per attacker→owner pair per day, at most RaidDailyCap rewarded raids a day, rewards and
+-- rating scaled by the snapshot's defence power, and rating only against snapshots older than
+-- RatedSnapshotAge (generated rivals always count: there is nobody to arrange with).
+Meta.RaidDailyCap = 5
+Meta.RatedSnapshotAge = 3 * 3600
+Meta.RevengeMult = 1.5
+
+-- A defence's strength on the rating scale: an empty outpost ~800, a full level-3 one ~1500.
+function Meta.powerRating(power: number): number
+	return 800 + math.min(power, 7000) * 0.1
+end
+
+function Meta.raidRewardFor(power: number, victory: boolean): number
+	if not victory then
+		return 10
+	end
+	return math.floor(math.clamp(30 + power * 0.04, 30, 320))
+end
+
+-- Settle one finished raid for the attacker. state = profile.raid (mutated); info = { victory, uid,
+-- rival, power, t (snapshot time), revenge }. Returns { total, delta, capped = nil|"pair"|"day",
+-- unrated = bool }.
+function Meta.settleRaid(state, info, day: number, now: number)
+	if state.day ~= day then
+		state.day = day
+		state.count = 0
+		for k, v in state.pairs do
+			if v ~= day then
+				state.pairs[k] = nil
+			end
+		end
+	end
+	if info.victory then
+		state.wins += 1
+	else
+		state.losses += 1
+	end
+	local key = if info.uid and not info.rival then tostring(info.uid) else nil
+	if key and state.pairs[key] == day then
+		return { total = 0, delta = 0, capped = "pair", unrated = true }
+	end
+	if state.count >= Meta.RaidDailyCap then
+		return { total = 0, delta = 0, capped = "day", unrated = true }
+	end
+	state.count += 1
+	if key then
+		state.pairs[key] = day
+	end
+	local total = Meta.raidRewardFor(info.power or 0, info.victory)
+	if info.revenge then
+		total = math.floor(total * Meta.RevengeMult + 0.5)
+	end
+	local rated = info.rival == true or (now - (info.t or now)) >= Meta.RatedSnapshotAge
+	local delta = 0
+	if rated then
+		delta = Meta.ratingDelta(state.attack, Meta.powerRating(info.power or 0), info.victory)
+		state.attack = math.max(0, state.attack + delta)
+		state.rating = state.attack -- legacy mirror for old readers
+	end
+	return { total = total, delta = delta, unrated = not rated }
+end
 
 -- Outpost validation & power ---------------------------------------------------------------------------
 -- slots: { [socket] = { id = string, lvl = number } } -> sanitized copy
