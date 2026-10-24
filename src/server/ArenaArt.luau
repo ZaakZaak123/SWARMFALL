@@ -276,6 +276,29 @@ function ArenaArt.rim(map, decor, H): boolean
 	return true
 end
 
+-- DD-058: what is left of the old world on the rim — broken concrete walls and rusted cars just past
+-- the edge of the fight, so the danger zone reads as ruined infrastructure the swarm has overgrown.
+function ArenaArt.ruins(map, decor, H): boolean
+	if not has("RUIN_WALL", "CAR_WRECK") then
+		return false
+	end
+	local model = Instance.new("Model")
+	model.Name = "Ruins"
+	model.Parent = decor
+	for i = 0, 15 do
+		local a = i / 16 * math.pi * 2 + H.rnd(-0.08, 0.08)
+		local r = H.boundary(map, a) + H.rnd(4, 12)
+		local pos = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+		if i % 3 == 1 then
+			put("CAR_WRECK", model, pos, H.rnd(1.05, 1.3), H.rnd(0, 6.28), 0.05)
+		else
+			-- walls stand along the rim, a little askew
+			put("RUIN_WALL", model, pos, H.rnd(1.1, 1.6), -a + math.pi / 2 + H.rnd(-0.3, 0.3), 0.1)
+		end
+	end
+	return true
+end
+
 -- Spore wounds at every swarm entrance but the titan's jaw: a hive nest grown into the rim, ember glow
 -- spilling onto the floor and veins creeping toward the bowl.
 function ArenaArt.wounds(map, decor, H): boolean

@@ -116,6 +116,19 @@ do
 	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")
 end
 
+print("=== shared research (DD-059)")
+do
+	local out = Bot.run("W_ARC_RIFLE", 2, 91, false, nil, 1, nil, { op = "O01", orbit = 30, s01 = false })
+	local r = out.result
+	local team = (r.species or {}).EN_RUNNER or 0
+	local personal = 0
+	for _, pl in r.players do
+		personal += (pl.species or {}).EN_RUNNER or 0
+	end
+	print(string.format("  runners: squad credit %d, personal kills summed %d", team, personal))
+	check(team >= personal and team > 0, "each member is credited with every kill of the squad (no race for the last shot)")
+end
+
 print("=== first strike")
 do
 	local first = { [4] = { id = "STING", lvl = 1 } }

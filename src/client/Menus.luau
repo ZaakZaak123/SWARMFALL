@@ -222,7 +222,7 @@ local function buildLobby()
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = logo })
 	ui.logoScale = new("UIScale", { Parent = logo })
-	label("ДЕРЖИ КРАТЕР.  НЕБО ПАДАЕТ РОЕМ.", {
+	label("ВЕРНИ ЖИЗНЬ СВОЕМУ УГЛУ МИРА.", {
 		Position = UDim2.fromOffset(4, 86),
 		Size = UDim2.fromOffset(640, 22),
 		FontFace = F.head,
@@ -239,7 +239,7 @@ local function buildLobby()
 		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
 	})
 	ui.tabButtons = {}
-	for i, t in { { "hunt", "ОХОТЫ" }, { "siege", "АВАНПОСТ" }, { "raid", "ВТОРЖЕНИЕ" } } do
+	for i, t in { { "hunt", "ВЫЛАЗКИ" }, { "siege", "ОБОРОНА БУРА" }, { "raid", "ВТОРЖЕНИЕ" } } do
 		local b, bl = Theme.button(t[2], { Name = "Tab_" .. t[1], Size = UDim2.fromOffset(146, 40), TextSize = 13, LayoutOrder = i })
 		b.Parent = ui.tabs
 		b.Activated:Connect(function()
@@ -251,7 +251,7 @@ local function buildLobby()
 	-- Hunt card
 	local hunt = Theme.panel({ Name = "Hunt", Position = UDim2.fromOffset(0, 176), Size = UDim2.fromOffset(460, 214), CornerRadius = 20, Parent = safe })
 	ui.hunt = hunt
-	ui.huntTag = label("ОХОТА 1", {
+	ui.huntTag = label("ВЫЛАЗКА 1", {
 		Position = UDim2.fromOffset(24, 18),
 		Size = UDim2.fromOffset(300, 16),
 		FontFace = F.head,
@@ -389,7 +389,7 @@ local function buildLobby()
 			end
 		end)
 	end)
-	label("+10% ксенита за каждого в отряде", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 92), Size = UDim2.fromOffset(240, 14), FontFace = F.body, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = tr })
+	label("+10% утиля за каждого в отряде", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 92), Size = UDim2.fromOffset(240, 14), FontFace = F.body, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = tr })
 	ui.harvest = Theme.button("СОБРАТЬ", { Name = "Harvest", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 112), Size = UDim2.fromOffset(200, 40), TextSize = 12 }, "primary")
 	ui.harvest.Parent = tr
 	ui.harvest.Visible = false
@@ -646,7 +646,7 @@ function Menus.refreshLobby()
 	local op = Ops.get(info.op)
 	local mode = info.mode or "hunt"
 	local features = prof and prof.features or {}
-	ui.huntTag.Text = if op.code == "C-A01" then "КОНТРАКТ" else "ОХОТА " .. op.index
+	ui.huntTag.Text = if op.code == "C-A01" then "КОНТРАКТ" else "ВЫЛАЗКА " .. op.index
 	ui.huntName.Text = op.name
 	ui.huntBrief.Text = op.brief
 	local list = unlockedOps()
@@ -772,7 +772,7 @@ function Menus.refreshLobby()
 			end
 		end
 		if held + lost > 0 then
-			ui.toastText.Text = string.format("Нападений на аванпост: %d  ·  отбито %d (+%d ксенита)  ·  прорвано %d", held + lost, held, held * Meta.DefenseReward, lost)
+			ui.toastText.Text = string.format("Нападений на аванпост: %d  ·  отбито %d (+%d утиля)  ·  прорвано %d", held + lost, held, held * Meta.DefenseReward, lost)
 			ui.toast.Visible = true
 			task.delay(9, function()
 				ui.toast.Visible = false
@@ -863,7 +863,7 @@ function Menus.refreshLobby()
 	ui.playLabel.TextColor3 = if amReady then C.text else C.ink
 	Icons.recolor(ui.playIcon, if amReady then C.text else C.ink)
 	ui.playStatus.Text = if info.countdown
-		then string.format("Высадка через %d…  ·  готовы %d/%d", math.ceil(info.countdown), readyCount, n)
+		then string.format("Выход через %d…  ·  готовы %d/%d", math.ceil(info.countdown), readyCount, n)
 		elseif n > 1 then string.format("Отряд: %d  ·  готовы %d/%d", n, readyCount, n)
 		elseif runs == 0 then "Соло  ·  до 4 игроков"
 		else "Соло"
@@ -954,7 +954,7 @@ end
 local function buildUpgrades()
 	local m = modal("Upgrades", 860, 560, "УЛУЧШЕНИЯ", nil)
 	ui.upgrades = m
-	label("Навсегда. Покупаются за Ксенит, который приносит каждая охота.", {
+	label("Навсегда. Покупаются за Утиль, который приносит каждая вылазка.", {
 		Position = UDim2.fromOffset(28, 60),
 		Size = UDim2.new(1, -56, 0, 20),
 		FontFace = F.body,
@@ -2083,17 +2083,17 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	end
 	local mode = result.mode or "hunt"
 	if result.op == "STRIKE" then
-		ui.resTag.Text = "АВАНПОСТ  ·  ПЕРВЫЙ НАТИСК"
+		ui.resTag.Text = "ОБОРОНА БУРА  ·  ПЕРВЫЙ НАТИСК"
 		ui.resTitle.Text = if result.victory then "НАТИСК ОТБИТ" else "БУР ПОВРЕЖДЁН"
 	elseif mode == "siege" then
-		ui.resTag.Text = "ОСАДА АВАНПОСТА  ·  УРОВЕНЬ " .. (result.siege or 1)
-		ui.resTitle.Text = if result.victory then "ОСАДА ОТБИТА" else "БУР ПАЛ"
+		ui.resTag.Text = "ОБОРОНА БУРА  ·  УРОВЕНЬ " .. (result.siege or 1)
+		ui.resTitle.Text = if result.victory then "БУР ВЫСТОЯЛ" else "БУР ПАЛ"
 	elseif mode == "raid" then
 		ui.resTag.Text = "ВТОРЖЕНИЕ  ·  " .. (if result.raid then result.raid.name else "")
 		ui.resTitle.Text = if result.victory then "ВТОРЖЕНИЕ УСПЕШНО" else "ОБОРОНА ВЫСТОЯЛА"
 	else
-		ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ОХОТА " .. op.index) .. "  ·  " .. op.name .. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
-		ui.resTitle.Text = if result.victory then "ОХОТА ЗАВЕРШЕНА" else "ТЫ ПАЛ"
+		ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ВЫЛАЗКА " .. op.index) .. "  ·  " .. op.name .. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
+		ui.resTitle.Text = if result.victory then "ВЫЛАЗКА УДАЛАСЬ" else "ТЫ ПАЛ"
 	end
 	ui.resTitle.TextColor3 = if result.victory then C.lime else C.red
 	ui.resReason.Text = if result.chapterEnd and result.victory then "Глава завершена. " .. result.reason else result.reason
@@ -2164,7 +2164,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	-- reward
 	ui.resReward.Visible = reward ~= nil
 	if reward then
-		countUp(ui.resRewardAmount, reward.total + (reward.grant or 0), "+%s КСЕНИТ", 1.3)
+		countUp(ui.resRewardAmount, reward.total + (reward.grant or 0), "+%s УТИЛЬ", 1.3)
 		local parts = {}
 		local names = { skull = "за убийства", level = "за уровни", crown = "за победу", timer = "за стойкость", hive = "ульи" }
 		for _, line in reward.lines or {} do
@@ -2191,7 +2191,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		if kind == "op" then
 			k += 1
 			local nop = Ops.get(u[2])
-			unlockCard("pin", if nop.code == "C-A01" then "НОВЫЙ КОНТРАКТ" else "НОВАЯ ОХОТА", nop.name, C.lime, k)
+			unlockCard("pin", if nop.code == "C-A01" then "НОВЫЙ КОНТРАКТ" else "НОВАЯ ВЫЛАЗКА", nop.name, C.lime, k)
 		elseif kind == "s01" then
 			k += 1
 			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
@@ -2208,10 +2208,10 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	end
 	-- A first story win that opens a meta mode (the next hunt unlocking is the signal).
 	local newly = {
-		O02 = { "shield", "ОТКРЫТО", "Аванпост: первая турель" },
-		O03 = { "threat", "НОВЫЙ РЕЖИМ", "Осада аванпоста" },
-		O04 = { "hive", "НОВЫЙ РЕЖИМ", "Свой рой" },
-		O05 = { "skull", "НОВЫЙ РЕЖИМ", "Вторжения на чужие аванпосты" },
+		O02 = { "gear", "В УБЕЖИЩЕ", "Мастерская: оборона бура" },
+		O03 = { "coil", "В УБЕЖИЩЕ", "Радиостанция и огород" },
+		O04 = { "hive", "В УБЕЖИЩЕ", "Лаборатория с образцами" },
+		O05 = { "skull", "НОВЫЙ РЕЖИМ", "Вторжения на чужие буры" },
 	}
 	for _, u in reward and reward.unlocked or {} do
 		local f = u[1] == "op" and newly[u[2]]

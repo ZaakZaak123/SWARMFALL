@@ -266,12 +266,9 @@ local function startRun()
 	local hostData = hostPlayer and Profile.get(hostPlayer)
 	local replay = hostData ~= nil and hostData.wins_by_op ~= nil and (hostData.wins_by_op[lobby.op] or 0) > 0
 	local opts = { seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay }
-	if lobby.mode == "strike" and hostData then
-		opts.opDef = Ops.makeFirstStrike()
-		opts.structures = hostData.outpost.slots
-		opts.threat = 1
-	elseif lobby.mode == "siege" and hostData and not hostData.tut.strike then
-		-- the first voluntary defence of the drill is the short lesson (DD-057: no longer forced)
+	-- the first voluntary defence of the drill is the short lesson (DD-057: no longer forced)
+	local firstDefence = lobby.mode == "strike" or (lobby.mode == "siege" and hostData and not hostData.tut.strike)
+	if firstDefence and hostData then
 		opts.opDef = Ops.makeFirstStrike()
 		opts.structures = hostData.outpost.slots
 		opts.threat = 1

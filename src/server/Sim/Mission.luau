@@ -376,7 +376,7 @@ function Mission:onKill(e, p)
 				"hive"
 			)
 		elseif e.objective == "nest" and self.destroyed == #self.targets then
-			w:banner("ВСЕ ГНЁЗДА", "3/3 — бонус Ксенита", C.LIME, 2.5, "hive")
+			w:banner("ВСЕ ГНЁЗДА", "3/3 — бонус Утиля", C.LIME, 2.5, "hive")
 		end
 	end
 end
@@ -684,7 +684,7 @@ function Mission:update(dt: number)
 	end
 	if self.state == "FINALE" and w.t >= self.finaleUntil then
 		self.state = "DONE"
-		w:finish(true, if self.op.id == "STRIKE" then "Аванпост выстоял" elseif self.op.mode == "siege" then "Осада отбита" else "Кратер удержан")
+		w:finish(true, if self.op.id == "STRIKE" then "Аванпост выстоял" elseif self.op.mode == "siege" then "Осада отбита" else "Рой отброшен")
 	end
 end
 

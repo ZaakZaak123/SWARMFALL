@@ -1,5 +1,5 @@
 --!nonstrict
--- Persistent player profile (Ксенит — ключ `scrap`, perks, unlocks). Server-only, DataStore-backed with retries.
+-- Persistent player profile (Утиль — ключ `scrap`, perks, unlocks). Server-only, DataStore-backed with retries.
 -- If the DataStore is unavailable (e.g. Studio without API access) the profile runs in session-only
 -- "offline" mode: nothing is ever written, so a failed load can never wipe real data.
 
@@ -323,7 +323,7 @@ function Profile.hasBlueprint(player: Player, weaponId: string): boolean
 	return (d.ops[opId] or 0) >= 2 or (d.wins_by_op and d.wins_by_op[opId] or 0) > 0
 end
 
--- Modules (D03 §3): craft once (mastery gate + previous tier of the same branch + Ксенит), then equip as
+-- Modules (D03 §3): craft once (mastery gate + previous tier of the same branch + Утиль), then equip as
 -- CORE or ADAPTER. Owned and equipped are separate states.
 function Profile.craftModule(player: Player, id: string): boolean
 	local d = Profile.get(player)
@@ -438,7 +438,7 @@ function Profile.buyTech(player: Player, id: string): boolean
 	return true
 end
 
--- Permanent form: owned weapon + M10 with it + its component + Ксенит, crafted once.
+-- Permanent form: owned weapon + M10 with it + its component + Утиль, crafted once.
 function Profile.formStatus(player: Player, evoId: string)
 	local d = Profile.get(player)
 	local evo = Defs.Evolutions[evoId]
@@ -834,7 +834,8 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		for k, v in mine.feats or {} do
 			f[k] = (f[k] or 0) + v
 		end
-		for kind, n in mine.species or {} do
+		-- research is shared by the squad (DD-059); a partial result (left early) only has own kills
+		for kind, n in result.species or mine.species or {} do
 			local was = Defs.researchStage(kind, d.research[kind] or 0)
 			d.research[kind] = (d.research[kind] or 0) + n
 			local now = Defs.researchStage(kind, d.research[kind])

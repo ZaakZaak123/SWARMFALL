@@ -173,7 +173,7 @@ local function statLine(def, lvl: number): string
 	elseif def.kind == "shield" then
 		return string.format("щит бура %d каждые %d с", def.shield[lvl], def.every[lvl])
 	elseif def.kind == "harvest" then
-		return string.format("%d ксенита в час · до %d ч", def.perHour[lvl], Meta.HarvestCapHours)
+		return string.format("%d утиля в час · до %d ч", def.perHour[lvl], Meta.HarvestCapHours)
 	end
 	return ""
 end
@@ -203,7 +203,7 @@ function MetaMenus.refreshOutpost()
 	end
 	local slots = profile.outpost.slots or {}
 	ui.opSub.Text = string.format(
-		"Мощь обороны %d  ·  ДНК бегунов %d  ·  ксенит ◆ %s  ·  осада: уровень %d",
+		"Мощь обороны %d  ·  ДНК бегунов %d  ·  утиль ◆ %s  ·  осада: уровень %d",
 		Meta.outpostPower(slots),
 		profile.dna and profile.dna.EN_RUNNER or 0,
 		Theme.commas(profile.scrap),
@@ -598,7 +598,7 @@ function MetaMenus.refreshLog()
 		local held = not entry.won
 		iconDisc(rr, if held then "shield" else "skull", if held then C.lime else C.red, 46, UDim2.fromOffset(12, 12))
 		label((entry.name or "Охотник") .. (if held then " — оборона выстояла" else " — прорвал оборону"), { Position = UDim2.fromOffset(70, 12), Size = UDim2.new(1, -230, 0, 22), FontFace = F.bodyBold, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = rr })
-		label(ago(entry.t) .. (if held then "  ·  +" .. Meta.DefenseReward .. " ксенита" else "  ·  рейтинг −" .. math.abs(entry.delta or 0)), { Position = UDim2.fromOffset(70, 38), Size = UDim2.new(1, -230, 0, 18), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = rr })
+		label(ago(entry.t) .. (if held then "  ·  +" .. Meta.DefenseReward .. " утиля" else "  ·  рейтинг −" .. math.abs(entry.delta or 0)), { Position = UDim2.fromOffset(70, 38), Size = UDim2.new(1, -230, 0, 18), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = rr })
 		if (entry.attacker or 0) > 0 and profile.features and profile.features.raids then
 			local b, bl = Theme.button("ОТОМСТИТЬ", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 42), TextSize = 13, ZIndex = 44 }, if held then "ghost" else "danger")
 			b.Parent = rr

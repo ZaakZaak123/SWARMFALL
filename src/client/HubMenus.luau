@@ -295,10 +295,10 @@ end
 
 -- Outposts terminal ---------------------------------------------------------------------------------------
 local function buildOutposts()
-	local m = H.modal("CampOutposts", 760, 560, "АВАНПОСТЫ ОХОТНИКОВ", C.cyan)
+	local m = H.modal("CampOutposts", 760, 560, "УБЕЖИЩА ВЫЖИВШИХ", C.cyan)
 	ui.outposts = m
 	label(
-		"Аванпосты всех, кто сейчас в лагере. Загляни, оцени, позови защищать вместе.",
+		"Убежища всех, кто сейчас в поселении. Заглянуть — значит увидеть его дом у себя на экране.",
 		{
 			Position = UDim2.fromOffset(28, 62),
 			Size = UDim2.new(1, -56, 0, 20),
@@ -393,7 +393,7 @@ end
 
 -- Hunter card -----------------------------------------------------------------------------------------------
 local function buildCard()
-	local m = H.modal("HunterCard", 560, 480, "ОХОТНИК", C.gold)
+	local m = H.modal("HunterCard", 560, 480, "ВЫЖИВШИЙ", C.gold)
 	ui.card = m
 	ui.cardBody = new(
 		"Frame",
@@ -570,7 +570,7 @@ function HubMenus.showCard(uid: number)
 	if #h.trophies == 0 then
 		label(
 			if h.newbie
-				then "Новичок в кратере — позови его с собой, вместе проще."
+				then "Новичок в пустоши — позови его с собой, вместе проще."
 				else "Трофеев пока нет.",
 			{
 				Size = UDim2.new(1, 0, 1, 0),
@@ -672,7 +672,7 @@ local function buildBanner()
 		}
 	)
 	ui.like, ui.likeLabel = Theme.button(
-		"♥ КРУТОЙ АВАНПОСТ",
+		"♥ УЮТНОЕ УБЕЖИЩЕ",
 		{
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -150, 0.5, 0),
@@ -715,11 +715,11 @@ function HubMenus.setVisiting(uid: number?)
 	ui.banner.Visible = uid ~= nil
 	if uid then
 		local h = hunter(uid)
-		ui.bannerTitle.Text = "АВАНПОСТ " .. (if h then h.name:upper() else "")
+		ui.bannerTitle.Text = "УБЕЖИЩЕ " .. (if h then h.name:upper() else "") .. " · ВИД У ТЕБЯ"
 		ui.bannerSub.Text = if h
 			then string.format("%s  ·  мощь обороны %d  ·  ♥ %d", h.title, h.power, h.likes)
 			else ""
-		ui.likeLabel.Text = if ui.liked == uid then "♥ ОЦЕНЕНО" else "♥ КРУТОЙ АВАНПОСТ"
+		ui.likeLabel.Text = if ui.liked == uid then "♥ ОЦЕНЕНО" else "♥ УЮТНОЕ УБЕЖИЩЕ"
 	end
 end
 
@@ -808,7 +808,7 @@ function HubMenus.onSocial(kind: string, data)
 		HubMenus.toast(tostring(data) .. " в твоём отряде", C.lime)
 	elseif kind == "liked" then
 		Audio.play("orb", 0.8, 1.2)
-		HubMenus.toast(tostring(data) .. " оценил твой аванпост ♥", C.pink)
+		HubMenus.toast(tostring(data) .. " оценил твоё убежище ♥", C.pink)
 	elseif kind == "match" then
 		HubMenus.toast(
 			if data == "joined"
@@ -817,7 +817,7 @@ function HubMenus.onSocial(kind: string, data)
 			C.lime
 		)
 	elseif kind == "launch" then
-		HubMenus.toast("Высадка: " .. tostring(data) .. "…", C.lime)
+		HubMenus.toast("Выходим: " .. tostring(data) .. "…", C.lime)
 	elseif kind == "error" then
 		Audio.play("warn", 0.5)
 		HubMenus.toast(tostring(data), C.red)

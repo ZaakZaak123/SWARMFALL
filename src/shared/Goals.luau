@@ -221,7 +221,7 @@ function Goals.next(pub): Goal?
 			return {
 				key = "op_" .. opId,
 				icon = if structure then Meta.Structures[structure].icon else "pin",
-				title = "ОХОТА " .. op.index .. ": " .. op.name,
+				title = "ВЫЛАЗКА " .. op.index .. ": " .. op.name,
 				text = text,
 				station = "launch",
 				structure = structure,
@@ -244,7 +244,7 @@ function Goals.next(pub): Goal?
 			icon = "level",
 			title = "УЛУЧШИ " .. best.name,
 			text = string.format(
-				"Хватает утиля (%d) — турель станет сильнее в обороне бура и охотах.",
+				"Хватает утиля (%d) — турель станет сильнее в обороне бура и вылазках.",
 				bestCost
 			),
 			station = "build",

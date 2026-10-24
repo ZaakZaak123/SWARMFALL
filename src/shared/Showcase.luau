@@ -24,6 +24,8 @@ export type Entry = {
 	slots: { [string]: { id: string, lvl: number } }, -- string keys: socket index (remote-safe)
 	newbie: boolean,
 	won: { [string]: boolean },
+	home: { [string]: boolean },
+	sample: number,
 	trophyKey: string,
 }
 
@@ -43,9 +45,9 @@ function Showcase.title(d): (string, string)
 	elseif best >= 3 then
 		return "Пережил осаду " .. best, "shield"
 	elseif won(d, "O03") then
-		return "Охотник на рой", "crosshair"
+		return "Гроза роя", "crosshair"
 	elseif won(d, "O01") then
-		return "Держит кратер", "pin"
+		return "Запустил убежище", "pin"
 	end
 	return "Новобранец", "star"
 end
@@ -98,6 +100,8 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 		slots = slots,
 		newbie = not won(d, "O01"),
 		won = { O01 = won(d, "O01"), O05 = won(d, "O05"), O07 = won(d, "O07") }, -- trophy pedestals
+		home = table.clone(d.home or {}), -- restored shelter spots (a visit draws them)
+		sample = (d.research or {}).EN_SPITTER or 0, -- the lab tank's species research (DD-059)
 		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07") then "c" else ""),
 	}
 end
@@ -157,11 +161,11 @@ end
 -- Squad board line: what the squad goes for, in the owner's words.
 function Showcase.squadTitle(mode: string, opName: string, opIndex: number, siege: number?): string
 	if mode == "siege" then
-		return string.format("Защитить мой аванпост · осада %d", siege or 1)
+		return string.format("Защитить мой бур · оборона %d", siege or 1)
 	elseif mode == "raid" then
-		return "Вторжение на чужой аванпост"
+		return "Вторжение на чужой бур"
 	end
-	return string.format("Охота %d · %s", opIndex, opName)
+	return string.format("Вылазка %d · %s", opIndex, opName)
 end
 
 return Showcase

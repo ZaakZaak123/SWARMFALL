@@ -72,7 +72,7 @@ check(
 	"a newcomer is «Новобранец», no trophies"
 )
 check(
-	Showcase.squadTitle("siege", "", 0, 4) == "Защитить мой аванпост · осада 4",
+	Showcase.squadTitle("siege", "", 0, 4) == "Защитить мой бур · оборона 4",
 	"board line for a siege"
 )
 

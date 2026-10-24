@@ -220,15 +220,14 @@ local function paintTerrain(map)
 	-- Readability first (DD-047): the walkable floor is one calm, mid-value, low-saturation surface so
 	-- the warm swarm, pickups and telegraphs own the colour; the rim is clearly darker so the edge of
 	-- the arena reads at a glance. Ground/Grass/Basalt/Slate carry generated variants: tint only shades.
-	terrain:SetMaterialColor(M.Ground, rgb(196, 194, 214))
-	terrain:SetMaterialColor(M.Grass, rgb(215, 240, 230))
-	terrain:SetMaterialColor(M.Mud, rgb(70, 62, 84))
-	terrain:SetMaterialColor(M.Basalt, rgb(92, 82, 116))
-	terrain:SetMaterialColor(M.Slate, rgb(96, 86, 122))
-	terrain:SetMaterialColor(M.Rock, rgb(54, 44, 74))
-	terrain:SetMaterialColor(M.LeafyGrass, rgb(46, 110, 104))
-	terrain:SetMaterialColor(M.Salt, rgb(104, 100, 124))
-	terrain:SetMaterialColor(M.Asphalt, rgb(40, 34, 52))
+	terrain:SetMaterialColor(M.Ground, rgb(188, 180, 170)) -- DD-058: ash and dust, not alien lavender
+	terrain:SetMaterialColor(M.Grass, rgb(206, 214, 192))
+	terrain:SetMaterialColor(M.Mud, rgb(72, 62, 58))
+	terrain:SetMaterialColor(M.Basalt, rgb(90, 82, 80))
+	terrain:SetMaterialColor(M.Slate, rgb(94, 86, 86))
+	terrain:SetMaterialColor(M.Rock, rgb(66, 60, 58))
+		terrain:SetMaterialColor(M.Salt, rgb(110, 104, 100))
+	terrain:SetMaterialColor(M.Asphalt, rgb(44, 40, 40))
 	pcall(function()
 		-- animated grass blades shimmer under a top-down camera
 		terrain.Decoration = false
@@ -943,10 +942,10 @@ function Arena.lighting(theme: string)
 	Lighting.ClockTime = if night then 17.9 else 17.75
 	Lighting.GeographicLatitude = 20
 	Lighting.Brightness = if night then 0.9 else 3
-	Lighting.Ambient = if night then rgb(96, 50, 80) else rgb(104, 96, 132)
-	Lighting.OutdoorAmbient = if night then rgb(160, 90, 130) else rgb(182, 174, 206)
+	Lighting.Ambient = if night then rgb(96, 54, 70) else rgb(114, 102, 100)
+	Lighting.OutdoorAmbient = if night then rgb(156, 96, 112) else rgb(186, 172, 160)
 	Lighting.ColorShift_Top = if night then rgb(255, 120, 140) else rgb(255, 170, 140)
-	Lighting.ColorShift_Bottom = if night then rgb(40, 0, 30) else rgb(40, 20, 80)
+	Lighting.ColorShift_Bottom = if night then rgb(40, 6, 20) else rgb(50, 30, 30)
 	Lighting.EnvironmentDiffuseScale = 0.8
 	Lighting.EnvironmentSpecularScale = 0.35 -- the painted pink sky otherwise mirrors in the floor
 	Lighting.ExposureCompensation = if night then 0.5 else 0.35
@@ -960,22 +959,19 @@ function Arena.lighting(theme: string)
 	local atmosphere = Instance.new("Atmosphere")
 	atmosphere.Density = if night then 0.24 else 0.16
 	atmosphere.Offset = 0.12
-	atmosphere.Color = if night then rgb(150, 40, 70) else rgb(230, 140, 170)
-	atmosphere.Decay = if night then rgb(50, 10, 40) else rgb(90, 60, 150)
+	atmosphere.Color = if night then rgb(150, 50, 60) else rgb(226, 150, 120)
+	atmosphere.Decay = if night then rgb(40, 14, 30) else rgb(110, 70, 100)
 	atmosphere.Glare = if night then 0.2 else 0.6
 	atmosphere.Haze = if night then 0.6 else 0.25
 	atmosphere.Parent = Lighting
-	-- Painted skybox (tools/skybox.py): nebula band, ringed planet over the titan, the sunset glow sits
-	-- where the engine sun is at the dusk ClockTime. Stars and the moon are in the paint.
-	local faces = if night then SKY.night else SKY.dusk
+	-- DD-058: our own world's sky over a smoky sunset (the painted alien sky with its ringed planet
+	-- is retired; SKY keeps its ids for reference). The haze carries the colour.
+	local _ = SKY
 	local sky = Instance.new("Sky")
-	for face, id in faces do
-		sky["Skybox" .. face] = "rbxassetid://" .. id
-	end
-	sky.StarCount = 0
+	sky.StarCount = if night then 1500 else 0
 	sky.CelestialBodiesShown = true
-	sky.SunAngularSize = if night then 0 else 8
-	sky.MoonAngularSize = 0
+	sky.SunAngularSize = if night then 0 else 16
+	sky.MoonAngularSize = if night then 9 else 0
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "Bloom"
@@ -1056,6 +1052,7 @@ function Arena.build(map)
 	if not ArenaArt.rim(map, decor, H) then
 		buildRimFlora(map, decor)
 	end
+	ArenaArt.ruins(map, decor, H)
 	buildDressing(map, decor)
 	return root
 end

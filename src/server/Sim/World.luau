@@ -239,6 +239,7 @@ function World.new(opts: Options)
 	self.hitBuf = {}
 	self.dead = {}
 	self.teamKills = 0
+	self.teamSpecies = {} -- species -> kills by anyone (turrets included): the squad's research
 	self.replay = opts.replay == true
 	-- Mirrored approach on repeats: the heavier side of the swarm swaps east/west.
 	self.dirMap = nil
@@ -819,6 +820,9 @@ function World:kill(e, p, depth: number, cause: number)
 		return
 	end
 	local kind = e.kind
+	-- research credit is the squad's (DD-059): every member studies every kill, nobody races for the
+	-- last shot; personal kills still drive weapon mastery
+	self.teamSpecies[kind] = (self.teamSpecies[kind] or 0) + 1
 	if e.def.boss then
 		self.boss = nil
 		self:emit(E.BOSS, 4)
@@ -1520,6 +1524,7 @@ function World:finish(victory: boolean, reason: string)
 		core = if self.core then math.max(0, self.core.hp / self.core.maxHp) else nil,
 		anomaly = if self.anomaly then self.anomaly.id else nil,
 		squad = #self.playerList,
+		species = table.clone(self.teamSpecies),
 	}
 	for _, p in self.playerList do
 		p.firing = false

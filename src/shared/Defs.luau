@@ -220,7 +220,7 @@ Defs.Evolutions = {
 }
 
 -- M20 alternative forms (D03 §3, DD-014): a different style with a trade-off, not more DPS. Gate: M20 with
--- the weapon + a thematic feat (a deterministic personal counter, no RNG) + one Ксенит craft. Effects use the
+-- the weapon + a thematic feat (a deterministic personal counter, no RNG) + one Утиль craft. Effects use the
 -- module path (virtual card ranks capped at III + stat tweaks). Never required for the campaign.
 Defs.Evolutions.EV_M20_STORM = {
 	id = "EV_M20_STORM",
@@ -1226,7 +1226,7 @@ Defs.Threat = {
 	end,
 }
 
--- Meta progression ("МАСТЕРСКАЯ"): small, choice-widening perks bought with Ксенит (stored as `scrap`).
+-- Meta progression ("МАСТЕРСКАЯ"): small, choice-widening perks bought with Утиль (stored as `scrap`).
 Defs.Perks = {
 	PK_VITALITY = {
 		id = "PK_VITALITY",
@@ -1313,7 +1313,7 @@ Defs.Perks = {
 		max = 3,
 		costs = { 90, 160, 250 },
 		stat = function(r: number): string
-			return `+{r * 12}% Ксенита`
+			return `+{r * 12}% Утиля`
 		end,
 	},
 }
@@ -1321,7 +1321,7 @@ Defs.PerkOrder =
 	{ "PK_VITALITY", "PK_MAGNET", "PK_REROLL", "PK_BANISH", "PK_DASH", "PK_OVERDRIVE", "PK_INSIGHT", "PK_SALVAGE" }
 
 -- Scrap reward for a finished run. lines = { {icon, amount}, ... } for the results screen.
--- Ксенит for a run (D03 §6): personal credited kills / 12 + 3 per combat level + outcome (+ nests),
+-- Утиль for a run (D03 §6): personal credited kills / 12 + 3 per combat level + outcome (+ nests),
 -- × threat × salvage. `kills` is the player's own kill count (team kills only as a fallback).
 function Defs.runReward(result: any, threat: number, salvageRank: number, kills: number?)
 	local lines = {}

@@ -523,6 +523,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			visitingUid = nil
 			HubMenus.setVisiting(nil)
 		end
+		Base.setVisitHome(if visit then visit.home else nil)
 		if visit then
 			showOutpost(visit.slots, "V" .. visitingUid .. outpostKeyOf(visit.slots))
 		else
@@ -536,6 +537,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	if visitingUid then
 		visitingUid = nil
 		HubMenus.setVisiting(nil)
+		Base.setVisitHome(nil)
 	end
 	Base.setCamp(nil)
 	if info.mode == "LOBBY" then
@@ -603,7 +605,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	if run.phase == "COUNTDOWN" and run.waiting then
 		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — РОЙ УЖЕ БЛИЗКО")
 	elseif run.phase == "COUNTDOWN" then
-		Menus.note(string.format("ВЫСАДКА  ·  %d", math.ceil(run.countdown)))
+		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
 	elseif not me then
 		Menus.note("НАБЛЮДЕНИЕ  ·  ТЫ ВОЙДЁШЬ В СЛЕДУЮЩУЮ ОХОТУ")
 	elseif not me.alive and not run.result and me.downed then
@@ -723,7 +725,7 @@ local function ownShowcase()
 	if not prof then
 		return nil
 	end
-	local d = { wins_by_op = prof.winsByOp, mastery = prof.mastery, outpost = prof.outpost, raid = prof.raid, wins = prof.wins }
+	local d = { wins_by_op = prof.winsByOp, mastery = prof.mastery, outpost = prof.outpost, raid = prof.raid, wins = prof.wins, home = prof.home, research = prof.research }
 	local weapon = Menus.selectedWeapon()
 	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])
 end
