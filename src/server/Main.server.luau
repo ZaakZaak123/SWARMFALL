@@ -264,15 +264,18 @@ local function settle()
 	end
 end
 
--- Between hunts the squad stands at the dropship ramp, facing the crater (the lobby camera frames it).
+-- Between hunts the squad stands at the dropship ramp. They turn three-quarters toward the lobby camera
+-- (which sits in front of the hull, right of the hero) so the hero shows a face, not a back, with the
+-- crater behind.
 local LOBBY_SPOTS = { { -2, -84 }, { -7, -86 }, { 3, -86 }, { -12, -88 } }
+local LOBBY_FACING = -1.4
 local function toHub(player: Player)
 	if mode ~= "LOBBY" or not player.Parent then
 		return
 	end
 	local i = table.find(Players:GetPlayers(), player) or 1
 	local spot = LOBBY_SPOTS[(i - 1) % #LOBBY_SPOTS + 1]
-	prepareCharacter(player, spot[1], spot[2], math.pi)
+	prepareCharacter(player, spot[1], spot[2], LOBBY_FACING)
 end
 
 local function backToLobby()

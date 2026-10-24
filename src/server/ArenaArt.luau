@@ -115,7 +115,7 @@ function ArenaArt.dropship(map, decor, H): boolean
 	ship.CastShadow = true
 	H.fade(ship)
 	-- warm light spilling from the hold, floodlights over the landing zone
-	H.light(model, Vector3.new(o.x, 5, o.z + 12), rgb(255, 210, 150), 28, 2.4, true)
+	H.light(model, Vector3.new(o.x, 5, o.z + 8), rgb(255, 210, 150), 22, 1.2, true)
 	for _, s in { -1, 1 } do
 		local base = Vector3.new(o.x + s * 22, 0, o.z + 12)
 		H.rod(model, base, base + Vector3.new(0, 9, 0), 0.7, rgb(52, 56, 66), Enum.Material.Metal)
@@ -123,7 +123,7 @@ function ArenaArt.dropship(map, decor, H): boolean
 		local sl = Instance.new("SpotLight")
 		sl.Angle = 60
 		sl.Range = 60
-		sl.Brightness = 3
+		sl.Brightness = 1.4
 		sl.Color = rgb(255, 225, 190)
 		sl.Shadows = false
 		sl.Parent = head

@@ -1030,9 +1030,9 @@ function Arena.lighting(theme: string)
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "Bloom"
-	bloom.Intensity = 0.9
+	bloom.Intensity = 1
 	bloom.Size = 28
-	bloom.Threshold = 1.05
+	bloom.Threshold = 1.3 -- only emissive (neon, lights) blooms; white skin and bone stay readable
 	bloom.Parent = Lighting
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "Grade"
