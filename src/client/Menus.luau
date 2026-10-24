@@ -1665,7 +1665,15 @@ local function buildResults()
 		Parent = ui.resList,
 		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 14) },
 	})
-	ui.resReward = Theme.panel({ LayoutOrder = 5, Size = UDim2.fromOffset(560, 92), CornerRadius = 20, ZIndex = 22, Parent = ui.resList }, C.pink)
+	-- the run in one line: weapon (and its evolution), every upgrade taken with its rank
+	ui.resBuild = new("Frame", {
+		LayoutOrder = 5,
+		Size = UDim2.new(1, 0, 0, 46),
+		ZIndex = 22,
+		Parent = ui.resList,
+		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8) },
+	})
+	ui.resReward = Theme.panel({ LayoutOrder = 6, Size = UDim2.fromOffset(560, 92), CornerRadius = 20, ZIndex = 22, Parent = ui.resList }, C.pink)
 	ui.resRewardAmount = label("", {
 		Position = UDim2.fromOffset(0, 10),
 		Size = UDim2.new(1, 0, 0, 46),
@@ -1685,7 +1693,7 @@ local function buildResults()
 		Parent = ui.resReward,
 	})
 	ui.resUnlocks = new("Frame", {
-		LayoutOrder = 6,
+		LayoutOrder = 7,
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		ZIndex = 22,
@@ -1723,7 +1731,7 @@ local function buildResults()
 end
 
 local function statTile(iconName: string, title: string, value: string, color: Color3, order: number)
-	local t = Theme.panel({ Size = UDim2.fromOffset(170, 96), CornerRadius = 18, LayoutOrder = order, ZIndex = 22, Parent = ui.resStats })
+	local t = Theme.panel({ Size = UDim2.fromOffset(150, 96), CornerRadius = 18, LayoutOrder = order, ZIndex = 22, Parent = ui.resStats })
 	icon(iconName, 24, color, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), ZIndex = 23, Parent = t })
 	local v = label(value, {
 		Position = UDim2.fromOffset(0, 40),
@@ -1783,6 +1791,32 @@ local function unlockCard(iconName: string, tag: string, text: string, color: Co
 	task.delay(0.5 + order * 0.12, function()
 		tween(s, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
 		Audio.play("level", 0.6, 1.4)
+	end)
+end
+
+-- A chip in the results build strip: icon disc + short text; pops in after the stats.
+local function buildChip(iconName: string, text: string, color: Color3, order: number)
+	local chip = new("Frame", {
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.25,
+		Corner = UDim.new(1, 0),
+		Stroke = { Color = color, Transparency = 0.45, Thickness = 1.5 },
+		LayoutOrder = order,
+		ZIndex = 22,
+		Parent = ui.resBuild,
+	})
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, if text ~= "" then 14 else 6), Parent = chip })
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = chip })
+	local disc = new("Frame", { Size = UDim2.fromOffset(30, 30), BackgroundColor3 = color, BackgroundTransparency = 0.8, Corner = UDim.new(1, 0), LayoutOrder = 1, ZIndex = 23, Parent = chip })
+	icon(iconName, 20, color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 24, Parent = disc })
+	if text ~= "" then
+		label(text, { Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, FontFace = F.head, TextSize = 13, TextColor3 = color, LayoutOrder = 2, ZIndex = 23, Parent = chip })
+	end
+	local sc = new("UIScale", { Scale = 0, Parent = chip })
+	task.delay(0.35 + order * 0.05, function()
+		tween(sc, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
 	end)
 end
 
@@ -1856,9 +1890,28 @@ function Menus.showResults(result, votes, id: number, reward)
 	end
 	local tv = statTile("timer", "ВРЕМЯ", Theme.fmtTime(result.time), C.cyan, 1)
 	local kv = statTile("skull", if n > 1 then "ТВОИ УБИЙСТВА" else "УБИТО", "0", C.orange, 2)
-	statTile("level", "УРОВЕНЬ", tostring(result.level), C.lime, 3)
+	local dv = statTile("boom", "УРОН", "0", C.pink, 3)
+	statTile("burst", "ЛУЧШЕЕ КОМБО", if mine and (mine.bestCombo or 0) > 1 then "×" .. mine.bestCombo else "—", C.gold, 4)
+	statTile("level", "УРОВЕНЬ", tostring(result.level), C.lime, 5)
 	countUp(kv, if mine then mine.kills else result.kills, "%s", 1.1)
+	countUp(dv, if mine then mine.damage or 0 else 0, "%s", 1.3)
 	tv.Text = Theme.fmtTime(result.time)
+	-- build strip
+	clear(ui.resBuild)
+	ui.resBuild.Visible = mine ~= nil
+	if mine then
+		local wdef = Defs.Weapons[mine.weapon]
+		if wdef then
+			local evo = mine.evolved ~= "" and Defs.Evolutions and Defs.Evolutions[mine.evolved]
+			buildChip("star", if evo then evo.name else wdef.name, if evo then C.gold else C.text, 0)
+		end
+		for i, u in mine.upgrades or {} do
+			local def = Defs.Upgrades[u[1]]
+			if def then
+				buildChip(def.icon, if u[2] > 1 then tostring(u[2]) else "", def.color, i)
+			end
+		end
+	end
 	-- reward
 	ui.resReward.Visible = reward ~= nil
 	if reward then
