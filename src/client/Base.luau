@@ -851,6 +851,14 @@ local function buildHud(playerGui: PlayerGui)
 		}
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.owner })
+	-- tap your name: your own card (titles to wear, what others see)
+	local ownerBtn = new("TextButton", { Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(420, 58), BackgroundTransparency = 1, Text = "", Parent = safe })
+	ownerBtn.Activated:Connect(function()
+		Audio.play("ui")
+		if actions and actions.card then
+			actions.card()
+		end
+	end)
 	ui.ownerNote = label("", { Position = UDim2.fromOffset(4, 246), Size = UDim2.fromOffset(440, 30), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = safe })
 	-- goal card
 	local card = Theme.panel(

@@ -76,6 +76,23 @@ check(
 	"board line for a siege"
 )
 
+print("=== titles (DD-060)")
+do
+	local d = { wins_by_op = { O01 = 1, O03 = 1 }, outpost = { best = 4 }, saves = 12, home = {} }
+	local names = {}
+	for _, t in Showcase.titles(d) do
+		table.insert(names, t.name)
+	end
+	print("  earned: " .. table.concat(names, ", "))
+	check(#names == 5, "earned titles: newbie, shelter, savior, scourge, siege")
+	d.title = "SAVIOR"
+	check(Showcase.title(d) == "Спаситель", "a chosen earned title is worn")
+	d.title = "DEVOURER"
+	check(Showcase.title(d) == "Пережил осаду 4", "an unearned choice falls back to the hardest deed")
+	local e = Showcase.build(1, "A", d, "W_ARC_RIFLE", nil)
+	check(e.titleWhy ~= "" and e.saves == 12, "the card says where the title came from and counts rescues")
+end
+
 print("=== awards")
 local aw = Showcase.awards({
 	{ id = 1, damage = 9000, kills = 300, revives = 0, bigDamage = 100, guardKills = 3, bestCombo = 9, alive = true },

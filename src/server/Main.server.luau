@@ -831,6 +831,10 @@ function handlers.hold(player: Player, on)
 	return true
 end
 
+function handlers.title(player: Player, id)
+	return type(id) == "string" and Profile.setTitle(player, id)
+end
+
 function handlers.restore(player: Player, id)
 	return lobbyOnly() and type(id) == "string" and Profile.restore(player, id)
 end

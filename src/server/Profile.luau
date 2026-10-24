@@ -11,6 +11,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local Modules = require(Shared:WaitForChild("Modules"))
+local Showcase = require(Shared:WaitForChild("Showcase"))
 local Meta = require(Shared:WaitForChild("Meta"))
 
 local Profile = {}
@@ -68,6 +69,8 @@ local function defaults()
 		likes = 0, -- «Крутой аванпост» marks from visitors (DD-053)
 		liked = {}, -- owner user id (string) -> day index of the last like given
 		home = {}, -- restored shelter spots (DD-057): id -> true; never lost
+		saves = 0, -- allies raised in runs, lifetime (DD-060)
+		title = nil, -- chosen earned title id (Showcase.titles)
 		tut = {}, -- one-time onboarding beats (DD-052): drill = victory scene seen, strike = first defence done
 	}
 end
@@ -262,6 +265,8 @@ function Profile.public(player: Player)
 		raidLog = e.raidLog,
 		tut = d.tut,
 		home = d.home,
+		saves = d.saves,
+		title = d.title,
 	}
 end
 
@@ -557,6 +562,22 @@ function Profile.collectHarvest(player: Player): number
 	return amount
 end
 
+-- Wear an earned title (DD-060): only one the profile actually holds.
+function Profile.setTitle(player: Player, id: string): boolean
+	local d = Profile.get(player)
+	if not d then
+		return false
+	end
+	for _, t in Showcase.titles(d) do
+		if t.id == id then
+			d.title = id
+			mark(player)
+			return true
+		end
+	end
+	return false
+end
+
 -- Restore a shelter spot (DD-057): once, for its cost, after its hunt is won.
 function Profile.restore(player: Player, id: string): boolean
 	local d = Profile.get(player)
@@ -821,6 +842,7 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		end
 	end
 	if mine then
+		d.saves = (d.saves or 0) + (mine.revives or 0)
 		local wid = mine.weapon
 		local before = Defs.masteryRank(wid, d.mastery[wid] or 0)
 		d.mastery[wid] = (d.mastery[wid] or 0) + (mine.weaponKills or 0)

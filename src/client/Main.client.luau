@@ -72,6 +72,8 @@ Fx.init()
 Hud.init(playerGui)
 Controls.init(playerGui)
 Menus.init(playerGui, send)
+local ownShowcase -- our own showcase entry (defined with the showcase below)
+
 -- The base between sorties (DD-052): the stations open the same windows as the HUD buttons.
 local function goalAction()
 	local g = Base.goal()
@@ -119,6 +121,12 @@ Base.init(playerGui, send, {
 		Menus.showSettings()
 	end,
 	goal = goalAction,
+	card = function()
+		local e = ownShowcase and ownShowcase()
+		if e then
+			HubMenus.showCard(myId, e)
+		end
+	end,
 	-- a prepared spot of the shelter: restore it, or use what it became (DD-057)
 	spot = function(id: string)
 		local prof = Menus.profile()
@@ -655,6 +663,13 @@ end
 -- Camp (DD-053) ------------------------------------------------------------------------------------------
 -- Visiting an outpost swaps what stands on the sockets for this client only; walking the yard stays shared.
 HubMenus.init(Menus.helpers(), {
+	ownTitles = function()
+		local prof = Menus.profile()
+		if not prof then
+			return {}
+		end
+		return require(Shared:WaitForChild("Showcase")).titles({ wins_by_op = prof.winsByOp, outpost = prof.outpost, home = prof.home, saves = prof.saves })
+	end,
 	visit = function(uid: number)
 		visitingUid = uid
 		HubMenus.setVisiting(uid)
@@ -720,12 +735,12 @@ end
 
 -- The showcase row on the base: the visited hunter's, else our own (built from the profile).
 local Showcase = require(Shared:WaitForChild("Showcase"))
-local function ownShowcase()
+ownShowcase = function()
 	local prof = Menus.profile()
 	if not prof then
 		return nil
 	end
-	local d = { wins_by_op = prof.winsByOp, mastery = prof.mastery, outpost = prof.outpost, raid = prof.raid, wins = prof.wins, home = prof.home, research = prof.research }
+	local d = { wins_by_op = prof.winsByOp, mastery = prof.mastery, outpost = prof.outpost, raid = prof.raid, wins = prof.wins, home = prof.home, research = prof.research, saves = prof.saves, title = prof.title }
 	local weapon = Menus.selectedWeapon()
 	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])
 end

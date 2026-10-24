@@ -26,6 +26,7 @@ export type Entry = {
 	won: { [string]: boolean },
 	home: { [string]: boolean },
 	sample: number,
+	saves: number,
 	trophyKey: string,
 }
 
@@ -34,7 +35,54 @@ local function won(d, opId: string): boolean
 end
 
 -- The single headline title: the hardest thing done, said plainly.
+-- Every title a survivor has earned, each with where it came from (DD-060). The player picks one to
+-- wear; the default is the hardest deed.
+function Showcase.titles(d): { { id: string, name: string, icon: string, why: string } }
+	local best = d.outpost and d.outpost.best or 0
+	local out = { { id = "NEWBIE", name = "Новобранец", icon = "star", why = "Каждый с чего-то начинал" } }
+	local function add(id, name, icon, why)
+		table.insert(out, { id = id, name = name, icon = icon, why = why })
+	end
+	if won(d, "O01") then
+		add("SHELTER", "Запустил убежище", "pin", "Добыл генератор в первой вылазке")
+	end
+	if (d.saves or 0) >= 10 then
+		add("SAVIOR", "Спаситель", "heart", "Поднял союзников " .. (d.saves or 0) .. " раз")
+	end
+	if won(d, "O03") then
+		add("SCOURGE", "Гроза роя", "crosshair", "Отстоял поющий пилон")
+	end
+	local home = d.home or {}
+	local all = true
+	for _, id in Meta.HomeOrder do
+		if not home[id] then
+			all = false
+		end
+	end
+	if all then
+		add("KEEPER", "Хозяин убежища", "heart", "Восстановил всё убежище")
+	end
+	if best >= 3 then
+		add("SIEGE", "Пережил осаду " .. best, "shield", "Удержал бур на уровне " .. best)
+	end
+	if won(d, "O05") then
+		add("BROOD", "Победил Мать роя", "skull", "Убил королеву роя в вылазке 5")
+	end
+	if won(d, "O07") then
+		add("DEVOURER", "Пожиратель повержен", "crown", "Финал первой главы")
+	end
+	return out
+end
+
 function Showcase.title(d): (string, string)
+	-- a title the player chose and still holds
+	if d.title then
+		for _, t in Showcase.titles(d) do
+			if t.id == d.title then
+				return t.name, t.icon
+			end
+		end
+	end
 	local best = d.outpost and d.outpost.best or 0
 	if won(d, "O07") then
 		return "Пожиратель повержен", "crown"
@@ -80,6 +128,12 @@ end
 function Showcase.build(userId: number, name: string, d, weapon: string, form: string?): Entry
 	local mastery = Defs.masteryRank(weapon, (d.mastery or {})[weapon] or 0)
 	local title, icon = Showcase.title(d)
+	local why = ""
+	for _, t in Showcase.titles(d) do
+		if t.name == title then
+			why = t.why
+		end
+	end
 	local slots = {}
 	for slot, s in (d.outpost and d.outpost.slots) or {} do
 		slots[tostring(slot)] = { id = s.id, lvl = s.lvl }
@@ -92,6 +146,7 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 		mastery = mastery,
 		title = title,
 		titleIcon = icon,
+		titleWhy = why, -- where the title came from, said on the card
 		trophies = Showcase.trophies(d, weapon, mastery),
 		siege = d.outpost and d.outpost.best or 0,
 		wins = d.wins or 0,
@@ -99,6 +154,7 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 		power = Meta.outpostPower((d.outpost and d.outpost.slots) or {}),
 		slots = slots,
 		newbie = not won(d, "O01"),
+		saves = d.saves or 0, -- allies raised, lifetime (DD-060)
 		won = { O01 = won(d, "O01"), O05 = won(d, "O05"), O07 = won(d, "O07") }, -- trophy pedestals
 		home = table.clone(d.home or {}), -- restored shelter spots (a visit draws them)
 		sample = (d.research or {}).EN_SPITTER or 0, -- the lab tank's species research (DD-059)

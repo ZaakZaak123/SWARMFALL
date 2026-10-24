@@ -393,7 +393,7 @@ end
 
 -- Hunter card -----------------------------------------------------------------------------------------------
 local function buildCard()
-	local m = H.modal("HunterCard", 560, 480, "ВЫЖИВШИЙ", C.gold)
+	local m = H.modal("HunterCard", 560, 560, "ВЫЖИВШИЙ", C.gold)
 	ui.card = m
 	ui.cardBody = new(
 		"Frame",
@@ -438,8 +438,9 @@ local function buildCard()
 	end)
 end
 
-function HubMenus.showCard(uid: number)
-	local h = hunter(uid)
+-- override: an entry built from the own profile (outside the camp there is no camp state)
+function HubMenus.showCard(uid: number, override)
+	local h = override or hunter(uid)
 	if not h then
 		return
 	end
@@ -473,6 +474,42 @@ function HubMenus.showCard(uid: number)
 			Parent = b,
 		}
 	)
+	-- where the title came from (DD-060)
+	label(h.titleWhy or "", {
+		Position = UDim2.fromOffset(88, 58),
+		Size = UDim2.new(1, -88, 0, 18),
+		FontFace = F.body,
+		TextSize = 12,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 43,
+		Parent = b,
+	})
+	-- your own card: pick which earned title to wear
+	if uid == myId and acts.ownTitles then
+		label("ТИТУЛ НАД ГОЛОВОЙ — ВЫБЕРИ ЗАСЛУЖЕННЫЙ", { Position = UDim2.fromOffset(0, 270), Size = UDim2.new(1, 0, 0, 16), FontFace = F.head, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43, Parent = b })
+		local chips = new("Frame", {
+			Position = UDim2.fromOffset(0, 292),
+			Size = UDim2.new(1, 0, 0, 60),
+			ZIndex = 43,
+			Parent = b,
+			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), Wraps = true },
+		})
+		for i, t in acts.ownTitles() do
+			local on = t.name == h.title
+			local c, cl = Theme.button(t.name, { Size = UDim2.fromOffset(0, 28), AutomaticSize = Enum.AutomaticSize.X, TextSize = 11, ZIndex = 44, LayoutOrder = i }, if on then "primary" else "ghost")
+			cl.Size = UDim2.new(0, 0, 1, 0)
+			cl.AutomaticSize = Enum.AutomaticSize.X
+			cl.ZIndex = 45
+			new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = c })
+			c.Parent = chips
+			c.Activated:Connect(function()
+				H.send("title", t.id)
+				Audio.play("ui")
+				ui.card.hide()
+			end)
+		end
+	end
 	local w = Defs.Weapons[h.weapon]
 	local form = h.form and Defs.Evolutions[h.form]
 	local wr = row(b, 0, 64)
@@ -521,8 +558,8 @@ function HubMenus.showCard(uid: number)
 	for i, st in
 		{
 			{ "Побед", tostring(h.wins) },
-			{ "Осада", if h.siege > 0 then tostring(h.siege) else "—" },
-			{ "Оборона", tostring(h.power) },
+			{ "Спасений", tostring(h.saves or 0) },
+			{ "Оборона бура", if h.siege > 0 then tostring(h.siege) else "—" },
 			{ "♥", tostring(h.likes) },
 		}
 	do
