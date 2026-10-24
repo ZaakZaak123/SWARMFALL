@@ -22,6 +22,7 @@ local Fx = require(script.Parent.Fx)
 local Structures = require(script.Parent.Structures)
 local Models = require(script.Parent.Models)
 local Defs = require(Shared:WaitForChild("Defs"))
+local Settings = require(script.Parent.Settings)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -850,7 +851,7 @@ local function buildHud(playerGui: PlayerGui)
 		}
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.owner })
-	ui.ownerNote = label("", { Position = UDim2.fromOffset(4, 240), Size = UDim2.fromOffset(440, 30), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = safe })
+	ui.ownerNote = label("", { Position = UDim2.fromOffset(4, 246), Size = UDim2.fromOffset(440, 30), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = safe })
 	-- goal card
 	local card = Theme.panel(
 		{ Name = "Goal", Position = UDim2.fromOffset(0, 68), Size = UDim2.fromOffset(440, 168), CornerRadius = 18 },
@@ -1432,6 +1433,29 @@ function Base.refresh()
 	end
 end
 
+-- Quality (DD-057): the shelter is calm, but it is not free on a phone. Low: no decorative lights and
+-- no tree shadows; Medium: the pads' glow lights off; High: everything.
+local function applyQuality()
+	local q = Settings.quality
+	for _, d in folder:GetDescendants() do
+		if d:IsA("Light") then
+			local isLamp = d:IsA("SpotLight")
+			local isPad = d.Parent and d.Parent.Name == "Pad"
+			d.Enabled = if q <= 1 then false elseif q == 2 then not isPad else true
+			if isLamp and q <= 1 then
+				d.Enabled = false
+			end
+		elseif d:IsA("MeshPart") and d.Parent and d.Parent.Name == "Grove" then
+			d.CastShadow = q >= 2
+		end
+	end
+end
+Settings.onChanged(function(key)
+	if key == "quality" then
+		applyQuality()
+	end
+end)
+
 -- API --------------------------------------------------------------------------------------------------------
 function Base.init(playerGui: PlayerGui, sender, acts)
 	send = sender
@@ -1447,6 +1471,7 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 			task.wait(0.5)
 		end
 		dressStations()
+		applyQuality()
 	end)
 end
 
@@ -1639,9 +1664,9 @@ end
 -- Base camera: a high three-quarter view that follows the hero, the drill ahead (north is up).
 local camPos = nil
 function Base.camera(dt: number, hero: Vector3): CFrame
-	local goalPos = hero + Vector3.new(0, 40, -30)
+	local goalPos = hero + Vector3.new(0, 46, -36)
 	camPos = if camPos then camPos:Lerp(goalPos, math.min(1, dt * 6)) else goalPos
-	return CFrame.lookAt(camPos, camPos + Vector3.new(0, -40, 30) + Vector3.new(0, 0, 12))
+	return CFrame.lookAt(camPos, camPos + Vector3.new(0, -46, 36) + Vector3.new(0, 0, 4))
 end
 
 function Base.resetCamera()
