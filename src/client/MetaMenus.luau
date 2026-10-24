@@ -65,7 +65,7 @@ local MAP_R = 196 -- px for the outer ring area
 local K = 5.6 -- px per stud
 
 local function buildOutpost()
-	local m = H.modal("OutpostEditor", 960, 620, "АВАНПОСТ", C.lime)
+	local m = H.modal("OutpostEditor", 960, 620, "МАСТЕРСКАЯ · ОБОРОНА БУРА", C.lime)
 	ui.outpost = m
 	ui.opSub = label("", {
 		Position = UDim2.fromOffset(28, 60),
@@ -203,7 +203,7 @@ function MetaMenus.refreshOutpost()
 	end
 	local slots = profile.outpost.slots or {}
 	ui.opSub.Text = string.format(
-		"Мощь обороны %d  ·  ДНК бегунов %d  ·  утиль ◆ %s  ·  осада: уровень %d",
+		"Собранное здесь стоит у бура в опасной зоне  ·  мощь %d  ·  ДНК %d  ·  утиль ◆ %s  ·  оборона: ур. %d",
 		Meta.outpostPower(slots),
 		profile.dna and profile.dna.EN_RUNNER or 0,
 		Theme.commas(profile.scrap),
@@ -336,7 +336,7 @@ end
 local function buildSwarm()
 	local m = H.modal("Swarm", 980, 640, "СВОЙ РОЙ", C.violet)
 	ui.swarm = m
-	label("Твой рой защищает аванпост, когда на него нападают другие игроки. ДНК даёт каждая убитая тварь.", {
+	label("Твой рой защищает бур, когда на него совершают налёт. ДНК даёт каждая убитая тварь отряда.", {
 		Position = UDim2.fromOffset(28, 60),
 		Size = UDim2.new(1, -56, 0, 20),
 		FontFace = F.body,

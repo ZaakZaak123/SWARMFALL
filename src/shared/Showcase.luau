@@ -63,7 +63,7 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 		add("KEEPER", "Хозяин убежища", "heart", "Восстановил всё убежище")
 	end
 	if best >= 3 then
-		add("SIEGE", "Пережил осаду " .. best, "shield", "Удержал бур на уровне " .. best)
+		add("SIEGE", "Удержал бур · " .. best, "shield", "Отбил оборону бура уровня " .. best)
 	end
 	if won(d, "O05") then
 		add("BROOD", "Победил Мать роя", "skull", "Убил королеву роя в вылазке 5")
@@ -87,11 +87,11 @@ function Showcase.title(d): (string, string)
 	if won(d, "O07") then
 		return "Пожиратель повержен", "crown"
 	elseif best >= 10 then
-		return "Пережил осаду " .. best, "shield"
+		return "Удержал бур · " .. best, "shield"
 	elseif won(d, "O05") then
 		return "Победил Мать роя", "skull"
 	elseif best >= 3 then
-		return "Пережил осаду " .. best, "shield"
+		return "Удержал бур · " .. best, "shield"
 	elseif won(d, "O03") then
 		return "Гроза роя", "crosshair"
 	elseif won(d, "O01") then
@@ -110,7 +110,7 @@ function Showcase.trophies(d, weapon: string, mastery: number): { { string } }
 	end
 	local best = d.outpost and d.outpost.best or 0
 	if best > 0 then
-		table.insert(out, { "shield", "Осада " .. best })
+		table.insert(out, { "shield", "Оборона бура " .. best })
 	end
 	if mastery >= 5 then
 		table.insert(

@@ -699,7 +699,7 @@ function Menus.refreshLobby()
 		for _ in slots do
 			built += 1
 		end
-		ui.huntTag.Text = "ОСАДА АВАНПОСТА"
+		ui.huntTag.Text = "ОБОРОНА БУРА"
 		ui.huntName.Text = "УРОВЕНЬ " .. (info.siege or 1)
 		ui.huntBrief.Text = string.format("Пять волн идут на бур. Построек %d/%d — турели стреляют вместе с отрядом.", built, Meta.SocketCount)
 		if rebuildRow then
@@ -778,7 +778,7 @@ function Menus.refreshLobby()
 			end
 		end
 		if held + lost > 0 then
-			ui.toastText.Text = string.format("Нападений на аванпост: %d  ·  отбито %d (+%d утиля)  ·  прорвано %d", held + lost, held, held * Meta.DefenseReward, lost)
+			ui.toastText.Text = string.format("Налётов на бур: %d  ·  отбито %d (+%d утиля)  ·  прорвано %d — ты ничего не потерял", held + lost, held, held * Meta.DefenseReward, lost)
 			ui.toast.Visible = true
 			task.delay(9, function()
 				ui.toast.Visible = false
@@ -2205,7 +2205,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	end
 	if reward and reward.siegeUp then
 		k += 1
-		unlockCard("threat", "ОСАДА", "Открыт уровень " .. reward.siegeUp, C.orange, k)
+		unlockCard("threat", "ОБОРОНА БУРА", "Открыт уровень " .. reward.siegeUp, C.orange, k)
 	end
 	if reward and reward.capped then
 		k += 1

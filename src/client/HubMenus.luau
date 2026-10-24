@@ -355,7 +355,7 @@ function HubMenus.refreshOutposts()
 		)
 		label(
 			string.format(
-				"Мощь обороны %d  ·  построек %d/%d  ·  осада %s  ·  ♥ %d",
+				"Мощь обороны бура %d  ·  построек %d/%d  ·  оборона %s  ·  ♥ %d",
 				h.power,
 				built,
 				Meta.SocketCount,

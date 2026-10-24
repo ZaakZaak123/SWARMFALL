@@ -132,6 +132,12 @@ Base.init(playerGui, send, {
 		local prof = Menus.profile()
 		local home = prof and prof.home or {}
 		if not home[id] then
+			local def = Meta.Home[id]
+			if def and (prof.scrap or 0) < def.cost then
+				HubMenus.toast(string.format("Не хватает утиля: нужно %d, у тебя %d. Утиль приносят вылазки.", def.cost, prof.scrap or 0), C.orange)
+				Audio.play("warn", 0.4)
+				return
+			end
 			send("restore", id)
 		elseif id == "WORKBENCH" then
 			MetaMenus.showOutpost()
@@ -531,7 +537,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			visitingUid = nil
 			HubMenus.setVisiting(nil)
 		end
-		Base.setVisitHome(if visit then visit.home else nil)
+		Base.setVisitHome(if visit then visit.home else nil, if visit then visit.slots else nil)
 		if visit then
 			showOutpost(visit.slots, "V" .. visitingUid .. outpostKeyOf(visit.slots))
 		else
@@ -615,7 +621,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	elseif run.phase == "COUNTDOWN" then
 		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
 	elseif not me then
-		Menus.note("НАБЛЮДЕНИЕ  ·  ТЫ ВОЙДЁШЬ В СЛЕДУЮЩУЮ ОХОТУ")
+		Menus.note("НАБЛЮДЕНИЕ  ·  ТЫ ВОЙДЁШЬ В СЛЕДУЮЩУЮ ВЫЛАЗКУ")
 	elseif not me.alive and not run.result and me.downed then
 		Menus.note(
 			string.format(

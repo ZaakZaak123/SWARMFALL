@@ -13,7 +13,8 @@ Art.Meshes = {
 	RIB = { mesh = "rbxassetid://76552285360656", tex = "rbxassetid://92198972359951", size = Vector3.new(17.89, 34.00, 5.45) },
 	BOULDER = { mesh = "rbxassetid://107685891222586", tex = "rbxassetid://134921464973189", size = Vector3.new(9.31, 9.00, 7.92) },
 	EXTRACTOR = { mesh = "rbxassetid://127921250773990", tex = "rbxassetid://128477091016348", size = Vector3.new(11.13, 24.00, 13.42) },
-	DROPSHIP = { mesh = "rbxassetid://129613490677370", tex = "rbxassetid://125291318160921", size = Vector3.new(19.27, 14.00, 20.59) },
+	-- DD-062: a mossy cargo plane wreck instead of the sci-fi dropship
+	DROPSHIP = { mesh = "rbxassetid://80290448750003", tex = "rbxassetid://116574695486126", size = Vector3.new(10.11, 3.76, 10.00) },
 	CRYSTALS = { mesh = "rbxassetid://112145949782550", tex = "rbxassetid://136220619906967", size = Vector3.new(14.00, 16.33, 13.87) },
 	SKULL = { mesh = "rbxassetid://82192057619826", tex = "rbxassetid://81798771343243", size = Vector3.new(33.47, 32.00, 34.13) },
 	SPIRE = { mesh = "rbxassetid://94986255398164", tex = "rbxassetid://126474191942050", size = Vector3.new(13.82, 29.45, 14.00) },
@@ -22,7 +23,8 @@ Art.Meshes = {
 	VERTEBRA = { mesh = "rbxassetid://134075089674530", tex = "rbxassetid://114885826516165", size = Vector3.new(4.31, 4.00, 4.31) },
 	NEST = { mesh = "rbxassetid://117090663428529", tex = "rbxassetid://72630042741257", size = Vector3.new(10.82, 7.46, 11.00) },
 	POD = { mesh = "rbxassetid://128575161451927", tex = "rbxassetid://123339923204332", size = Vector3.new(2.47, 4.00, 2.47) },
-	PYLON = { mesh = "rbxassetid://101158805342441", tex = "rbxassetid://70501120745256", size = Vector3.new(5.00, 8.63, 4.77) },
+	-- DD-062: old-world tesla towers instead of the alien spore pylons
+	PYLON = { mesh = "rbxassetid://89110031400162", tex = "rbxassetid://103373434637158", size = Vector3.new(4.96, 7.46, 5.00) },
 	-- the Devourer (head mouth along -Z, segment ring along Z) and objective props
 	WORM_HEAD = { mesh = "rbxassetid://79671816990444", tex = "rbxassetid://105313698074617", size = Vector3.new(12.00, 11.47, 13.85) },
 	WORM_SEG = { mesh = "rbxassetid://74734924143594", tex = "rbxassetid://102711938528429", size = Vector3.new(10.00, 10.00, 5.79) },
@@ -58,6 +60,7 @@ Art.Meshes = {
 	RUBBLE = { mesh = "rbxassetid://136407996252517", tex = "rbxassetid://75414344452594", size = Vector3.new(5.15, 1.86, 5.00) },
 	GARDEN = { mesh = "rbxassetid://97951323835600", tex = "rbxassetid://119584403913449", size = Vector3.new(4.22, 4.00, 2.43) },
 	TANK_FRAME = { mesh = "rbxassetid://76141219891860", tex = "rbxassetid://133587076996859", size = Vector3.new(5.00, 7.73, 4.72) },
+	SHELF = { mesh = "rbxassetid://82018081089569", tex = "rbxassetid://116668348407983", size = Vector3.new(3.91, 4.21, 2.00) },
 	PLINTH = { mesh = "rbxassetid://123821428304518", tex = "rbxassetid://83838900429311", size = Vector3.new(4.04, 2.00, 4.05) },
 }
 

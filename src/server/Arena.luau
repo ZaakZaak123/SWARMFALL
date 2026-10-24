@@ -910,6 +910,11 @@ local function buildDressing(map, decor)
 			local s = rnd(0.6, 2.4)
 			if ArtLoader.get("BOULDER") then
 				local rock = ArtLoader.place("BOULDER", model, CFrame.new(x, -s * 0.12, z) * CFrame.Angles(0, rnd(0, 6.28), 0), s * 0.22)
+				if rock then
+					rock.TextureID = ""
+					rock.Material = Enum.Material.Slate
+					rock.Color = rgb(140, 132, 124)
+				end
 				rock.CastShadow = s > 1.6
 				continue
 			end

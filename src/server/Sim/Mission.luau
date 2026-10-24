@@ -610,7 +610,7 @@ function Mission:runBeat(beat)
 		self.goal = "Уничтожь кислотные источники"
 		w:banner(
 			if i == 1 then "КИСЛОТНЫЙ ИСТОЧНИК" else "ВТОРОЙ ИСТОЧНИК",
-			"Стреляй по источнику — он травит кратер",
+			"Стреляй по источнику — он травит воронку",
 			C.LIME,
 			4,
 			"@6"
@@ -684,7 +684,7 @@ function Mission:update(dt: number)
 	end
 	if self.state == "FINALE" and w.t >= self.finaleUntil then
 		self.state = "DONE"
-		w:finish(true, if self.op.id == "STRIKE" then "Аванпост выстоял" elseif self.op.mode == "siege" then "Осада отбита" else "Рой отброшен")
+		w:finish(true, if self.op.mode == "siege" then "Бур выстоял" else "Рой отброшен")
 	end
 end
 

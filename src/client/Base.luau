@@ -107,6 +107,7 @@ local goal = nil
 local scene = nil -- running victory scene
 local camp = nil -- camp state (squads + hunters) while in a public camp server
 local visitHome = nil -- the restored spots of the shelter being visited (drawn here, on this screen)
+local visitSlots = nil -- and that survivor's drill defences (for the workshop shelf)
 local lastVisit = nil
 
 local function part(props): BasePart
@@ -385,9 +386,16 @@ local function buildSpots()
 	for _, r in runs do
 		local a, b = r[1], r[2]
 		local n = math.floor((b - a).Magnitude / 3)
+		local prev = nil
 		for k = 0, n do
 			local t = k / n
 			local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * 2.2, 0)
+			if prev then
+				-- the wire the bulbs hang on
+				local wire = part({ Name = "Wire", Size = Vector3.new(0.06, 0.06, (p - prev).Magnitude), Color = Color3.fromRGB(30, 28, 26), Material = Enum.Material.SmoothPlastic, Parent = folder })
+				wire.CFrame = CFrame.lookAt((p + prev) / 2, p)
+			end
+			prev = p
 			local bulb = part({ Name = "Bulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.34, 0.34, 0.34), Color = Color3.fromRGB(90, 80, 70), Material = Enum.Material.SmoothPlastic, Parent = folder })
 			bulb.CFrame = CFrame.new(p)
 			table.insert(bulbs, bulb)
@@ -571,6 +579,76 @@ local function labText(n: number): string
 		base ..= string.format(" · %d/%d", n, if stage == 0 then t[1] else nextNeed)
 	end
 	return base
+end
+
+-- The workshop shelf (DD-062): every defence made on the workbench stands here as a small model, so
+-- the home shows what guards the drill out in the danger zone. Rebuilt only when the set changes.
+local shelfKey = nil
+local shelfFolder = nil
+local function setShelf(slots, workshop: boolean)
+	local list = {}
+	for _, s in slots or {} do
+		table.insert(list, { id = s.id, lvl = s.lvl })
+	end
+	table.sort(list, function(a, b)
+		if a.id ~= b.id then
+			return a.id < b.id
+		end
+		return a.lvl > b.lvl
+	end)
+	local key = tostring(workshop)
+	for _, it in list do
+		key ..= it.id .. it.lvl
+	end
+	if key == shelfKey then
+		return
+	end
+	shelfKey = key
+	if shelfFolder then
+		shelfFolder:Destroy()
+		shelfFolder = nil
+	end
+	if not workshop then
+		return
+	end
+	local sd = SPOTS.WORKBENCH
+	local at = W(sd.x + 7.5, 0, sd.z + 2.5)
+	shelfFolder = new("Model", { Name = "Shelf", Parent = folder })
+	local shelf = artModel("SHELF", 4.6, CFrame.new(at) * CFrame.Angles(0, -0.25, 0), shelfFolder)
+	local anchor = shelf or part({ Name = "ShelfAnchor", Size = Vector3.new(6, 0.4, 1.6), Color = Color3.fromRGB(110, 80, 50), Material = Enum.Material.Wood, Parent = shelfFolder })
+	if not shelf then
+		anchor.CFrame = CFrame.new(at + Vector3.new(0, 2, 0))
+	end
+	local base = CFrame.new(at) * CFrame.Angles(0, -0.25, 0)
+	for i, it in list do
+		local row = (i - 1) // 4 -- three shelves, four places each
+		local col = (i - 1) % 4
+		local ok, m = pcall(Structures.model, it.id, it.lvl, false)
+		if ok and m then
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Anchored = true
+					d.CanCollide = false
+					d.CanQuery = false
+					d.CastShadow = false
+				elseif d:IsA("Light") or d:IsA("ParticleEmitter") then
+					d:Destroy()
+				end
+			end
+			local _, size = m:GetBoundingBox()
+			pcall(m.ScaleTo, m, m:GetScale() * (0.95 / math.max(size.X, size.Y, size.Z, 0.1)))
+			local cf, sz = m:GetBoundingBox()
+			m.WorldPivot = CFrame.new(cf.X, cf.Y - sz.Y / 2, cf.Z)
+			m:PivotTo(base * CFrame.new(-1.4 + col * 0.93, ({ 3.05, 1.65, 0.3 })[row + 1] or 0.3, 0) * CFrame.Angles(0, math.pi, 0))
+			m.Parent = shelfFolder
+		end
+	end
+	local holder = shelf or anchor
+	local b = new("BillboardGui", { Size = UDim2.fromOffset(170, 34), StudsOffsetWorldSpace = Vector3.new(0, 3.6, 0), LightInfluence = 0, MaxDistance = 70, Adornee = holder, Parent = holder })
+	local t = label(string.format("ДЛЯ БУРА · %d/%d", #list, Meta.SocketCount), { Size = UDim2.new(1, 0, 0, 18), FontFace = F.display, TextSize = 13, TextColor3 = C.cyan, Parent = b })
+	new("UIStroke", { Color = C.ink, Thickness = 2, Parent = t })
+	local s2 = label(if #list == 0 then "Собери первую турель на верстаке" else "Стоит у бура в опасной зоне", { Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 14), FontFace = F.bodyBold, TextSize = 11, TextColor3 = C.dim, Parent = b })
+	new("UIStroke", { Color = C.ink, Thickness = 1.5, Parent = s2 })
 end
 
 local function setBulbs(on: boolean)
@@ -1307,6 +1385,8 @@ function Base.refresh()
 		sp.canRestore = visitHome == nil and not restored and open and not def.free
 		sp.isStation = visitHome == nil and restored and sd.station ~= nil
 	end
+	local slotsShown = if visitHome then visitSlots else (profile.outpost and profile.outpost.slots)
+	setShelf(slotsShown, home.WORKBENCH == true)
 	-- the goal: a beam over the place where it happens
 	if goal and goal.station == "home" and goal.spot and spotParts[goal.spot] then
 		local sd = SPOTS[goal.spot]
@@ -1495,8 +1575,9 @@ function Base.setLobby(info, id: number)
 end
 
 -- Visiting another survivor's shelter in the camp: their restored spots replace ours on this screen.
-function Base.setVisitHome(home)
+function Base.setVisitHome(home, slots)
 	visitHome = home
+	visitSlots = slots
 	Base.refresh()
 end
 

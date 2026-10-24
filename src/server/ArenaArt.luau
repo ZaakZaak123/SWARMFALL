@@ -9,7 +9,7 @@ local ArenaArt = {}
 
 local rgb = Color3.fromRGB
 -- (the generated skull's snout points along its native -Z already)
-local YAW = { SKULL = 0, DROPSHIP = math.pi, RIB = 0, EXTRACTOR = 0 }
+local YAW = { SKULL = 0, DROPSHIP = math.pi / 2, RIB = 0, EXTRACTOR = 0 } -- the plane wreck lies along the rim (DD-062)
 
 local function has(...)
 	for _, key in { ... } do
@@ -285,15 +285,16 @@ function ArenaArt.ruins(map, decor, H): boolean
 	local model = Instance.new("Model")
 	model.Name = "Ruins"
 	model.Parent = decor
+	-- between the swarm's entrances (they sit every 45°), right at the edge of the floor
 	for i = 0, 15 do
-		local a = i / 16 * math.pi * 2 + H.rnd(-0.08, 0.08)
-		local r = H.boundary(map, a) + H.rnd(4, 12)
+		local a = (i + 0.5) / 16 * math.pi * 2 + math.rad(11.25) + H.rnd(-0.05, 0.05)
+		local r = H.boundary(map, a) + H.rnd(-1, 3)
 		local pos = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 		if i % 3 == 1 then
-			put("CAR_WRECK", model, pos, H.rnd(1.05, 1.3), H.rnd(0, 6.28), 0.05)
+			put("CAR_WRECK", model, pos, H.rnd(1.3, 1.6), H.rnd(0, 6.28), 0.05)
 		else
 			-- walls stand along the rim, a little askew
-			put("RUIN_WALL", model, pos, H.rnd(1.1, 1.6), -a + math.pi / 2 + H.rnd(-0.3, 0.3), 0.1)
+			put("RUIN_WALL", model, pos, H.rnd(1.3, 1.8), -a + math.pi / 2 + H.rnd(-0.3, 0.3), 0.1)
 		end
 	end
 	return true
@@ -343,6 +344,10 @@ function ArenaArt.boulders(map, decor, H): boolean
 		if o.style == "boulder" then
 			local p = put("BOULDER", decor, Vector3.new(o.x, 0, o.z), fitScale("BOULDER", o.w * 1.25), H.rnd(0, 6.28), 0.12)
 			p.CastShadow = true
+			-- DD-062: the generated rock is painted violet-crystal; the ruined world wants plain stone
+			p.TextureID = ""
+			p.Material = Enum.Material.Slate
+			p.Color = rgb(150, 142, 132)
 		end
 	end
 	return true

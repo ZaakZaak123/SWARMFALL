@@ -207,7 +207,7 @@ local function prepareCharacter(player: Player, x: number, z: number, facing: nu
 end
 
 -- Onboarding funnel (DD-052): where new players drop off, step by step, in the Creator Dashboard.
-local FUNNEL = { "Вошёл", "Первая охота", "Первая карточка", "Первая победа", "Первая турель", "Первый натиск", "Вторая охота" }
+local FUNNEL = { "Вошёл", "Первая вылазка", "Первая карточка", "Первая победа", "Мастерская", "Первая оборона бура", "Вторая вылазка" }
 local funnel: { [Player]: { [number]: boolean } } = {}
 local function funnelStep(player: Player, step: number)
 	local done = funnel[player]
@@ -503,7 +503,7 @@ local function launch(sq)
 			sq.launching = false
 			table.clear(sq.ready)
 			for _, m in members do
-				social(m, "error", "Высадка не удалась — попробуй ещё раз")
+				social(m, "error", "Выход не удался — попробуй ещё раз")
 			end
 		end
 	end)
@@ -516,7 +516,7 @@ TeleportService.TeleportInitFailed:Connect(function(player: Player, _result, mes
 		sq.launching = false
 		table.clear(sq.ready)
 	end
-	social(player, "error", "Высадка не удалась — попробуй ещё раз")
+	social(player, "error", "Выход не удался — попробуй ещё раз")
 end)
 
 -- «В ЛАГЕРЬ»: back to a public camp server (live) or, in Studio, the whole server back to the camp.

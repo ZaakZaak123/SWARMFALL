@@ -88,7 +88,7 @@ do
 	d.title = "SAVIOR"
 	check(Showcase.title(d) == "Спаситель", "a chosen earned title is worn")
 	d.title = "DEVOURER"
-	check(Showcase.title(d) == "Пережил осаду 4", "an unearned choice falls back to the hardest deed")
+	check(Showcase.title(d) == "Удержал бур · 4", "an unearned choice falls back to the hardest deed")
 	local e = Showcase.build(1, "A", d, "W_ARC_RIFLE", nil)
 	check(e.titleWhy ~= "" and e.saves == 12, "the card says where the title came from and counts rescues")
 end

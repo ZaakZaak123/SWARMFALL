@@ -223,7 +223,7 @@ function World.new(opts: Options)
 	self.xp = 0
 	self.xpNeed = self:xpFor(1)
 	self.phaseIndex = 0
-	self.phaseLabel = "ВЫСАДКА"
+	self.phaseLabel = "ВЫХОД"
 	self.spawnAcc = 0
 	self.elitesDone = {}
 	self.hive = { state = "idle", remaining = 0, total = 0 }
@@ -1548,7 +1548,7 @@ function World:finish(victory: boolean, reason: string)
 				self:emit(E.KILL, e.id, e.def.index, e.x, e.z, 0, 8)
 			end
 		end
-		self:banner(if self.op.mode == "raid" then "ВТОРЖЕНИЕ УСПЕШНО" elseif self.op.mode == "siege" then "ОСАДА ОТБИТА" else "ОХОТА ЗАВЕРШЕНА", reason, C.GOLD, 5, "crown")
+		self:banner(if self.op.mode == "raid" then "ВТОРЖЕНИЕ УСПЕШНО" elseif self.op.mode == "siege" then "БУР ВЫСТОЯЛ" else "ВЫЛАЗКА УДАЛАСЬ", reason, C.GOLD, 5, "crown")
 	else
 		self:banner("ПОРАЖЕНИЕ", reason, C.RED, 5, "skull")
 	end
