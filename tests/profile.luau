@@ -14,12 +14,18 @@ H.stubs.DataStoreService = {
 		error("no DataStore in tests")
 	end,
 }
-H.stubs.Players = { PlayerAdded = signal(), PlayerRemoving = signal(), GetPlayers = function()
-	return {}
-end }
-H.stubs.RunService = { IsStudio = function()
-	return true
-end }
+H.stubs.Players = {
+	PlayerAdded = signal(),
+	PlayerRemoving = signal(),
+	GetPlayers = function()
+		return {}
+	end,
+}
+H.stubs.RunService = {
+	IsStudio = function()
+		return true
+	end,
+}
 
 local Meta = H.require("src/shared/Meta")
 local Profile = H.require("src/server/Profile")
@@ -80,6 +86,18 @@ check(d.components.CMP_STORM_CORE == true, "Ядро Бури granted for the ca
 check(d.s01 == true and d.s01Stats.kills == 18, "S01 unlocked and its kills counted separately")
 check(not d.ops.O02 and not d.ops.O04, "defeat does not open the next operation")
 check(r1.grant == nil, "no first-win grant on defeat")
+check(table.find(
+	(function()
+		local kinds = {}
+		for _, u in r1.unlocked do
+			if u[1] == "research" then
+				table.insert(kinds, u[2])
+			end
+		end
+		return kinds
+	end)(),
+	"EN_SPITTER"
+) ~= nil, "research milestone is returned for the results screen")
 local scrapAfter1 = d.scrap
 
 -- Same runId again: nothing is applied twice.

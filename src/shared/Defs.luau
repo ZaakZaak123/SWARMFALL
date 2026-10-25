@@ -1131,6 +1131,8 @@ Defs.Research = {
 	ELITE_BULWARK = { 1, 5, 20 },
 	ELITE_CARRIER = { 1, 3, 10 },
 	HIVE = { 3, 15, 50 },
+	NODE = { 3, 15, 50 },
+	ACID_SOURCE = { 3, 15, 50 },
 	BOSS_BROODMOTHER = { 1, 3, 10 },
 	BOSS_DEVOURER = { 1, 3, 10 },
 }

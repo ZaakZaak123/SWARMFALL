@@ -48,7 +48,7 @@ local function defaults()
 		s01Stats = { hits = 0, kills = 0, crowds = 0 }, -- S01 mastery counters (never weapon kills)
 		s01Branch = nil, -- chosen specialization "A" | "B" | "C" (from S01 M5)
 		mastery = {}, -- weaponId -> personal lethal kills with it (M1–M20)
-		research = {}, -- species -> personal confirmed kills
+		research = {}, -- species -> confirmed squad kills (permanent collection)
 		tech = {}, -- owned technologies
 		forms = {}, -- crafted permanent forms (evolution id -> true)
 		equip = {}, -- weapon id -> equipped form id
@@ -869,11 +869,14 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		end
 		-- research is shared by the squad (DD-059); a partial result (left early) only has own kills
 		for kind, n in result.species or mine.species or {} do
+			local discovered = (d.research[kind] or 0) == 0 and n > 0 and Defs.Research[kind] ~= nil
 			local was = Defs.researchStage(kind, d.research[kind] or 0)
 			d.research[kind] = (d.research[kind] or 0) + n
 			local now = Defs.researchStage(kind, d.research[kind])
 			if now > was then
 				table.insert(unlocked, { "research", kind, now })
+			elseif discovered then
+				table.insert(unlocked, { "specimen", kind })
 			end
 		end
 	end

@@ -24,6 +24,11 @@ local Home = require(script.Parent.Home)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 local Squads = require(script.Parent.Squads)
+local ShelterRooms = require(script.Parent.ShelterRooms)
+local shelterRooms = ShelterRooms.new()
+local PhysicsService = game:GetService("PhysicsService")
+pcall(PhysicsService.RegisterCollisionGroup, PhysicsService, "Survivors")
+PhysicsService:CollisionGroupSetCollidable("Survivors", "Survivors", false)
 
 Players.CharacterAutoLoads = false
 
@@ -66,7 +71,18 @@ local mode = if IS_SESSION then "LOBBY" else "HUB" -- HUB | LOBBY | RUN
 ReplicatedStorage:SetAttribute("ServerRole", if IS_SESSION then "SESSION" else "HUB")
 print(string.format("[SWARMFALL] role %s  place %d  job %s", if IS_SESSION then "SESSION" else "HUB", game.PlaceId, game.JobId))
 -- mode: "hunt" (story operations) | "siege" (host's outpost) | "raid" (lobby.target, chosen by the host)
-local lobby = { ready = {}, weapon = {}, countdown = nil :: number?, op = "O01", threat = 1, mode = "hunt", target = nil, candidates = nil, hold = false, strikeAt = nil :: number? }
+local lobby = {
+	ready = {},
+	weapon = {},
+	countdown = nil :: number?,
+	op = "O01",
+	threat = 1,
+	mode = "hunt",
+	target = nil,
+	candidates = nil,
+	hold = false,
+	strikeAt = nil :: number?,
+}
 local serverLobby = lobby -- `lobby` is swapped to a camp squad while its handlers run
 
 -- Anomaly of the day (DD-041): hunts from the third one on, and sieges. First hunts stay readable.
@@ -202,12 +218,25 @@ local function prepareCharacter(player: Player, x: number, z: number, facing: nu
 	hum.BreakJointsOnDeath = true
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	for _, d in char:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CollisionGroup = "Survivors"
+		end
+	end
 	char:PivotTo(CFrame.new(x, 3.2, z) * CFrame.Angles(0, facing or 0, 0))
 	tracking[player] = { x = x, z = z, y = 3.2 }
 end
 
 -- Onboarding funnel (DD-052): where new players drop off, step by step, in the Creator Dashboard.
-local FUNNEL = { "Вошёл", "Первая вылазка", "Первая карточка", "Первая победа", "Мастерская", "Первая оборона бура", "Вторая вылазка" }
+local FUNNEL = {
+	"Вошёл",
+	"Первая вылазка",
+	"Первая карточка",
+	"Первая победа",
+	"Мастерская",
+	"Первая оборона бура",
+	"Вторая вылазка",
+}
 local funnel: { [Player]: { [number]: boolean } } = {}
 local function funnelStep(player: Player, step: number)
 	local done = funnel[player]
@@ -361,6 +390,7 @@ local function toHub(player: Player)
 	end
 	local i = table.find(Players:GetPlayers(), player) or 1
 	if mode == "HUB" then
+		shelterRooms:add(player.UserId)
 		-- the camp can hold a crowd: a loose ring in the yard
 		local a = (i - 1) * 2.4
 		local r = if i == 1 then 0 else 4 + (i % 3) * 3
@@ -777,7 +807,13 @@ function handlers.mode(player: Player, m)
 			local list = Outposts.candidates(player)
 			L.candidates = {}
 			for i, c in list do
-				L.candidates[i] = { name = c.name, rating = c.rating, power = Meta.outpostPower(c.slots), uid = c.uid, rival = c.rival }
+				L.candidates[i] = {
+					name = c.name,
+					rating = c.rating,
+					power = Meta.outpostPower(c.slots),
+					uid = c.uid,
+					rival = c.rival,
+				}
 			end
 			L.candidateData = list
 			L.target = list[1]
@@ -806,7 +842,7 @@ function handlers.raidRefresh(player: Player)
 end
 
 function handlers.revenge(player: Player, uid)
-	if not hostOnly(player) or not finite(uid) then
+	if not hostOnly(player) or not Codec.isUserId(uid, RunService:IsStudio()) then
 		return false
 	end
 	local f = Profile.features(Profile.get(player) or {})
@@ -1125,7 +1161,7 @@ end
 
 function handlers.invite(player: Player, uid)
 	local sq = campOnly() and squads:squadOf(player)
-	local target = finite(uid) and Players:GetPlayerByUserId(uid)
+	local target = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
 	if not sq or not target or target == player or #sq.members >= Squads.Max then
 		return false
 	end
@@ -1134,7 +1170,11 @@ function handlers.invite(player: Player, uid)
 		sq = squads:squadOf(player)
 	end
 	sq.invited[target.UserId] = true
-	social(target, "invite", { from = player.DisplayName, squad = sq.id, title = Showcase.squadTitle(sq.mode, Ops.get(sq.op).name, Ops.get(sq.op).index, nil) })
+	social(target, "invite", {
+		from = player.DisplayName,
+		squad = sq.id,
+		title = Showcase.squadTitle(sq.mode, Ops.get(sq.op).name, Ops.get(sq.op).index, nil),
+	})
 	return true
 end
 
@@ -1155,11 +1195,47 @@ function handlers.match(player: Player)
 end
 
 function handlers.like(player: Player, uid)
-	local owner = finite(uid) and Players:GetPlayerByUserId(uid)
-	if not owner or not Profile.like(player, owner, Meta.dayIndex(os.time())) then
+	local owner = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
+	if
+		not campOnly()
+		or not owner
+		or shelterRooms:owner(player.UserId) ~= uid
+		or not Profile.like(player, owner, Meta.dayIndex(os.time()))
+	then
 		return false
 	end
 	social(owner, "liked", player.DisplayName)
+	return true
+end
+
+function handlers.visit(player: Player, uid)
+	local owner = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
+	local sq = squads:squadOf(player)
+	local targetSquad = owner and squads:squadOf(owner)
+	if
+		not campOnly()
+		or not owner
+		or not Profile.get(owner)
+		or not Profile.get(player)
+		or (sq and sq.launching)
+		or (targetSquad and targetSquad.launching)
+	then
+		return false
+	end
+	if shelterRooms:owner(player.UserId) == uid then
+		return true
+	end
+	if not shelterRooms:visit(player.UserId, uid) then
+		return false
+	end
+	local root = rootOf(player)
+	if root then
+		root.AssemblyLinearVelocity = Vector3.zero
+		player.Character:PivotTo(CFrame.new(HOME.X, 3.2, HOME.Z - 8) * CFrame.Angles(0, LOBBY_FACING, 0))
+	end
+	if owner ~= player then
+		social(owner, "visitor", player.DisplayName)
+	end
 	return true
 end
 
@@ -1281,7 +1357,27 @@ local function lobbyInfo(L, h, members, shared)
 		mode = lobby.mode,
 		siege = if hostData then hostData.outpost.siege else 1,
 		outpost = if hostData then hostData.outpost.slots else nil,
-		target = if lobby.target then { name = lobby.target.name, rating = lobby.target.rating, uid = lobby.target.uid, power = Meta.outpostPower(lobby.target.slots), slots = lobby.target.slots, brood = lobby.target.brood } else nil,
+		shelter = if mode == "LOBBY"
+				and hostData
+				and h
+			then Showcase.build(
+				h.UserId,
+				h.DisplayName,
+				hostData,
+				lobby.weapon[h] or "W_ARC_RIFLE",
+				Profile.equippedForm(h, lobby.weapon[h] or "W_ARC_RIFLE")
+			)
+			else nil,
+		target = if lobby.target
+			then {
+				name = lobby.target.name,
+				rating = lobby.target.rating,
+				uid = lobby.target.uid,
+				power = Meta.outpostPower(lobby.target.slots),
+				slots = lobby.target.slots,
+				brood = lobby.target.brood,
+			}
+			else nil,
 		candidates = lobby.candidates,
 		anomaly = todaysAnomaly().id,
 		boards = shared.boards,
@@ -1317,10 +1413,11 @@ local function hubInfo()
 			end
 			local entry = Showcase.build(player.UserId, player.DisplayName, d, weapon, Profile.equippedForm(player, weapon))
 			entry.squad = sq and sq.id or 0
+			entry.room = shelterRooms:owner(player.UserId)
 			table.insert(hunters, entry)
 		end
 	end
-	return { squads = list, hunters = hunters }
+	return { squads = list, hunters = hunters, featured = Showcase.featured(hunters, math.floor(os.time() / 120)) }
 end
 
 local function publish()
@@ -1433,6 +1530,15 @@ for _, player in Players:GetPlayers() do
 end
 
 Players.PlayerRemoving:Connect(function(player)
+	if sessionHostId == player.UserId then
+		sessionHostId = nil
+	end
+	for _, uid in shelterRooms:remove(player.UserId) do
+		local guest = Players:GetPlayerByUserId(uid)
+		if guest then
+			social(guest, "error", "Хозяин вышел. Ты вернулся в своё убежище.")
+		end
+	end
 	funnel[player] = nil
 	squads:remove(player)
 	buckets[player] = nil
@@ -1464,11 +1570,11 @@ Players.PlayerRemoving:Connect(function(player)
 	-- New host may not have the selected map/threat unlocked.
 	local h = host()
 	if h and mode == "LOBBY" then
-		local max = Profile.maxThreat(h, lobby.map)
+		local max = Profile.maxThreat(h, lobby.op)
 		if max < 1 then
-			lobby.map = "MAP_REACTOR_YARD"
-			max = Profile.maxThreat(h, lobby.map)
-			buildArena(lobby.map)
+			lobby.op = nextOpFor(h)
+			max = Profile.maxThreat(h, lobby.op)
+			buildArena(Ops.get(lobby.op).map)
 		end
 		lobby.threat = math.clamp(lobby.threat, 1, math.max(1, max))
 	end

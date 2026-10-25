@@ -4,6 +4,16 @@
 
 local Codec = {}
 
+-- User ids are not world coordinates: real accounts exceed both 1e6 and 32-bit ranges.
+-- Keep the complete integer range of Luau numbers; negative simulated ids are Studio-only.
+function Codec.isUserId(value: any, studio: boolean?): boolean
+	return type(value) == "number"
+		and value == value
+		and math.abs(value) <= 9007199254740991
+		and value % 1 == 0
+		and (value > 0 or (studio == true and value < 0))
+end
+
 Codec.Remotes = {
 	Input = "Input", -- C->S  (action: string, ...)
 	State = "State", -- S->C  (enemyBuffer, stateTable) ~15 Hz

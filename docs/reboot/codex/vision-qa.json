@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-26",
+  "environment": "Studio unpublished local build (PlaceId 0); offline profiles",
+  "rooms": {
+    "result": {
+      "ok": true,
+      "checks": [
+        "separate:Player1",
+        "separate:Player2",
+        "together:Player1",
+        "together:Player2",
+        "one like per visitor/day",
+        "home:Player1",
+        "home:Player2",
+        "revisit:Player1",
+        "revisit:Player2",
+        "no resource transfer or loss",
+        "owner_left:Player2",
+        "absent_target:Player2"
+      ]
+    },
+    "started": true
+  },
+  "session": {
+    "result": {
+      "ok": true,
+      "checks": [
+        "both clients entered one squad run",
+        "squad_rest:Player1",
+        "squad_rest:Player2",
+        "new_host:Player2",
+        "back_to_camp:Player2"
+      ]
+    },
+    "started": true
+  },
+  "gallery": {
+    "ok": true,
+    "passed": 19
+  },
+  "rendering": {
+    "view": "full specimen gallery and grove",
+    "trianglesWithoutShadows": 292592,
+    "drawCallsWithoutShadows": 209,
+    "mobileFPS": "not measured"
+  },
+  "liveTeleports": "unverified",
+  "liveDataStore": "unverified"
+}

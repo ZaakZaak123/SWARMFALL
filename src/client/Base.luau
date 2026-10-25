@@ -5,7 +5,7 @@
 -- restored spot changes the place and opens something. The same functions are buttons on the HUD, so
 -- the walk is a pleasure and never a chore. Also owns the first-victory scene: the return home, the
 -- generator starts, the lights come on, the camera finds the broken workshop.
--- Everything here is drawn by this client: in a public camp every survivor sees their own shelter.
+-- Each client draws its current shelter room: the same owner's home for everyone visiting it.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -24,6 +24,8 @@ local Models = require(script.Parent.Models)
 local Defs = require(Shared:WaitForChild("Defs"))
 local Settings = require(script.Parent.Settings)
 local Cableway = require(script.Parent.Cableway)
+local Collection = require(Shared:WaitForChild("Collection"))
+local SpecimenGallery = require(script.Parent.SpecimenGallery)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -130,9 +132,9 @@ local LAMPS = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
 local DECOR = { -- { art, height, x, z, yaw }
 	{ "SHELTER", 14, 0, 29, 0 },
 	{ "OAK", 20, -42, 34, 0.4 },
-	{ "OAK", 22, 46, 38, 2.1 },
+	{ "OAK", 22, 72, 44, 2.1 },
 	{ "OAK", 18, -56, -8, 1.2 },
-	{ "OAK", 21, 60, 4, 3.3 },
+	{ "OAK", 21, 74, 12, 3.3 },
 	{ "OAK", 19, -40, -50, 2.6 },
 	{ "OAK", 20, 44, -52, 0.9 },
 	{ "OAK", 24, 4, 62, 1.7 },
@@ -150,7 +152,7 @@ local DECOR = { -- { art, height, x, z, yaw }
 	{ "BUSH", 3.0, 30, -36, 2.5 },
 	{ "BUSH", 3.6, -8, 40, 0.2 },
 	{ "BUSH", 2.8, 12, 42, 1.2 },
-	{ "BUSH", 2.9, 46, 18, 0.7 },
+	{ "BUSH", 2.9, 61, 22, 0.7 },
 	{ "RUIN_WALL", 5, -11, -36, 0 },
 	{ "RUIN_WALL", 5, 11, -36, math.pi },
 	{ "RUIN_WALL", 4.5, -48, 6, 1.57 },
@@ -179,6 +181,7 @@ local scene = nil -- running victory scene
 local camp = nil -- camp state (squads + hunters) while in a public camp server
 local visitHome = nil -- the restored spots of the shelter being visited (drawn here, on this screen)
 local visitSlots = nil -- and that survivor's drill defences (for the workshop shelf)
+local visitStock = nil
 local lastVisit = nil
 
 local function part(props): BasePart
@@ -617,7 +620,8 @@ local function deliver(amount: number)
 	end, 46)
 end
 
-local labSample, labShown = -1, nil -- the lab tank (defined with the tank below)
+local labResearch, labOwner, labOwn = {}, nil, true
+local gallery = nil
 local updateTank
 
 -- The look of a spot: rubble until restored; restored = its model, warm light, and (animate) a burst.
@@ -635,70 +639,13 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 		end
 		if not sp.model or not sp.model.Parent then
 			if id == "LAB" then
-				-- the specimen tank is built here (a generated mesh would hide its contents): a metal
-				-- plinth, a glass column with the liquid, a cap with pipes; DD-059 fills it
-				local metal = Color3.fromRGB(70, 74, 80)
-				local brass = Color3.fromRGB(196, 150, 70)
-				local holder = new("Model", { Name = "Tank", Parent = sp.holder })
-				local frame = artModel("SPECIMEN_FRAME", 8.34, base, holder)
-				if frame then
-					frame.Name = "SpecimenFrame"
-				end
-				local function cyl(
-					name: string,
-					h: number,
-					d: number,
-					y: number,
-					color: Color3,
-					mat,
-					transparency: number?
-				)
-					local c = part({
-						Name = name,
-						Shape = Enum.PartType.Cylinder,
-						Size = Vector3.new(h, d, d),
-						Color = color,
-						Material = mat,
-						Transparency = transparency or 0,
-						Parent = holder,
-					})
-					c.CFrame = base * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90))
-					c.CastShadow = transparency == nil
-					return c
-				end
-				if not frame then
-					cyl("Plinth", 1.2, 4.6, 0.6, metal, Enum.Material.DiamondPlate)
-					cyl("Rim", 0.25, 4.3, 1.3, brass, Enum.Material.Metal)
-				end
-				local glass = cyl("Glass", 5.4, 3.8, 4.1, Color3.fromRGB(200, 236, 228), Enum.Material.Glass, 0.62)
-				local liquid = cyl("Liquid", 4.9, 3.5, 3.9, Color3.fromRGB(120, 255, 170), Enum.Material.Neon, 0.82)
-				if not frame then
-					cyl("RimTop", 0.25, 4.1, 6.9, brass, Enum.Material.Metal)
-					cyl("Cap", 0.9, 4.3, 7.4, metal, Enum.Material.Metal)
-					cyl("Valve", 0.6, 1.2, 8.1, brass, Enum.Material.Metal)
-				end
-				for k = 0, (if frame then -1 else 1) do
-					local pipe = part({
-						Name = "Pipe",
-						Size = Vector3.new(0.35, 7.5, 0.35),
-						Color = metal,
-						Material = Enum.Material.Metal,
-						Parent = holder,
-					})
-					pipe.CFrame = base * CFrame.new(if k == 0 then -2.3 else 2.3, 4.1, 0.6)
-				end
-				new("PointLight", {
-					Color = Color3.fromRGB(140, 255, 180),
-					Range = 10,
-					Brightness = 1.2,
-					Shadows = false,
-					Parent = liquid,
-				})
-				holder.PrimaryPart = glass
-				sp.model = holder
-				sp.tank = { glass = glass, liquid = liquid, base = base }
-				labShown = nil
-				task.defer(updateTank)
+				sp.model = new("Model", { Name = "Laboratory", Parent = sp.holder })
+				gallery = SpecimenGallery.new(base, sp.model, artModel, function(kind)
+					if actions and actions.collection then
+						actions.collection(labResearch, labOwner, kind, labOwn)
+					end
+				end)
+				gallery:update(labResearch, true)
 			else
 				sp.model = artModel(sd.art, sd.h, base, sp.holder)
 				if sp.model then
@@ -732,6 +679,9 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 		end
 	else
 		if sp.model then
+			if id == "LAB" then
+				gallery = nil
+			end
 			sp.model:Destroy()
 			sp.model = nil
 		end
@@ -742,140 +692,22 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 	end
 end
 
--- The lab's specimen tank (DD-059): one species, the Spitter, studied by the squad's kills. The tank
--- fills as research grows: first samples → a dark silhouette → the full specimen → an exemplary one.
--- It is a collection — nothing here is spent (DNA for the own swarm is counted separately).
-local SAMPLE_KIND = "EN_SPITTER"
-local SAMPLE_INDEX = 3
-local tankBits = {} -- parts to bob
-
-local function sampleStage(n: number): number
-	if n <= 0 then
-		return 0
-	end
-	return 1 + Defs.researchStage(SAMPLE_KIND, n) -- 1 samples, 2 silhouette, 3 full, 4 exemplary
-end
-
+-- Each discovered species owns a permanent tank; consumable DNA is a separate system.
 updateTank = function()
-	local sp = spotParts.LAB
-	local tank = sp and sp.tank
-	if not tank or not tank.glass.Parent then
-		labShown = nil
-		return
+	if gallery then
+		gallery:update(labResearch, true)
 	end
-	local stage = sampleStage(labSample)
-	-- A permanent collection: fill rises continuously between research milestones, including
-	-- within a stage. DNA crafting never drains this liquid or removes the specimen.
-	local thresholds = Defs.Research[SAMPLE_KIND]
-	local stops = { 0.06, 0.32, 0.65, 1 }
-	local fill = 1
-	local previous = 0
-	for i, target in thresholds do
-		if labSample < target then
-			local alpha = math.clamp((labSample - previous) / (target - previous), 0, 1)
-			fill = stops[i] + (stops[i + 1] - stops[i]) * alpha
-			break
-		end
-		previous = target
-	end
-	local height = 4.9 * fill
-	tank.liquid.Size = Vector3.new(height, 3.5, 3.5)
-	tank.liquid.CFrame = tank.base * CFrame.new(0, 1.45 + height / 2, 0) * CFrame.Angles(0, 0, math.rad(90))
-	if labShown == stage then
-		return
-	end
-	labShown = stage
-	if tank.content then
-		tank.content:Destroy()
-	end
-	table.clear(tankBits)
-	local content = new("Model", { Name = "Specimen", Parent = sp.holder })
-	tank.content = content
-	local centre = tank.glass.Position
-	local liquidColor = Color3.fromRGB(120, 255, 170)
-	if stage == 1 then
-		-- first samples: tissue floating in the liquid
-		for k = 1, 6 do
-			local blob = part({
-				Name = "Sample",
-				Shape = Enum.PartType.Ball,
-				Size = Vector3.one * (0.35 + k * 0.06),
-				Color = Color3.fromRGB(200, 255, 90),
-				Material = Enum.Material.Neon,
-				Transparency = 0.2,
-				Parent = content,
-			})
-			blob.CFrame =
-				CFrame.new(centre + Vector3.new(math.cos(k * 1.7) * 0.9, (k - 3.5) * 0.6, math.sin(k * 1.7) * 0.9))
-			table.insert(tankBits, { part = blob, base = blob.CFrame, phase = k })
-		end
-	elseif stage >= 2 then
-		local ok, m = pcall(Models.creature, SAMPLE_INDEX)
-		if ok and m then
-			for _, d in m:GetDescendants() do
-				if d:IsA("BasePart") then
-					d.Anchored = true
-					d.CanCollide = false
-					d.CanQuery = false
-					d.CastShadow = false
-					if stage == 2 then
-						-- a dark silhouette behind the murk: you can tell what it is, not yet see it
-						d.Material = Enum.Material.SmoothPlastic
-						d.Color = Color3.fromRGB(16, 24, 18)
-						d.Transparency = math.max(d.Transparency, 0.15)
-						if d:IsA("MeshPart") then
-							d.TextureID = ""
-						end
-					end
-				elseif d:IsA("Light") or d:IsA("ParticleEmitter") then
-					d:Destroy()
-				end
-			end
-			local _, size = m:GetBoundingBox()
-			pcall(m.ScaleTo, m, m:GetScale() * (3.1 / math.max(size.X, size.Y, size.Z, 0.1)))
-			local cf = m:GetBoundingBox()
-			m.WorldPivot = cf
-			m:PivotTo(CFrame.new(centre))
-			m.Parent = content
-			table.insert(tankBits, { model = m, phase = 0 })
-		end
-		if stage >= 4 then
-			-- exemplary: gold rings on the tank and a brighter, clearer liquid
-			liquidColor = Color3.fromRGB(150, 255, 210)
-			for _, dy in { -1, 1 } do
-				local ring = part({
-					Name = "GoldRing",
-					Shape = Enum.PartType.Cylinder,
-					Size = Vector3.new(0.3, 3.9, 3.9),
-					Color = Color3.fromRGB(232, 182, 72),
-					Material = Enum.Material.Metal,
-					Parent = content,
-				})
-				ring.CFrame = CFrame.new(centre + Vector3.new(0, dy * tank.glass.Size.X * 0.42, 0))
-					* CFrame.Angles(0, 0, math.rad(90))
-			end
-		end
-	end
-	tank.liquid.Color = liquidColor
-	tank.liquid.Transparency = if stage == 2 then 0.62 else 0.74
 end
 
-local function labText(n: number): string
-	local stage = sampleStage(n)
-	local t = Defs.Research[SAMPLE_KIND]
-	local nextNeed = t[math.min(#t, math.max(1, stage))]
-	local names = {
-		"нужны образцы",
-		"первые образцы",
-		"силуэт",
-		"полный экземпляр",
-		"образцовый экземпляр",
-	}
-	local base = "Плевун · " .. names[stage + 1]
-	if stage < 4 then
-		base ..= string.format(" · %d/%d", n, if stage == 0 then t[1] else nextNeed)
-	end
-	return base
+local function labText(): string
+	local summary = Collection.summary(labResearch)
+	return string.format(
+		"Видов %d/%d · полных %d · эталонов %d",
+		summary.found,
+		summary.total,
+		summary.complete,
+		summary.exemplary
+	)
 end
 
 -- The workshop shelf (DD-062): every defence made on the workbench stands here as a small model, so
@@ -1157,11 +989,10 @@ end
 
 -- entry: a Showcase entry (or the same fields built from the own profile); nil hides the row.
 function Base.setShowcase(entry)
-	local n = if entry and entry.sample then entry.sample else 0
-	if n ~= labSample then
-		labSample = n
-		updateTank()
-	end
+	labResearch = (entry and entry.collection) or (if entry then { EN_SPITTER = entry.sample or 0 } else {})
+	labOwner = entry and entry.name
+	labOwn = entry ~= nil and entry.id == Players.LocalPlayer.UserId
+	updateTank()
 	local key = if entry
 		then table.concat(
 			{ entry.id, entry.weapon, tostring(entry.form), entry.mastery, entry.siege, tostring(entry.trophyKey) },
@@ -1692,7 +1523,7 @@ function Base.refresh()
 		return
 	end
 	local f = features()
-	goal = Goals.next(profile)
+	goal = if visitHome then nil else Goals.next(profile)
 	local home = visitHome or profile.home or {}
 	local switched = lastVisit ~= visitHome
 	lastVisit = visitHome
@@ -1724,10 +1555,8 @@ function Base.refresh()
 			title.Text = if restored and sd.stationName then sd.stationName else def.name
 		end
 		if sub then
-			sub.Text = if restored
-					and id == "LAB"
-					and labSample >= 0
-				then labText(labSample)
+			sub.Text = if restored and id == "LAB"
+				then labText()
 				elseif restored then (sd.stationSub or "Восстановлено")
 				elseif def.free then "Заработает после вылазки 1"
 				elseif not open then "Откроется после вылазки " .. tostring(
@@ -1744,7 +1573,7 @@ function Base.refresh()
 	end
 	local slotsShown = if visitHome then visitSlots else (profile.outpost and profile.outpost.slots)
 	setShelf(slotsShown, home.WORKBENCH == true)
-	setPile(profile.scrap or 0)
+	setPile(if visitHome then visitStock or 0 else profile.scrap or 0)
 	-- a harvester at the drill keeps the line busy: a crate now and then, even between sorties
 	if cable then
 		local harvester = false
@@ -1774,7 +1603,7 @@ function Base.refresh()
 		clearGoalMarker()
 	end
 	local isHost = lobby ~= nil and lobby.host == myId
-	local ownsBase = true -- the shelter is always your own (in a camp every survivor sees theirs)
+	local ownsBase = visitHome == nil
 	local slots = (profile.outpost and profile.outpost.slots) or {}
 	local _ = slots
 	if not gui then
@@ -1793,14 +1622,17 @@ function Base.refresh()
 		ui.owner.Text = if #players > 1
 			then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players)
 			else "ТВОЁ УБЕЖИЩЕ"
-		ui.ownerNote.Text =
-			"Убежище у каждого своё: другие выжившие видят здесь своё. Чужое — через «Убежища»."
+		ui.ownerNote.Text = if visitHome
+			then "Вы в гостях: хозяин и его гости видят тебя и одну общую коллекцию."
+			else "Твой безопасный дом. Позови гостей через карточку охотника или загляни к соседям."
 	else
 		ui.tag.Text = if isHost or hostName == ""
 			then "ТВОЁ УБЕЖИЩЕ"
-			else "УБЕЖИЩЕ ОТРЯДА · у каждого своё"
-		ui.owner.Text = Players.LocalPlayer.DisplayName
-		ui.ownerNote.Text = ""
+			else "УБЕЖИЩЕ КОМАНДИРА"
+		ui.owner.Text = if visitHome then hostName else Players.LocalPlayer.DisplayName
+		ui.ownerNote.Text = if visitHome
+			then "Общий привал отряда. Оружие и добыча у каждого свои."
+			else ""
 	end
 	ui.toCamp.Visible = lobby ~= nil and lobby.camp == true
 	ui.stBoard.Visible = camp ~= nil
@@ -1966,14 +1798,19 @@ function Base.setLobby(info, id: number)
 end
 
 -- Visiting another survivor's shelter in the camp: their restored spots replace ours on this screen.
-function Base.setVisitHome(home, slots)
+function Base.setVisitHome(home, slots, stock)
 	visitHome = home
 	visitSlots = slots
+	visitStock = stock
 	Base.refresh()
 end
 
 function Base.setCamp(info)
 	camp = info
+end
+
+function Base.collection()
+	return labResearch, labOwner, nil, labOwn
 end
 
 function Base.leaveLobby()
@@ -2104,23 +1941,10 @@ function Base.update(dt: number, _root: Vector3?)
 			elseif sp.isStation then 0.45
 			else 0.85
 		setRing(sp.ring, glow)
-		if sp.tank and sp.tank.liquid.Parent then
-			sp.tank.liquid.Transparency = (if labShown == 2 then 0.62 else 0.74) + math.sin(now * 1.3) * 0.04
-		end
 		local _ = id
 	end
-	for _, b in tankBits do
-		if b.part and b.part.Parent then
-			b.part.CFrame = b.base * CFrame.new(0, math.sin(now * 0.8 + b.phase) * 0.25, 0)
-		elseif b.model and b.model.Parent then
-			local c = spotParts.LAB and spotParts.LAB.tank and spotParts.LAB.tank.glass
-			if c then
-				b.model:PivotTo(
-					CFrame.new(c.Position + Vector3.new(0, math.sin(now * 0.6) * 0.3, 0))
-						* CFrame.Angles(0, now * 0.15, 0)
-				)
-			end
-		end
+	if gallery then
+		gallery:step(dt, active, _root)
 	end
 	for _, sp in spinners do
 		if sp.model.Parent then

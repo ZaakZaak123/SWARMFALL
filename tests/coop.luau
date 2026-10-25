@@ -34,7 +34,11 @@ do
 	for _ = 1, 70 do
 		w:updateRevives(0.05)
 	end
-	check(a.alive and math.abs(a.hp - math.ceil(a.maxHp * Defs.Coop.ReviveHp)) < 1e-6, "teammate standing close revives in ~3 s")
+	check(
+		a.alive and math.abs(a.hp - math.ceil(a.maxHp * Defs.Coop.ReviveHp)) < 1e-6,
+		"teammate standing close revives in ~3 s"
+	)
+	check((b.revives or 0) == 1 and (a.revives or 0) == 0, "rescue credit belongs to the helper, not the downed hunter")
 	w:hurtPlayer(b, 0, 0, 0)
 	b.iframeUntil = 0
 	a.iframeUntil = 0
@@ -47,7 +51,10 @@ do
 	end
 	check(not a.alive and a.downedUntil == nil, "bleed-out without help: out until the end of the operation")
 	local partial = w:leaveResult(2)
-	check(partial ~= nil and partial.victory == false and #partial.players == 1 and partial.players[1].id == 2, "leaving builds a personal defeat result")
+	check(
+		partial ~= nil and partial.victory == false and #partial.players == 1 and partial.players[1].id == 2,
+		"leaving builds a personal defeat result"
+	)
 end
 
 do
@@ -60,9 +67,37 @@ do
 end
 
 -- Two bots play O01 together: the run must resolve and both get personal results.
+do
+	local w = World.new({
+		seed = 9,
+		op = "O01",
+		players = {
+			{ id = 1, name = "NEW", weapon = "W_ARC_RIFLE", firstHunt = true },
+			{ id = 2, name = "FRIEND", weapon = "W_ARC_RIFLE", firstHunt = true },
+		},
+	})
+	w.phase = "ACTIVE"
+	w:gainXp(w.xpNeed)
+	local first = w.playerList[1]
+	check(first.offer and first.offer.lock ~= nil, "first squad upgrade has its guided card locked")
+	w:step(Defs.Run.ChoiceTimeoutCoop + 0.1)
+	check(
+		w.paused == nil and first.offer == nil and (first.ranks.UPG_MULTISHOT or 0) == 1,
+		"timeout takes the guided slot and resumes the squad without a server loop"
+	)
+end
+
 local out = Bot.run("W_ARC_RIFLE", 2, 424242, false, nil, 1, nil, { op = "O01", orbit = 32 })
 local r = out.result
-print(string.format("  duo O01: %s (%s) at %s  kills %d", if r.victory then "VICTORY" else "DEFEAT", r.reason, Bot.fmt(r.time), r.kills))
+print(
+	string.format(
+		"  duo O01: %s (%s) at %s  kills %d",
+		if r.victory then "VICTORY" else "DEFEAT",
+		r.reason,
+		Bot.fmt(r.time),
+		r.kills
+	)
+)
 check(r ~= nil and #r.players == 2, "duo O01 resolves with two personal results")
 check(r.players[1].kills + r.players[2].kills <= r.kills, "personal kills never exceed team kills")
 

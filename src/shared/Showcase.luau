@@ -5,6 +5,7 @@
 
 local Defs = require(script.Parent.Defs)
 local Meta = require(script.Parent.Meta)
+local Collection = require(script.Parent.Collection)
 
 local Showcase = {}
 
@@ -26,6 +27,8 @@ export type Entry = {
 	won: { [string]: boolean },
 	home: { [string]: boolean },
 	sample: number,
+	collection: { [string]: number },
+	stock: number, -- coarse display tier, never the exact balance
 	saves: number,
 	trophyKey: string,
 }
@@ -39,15 +42,44 @@ end
 -- wear; the default is the hardest deed.
 function Showcase.titles(d): { { id: string, name: string, icon: string, why: string } }
 	local best = d.outpost and d.outpost.best or 0
-	local out = { { id = "NEWBIE", name = "Новобранец", icon = "star", why = "Каждый с чего-то начинал" } }
+	local out = {
+		{
+			id = "NEWBIE",
+			name = "Новобранец",
+			icon = "star",
+			why = "Каждый с чего-то начинал",
+		},
+	}
 	local function add(id, name, icon, why)
 		table.insert(out, { id = id, name = name, icon = icon, why = why })
 	end
 	if won(d, "O01") then
-		add("SHELTER", "Запустил убежище", "pin", "Добыл генератор в первой вылазке")
+		add(
+			"SHELTER",
+			"Запустил убежище",
+			"pin",
+			"Добыл генератор в первой вылазке"
+		)
 	end
 	if (d.saves or 0) >= 10 then
 		add("SAVIOR", "Спаситель", "heart", "Поднял союзников " .. (d.saves or 0) .. " раз")
+	end
+	local specimens = Collection.summary(d.research)
+	if specimens.complete >= 5 then
+		add(
+			"NATURALIST",
+			"Исследователь роя",
+			"hive",
+			"Собрал полные экземпляры " .. specimens.complete .. " видов"
+		)
+	end
+	if specimens.exemplary >= 3 then
+		add(
+			"CURATOR",
+			"Хранитель коллекции",
+			"star",
+			"Вырастил эталоны " .. specimens.exemplary .. " видов"
+		)
 	end
 	if won(d, "O03") then
 		add("SCOURGE", "Гроза роя", "crosshair", "Отстоял поющий пилон")
@@ -63,7 +95,12 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 		add("KEEPER", "Хозяин убежища", "heart", "Восстановил всё убежище")
 	end
 	if best >= 3 then
-		add("SIEGE", "Удержал бур · " .. best, "shield", "Отбил оборону бура уровня " .. best)
+		add(
+			"SIEGE",
+			"Удержал бур · " .. best,
+			"shield",
+			"Отбил оборону бура уровня " .. best
+		)
 	end
 	if won(d, "O05") then
 		add("BROOD", "Победил Мать роя", "skull", "Убил королеву роя в вылазке 5")
@@ -126,6 +163,17 @@ function Showcase.trophies(d, weapon: string, mastery: number): { { string } }
 	if held > 0 then
 		table.insert(out, { "shield", "Отбито налётов: " .. held })
 	end
+	local specimens = Collection.summary(d.research)
+	if specimens.complete > 0 then
+		table.insert(out, {
+			"hive",
+			"Коллекция: "
+				.. specimens.complete
+				.. " полных · "
+				.. specimens.exemplary
+				.. " эталонов",
+		})
+	end
 	return out
 end
 
@@ -162,7 +210,16 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 		won = { O01 = won(d, "O01"), O05 = won(d, "O05"), O07 = won(d, "O07") }, -- trophy pedestals
 		home = table.clone(d.home or {}), -- restored shelter spots (a visit draws them)
 		sample = (d.research or {}).EN_SPITTER or 0, -- the lab tank's species research (DD-059)
-		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07") then "c" else ""),
+		collection = Collection.public(d.research),
+		stock = if (d.scrap or 0) >= 3000
+			then 3000
+			elseif (d.scrap or 0) >= 1000 then 1000
+			elseif (d.scrap or 0) >= 300 then 300
+			elseif (d.scrap or 0) > 0 then 1
+			else 0,
+		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07")
+			then "c"
+			else ""),
 	}
 end
 
@@ -212,7 +269,11 @@ function Showcase.awards(players): { [number]: { { string } } }
 	end
 	for _, p in players do
 		if not out[p.id] then
-			give(p, if p.alive then "check" else "users", if p.alive then "В строю до конца" else "Плечом к плечу")
+			give(
+				p,
+				if p.alive then "check" else "users",
+				if p.alive then "В строю до конца" else "Плечом к плечу"
+			)
 		end
 	end
 	return out
@@ -226,6 +287,27 @@ function Showcase.squadTitle(mode: string, opName: string, opIndex: number, sieg
 		return "Вторжение на чужой бур"
 	end
 	return string.format("Вылазка %d · %s", opIndex, opName)
+end
+
+-- Discovery rather than a second wealth leaderboard: rotate every two minutes, alternating
+-- newcomers and the whole settlement. Stable id order means every online survivor gets a turn.
+function Showcase.featured(hunters, rotation: number): number?
+	local pool = {}
+	for _, h in hunters do
+		if rotation % 2 == 1 or h.newbie then
+			table.insert(pool, h.id)
+		end
+	end
+	if #pool == 0 then
+		for _, h in hunters do
+			table.insert(pool, h.id)
+		end
+	end
+	if #pool == 0 then
+		return nil
+	end
+	table.sort(pool)
+	return pool[math.floor(rotation / 2) % #pool + 1]
 end
 
 return Showcase

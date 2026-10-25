@@ -176,7 +176,7 @@ Meta.StrikeReward = 40
 Meta.RaidTurretPlayerMult = 0.3
 
 -- Swarm (DNA, strains, mutations) ----------------------------------------------------------------------
--- DNA is earned from lifetime personal kills of a species (profile `research`): kills / per.
+-- DNA is earned from lifetime squad kills of a species (profile `research`): kills / per.
 Meta.Species = {
 	EN_RUNNER = { per = 20, unlock = 5, points = 1, name = "БЕГУН" },
 	EN_STALKER = { per = 5, unlock = 8, points = 3, name = "ПРЫГУН" },

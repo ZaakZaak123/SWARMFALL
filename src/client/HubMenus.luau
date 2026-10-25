@@ -5,10 +5,10 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
-local Meta = require(Shared:WaitForChild("Meta"))
 local Theme = require(script.Parent.Theme)
 local Icons = require(script.Parent.Icons)
 local Audio = require(script.Parent.Audio)
+local Collection = require(Shared:WaitForChild("Collection"))
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -234,34 +234,28 @@ function HubMenus.refreshBoard()
 			if sq.countdown then
 				sub ..= string.format("  ·  вылет через %d", math.ceil(sq.countdown))
 			end
-			label(
-				sub,
-				{
-					Position = UDim2.fromOffset(72, 40),
-					Size = UDim2.new(1, -250, 0, 18),
-					FontFace = F.body,
-					TextSize = 13,
-					TextColor3 = C.dim,
-					TextXAlignment = Enum.TextXAlignment.Left,
+			label(sub, {
+				Position = UDim2.fromOffset(72, 40),
+				Size = UDim2.new(1, -250, 0, 18),
+				FontFace = F.body,
+				TextSize = 13,
+				TextColor3 = C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 44,
+				Parent = r,
+			})
+			if sq == mine then
+				label(if sq.open then "ТВОЙ ОТРЯД · НАБОР ОТКРЫТ" else "ТВОЙ ОТРЯД", {
+					AnchorPoint = Vector2.new(1, 0.5),
+					Position = UDim2.new(1, -16, 0.5, 0),
+					Size = UDim2.fromOffset(200, 20),
+					FontFace = F.head,
+					TextSize = 11,
+					TextColor3 = C.lime,
+					TextXAlignment = Enum.TextXAlignment.Right,
 					ZIndex = 44,
 					Parent = r,
-				}
-			)
-			if sq == mine then
-				label(
-					if sq.open then "ТВОЙ ОТРЯД · НАБОР ОТКРЫТ" else "ТВОЙ ОТРЯД",
-					{
-						AnchorPoint = Vector2.new(1, 0.5),
-						Position = UDim2.new(1, -16, 0.5, 0),
-						Size = UDim2.fromOffset(200, 20),
-						FontFace = F.head,
-						TextSize = 11,
-						TextColor3 = C.lime,
-						TextXAlignment = Enum.TextXAlignment.Right,
-						ZIndex = 44,
-						Parent = r,
-					}
-				)
+				})
 			else
 				button(r, "ВСТУПИТЬ", "primary", 150, function()
 					H.send("join", sq.id)
@@ -298,7 +292,7 @@ local function buildOutposts()
 	local m = H.modal("CampOutposts", 760, 560, "УБЕЖИЩА ВЫЖИВШИХ", C.cyan)
 	ui.outposts = m
 	label(
-		"Убежища всех, кто сейчас в поселении. Заглянуть — значит увидеть его дом у себя на экране.",
+		"Дома выживших в этом поселении. В гостях можно встретить хозяина и других посетителей.",
 		{
 			Position = UDim2.fromOffset(28, 62),
 			Size = UDim2.new(1, -56, 0, 20),
@@ -318,15 +312,17 @@ function HubMenus.refreshOutposts()
 		return
 	end
 	local list = table.clone((hub and hub.hunters) or {})
+	local featured = hub and hub.featured
 	table.sort(list, function(a, b)
-		if a.power ~= b.power then
-			return a.power > b.power
+		if (a.id == featured) ~= (b.id == featured) then
+			return a.id == featured
 		end
 		return a.id < b.id
 	end)
-	local key = ""
+	local key = tostring(featured)
 	for _, h in list do
-		key ..= h.id .. ":" .. h.power .. ":" .. h.likes .. "|"
+		local specimens = Collection.summary(h.collection)
+		key ..= h.id .. ":" .. h.power .. ":" .. h.likes .. ":" .. h.title .. ":" .. specimens.found .. ":" .. specimens.exemplary .. "|"
 	end
 	if key == ui.outKey then
 		return
@@ -341,7 +337,8 @@ function HubMenus.refreshOutposts()
 		end
 		disc(r, h.titleIcon, C.cyan, 46, UDim2.fromOffset(12, 13))
 		label(
-			h.name .. (if h.id == myId then "  (ты)" else ""),
+			h.name
+				.. (if h.id == myId then "  (ты)" elseif h.id == featured then "  ·  ЗНАКОМСТВО" else ""),
 			{
 				Position = UDim2.fromOffset(70, 12),
 				Size = UDim2.new(1, -330, 0, 22),
@@ -355,10 +352,9 @@ function HubMenus.refreshOutposts()
 		)
 		label(
 			string.format(
-				"Мощь обороны бура %d  ·  построек %d/%d  ·  оборона %s  ·  ♥ %d",
-				h.power,
-				built,
-				Meta.SocketCount,
+				"Коллекция %d видов · эталонов %d · оборона %s · ♥ %d",
+				Collection.summary(h.collection).found,
+				Collection.summary(h.collection).exemplary,
 				if h.siege > 0 then tostring(h.siege) else "—",
 				h.likes
 			),
@@ -377,7 +373,7 @@ function HubMenus.refreshOutposts()
 			ui.outposts.hide()
 			acts.visit(h.id)
 		end)
-		b.Visible = h.id ~= myId and built > 0
+		b.Visible = h.id ~= myId
 		local c = button(r, "КАРТОЧКА", nil, 120, function()
 			HubMenus.showCard(h.id)
 		end)
@@ -487,7 +483,19 @@ function HubMenus.showCard(uid: number, override)
 	})
 	-- your own card: pick which earned title to wear
 	if uid == myId and acts.ownTitles then
-		label("ТИТУЛ НАД ГОЛОВОЙ — ВЫБЕРИ ЗАСЛУЖЕННЫЙ", { Position = UDim2.fromOffset(0, 270), Size = UDim2.new(1, 0, 0, 16), FontFace = F.head, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43, Parent = b })
+		label(
+			"ТИТУЛ НАД ГОЛОВОЙ — ВЫБЕРИ ЗАСЛУЖЕННЫЙ",
+			{
+				Position = UDim2.fromOffset(0, 270),
+				Size = UDim2.new(1, 0, 0, 16),
+				FontFace = F.head,
+				TextSize = 10,
+				TextColor3 = C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 43,
+				Parent = b,
+			}
+		)
 		local chips = new("Frame", {
 			Position = UDim2.fromOffset(0, 292),
 			Size = UDim2.new(1, 0, 0, 60),
@@ -497,7 +505,17 @@ function HubMenus.showCard(uid: number, override)
 		})
 		for i, t in acts.ownTitles() do
 			local on = t.name == h.title
-			local c, cl = Theme.button(t.name, { Size = UDim2.fromOffset(0, 28), AutomaticSize = Enum.AutomaticSize.X, TextSize = 11, ZIndex = 44, LayoutOrder = i }, if on then "primary" else "ghost")
+			local c, cl = Theme.button(
+				t.name,
+				{
+					Size = UDim2.fromOffset(0, 28),
+					AutomaticSize = Enum.AutomaticSize.X,
+					TextSize = 11,
+					ZIndex = 44,
+					LayoutOrder = i,
+				},
+				if on then "primary" else "ghost"
+			)
 			cl.Size = UDim2.new(0, 0, 1, 0)
 			cl.AutomaticSize = Enum.AutomaticSize.X
 			cl.ZIndex = 45
@@ -660,7 +678,7 @@ function HubMenus.showCard(uid: number, override)
 	for _ in h.slots do
 		built += 1
 	end
-	ui.cardVisit.Visible = uid ~= myId and built > 0
+	ui.cardVisit.Visible = uid ~= myId
 	ui.cardInvite.Visible = uid ~= myId
 	ui.cardInviteLabel.Text = "ПОЗВАТЬ В ОТРЯД"
 	ui.card.show()
@@ -752,7 +770,7 @@ function HubMenus.setVisiting(uid: number?)
 	ui.banner.Visible = uid ~= nil
 	if uid then
 		local h = hunter(uid)
-		ui.bannerTitle.Text = "УБЕЖИЩЕ " .. (if h then h.name:upper() else "") .. " · ВИД У ТЕБЯ"
+		ui.bannerTitle.Text = "В ГОСТЯХ · " .. (if h then h.name:upper() else "")
 		ui.bannerSub.Text = if h
 			then string.format("%s  ·  мощь обороны %d  ·  ♥ %d", h.title, h.power, h.likes)
 			else ""
@@ -846,6 +864,9 @@ function HubMenus.onSocial(kind: string, data)
 	elseif kind == "liked" then
 		Audio.play("orb", 0.8, 1.2)
 		HubMenus.toast(tostring(data) .. " оценил твоё убежище ♥", C.pink)
+	elseif kind == "visitor" then
+		Audio.play("orb", 0.6, 1.2)
+		HubMenus.toast(tostring(data) .. " заглянул в твоё убежище", C.cyan)
 	elseif kind == "match" then
 		HubMenus.toast(
 			if data == "joined"

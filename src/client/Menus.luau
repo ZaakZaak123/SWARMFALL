@@ -72,8 +72,8 @@ local function clear(frame: Instance)
 end
 
 local function viewportScale(base: Vector2): number
-	local vs = workspace.CurrentCamera.ViewportSize
-	return math.clamp(math.min(vs.X / base.X, vs.Y / base.Y), 0.6, 1.25)
+	local vs = if gui and gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
+	return math.clamp(math.min(vs.X / base.X, vs.Y / base.Y), 0.3, 1.25)
 end
 
 local function setBlur(size: number)
@@ -139,6 +139,8 @@ local function xenitePill(parent, props)
 	return p, amount
 end
 
+local modalWindows = {}
+local lastMenuSize = Vector2.zero
 local function modal(name: string, w: number, h: number, title: string, accent: Color3)
 	local shade = new("TextButton", {
 		Name = name,
@@ -162,6 +164,7 @@ local function modal(name: string, w: number, h: number, title: string, accent: 
 	}, accent)
 	local scale = new("UIScale", { Parent = panel })
 	label(title, {
+		Name = "ModalTitle",
 		Position = UDim2.fromOffset(28, 22),
 		Size = UDim2.new(1, -120, 0, 36),
 		FontFace = F.display,
@@ -171,6 +174,7 @@ local function modal(name: string, w: number, h: number, title: string, accent: 
 		Parent = panel,
 	})
 	local close = new("TextButton", {
+		Name = "ModalClose",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -18, 0, 18),
 		Size = UDim2.fromOffset(44, 44),
@@ -188,10 +192,16 @@ local function modal(name: string, w: number, h: number, title: string, accent: 
 	end
 	close.Activated:Connect(hide)
 	local m = { shade = shade, panel = panel, scale = scale, hide = hide }
+	m.baseSize = Vector2.new(w + 40, h + 40)
+	table.insert(modalWindows, m)
 	function m.show()
 		shade.Visible = true
-		scale.Scale = viewportScale(Vector2.new(w + 40, h + 40)) * 0.9
-		tween(scale, 0.3, { Scale = viewportScale(Vector2.new(w + 40, h + 40)) }, Enum.EasingStyle.Back)
+		if m.resize then
+			m.resize(gui.AbsoluteSize)
+		else
+			scale.Scale = viewportScale(m.baseSize) * 0.9
+			tween(scale, 0.3, { Scale = viewportScale(m.baseSize) }, Enum.EasingStyle.Back)
+		end
 		Audio.play("ui")
 	end
 	return m
@@ -2077,7 +2087,13 @@ local function buildSplash()
 	ui.splash = s
 	ui.flash = new(
 		"Frame",
-		{ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BackgroundColor3 = C.white, ZIndex = 30, Parent = s }
+		{
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BackgroundColor3 = C.white,
+			ZIndex = 30,
+			Parent = s,
+		}
 	)
 	ui.splashModel = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -2272,12 +2288,18 @@ local function buildResults()
 		AutomaticSize = Enum.AutomaticSize.Y,
 		ZIndex = 22,
 		Parent = ui.resList,
-		List = {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			Padding = UDim.new(0, 12),
-		},
 	})
+	new(
+		"UIGridLayout",
+		{
+			CellSize = UDim2.fromOffset(320, 96),
+			CellPadding = UDim2.fromOffset(12, 12),
+			FillDirectionMaxCells = 2,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = ui.resUnlocks,
+		}
+	)
 	ui.resGoal = Theme.panel(
 		{ LayoutOrder = 8, Size = UDim2.fromOffset(560, 84), CornerRadius = 18, ZIndex = 22, Parent = ui.resList },
 		C.lime
@@ -2427,7 +2449,13 @@ end
 
 local function unlockCard(iconName: string, tag: string, text: string, color: Color3, order: number)
 	local t = Theme.panel(
-		{ Size = UDim2.fromOffset(320, 96), CornerRadius = 20, LayoutOrder = order, ZIndex = 22, Parent = ui.resUnlocks },
+		{
+			Size = UDim2.fromOffset(320, 96),
+			CornerRadius = 20,
+			LayoutOrder = order,
+			ZIndex = 22,
+			Parent = ui.resUnlocks,
+		},
 		color
 	)
 	local disc = Icons.disc(iconName, 62, color, 23)
@@ -2651,42 +2679,33 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			if (p.revives or 0) > 0 then
 				table.insert(parts, tostring(p.revives) .. " спасений")
 			end
-			new(
-				"UIListLayout",
-				{
-					FillDirection = Enum.FillDirection.Horizontal,
-					VerticalAlignment = Enum.VerticalAlignment.Center,
-					Padding = UDim.new(0, 8),
-					SortOrder = Enum.SortOrder.LayoutOrder,
-					Parent = chip,
-				}
-			)
-			label(
-				table.concat(parts, "  ·  "),
-				{
-					AutomaticSize = Enum.AutomaticSize.X,
-					Size = UDim2.fromOffset(0, 32),
-					FontFace = F.bodyBold,
-					TextSize = 13,
-					ZIndex = 24,
-					Parent = chip,
-				}
-			)
+			new("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				Padding = UDim.new(0, 8),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				Parent = chip,
+			})
+			label(table.concat(parts, "  ·  "), {
+				AutomaticSize = Enum.AutomaticSize.X,
+				Size = UDim2.fromOffset(0, 32),
+				FontFace = F.bodyBold,
+				TextSize = 13,
+				ZIndex = 24,
+				Parent = chip,
+			})
 			for k, a in awards[p.id] or {} do
 				icon(a[1], 16, C.gold, { LayoutOrder = k * 2, ZIndex = 24, Parent = chip })
-				label(
-					a[2],
-					{
-						AutomaticSize = Enum.AutomaticSize.X,
-						Size = UDim2.fromOffset(0, 32),
-						FontFace = F.head,
-						TextSize = 12,
-						TextColor3 = C.gold,
-						LayoutOrder = k * 2 + 1,
-						ZIndex = 24,
-						Parent = chip,
-					}
-				)
+				label(a[2], {
+					AutomaticSize = Enum.AutomaticSize.X,
+					Size = UDim2.fromOffset(0, 32),
+					FontFace = F.head,
+					TextSize = 12,
+					TextColor3 = C.gold,
+					LayoutOrder = k * 2 + 1,
+					ZIndex = 24,
+					Parent = chip,
+				})
 			end
 		end
 	end
@@ -2752,6 +2771,20 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		elseif kind == "s01" then
 			k += 1
 			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
+		elseif (kind == "research" or kind == "specimen") and Defs.Enemies[u[2]] then
+			k += 1
+			local stages = {
+				"СИЛУЭТ В ПРОБИРКЕ",
+				"ПОЛНЫЙ ЭКЗЕМПЛЯР",
+				"ЭТАЛОН КОЛЛЕКЦИИ",
+			}
+			unlockCard(
+				"hive",
+				if kind == "specimen" then "НОВЫЙ ВИД В КОЛЛЕКЦИИ" else stages[u[3]],
+				Defs.Enemies[u[2]].name,
+				if u[3] == 3 then C.gold else C.lime,
+				k
+			)
 		end
 	end
 	if reward and reward.siegeUp then
@@ -2890,7 +2923,7 @@ function Menus.init(playerGui: PlayerGui, sender)
 		Name = "SporeMenus",
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
-		ScreenInsets = Enum.ScreenInsets.None,
+		ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets,
 		DisplayOrder = 10,
 		Parent = playerGui,
 	})
@@ -2906,6 +2939,18 @@ end
 
 function Menus.update(dt: number)
 	local now = os.clock()
+	if gui.AbsoluteSize ~= lastMenuSize then
+		lastMenuSize = gui.AbsoluteSize
+		for _, m in modalWindows do
+			if m.resize then
+				m.resize(lastMenuSize)
+			else
+				m.scale.Scale = viewportScale(m.baseSize)
+			end
+		end
+		ui.offerScale.Scale = viewportScale(Vector2.new(1200, 660))
+		ui.resScale.Scale = viewportScale(Vector2.new(940, 780))
+	end
 	if ui.lobby.Visible then
 		ui.playGlow.Transparency = 0.45 + math.sin(now * 3) * 0.25
 		ui.playGlow.Thickness = 4 + math.sin(now * 3) * 2

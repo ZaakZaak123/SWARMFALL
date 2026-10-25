@@ -32,6 +32,7 @@ local Base = require(script.Parent:WaitForChild("Base"))
 local HubMenus = require(script.Parent:WaitForChild("HubMenus"))
 local Range = require(script.Parent:WaitForChild("Range"))
 local Cableway = require(script.Parent:WaitForChild("Cableway"))
+local ShelterVisibility = require(script.Parent:WaitForChild("ShelterVisibility"))
 Range.init(workspace)
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
@@ -116,7 +117,10 @@ Base.init(playerGui, send, {
 		Menus.openLaunch()
 	end,
 	swarm = function()
-		MetaMenus.showSwarm()
+		MetaMenus.showCollection(Base.collection())
+	end,
+	collection = function(research, owner, kind, isOwn)
+		MetaMenus.showCollection(research, owner, kind, isOwn)
 	end,
 	settings = function()
 		Menus.showSettings()
@@ -153,7 +157,7 @@ Base.init(playerGui, send, {
 			send("mode", "siege")
 			Menus.openLaunch()
 		elseif id == "LAB" then
-			MetaMenus.showSwarm()
+			MetaMenus.showCollection()
 		end
 	end,
 	radio = function()
@@ -526,6 +530,7 @@ local sceneSeen = false -- the first-victory scene plays once per session at mos
 local updateShowcase -- camp/base gear, nameplates and inspection (defined below)
 local campState = nil -- camp (public server) state: squads + hunters' showcases (DD-053)
 local visitingUid = nil -- whose outpost the camp shows instead of ours
+local sessionShelter = nil -- the squad's shared rest stop between runs
 stateRemote.OnClientEvent:Connect(function(buf, info)
 	if type(info) ~= "table" then
 		return
@@ -538,6 +543,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			Base.resetCamera()
 		end
 		mode = "HUB"
+		sessionShelter = nil
 		campState = info.hub
 		local mine = nil
 		for _, sq in info.hub.squads do
@@ -549,6 +555,27 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		end
 		HubMenus.setHub(info.hub, myId)
 		Base.setCamp(info.hub)
+		-- A visit changes authoritative room membership. Everyone in this room sees the same
+		-- owner's restoration, tanks and trophies; a client request alone cannot change the view.
+		local room = myId
+		for _, h in info.hub.hunters do
+			if h.id == myId then
+				room = h.room or myId
+			end
+		end
+		local nextVisit = if room ~= myId then room else nil
+		if visitingUid ~= nextVisit then
+			Base.resetCamera()
+		end
+		visitingUid = nextVisit
+		HubMenus.setVisiting(visitingUid)
+		local visible = {}
+		for _, h in info.hub.hunters do
+			if (h.room or h.id) == room then
+				visible[h.id] = true
+			end
+		end
+		ShelterVisibility.update(visible)
 		if mine then
 			Menus.showLobby(mine, myId, Controls.device)
 			Base.setLobby(mine, myId)
@@ -558,7 +585,11 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			visitingUid = nil
 			HubMenus.setVisiting(nil)
 		end
-		Base.setVisitHome(if visit then visit.home else nil, if visit then visit.slots else nil)
+		Base.setVisitHome(
+			if visit then visit.home else nil,
+			if visit then visit.slots else nil,
+			if visit then visit.stock else nil
+		)
 		if visit then
 			showOutpost(visit.slots, "V" .. visitingUid .. outpostKeyOf(visit.slots))
 		else
@@ -569,6 +600,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		return
 	end
 	campState = nil
+	ShelterVisibility.update(nil)
 	if visitingUid then
 		visitingUid = nil
 		HubMenus.setVisiting(nil)
@@ -583,6 +615,13 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			Base.resetCamera()
 		end
 		mode = "LOBBY"
+		sessionShelter = info.lobby and info.lobby.shelter
+		local guest = sessionShelter and sessionShelter.id ~= myId
+		Base.setVisitHome(
+			if guest then sessionShelter.home else nil,
+			if guest then sessionShelter.slots else nil,
+			if guest then sessionShelter.stock else nil
+		)
 		Menus.showLobby(info.lobby, myId, Controls.device)
 		Base.setLobby(info.lobby, myId)
 		local slots = info.lobby and info.lobby.outpost
@@ -590,6 +629,8 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		return
 	end
 	Base.leaveLobby()
+	sessionShelter = nil
+	if mode ~= "RUN" then Base.setVisitHome(nil) end
 	mode = "RUN"
 	if not inRun then
 		enterRun()
@@ -699,7 +740,7 @@ if ReplicatedStorage:GetAttribute("TestPlace") then
 end
 
 -- Camp (DD-053) ------------------------------------------------------------------------------------------
--- Visiting an outpost swaps what stands on the sockets for this client only; walking the yard stays shared.
+-- The server selects the shelter room; visitors share its home, exhibits and visible hunters.
 HubMenus.init(Menus.helpers(), {
 	ownTitles = function()
 		local prof = Menus.profile()
@@ -711,16 +752,14 @@ HubMenus.init(Menus.helpers(), {
 			outpost = prof.outpost,
 			home = prof.home,
 			saves = prof.saves,
+			research = prof.research,
 		})
 	end,
 	visit = function(uid: number)
-		visitingUid = uid
-		HubMenus.setVisiting(uid)
-		Audio.play("level", 0.5, 1.1)
+		send("visit", uid)
 	end,
 	home = function()
-		visitingUid = nil
-		HubMenus.setVisiting(nil)
+		send("visit", myId)
 	end,
 })
 remotes:WaitForChild(Codec.Remotes.Social).OnClientEvent:Connect(function(kind, data)
@@ -810,12 +849,22 @@ updateShowcase = function()
 	local shown = nil
 	if mode == "HUB" and campState and visitingUid then
 		shown = HubMenus.hunter(visitingUid)
+	elseif mode == "LOBBY" then
+		shown = sessionShelter
 	end
 	Base.setShowcase(shown or ownShowcase())
 	local list = {}
 	if mode == "HUB" and campState then
+		local room = visitingUid or myId
 		for _, h in campState.hunters do
-			list[h.id] = { weapon = h.weapon, form = h.form, name = h.name, title = h.title }
+			if (h.room or h.id) == room then
+				list[h.id] = { weapon = h.weapon, form = h.form, name = h.name, title = h.title }
+			else
+				local p = Players:GetPlayerByUserId(h.id)
+				if p and p.Character then
+					Gear.remove(p.Character)
+				end
+			end
 		end
 	elseif mode == "LOBBY" then
 		local info = Menus.lobbyState()

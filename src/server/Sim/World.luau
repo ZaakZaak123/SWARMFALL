@@ -584,10 +584,10 @@ function World:updateRevives(dt: number)
 	local C2 = Defs.Coop
 	for _, p in self.playerList do
 		if not p.alive and p.downedUntil then
-			local helper = false
+			local helper = nil
 			for _, o in self.playerList do
 				if o ~= p and o.alive and (o.x - p.x) ^ 2 + (o.z - p.z) ^ 2 <= C2.ReviveRadius ^ 2 then
-					helper = true
+					helper = o
 					break
 				end
 			end
@@ -602,7 +602,10 @@ function World:updateRevives(dt: number)
 				p.reviveT = 0
 				p.hp = math.ceil(p.maxHp * C2.ReviveHp)
 				p.iframeUntil = self.t + C2.ReviveIFrames
-				p.revives = (p.revives or 0) + 1
+				-- The rescuer earns the deed, not the survivor who was lying on the ground.
+				if helper then
+					helper.revives = (helper.revives or 0) + 1
+				end
 				self:emit(E.HEAL, p.id, p.hp)
 				self:banner(p.name .. " В СТРОЮ", "", C.LIME, 2, "plus")
 			elseif self.t >= p.downedUntil then
@@ -1589,7 +1592,12 @@ function World:step(dt: number)
 		elseif self.paused == "CHOOSE" and not self.solo and self.pauseClock >= Defs.Run.ChoiceTimeoutCoop then
 			for _, p in self.playerList do
 				while p.offer do
-					self:choose(p.id, p.offer.id, 1)
+					-- The first tutorial offer can lock slot 2/3. Picking 1 repeatedly never
+					-- consumed it and froze the whole server. Always honor the server's lock,
+					-- and stop if an invalid offer still cannot be consumed.
+					if not self:choose(p.id, p.offer.id, p.offer.lock or 1) then
+						break
+					end
 				end
 			end
 		end

@@ -14,6 +14,7 @@ local Icons = require(script.Parent.Icons)
 local Audio = require(script.Parent.Audio)
 local Preview = require(script.Parent.Preview)
 local Defs = require(Shared:WaitForChild("Defs"))
+local CollectionMenu = require(script.Parent.CollectionMenu)
 
 local new, label = Theme.new, Theme.label
 local C, F = Theme.C, Theme.F
@@ -324,7 +325,7 @@ function MetaMenus.showOutpost(slot: number?)
 end
 
 function MetaMenus.anyVisible(): boolean
-	for _, m in { ui.outpost, ui.swarm, ui.log, ui.boards } do
+	for _, m in { ui.outpost, ui.swarm, ui.log, ui.boards, CollectionMenu.modal } do
 		if m and m.shade.Visible then
 			return true
 		end
@@ -658,6 +659,7 @@ end
 -- Wiring ------------------------------------------------------------------------------------------------
 function MetaMenus.init(helpers)
 	H = helpers
+	CollectionMenu.init(H, MetaMenus.showSwarm)
 	buildOutpost()
 	buildSwarm()
 	buildLog()
@@ -682,11 +684,21 @@ function MetaMenus.setLobby(info)
 end
 
 function MetaMenus.hideAll()
-	for _, m in { ui.outpost, ui.swarm, ui.log, ui.boards } do
+	for _, m in { ui.outpost, ui.swarm, ui.log, ui.boards, CollectionMenu.modal } do
 		if m then
 			m.shade.Visible = false
 		end
 	end
+end
+
+function MetaMenus.showCollection(research, owner, kind, isOwn)
+	CollectionMenu.show(
+		research or (profile and profile.research),
+		owner,
+		kind,
+		isOwn,
+		profile and profile.features and profile.features.swarm
+	)
 end
 
 return MetaMenus
