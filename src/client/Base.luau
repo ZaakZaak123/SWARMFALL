@@ -1554,8 +1554,25 @@ local function buildHud(playerGui: PlayerGui)
 		TextSize = 12,
 	})
 	ui.hold.Parent = safe
+	-- how to turn the free camera (DD-066): until the player has turned or zoomed it once
+	local UIS = game:GetService("UserInputService")
+	ui.camHint = label(
+		if UIS.TouchEnabled and not UIS.MouseEnabled
+			then "Проведи пальцем справа — повернуть камеру  ·  щипок — ближе/дальше"
+			else "ПКМ или Z / X — повернуть камеру  ·  колесо — ближе/дальше",
+		{
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -4),
+			Size = UDim2.fromOffset(560, 20),
+			FontFace = F.bodyBold,
+			TextSize = 14,
+			TextColor3 = C.text,
+			TextTransparency = 0.15,
+			Parent = safe,
+		}
+	)
 	-- small text straight over the bright grass needs an outline to be read
-	for _, l in { ui.status, ui.inviteSub, ui.ownerNote, ui.tag } do
+	for _, l in { ui.status, ui.inviteSub, ui.ownerNote, ui.tag, ui.camHint } do
 		new("UIStroke", { Color = C.ink, Thickness = 1.6, Transparency = 0.25, Parent = l })
 	end
 	ui.hold.Visible = false
@@ -1881,6 +1898,8 @@ Settings.onChanged(function(key)
 end)
 
 -- API --------------------------------------------------------------------------------------------------------
+local bindOrbitInput -- the free camera's input (defined with the camera below)
+
 function Base.init(playerGui: PlayerGui, sender, acts)
 	send = sender
 	actions = acts
@@ -1888,6 +1907,7 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 	buildSpots()
 	buildTerminal()
 	buildHud(playerGui)
+	bindOrbitInput()
 	task.spawn(function()
 		local rs = game:GetService("ReplicatedStorage")
 		local f = rs:WaitForChild("ArtTemplates", 30)
@@ -2113,14 +2133,124 @@ end
 
 -- Base camera: a high three-quarter view that follows the hero, the drill ahead (north is up).
 local camPos = nil
-function Base.camera(dt: number, hero: Vector3): CFrame
-	local goalPos = hero + Vector3.new(0, 46, -36)
-	camPos = if camPos then camPos:Lerp(goalPos, math.min(1, dt * 6)) else goalPos
-	return CFrame.lookAt(camPos, camPos + Vector3.new(0, -46, 36) + Vector3.new(0, 0, 4))
+-- Free camera on the shelter (DD-066): it orbits the hero. Right mouse drag / Z and X (or , and .) / a finger dragged
+-- on the right part of the screen / the right stick turn it; the wheel / a pinch bring it closer or
+-- further.
+-- It starts at the old fixed framing (high three-quarters from the gate side). Walking stays relative
+-- to where the camera looks (the default controls read the current camera).
+local ORBIT_PITCH = math.atan2(46, 36)
+local ORBIT_DIST = math.sqrt(46 * 46 + 36 * 36)
+local orbit =
+	{ yaw = 0, pitch = ORBIT_PITCH, dist = ORBIT_DIST, wantYaw = 0, wantPitch = ORBIT_PITCH, wantDist = ORBIT_DIST }
+local orbitDrag = nil -- the mouse button or touch turning the camera
+local orbitStick = Vector2.zero
+local pinchFrom = nil
+
+local function orbitTurn(dx: number, dy: number)
+	orbit.wantYaw -= dx
+	orbit.wantPitch = math.clamp(orbit.wantPitch + dy, math.rad(22), math.rad(80))
 end
 
+function bindOrbitInput()
+	local UIS = game:GetService("UserInputService")
+	UIS.InputBegan:Connect(function(input, processed)
+		if processed or not active then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton2 then
+			orbitDrag = input
+		elseif input.UserInputType == Enum.UserInputType.Touch and not orbitDrag then
+			-- the left part of the screen is the movement thumbstick
+			local cam = workspace.CurrentCamera
+			if cam and input.Position.X > cam.ViewportSize.X * 0.4 then
+				orbitDrag = input
+			end
+		end
+	end)
+	UIS.InputChanged:Connect(function(input, processed)
+		if not active then
+			return
+		end
+		local t = input.UserInputType
+		if
+			t == Enum.UserInputType.MouseMovement
+			and orbitDrag
+			and orbitDrag.UserInputType == Enum.UserInputType.MouseButton2
+		then
+			orbitTurn(input.Delta.X * 0.006, input.Delta.Y * 0.005)
+		elseif t == Enum.UserInputType.Touch and input == orbitDrag and not pinchFrom then
+			orbitTurn(input.Delta.X * 0.008, input.Delta.Y * 0.006)
+		elseif t == Enum.UserInputType.MouseWheel and not processed then
+			orbit.wantDist = math.clamp(orbit.wantDist * (1 - input.Position.Z * 0.12), 22, 110)
+		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
+			local v = Vector2.new(input.Position.X, input.Position.Y)
+			orbitStick = if v.Magnitude > 0.2 then v else Vector2.zero
+		end
+	end)
+	UIS.InputEnded:Connect(function(input)
+		if input == orbitDrag then
+			orbitDrag = nil
+		end
+	end)
+	UIS.TouchPinch:Connect(function(_, scale: number, _, state, processed)
+		if processed or not active then
+			return
+		end
+		if state == Enum.UserInputState.Begin then
+			pinchFrom = orbit.wantDist
+		elseif state == Enum.UserInputState.Change and pinchFrom then
+			orbit.wantDist = math.clamp(pinchFrom / math.max(scale, 0.1), 22, 110)
+		else
+			pinchFrom = nil
+		end
+	end)
+end
+
+function Base.camera(dt: number, hero: Vector3): CFrame
+	local UIS = game:GetService("UserInputService")
+	-- the mouse stays put while it turns the camera (set after the run's own mouse handling this frame)
+	local mouseTurn = orbitDrag ~= nil and orbitDrag.UserInputType == Enum.UserInputType.MouseButton2
+	UIS.MouseBehavior = if mouseTurn then Enum.MouseBehavior.LockCurrentPosition else Enum.MouseBehavior.Default
+	if orbitStick.Magnitude > 0 then
+		orbitTurn(orbitStick.X * dt * 2.2, -orbitStick.Y * dt * 1.4)
+	end
+	if active and not UIS:GetFocusedTextBox() then
+		-- E is the stations' key, Q the fight's: Z / X here, and , / . as in Roblox's own camera
+		local left = UIS:IsKeyDown(Enum.KeyCode.Z) or UIS:IsKeyDown(Enum.KeyCode.Comma)
+		local right = UIS:IsKeyDown(Enum.KeyCode.X) or UIS:IsKeyDown(Enum.KeyCode.Period)
+		if left ~= right then
+			orbitTurn((if left then -1 else 1) * dt * 1.8, 0)
+		end
+	end
+	if
+		ui.camHint
+		and ui.camHint.Visible
+		and (math.abs(orbit.wantYaw) > 0.4 or math.abs(orbit.wantDist - ORBIT_DIST) > 6)
+	then
+		ui.camHint.Visible = false -- learned
+	end
+	local k = math.min(1, dt * 10)
+	orbit.yaw += (orbit.wantYaw - orbit.yaw) * k
+	orbit.pitch += (orbit.wantPitch - orbit.pitch) * k
+	orbit.dist += (orbit.wantDist - orbit.dist) * math.min(1, dt * 8)
+	local focus = hero + Vector3.new(0, 2, 0)
+	camPos = if camPos then camPos:Lerp(focus, math.min(1, dt * 6)) else focus
+	local dir = Vector3.new(
+		math.sin(orbit.yaw) * math.cos(orbit.pitch),
+		math.sin(orbit.pitch),
+		-math.cos(orbit.yaw) * math.cos(orbit.pitch)
+	)
+	-- a little ahead of the hero, as the fixed view had it
+	local ahead = Vector3.new(-math.sin(orbit.yaw), 0, math.cos(orbit.yaw)) * 4
+	return CFrame.lookAt(camPos + dir * orbit.dist + ahead, camPos + ahead)
+end
+
+-- Back to the opening framing (a new visit to the shelter starts from the familiar view).
 function Base.resetCamera()
 	camPos = nil
+	orbit.yaw, orbit.wantYaw = 0, 0
+	orbit.pitch, orbit.wantPitch = ORBIT_PITCH, ORBIT_PITCH
+	orbit.dist, orbit.wantDist = ORBIT_DIST, ORBIT_DIST
 end
 
 -- First victory scene ---------------------------------------------------------------------------------------
