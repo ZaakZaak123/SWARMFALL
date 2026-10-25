@@ -23,6 +23,7 @@ local Structures = require(script.Parent.Structures)
 local Models = require(script.Parent.Models)
 local Defs = require(Shared:WaitForChild("Defs"))
 local Settings = require(script.Parent.Settings)
+local Cableway = require(script.Parent.Cableway)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -52,7 +53,7 @@ local STATIONS = {
 		art = "BEACON",
 		h = 9,
 		name = "ВЫЛАЗКА",
-		sub = "Ворота в пустошь · в бой",
+		sub = "Ворота в пустошь · к буру",
 		icon = "play",
 		color = C.lime,
 		x = 0,
@@ -146,11 +147,9 @@ local DECOR = { -- { art, height, x, z, yaw }
 	{ "BUSH", 2.8, 20, 28, 1 },
 	{ "BUSH", 3.4, -36, 8, 2 },
 	{ "BUSH", 3.0, 38, -6, 0.5 },
-	{ "BUSH", 2.6, -30, -34, 1.5 },
 	{ "BUSH", 3.0, 30, -36, 2.5 },
 	{ "BUSH", 3.6, -8, 40, 0.2 },
 	{ "BUSH", 2.8, 12, 42, 1.2 },
-	{ "BUSH", 3.2, -44, -16, 2.2 },
 	{ "BUSH", 2.9, 46, 18, 0.7 },
 	{ "RUIN_WALL", 5, -11, -36, 0 },
 	{ "RUIN_WALL", 5, 11, -36, math.pi },
@@ -494,6 +493,130 @@ local function buildSpots()
 	end
 end
 
+-- The cableway terminal (DD-065) ------------------------------------------------------------------------
+-- At the courtyard's edge, in sight of the camp camera: the end of the cable from the drill in the funnel. Utility arrives here in the same crates
+-- that leave the drill in a fight; the stack beside the frame grows with the utility on hand.
+local TERMINAL = { x = -37, z = -9 }
+local cable = nil
+local pileShown = -1
+local pileFolder = nil
+local pendingDelivery = 0
+local lastScrap = nil
+
+local function buildTerminal()
+	local t = TERMINAL
+	local holder = new("Model", { Name = "Terminal", Parent = folder })
+	local metal = Color3.fromRGB(84, 78, 70)
+	part({
+		Name = "Slab",
+		Size = Vector3.new(7, 0.5, 10),
+		CFrame = CFrame.new(W(t.x, 0.25, t.z)),
+		Color = Color3.fromRGB(122, 118, 110),
+		Material = Enum.Material.Concrete,
+		Parent = holder,
+	})
+	-- the frame stands across the cable, which comes in from the east beyond the trees
+	for _, s in { -1, 1 } do
+		part({
+			Size = Vector3.new(0.6, 8.8, 0.6),
+			CFrame = CFrame.new(W(t.x, 4.4, t.z + s * 2.8)),
+			Color = metal,
+			Material = Enum.Material.Metal,
+			Parent = holder,
+		})
+	end
+	local beam = part({
+		Name = "Beam",
+		Size = Vector3.new(0.8, 0.6, 6.8),
+		CFrame = CFrame.new(W(t.x, 8.9, t.z)),
+		Color = metal,
+		Material = Enum.Material.Metal,
+		Parent = holder,
+	})
+	-- the shelter's lime: the same mark as on every crate that leaves the drill
+	part({
+		Size = Vector3.new(0.85, 0.25, 6.9),
+		CFrame = CFrame.new(W(t.x, 8.5, t.z)),
+		Color = Color3.fromRGB(176, 236, 60),
+		Material = Enum.Material.SmoothPlastic,
+		Parent = holder,
+	})
+	board(
+		beam,
+		"reactor",
+		"КАНАТКА С БУРА",
+		"Утиль из воронки — в убежище",
+		C.lime,
+		3.2
+	)
+	-- from far beyond the grove (towards the funnel) over one post to the frame
+	cable = Cableway.new(folder, { W(t.x - 80, 16, t.z - 50), W(t.x - 27, 12, t.z - 24), W(t.x, 8.4, t.z) }, {
+		posts = { [2] = W(t.x - 27, 0, t.z - 24) },
+	})
+end
+
+-- The stack of crates beside the terminal: more utility on hand, more crates.
+local function setPile(scrap: number)
+	local n = if scrap <= 0 then 0 elseif scrap < 300 then 1 elseif scrap < 1000 then 2 elseif scrap < 3000 then 3 else 4
+	if n == pileShown then
+		return
+	end
+	pileShown = n
+	if pileFolder then
+		pileFolder:Destroy()
+	end
+	pileFolder = new("Folder", { Name = "Pile", Parent = folder })
+	local t = TERMINAL
+	-- stacks of the very crates the cable brings (wood, the lime band), two or three high
+	for i, o in { { 3.6, 2.6, 0.3, 2 }, { 3.4, -2.4, -0.4, 3 }, { 6.4, 0.4, 1.1, 2 }, { 6.6, 4.2, 2.2, 1 } } do
+		if i > n then
+			break
+		end
+		local base = CFrame.new(W(t.x + o[1], 0.5, t.z + o[2])) * CFrame.Angles(0, o[3], 0)
+		for k = 0, o[4] - 1 do
+			Cableway.crate(pileFolder, base * CFrame.new(0, k * 1.95, 0) * CFrame.Angles(0, k * 0.35, 0))
+		end
+	end
+end
+
+-- A floating "+N УТИЛЬ" over the terminal as the last crate of a delivery lands.
+local function deliveryPop(amount: number)
+	local at = new("Attachment", { Parent = workspace.Terrain })
+	at.WorldPosition = W(TERMINAL.x, 11, TERMINAL.z)
+	local b = new(
+		"BillboardGui",
+		{ Size = UDim2.fromOffset(240, 44), AlwaysOnTop = true, LightInfluence = 0, Adornee = at, Parent = at }
+	)
+	local l = label(
+		"+" .. Theme.commas(amount) .. " УТИЛЬ",
+		{ Size = UDim2.fromScale(1, 1), FontFace = F.display, TextSize = 28, TextColor3 = C.pink, Parent = b }
+	)
+	new("UIStroke", { Color = C.ink, Thickness = 2.5, Parent = l })
+	tween(b, 1.6, { StudsOffsetWorldSpace = Vector3.new(0, 4, 0) })
+	task.delay(0.9, function()
+		tween(l, 0.7, { TextTransparency = 1 })
+	end)
+	task.delay(1.7, function()
+		at:Destroy()
+	end)
+end
+
+-- Utility that came in (a reward, a harvest) arrives as crates along the cable.
+local function deliver(amount: number)
+	if not cable or amount <= 0 then
+		return
+	end
+	local n = math.clamp(math.ceil(amount / 60), 1, 6)
+	cable:send(n, function(i, total)
+		Fx.ring(W(TERMINAL.x, 0.6, TERMINAL.z), 4, C.lime, 0.5)
+		Audio.play("orb", 0.6, 0.8 + i * 0.05)
+		if i == total then
+			deliveryPop(amount)
+			setPile(profile and profile.scrap or 0)
+		end
+	end, 46)
+end
+
 local labSample, labShown = -1, nil -- the lab tank (defined with the tank below)
 local updateTank
 
@@ -556,16 +679,13 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 					})
 					pipe.CFrame = base * CFrame.new(if k == 0 then -2.3 else 2.3, 4.1, 0.6)
 				end
-				new(
-					"PointLight",
-					{
-						Color = Color3.fromRGB(140, 255, 180),
-						Range = 10,
-						Brightness = 1.2,
-						Shadows = false,
-						Parent = liquid,
-					}
-				)
+				new("PointLight", {
+					Color = Color3.fromRGB(140, 255, 180),
+					Range = 10,
+					Brightness = 1.2,
+					Shadows = false,
+					Parent = liquid,
+				})
 				holder.PrimaryPart = glass
 				sp.model = holder
 				sp.tank = { glass = glass, liquid = liquid, base = base }
@@ -810,17 +930,14 @@ local function setShelf(slots, workshop: boolean)
 	-- the label sits at the shelf's foot, on the camera side: above it the workshop's own sign covers it
 	local at = new("Attachment", { Name = "Label", Parent = holder })
 	at.WorldCFrame = CFrame.new(W(sd.x + 7.5, 0.6, sd.z - 0.6))
-	local b = new(
-		"BillboardGui",
-		{
-			Size = UDim2.fromOffset(190, 36),
-			LightInfluence = 0,
-			AlwaysOnTop = true,
-			MaxDistance = 100,
-			Adornee = at,
-			Parent = holder,
-		}
-	)
+	local b = new("BillboardGui", {
+		Size = UDim2.fromOffset(190, 36),
+		LightInfluence = 0,
+		AlwaysOnTop = true,
+		MaxDistance = 100,
+		Adornee = at,
+		Parent = holder,
+	})
 	local t = label(
 		string.format("ДЛЯ БУРА · %d/%d", #list, Meta.SocketCount),
 		{ Size = UDim2.new(1, 0, 0, 20), FontFace = F.display, TextSize = 16, TextColor3 = C.cyan, Parent = b }
@@ -971,17 +1088,14 @@ local function plaque(base: BasePart, title: string, sub: string, color: Color3)
 		{ Size = UDim2.new(1, 0, 0, 22), FontFace = F.display, TextSize = 17, TextColor3 = color, Parent = b }
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 2, Parent = t })
-	local s2 = label(
-		sub,
-		{
-			Position = UDim2.fromOffset(0, 22),
-			Size = UDim2.new(1, 0, 0, 16),
-			FontFace = F.bodyBold,
-			TextSize = 13,
-			TextColor3 = C.dim,
-			Parent = b,
-		}
-	)
+	local s2 = label(sub, {
+		Position = UDim2.fromOffset(0, 22),
+		Size = UDim2.new(1, 0, 0, 16),
+		FontFace = F.bodyBold,
+		TextSize = 13,
+		TextColor3 = C.dim,
+		Parent = b,
+	})
 	new("UIStroke", { Color = C.ink, Thickness = 1.5, Parent = s2 })
 end
 
@@ -1160,36 +1274,30 @@ local function buildHud(playerGui: PlayerGui)
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.owner })
 	-- tap your name: your own card (titles to wear, what others see)
-	local ownerBtn = new(
-		"TextButton",
-		{
-			Position = UDim2.fromOffset(0, 0),
-			Size = UDim2.fromOffset(420, 58),
-			BackgroundTransparency = 1,
-			Text = "",
-			Parent = safe,
-		}
-	)
+	local ownerBtn = new("TextButton", {
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.fromOffset(420, 58),
+		BackgroundTransparency = 1,
+		Text = "",
+		Parent = safe,
+	})
 	ownerBtn.Activated:Connect(function()
 		Audio.play("ui")
 		if actions and actions.card then
 			actions.card()
 		end
 	end)
-	ui.ownerNote = label(
-		"",
-		{
-			Position = UDim2.fromOffset(4, 246),
-			Size = UDim2.fromOffset(440, 30),
-			FontFace = F.body,
-			TextSize = 12,
-			TextColor3 = C.dim,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			Parent = safe,
-		}
-	)
+	ui.ownerNote = label("", {
+		Position = UDim2.fromOffset(4, 246),
+		Size = UDim2.fromOffset(440, 30),
+		FontFace = F.body,
+		TextSize = 12,
+		TextColor3 = C.dim,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Parent = safe,
+	})
 	-- goal card
 	local card = Theme.panel(
 		{ Name = "Goal", Position = UDim2.fromOffset(0, 68), Size = UDim2.fromOffset(440, 168), CornerRadius = 18 },
@@ -1595,6 +1703,17 @@ function Base.refresh()
 	end
 	local slotsShown = if visitHome then visitSlots else (profile.outpost and profile.outpost.slots)
 	setShelf(slotsShown, home.WORKBENCH == true)
+	setPile(profile.scrap or 0)
+	-- a harvester at the drill keeps the line busy: a crate now and then, even between sorties
+	if cable then
+		local harvester = false
+		for _, sl in (profile.outpost and profile.outpost.slots) or {} do
+			if sl.id == "HARVEST" then
+				harvester = true
+			end
+		end
+		cable.every = if harvester and not visitHome then 8 else nil
+	end
 	-- the goal: a beam over the place where it happens
 	if goal and goal.station == "home" and goal.spot and spotParts[goal.spot] then
 		local sd = SPOTS[goal.spot]
@@ -1767,6 +1886,7 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 	actions = acts
 	buildWorld()
 	buildSpots()
+	buildTerminal()
 	buildHud(playerGui)
 	task.spawn(function()
 		local rs = game:GetService("ReplicatedStorage")
@@ -1781,8 +1901,18 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 end
 
 function Base.setProfile(pub)
+	local scrap = pub and pub.scrap or 0
+	if lastScrap and scrap > lastScrap then
+		-- it rides the cable in when the shelter is on screen (after the results, not behind them)
+		pendingDelivery += scrap - lastScrap
+	end
+	lastScrap = scrap
 	profile = pub
 	Base.refresh()
+	if active and pendingDelivery > 0 and not visitHome then
+		deliver(pendingDelivery) -- collected while standing at home (the drill's harvester)
+		pendingDelivery = 0
+	end
 end
 
 function Base.setLobby(info, id: number)
@@ -1817,6 +1947,10 @@ function Base.setActive(on: boolean)
 	end
 	if on then
 		Base.refresh()
+		if pendingDelivery > 0 and not visitHome then
+			deliver(pendingDelivery)
+			pendingDelivery = 0
+		end
 	end
 end
 
@@ -1900,8 +2034,11 @@ function Base.buildAnim(model: Model, cf: CFrame, color: Color3)
 end
 
 -- Per frame: prompts only while walking the base; markers breathe.
-function Base.update(_dt: number, _root: Vector3?)
+function Base.update(dt: number, _root: Vector3?)
 	local now = os.clock()
+	if cable and folder.Parent then
+		cable:update(dt)
+	end
 	for _, s in stationParts do
 		s.prompt.Enabled = active
 		s.board.Enabled = active
@@ -2071,7 +2208,8 @@ function Base.victoryScene(startCf: CFrame, onDone, onReturn)
 	local keys = {
 		{ t = 0, cf = startCf },
 		{ t = 0.01, cf = CFrame.lookAt(W(0, 70, -110), W(0, 6, 10)) },
-		{ t = 2.2, cf = CFrame.lookAt(W(-6, 26, -34), W(-4, 4, 16)) },
+		-- the cableway: the loot comes home from the drill (DD-065)
+		{ t = 2.2, cf = CFrame.lookAt(W(TERMINAL.x - 13, 22, TERMINAL.z - 15), W(TERMINAL.x + 2, 4, TERMINAL.z + 2)) },
 		{ t = 4.4, cf = CFrame.lookAt(W(gen.x + 8, 9, gen.z - 14), W(gen.x - 2, 3, gen.z + 4)) },
 		{ t = 6.6, cf = CFrame.lookAt(W(wb.x + 4, 9, wb.z - 15), W(wb.x, 2, wb.z)) },
 		{ t = 8.0, cf = CFrame.lookAt(W(wb.x + 3, 8, wb.z - 13), W(wb.x, 2, wb.z)) },
@@ -2108,7 +2246,17 @@ function Base.victoryScene(startCf: CFrame, onDone, onReturn)
 			if onReturn then
 				onReturn()
 			end
-			caption(sg, "ГЕНЕРАТОР ДОБЫТ", "Дорога домой, в зелёную рощу")
+			caption(
+				sg,
+				"ГЕНЕРАТОР ДОБЫТ",
+				"Канатка с бура везёт добычу домой, в зелёную рощу"
+			)
+			if cable then
+				cable:send(3, function(i)
+					Fx.ring(W(TERMINAL.x, 0.6, TERMINAL.z), 4, C.lime, 0.5)
+					Audio.play("orb", 0.6, 0.8 + i * 0.05)
+				end, 20)
+			end
 		end)
 		at(3.0, function()
 			-- the generator coughs to life and the shelter wakes up
@@ -2133,7 +2281,7 @@ function Base.victoryScene(startCf: CFrame, onDone, onReturn)
 			Audio.play("level", 0.7, 1.5)
 			caption(
 				sg,
-				"ДОБЫЧИ ХВАТИТ НА МАСТЕРСКУЮ",
+				"УТИЛЯ ХВАТИТ НА МАСТЕРСКУЮ",
 				"На верстаке соберёшь оборону для бура",
 				C.cyan
 			)

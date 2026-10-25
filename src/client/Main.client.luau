@@ -31,6 +31,7 @@ local MetaMenus = require(script.Parent:WaitForChild("MetaMenus"))
 local Base = require(script.Parent:WaitForChild("Base"))
 local HubMenus = require(script.Parent:WaitForChild("HubMenus"))
 local Range = require(script.Parent:WaitForChild("Range"))
+local Cableway = require(script.Parent:WaitForChild("Cableway"))
 Range.init(workspace)
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
@@ -741,17 +742,14 @@ local function plateFor(char: Model, uid: number)
 	st.Thickness = 2.5
 	st.Color = C.ink
 	st.Parent = name
-	local title = Theme.label(
-		"",
-		{
-			Position = UDim2.fromOffset(0, 24),
-			Size = UDim2.new(1, 0, 0, 18),
-			FontFace = Theme.F.head,
-			TextSize = 12,
-			TextColor3 = C.gold,
-			Parent = g,
-		}
-	)
+	local title = Theme.label("", {
+		Position = UDim2.fromOffset(0, 24),
+		Size = UDim2.new(1, 0, 0, 18),
+		FontFace = Theme.F.head,
+		TextSize = 12,
+		TextColor3 = C.gold,
+		Parent = g,
+	})
 	local st2 = Instance.new("UIStroke")
 	st2.Thickness = 2
 	st2.Color = C.ink
@@ -1597,6 +1595,7 @@ end
 
 -- Arena animation -------------------------------------------------------------------------------------
 local animated = nil -- { rings = {{part, baseCF, index}}, core = part?, heart = part? }
+local arenaCable = nil -- the cableway from the drill over the south rim, towards the shelter (DD-065)
 local function animateArena(now: number)
 	local arena = workspace:FindFirstChild("Arena")
 	local currentMap = arena and arena:GetAttribute("Map")
@@ -1625,6 +1624,22 @@ local function animateArena(now: number)
 			end
 		end
 		animated.heart = decor:FindFirstChild("Heart")
+		-- the drill sends its utility home: crates leave its top along the cable over the south rim, the
+		-- same line that ends at the shelter's gate
+		if arenaCable then
+			arenaCable:destroy()
+			arenaCable = nil
+		end
+		if reactorModel then
+			local cf, size = reactorModel:GetBoundingBox()
+			local top = cf.Position + Vector3.new(0, size.Y * 0.3, -2)
+			local rim = Vector3.new(-22, 24, -172)
+			arenaCable = Cableway.new(
+				decor,
+				{ top, rim },
+				{ posts = { [2] = Vector3.new(rim.X, 0, rim.Z) }, every = 4.5 }
+			)
+		end
 		DecorLod.scan(decor)
 		table.clear(fadeParts)
 		for _, d in decor:GetDescendants() do
@@ -1951,6 +1966,9 @@ local function frame(dt: number)
 			Audio.setFocus(focus)
 		end
 		updateFade(dt, workspace.CurrentCamera, focus)
+		if arenaCable then
+			arenaCable:update(dt)
+		end
 	else
 		local lroot = myRoot()
 		if Menus.lobbyVisible() or not lroot then

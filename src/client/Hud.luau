@@ -239,14 +239,14 @@ function Hud.init(playerGui: PlayerGui)
 	ui.obj = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 106),
-		Size = UDim2.fromOffset(300, 30),
+		Size = UDim2.fromOffset(360, 30),
 		Visible = false,
 		Parent = top,
 	})
 	ui.objIcon = icon("reactor", 22, C.cyan, { Position = UDim2.fromOffset(0, 4), Parent = ui.obj })
 	ui.objName = label("БУР", {
 		Position = UDim2.fromOffset(28, 0),
-		Size = UDim2.fromOffset(100, 14),
+		Size = UDim2.fromOffset(220, 14),
 		FontFace = F.head,
 		TextSize = 11,
 		TextColor3 = C.dim,
@@ -479,17 +479,14 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = ui.howTo,
 	})
 	-- View toggle (kept for the V key / gamepad; hidden in the minimal HUD)
-	ui.view = new(
-		"TextButton",
-		{
-			Name = "View",
-			Size = UDim2.fromOffset(1, 1),
-			Text = "",
-			BackgroundTransparency = 1,
-			Visible = false,
-			Parent = root,
-		}
-	)
+	ui.view = new("TextButton", {
+		Name = "View",
+		Size = UDim2.fromOffset(1, 1),
+		Text = "",
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = root,
+	})
 
 	-- Centre: banner -------------------------------------------------------------------------------------
 	ui.banner = new("Frame", {
@@ -576,16 +573,13 @@ function Hud.init(playerGui: PlayerGui)
 		})
 		table.insert(ui.reticleTicks, t)
 	end
-	ui.hit = new(
-		"Frame",
-		{
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(30, 30),
-			Visible = false,
-			Parent = ui.reticle,
-		}
-	)
+	ui.hit = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(30, 30),
+		Visible = false,
+		Parent = ui.reticle,
+	})
 	for i = 0, 3 do
 		local a = math.rad(45 + i * 90)
 		new("Frame", {
@@ -598,17 +592,12 @@ function Hud.init(playerGui: PlayerGui)
 			Parent = ui.hit,
 		})
 	end
-	ui.reloadRing = icon(
-		"reload",
-		34,
-		C.gold,
-		{
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Visible = false,
-			Parent = ui.reticle,
-		}
-	)
+	ui.reloadRing = icon("reload", 34, C.gold, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Visible = false,
+		Parent = ui.reticle,
+	})
 	-- Vignette: soft red edges on hurt / low health
 	ui.vignette = {}
 	for i, spec in
@@ -942,7 +931,9 @@ function Hud.update(run, me, extra, dt: number)
 		local flash = run.t - (rc.hitT or -99) < 0.35
 		ui.objFill.Size = UDim2.fromScale(frac, 1)
 		ui.objFill.BackgroundColor3 = if flash then C.white else col
-		ui.objName.Text = string.upper(rc.name or "БУР")
+		-- what the bar stands for, in the fight itself: the drill is the shelter's utility (DD-065)
+		local rname = string.upper(rc.name or "БУР")
+		ui.objName.Text = if rname == "БУР" then "БУР · УТИЛЬ ДЛЯ УБЕЖИЩА" else rname
 		ui.objPct.Text = (if (rc.shield or 0) > 0 then "ЩИТ " .. rc.shield .. "  ·  " else "")
 			.. math.ceil(frac * 100)
 			.. "%"

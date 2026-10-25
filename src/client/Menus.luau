@@ -55,7 +55,17 @@ end
 
 local function clear(frame: Instance)
 	for _, c in frame:GetChildren() do
-		if not (c:IsA("UIListLayout") or c:IsA("UIPadding") or c:IsA("UIGridLayout") or c:IsA("UIScale") or c:IsA("UICorner") or c:IsA("UIStroke") or c:IsA("UIGradient")) then
+		if
+			not (
+				c:IsA("UIListLayout")
+				or c:IsA("UIPadding")
+				or c:IsA("UIGridLayout")
+				or c:IsA("UIScale")
+				or c:IsA("UICorner")
+				or c:IsA("UIStroke")
+				or c:IsA("UIGradient")
+			)
+		then
 			c:Destroy()
 		end
 	end
@@ -98,7 +108,17 @@ local function xenitePill(parent, props)
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = p,
 	})
-	local gem = new("Frame", { Size = UDim2.fromOffset(16, 16), Rotation = 45, BackgroundColor3 = C.pink, Corner = 3, LayoutOrder = 1, Parent = p })
+	local gem = new(
+		"Frame",
+		{
+			Size = UDim2.fromOffset(16, 16),
+			Rotation = 45,
+			BackgroundColor3 = C.pink,
+			Corner = 3,
+			LayoutOrder = 1,
+			Parent = p,
+		}
+	)
 	new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -187,7 +207,9 @@ local function buildLobby()
 		BackgroundColor3 = C.bg,
 		BackgroundTransparency = 0,
 		Parent = l,
-		Gradient = { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) }) },
+		Gradient = {
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) }),
+		},
 	})
 	new("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
@@ -195,7 +217,10 @@ local function buildLobby()
 		Size = UDim2.fromScale(1, 0.32),
 		BackgroundColor3 = C.bg,
 		Parent = l,
-		Gradient = { Rotation = -90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) }) },
+		Gradient = {
+			Rotation = -90,
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) }),
+		},
 	})
 	local safe = new("Frame", { Name = "Safe", Size = UDim2.fromScale(1, 1), Parent = l })
 	ui.lobbySafe = safe
@@ -217,7 +242,11 @@ local function buildLobby()
 	})
 	new("UIGradient", {
 		Rotation = 90,
-		Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C.white), ColorSequenceKeypoint.new(0.55, Color3.fromRGB(226, 255, 150)), ColorSequenceKeypoint.new(1, C.lime) }),
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, C.white),
+			ColorSequenceKeypoint.new(0.55, Color3.fromRGB(226, 255, 150)),
+			ColorSequenceKeypoint.new(1, C.lime),
+		}),
 		Parent = logo,
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = logo })
@@ -239,8 +268,13 @@ local function buildLobby()
 		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
 	})
 	ui.tabButtons = {}
-	for i, t in { { "hunt", "ВЫЛАЗКИ" }, { "siege", "ОБОРОНА БУРА" }, { "raid", "ВТОРЖЕНИЕ" } } do
-		local b, bl = Theme.button(t[2], { Name = "Tab_" .. t[1], Size = UDim2.fromOffset(146, 40), TextSize = 13, LayoutOrder = i })
+	for i, t in
+		{ { "hunt", "ВЫЛАЗКИ" }, { "siege", "ОБОРОНА БУРА" }, { "raid", "ВТОРЖЕНИЕ" } }
+	do
+		local b, bl = Theme.button(
+			t[2],
+			{ Name = "Tab_" .. t[1], Size = UDim2.fromOffset(146, 40), TextSize = 13, LayoutOrder = i }
+		)
 		b.Parent = ui.tabs
 		b.Activated:Connect(function()
 			send("mode", t[1])
@@ -249,7 +283,13 @@ local function buildLobby()
 		ui.tabButtons[t[1]] = { button = b, label = bl }
 	end
 	-- Hunt card
-	local hunt = Theme.panel({ Name = "Hunt", Position = UDim2.fromOffset(0, 176), Size = UDim2.fromOffset(460, 214), CornerRadius = 20, Parent = safe })
+	local hunt = Theme.panel({
+		Name = "Hunt",
+		Position = UDim2.fromOffset(0, 176),
+		Size = UDim2.fromOffset(460, 214),
+		CornerRadius = 20,
+		Parent = safe,
+	})
 	ui.hunt = hunt
 	ui.huntTag = label("ВЫЛАЗКА 1", {
 		Position = UDim2.fromOffset(24, 18),
@@ -281,6 +321,22 @@ local function buildLobby()
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Parent = hunt,
 	})
+	-- why every sortie happens (DD-065): the same sentence the shelter's cableway tells in space
+	ui.huntWhy = label(
+		"Бур в центре воронки вскрывает погребённый город — утиль с него идёт по канатке в твоё убежище. Рой лезет на шум бура.",
+		{
+			Position = UDim2.fromOffset(24, 148),
+			Size = UDim2.new(1, -48, 0, 50),
+			FontFace = F.bodyBold,
+			TextSize = 13,
+			TextColor3 = C.lime,
+			TextTransparency = 0.15,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			Parent = hunt,
+		}
+	)
 	ui.anomaly = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -16, 0, 14),
@@ -294,18 +350,34 @@ local function buildLobby()
 		Parent = hunt,
 	})
 	new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = ui.anomaly })
-	ui.anomalyText = label("", { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromScale(0, 1), FontFace = F.head, TextSize = 10, TextColor3 = C.gold, Parent = ui.anomaly })
+	ui.anomalyText = label(
+		"",
+		{
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromScale(0, 1),
+			FontFace = F.head,
+			TextSize = 10,
+			TextColor3 = C.gold,
+			Parent = ui.anomaly,
+		}
+	)
 	ui.modeRow = new("Frame", {
 		Position = UDim2.fromOffset(24, 156),
 		Size = UDim2.new(1, -48, 0, 40),
 		Visible = false,
 		Parent = hunt,
-		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), VerticalAlignment = Enum.VerticalAlignment.Center },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 8),
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		},
 	})
 	-- hunt navigation and threat
-	ui.huntPrev = Theme.button("‹", { Position = UDim2.fromOffset(24, 156), Size = UDim2.fromOffset(42, 38), TextSize = 22 })
+	ui.huntPrev =
+		Theme.button("‹", { Position = UDim2.fromOffset(24, 156), Size = UDim2.fromOffset(42, 38), TextSize = 22 })
 	ui.huntPrev.Parent = hunt
-	ui.huntNext = Theme.button("›", { Position = UDim2.fromOffset(72, 156), Size = UDim2.fromOffset(42, 38), TextSize = 22 })
+	ui.huntNext =
+		Theme.button("›", { Position = UDim2.fromOffset(72, 156), Size = UDim2.fromOffset(42, 38), TextSize = 22 })
 	ui.huntNext.Parent = hunt
 	ui.threat = new("Frame", { Position = UDim2.fromOffset(132, 156), Size = UDim2.fromOffset(300, 38), Parent = hunt })
 	ui.threatLabel = label("УГРОЗА", {
@@ -370,13 +442,27 @@ local function buildLobby()
 		Stroke = { Color = C.white, Transparency = 0.8 },
 		Parent = tr,
 	})
-	icon("gear", 24, C.text, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Parent = ui.gear })
+	icon(
+		"gear",
+		24,
+		C.text,
+		{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Parent = ui.gear }
+	)
 	ui.gear.Activated:Connect(function()
 		ui.settings.show()
 	end)
 	ui.xenite, ui.xeniteAmount = xenitePill(tr, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 2) })
 	-- Play together (DD-040): one tap to the Roblox invite sheet.
-	ui.invite = Theme.button("ПОЗВАТЬ ДРУЗЕЙ", { Name = "Invite", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 50), Size = UDim2.fromOffset(200, 40), TextSize = 12 })
+	ui.invite = Theme.button(
+		"ПОЗВАТЬ ДРУЗЕЙ",
+		{
+			Name = "Invite",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -56, 0, 50),
+			Size = UDim2.fromOffset(200, 40),
+			TextSize = 12,
+		}
+	)
 	ui.invite.Parent = tr
 	ui.invite.Activated:Connect(function()
 		Audio.play("ui")
@@ -389,8 +475,30 @@ local function buildLobby()
 			end
 		end)
 	end)
-	label("+10% утиля за каждого в отряде", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 92), Size = UDim2.fromOffset(240, 14), FontFace = F.body, TextSize = 11, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right, Parent = tr })
-	ui.harvest = Theme.button("СОБРАТЬ", { Name = "Harvest", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 112), Size = UDim2.fromOffset(200, 40), TextSize = 12 }, "primary")
+	label(
+		"+10% утиля за каждого в отряде",
+		{
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -56, 0, 92),
+			Size = UDim2.fromOffset(240, 14),
+			FontFace = F.body,
+			TextSize = 11,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Parent = tr,
+		}
+	)
+	ui.harvest = Theme.button(
+		"СОБРАТЬ",
+		{
+			Name = "Harvest",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -56, 0, 112),
+			Size = UDim2.fromOffset(200, 40),
+			TextSize = 12,
+		},
+		"primary"
+	)
 	ui.harvest.Parent = tr
 	ui.harvest.Visible = false
 	ui.harvest.Activated:Connect(function()
@@ -399,9 +507,42 @@ local function buildLobby()
 		Audio.play("level", 0.6, 1.4)
 	end)
 	-- «Пока тебя не было»: a one-time summary of raids on your outpost
-	ui.toast = Theme.panel({ Name = "Toast", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -40), Size = UDim2.fromOffset(520, 72), CornerRadius = 18, Visible = false, Parent = safe }, C.orange)
-	ui.toastTitle = label("ПОКА ТЕБЯ НЕ БЫЛО", { Position = UDim2.fromOffset(20, 10), Size = UDim2.new(1, -40, 0, 18), FontFace = F.head, TextSize = 12, TextColor3 = C.orange, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.toast })
-	ui.toastText = label("", { Position = UDim2.fromOffset(20, 30), Size = UDim2.new(1, -40, 0, 30), FontFace = F.bodyBold, TextSize = 15, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.toast })
+	ui.toast = Theme.panel(
+		{
+			Name = "Toast",
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, -40),
+			Size = UDim2.fromOffset(520, 72),
+			CornerRadius = 18,
+			Visible = false,
+			Parent = safe,
+		},
+		C.orange
+	)
+	ui.toastTitle = label(
+		"ПОКА ТЕБЯ НЕ БЫЛО",
+		{
+			Position = UDim2.fromOffset(20, 10),
+			Size = UDim2.new(1, -40, 0, 18),
+			FontFace = F.head,
+			TextSize = 12,
+			TextColor3 = C.orange,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = ui.toast,
+		}
+	)
+	ui.toastText = label(
+		"",
+		{
+			Position = UDim2.fromOffset(20, 30),
+			Size = UDim2.new(1, -40, 0, 30),
+			FontFace = F.bodyBold,
+			TextSize = 15,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = ui.toast,
+		}
+	)
 	ui.squad = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 60),
@@ -425,10 +566,16 @@ local function buildLobby()
 	})
 	ui.upgradesBtn.Parent = ui.metaRow
 	local function metaButton(name: string, text: string, iconName: string, color: Color3, order: number, onClick)
-		local b, bl = Theme.button(text, { Name = name, Size = UDim2.fromOffset(150, 58), TextSize = 14, LayoutOrder = order })
+		local b, bl =
+			Theme.button(text, { Name = name, Size = UDim2.fromOffset(150, 58), TextSize = 14, LayoutOrder = order })
 		b.Parent = ui.metaRow
 		bl.Position = UDim2.fromOffset(18, 0)
-		icon(iconName, 22, color, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), ZIndex = 3, Parent = b })
+		icon(
+			iconName,
+			22,
+			color,
+			{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), ZIndex = 3, Parent = b }
+		)
 		b.Activated:Connect(onClick)
 		return b
 	end
@@ -442,7 +589,12 @@ local function buildLobby()
 		MetaMenus.showBoards()
 	end)
 	ui.upgradesBtn.Label.Position = UDim2.fromOffset(22, 0)
-	icon("level", 24, C.lime, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 20, 0.5, 0), ZIndex = 3, Parent = ui.upgradesBtn })
+	icon(
+		"level",
+		24,
+		C.lime,
+		{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 20, 0.5, 0), ZIndex = 3, Parent = ui.upgradesBtn }
+	)
 	ui.upgradesBadge = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(1, -6, 0, 6),
@@ -467,8 +619,22 @@ local function buildLobby()
 	}, "primary")
 	ui.play.Parent = safe
 	ui.playLabel.Position = UDim2.fromOffset(26, 0)
-	ui.playIcon = icon("play", 34, C.ink, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 34, 0.5, 0), ZIndex = 3, Parent = ui.play })
-	ui.playGlow = new("UIStroke", { Color = C.lime, Thickness = 6, Transparency = 0.6, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = ui.play })
+	ui.playIcon = icon(
+		"play",
+		34,
+		C.ink,
+		{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 34, 0.5, 0), ZIndex = 3, Parent = ui.play }
+	)
+	ui.playGlow = new(
+		"UIStroke",
+		{
+			Color = C.lime,
+			Thickness = 6,
+			Transparency = 0.6,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = ui.play,
+		}
+	)
 	ui.playStatus = label("", {
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -10, 1, 0),
@@ -489,7 +655,16 @@ local function buildLobby()
 		end
 	end)
 	-- DD-052: this panel is the launch pad of the base; back to walking the base
-	ui.back, ui.backLabel = Theme.button("‹  НА БАЗУ", { Name = "Back", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -346, 1, -36), Size = UDim2.fromOffset(190, 64), TextSize = 16 })
+	ui.back, ui.backLabel = Theme.button(
+		"‹  НА БАЗУ",
+		{
+			Name = "Back",
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -346, 1, -36),
+			Size = UDim2.fromOffset(190, 64),
+			TextSize = 16,
+		}
+	)
 	ui.back.Parent = safe
 	ui.back.Activated:Connect(function()
 		Audio.play("ui", 0.8, 0.9)
@@ -552,7 +727,11 @@ local function weaponCard(id: string, order: number)
 		Text = "",
 		Corner = 18,
 		LayoutOrder = order,
-		Stroke = { Color = if selected then C.lime else C.white, Transparency = if selected then 0 else 0.85, Thickness = if selected then 2.5 else 1 },
+		Stroke = {
+			Color = if selected then C.lime else C.white,
+			Transparency = if selected then 0 else 0.85,
+			Thickness = if selected then 2.5 else 1,
+		},
 		Parent = ui.weapons,
 	})
 	local scale = new("UIScale", { Parent = card })
@@ -571,7 +750,8 @@ local function weaponCard(id: string, order: number)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = if state == "owned" then C.text else C.dim,
 		Parent = card,
-	}).Parent = card
+	}).Parent =
+		card
 	local sub = if state == "owned"
 		then w.tagline or ""
 		elseif state == "buy" then "Чертёж получен"
@@ -618,7 +798,12 @@ local function weaponCard(id: string, order: number)
 			Corner = UDim.new(1, 0),
 			Parent = card,
 		})
-		icon("check", 18, C.ink, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Parent = tag })
+		icon(
+			"check",
+			18,
+			C.ink,
+			{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Parent = tag }
+		)
 	end
 	card.MouseEnter:Connect(function()
 		tween(scale, 0.15, { Scale = 1.03 })
@@ -679,6 +864,7 @@ function Menus.refreshLobby()
 		ui.anomalyText.TextColor3 = anomaly.color
 	end
 	ui.modeRow.Visible = mode ~= "hunt"
+	ui.huntWhy.Visible = mode == "hunt"
 	-- Rebuild the action row only when its content changes: lobby state arrives 4×/s and a rebuilt
 	-- button swallows the click in progress.
 	local rowKey = mode .. "|" .. tostring(isHost) .. "|" .. tostring(info.target and info.target.uid) .. "|"
@@ -701,7 +887,11 @@ function Menus.refreshLobby()
 		end
 		ui.huntTag.Text = "ОБОРОНА БУРА"
 		ui.huntName.Text = "УРОВЕНЬ " .. (info.siege or 1)
-		ui.huntBrief.Text = string.format("Пять волн идут на бур. Построек %d/%d — турели стреляют вместе с отрядом.", built, Meta.SocketCount)
+		ui.huntBrief.Text = string.format(
+			"Рой идёт на шум бура: пять волн. Пока бур цел, канатка везёт утиль в убежище. Турели из мастерской: %d/%d.",
+			built,
+			Meta.SocketCount
+		)
 		if rebuildRow then
 			local b, bl = Theme.button("СТРОИТЬ", { Size = UDim2.fromOffset(150, 40), TextSize = 13 }, "primary")
 			b.Parent = ui.modeRow
@@ -715,11 +905,12 @@ function Menus.refreshLobby()
 		end
 	elseif mode == "raid" then
 		local t = info.target
-		ui.huntTag.Text = "ВТОРЖЕНИЕ  ·  РЕЙТИНГ НАЛЁТЧИКА " .. (if prof and prof.raid then (prof.raid.attack or prof.raid.rating) else "—")
+		ui.huntTag.Text = "ВТОРЖЕНИЕ  ·  РЕЙТИНГ НАЛЁТЧИКА "
+			.. (if prof and prof.raid then (prof.raid.attack or prof.raid.rating) else "—")
 		ui.huntName.Text = if t then t.name else "Ищем аванпосты…"
 		ui.huntBrief.Text = if t
 			then string.format(
-				"Мощь обороны %d · награда до ◆ %d. Разрушь бур за 4 минуты. Хозяин ничего не теряет — это копия его обороны.",
+				"Чужой бур: пробей оборону и разрушь его за 4 минуты — утиль с его канатки твой (мощь обороны %d, до ◆ %d). Хозяин ничего не теряет: это копия.",
 				t.power or 0,
 				Meta.raidRewardFor(t.power or 0, true)
 			)
@@ -727,7 +918,11 @@ function Menus.refreshLobby()
 		if rebuildRow and isHost and info.candidates and #info.candidates > 1 then
 			for i, c in info.candidates do
 				local on = t and c.uid == t.uid
-				local b, bl = Theme.button("◆" .. tostring(c.power or 0), { Size = UDim2.fromOffset(84, 40), TextSize = 13 }, if on then "primary" else "ghost")
+				local b, bl = Theme.button(
+					"◆" .. tostring(c.power or 0),
+					{ Size = UDim2.fromOffset(84, 40), TextSize = 13 },
+					if on then "primary" else "ghost"
+				)
 				b.Parent = ui.modeRow
 				b.Activated:Connect(function()
 					send("raidPick", i)
@@ -753,7 +948,8 @@ function Menus.refreshLobby()
 		d.button.BackgroundTransparency = if on then 0 else 0.9
 		d.text.TextColor3 = if on then C.ink else C.text
 	end
-	ui.hunt.Size = UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then 214 else 160)
+	ui.hunt.Size =
+		UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then 214 else 160)
 	-- Xenite + upgrades: after the first hunt
 	ui.xenite.Visible = runs > 0 or (prof and prof.scrap > 0)
 	ui.xeniteAmount.Text = Theme.commas(prof and prof.scrap or 0)
@@ -778,7 +974,13 @@ function Menus.refreshLobby()
 			end
 		end
 		if held + lost > 0 then
-			ui.toastText.Text = string.format("Налётов на бур: %d  ·  отбито %d (+%d утиля)  ·  прорвано %d — ты ничего не потерял", held + lost, held, held * Meta.DefenseReward, lost)
+			ui.toastText.Text = string.format(
+				"Налётов на бур: %d  ·  отбито %d (+%d утиля)  ·  прорвано %d — ты ничего не потерял",
+				held + lost,
+				held,
+				held * Meta.DefenseReward,
+				lost
+			)
 			ui.toast.Visible = true
 			task.delay(9, function()
 				ui.toast.Visible = false
@@ -859,7 +1061,12 @@ function Menus.refreshLobby()
 				Parent = row,
 			})
 			if p.ready then
-				icon("check", 18, C.lime, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Parent = row })
+				icon(
+					"check",
+					18,
+					C.lime,
+					{ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Parent = row }
+				)
 			end
 		end
 	end
@@ -869,7 +1076,12 @@ function Menus.refreshLobby()
 	ui.playLabel.TextColor3 = if amReady then C.text else C.ink
 	Icons.recolor(ui.playIcon, if amReady then C.text else C.ink)
 	ui.playStatus.Text = if info.countdown
-		then string.format("Выход через %d…  ·  готовы %d/%d", math.ceil(info.countdown), readyCount, n)
+		then string.format(
+			"Выход через %d…  ·  готовы %d/%d",
+			math.ceil(info.countdown),
+			readyCount,
+			n
+		)
 		elseif n > 1 then string.format("Отряд: %d  ·  готовы %d/%d", n, readyCount, n)
 		elseif runs == 0 then "Соло  ·  до 4 игроков"
 		else "Соло"
@@ -960,17 +1172,21 @@ end
 local function buildUpgrades()
 	local m = modal("Upgrades", 860, 560, "УЛУЧШЕНИЯ", nil)
 	ui.upgrades = m
-	label("Навсегда. Покупаются за Утиль, который приносит каждая вылазка.", {
-		Position = UDim2.fromOffset(28, 60),
-		Size = UDim2.new(1, -56, 0, 20),
-		FontFace = F.body,
-		TextSize = 14,
-		TextColor3 = C.dim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 42,
-		Parent = m.panel,
-	})
-	ui.upgradesXenite, ui.upgradesXeniteAmount = xenitePill(m.panel, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -74, 0, 20), ZIndex = 42 })
+	label(
+		"Навсегда. Покупаются за Утиль, который приносит каждая вылазка.",
+		{
+			Position = UDim2.fromOffset(28, 60),
+			Size = UDim2.new(1, -56, 0, 20),
+			FontFace = F.body,
+			TextSize = 14,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 42,
+			Parent = m.panel,
+		}
+	)
+	ui.upgradesXenite, ui.upgradesXeniteAmount =
+		xenitePill(m.panel, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -74, 0, 20), ZIndex = 42 })
 	for _, d in ui.upgradesXenite:GetDescendants() do
 		if d:IsA("GuiObject") then
 			d.ZIndex = 43
@@ -1039,7 +1255,10 @@ function Menus.refreshUpgrades()
 				Parent = tile,
 			})
 		end
-		local statText = if maxed then def.stat(rank) elseif rank > 0 then def.stat(rank) .. "  →  " .. def.stat(rank + 1) else def.stat(1)
+		local statText = if maxed
+			then def.stat(rank)
+			elseif rank > 0 then def.stat(rank) .. "  →  " .. def.stat(rank + 1)
+			else def.stat(1)
 		label(statText, {
 			Position = UDim2.fromOffset(10, 116),
 			Size = UDim2.new(1, -20, 0, 36),
@@ -1084,26 +1303,46 @@ local function buildSettings()
 	ui.settings = m
 	local names = { "НИЗКО", "СРЕДНЕ", "ВЫСОКО" }
 	local rows = {
-		{ "Графика", "eye", function()
-			return names[Settings.quality]
-		end, function()
-			Settings.set("quality", Settings.quality % 3 + 1)
-		end },
-		{ "Тряска экрана", "boom", function()
-			return if Settings.shake then "ВКЛ" else "ВЫКЛ"
-		end, function()
-			Settings.set("shake", not Settings.shake)
-		end },
-		{ "Цифры урона", "burst", function()
-			return if Settings.numbers then "ВКЛ" else "ВЫКЛ"
-		end, function()
-			Settings.set("numbers", not Settings.numbers)
-		end },
-		{ "Помощь в прицеливании", "crosshair", function()
-			return if Settings.aimAssist then "ВКЛ" else "ВЫКЛ"
-		end, function()
-			Settings.set("aimAssist", not Settings.aimAssist)
-		end },
+		{
+			"Графика",
+			"eye",
+			function()
+				return names[Settings.quality]
+			end,
+			function()
+				Settings.set("quality", Settings.quality % 3 + 1)
+			end,
+		},
+		{
+			"Тряска экрана",
+			"boom",
+			function()
+				return if Settings.shake then "ВКЛ" else "ВЫКЛ"
+			end,
+			function()
+				Settings.set("shake", not Settings.shake)
+			end,
+		},
+		{
+			"Цифры урона",
+			"burst",
+			function()
+				return if Settings.numbers then "ВКЛ" else "ВЫКЛ"
+			end,
+			function()
+				Settings.set("numbers", not Settings.numbers)
+			end,
+		},
+		{
+			"Помощь в прицеливании",
+			"crosshair",
+			function()
+				return if Settings.aimAssist then "ВКЛ" else "ВЫКЛ"
+			end,
+			function()
+				Settings.set("aimAssist", not Settings.aimAssist)
+			end,
+		},
 	}
 	for i, r in rows do
 		local y = 84 + (i - 1) * 66
@@ -1116,7 +1355,12 @@ local function buildSettings()
 			ZIndex = 42,
 			Parent = m.panel,
 		})
-		icon(r[2], 24, C.dim, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), ZIndex = 43, Parent = row })
+		icon(
+			r[2],
+			24,
+			C.dim,
+			{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), ZIndex = 43, Parent = row }
+		)
 		label(r[1], {
 			Position = UDim2.fromOffset(54, 0),
 			Size = UDim2.new(1, -200, 1, 0),
@@ -1176,7 +1420,10 @@ end
 local function buildOffer()
 	local o = new("Frame", { Name = "Offer", Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10, Parent = gui })
 	ui.offer = o
-	ui.offerShade = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.4, ZIndex = 10, Parent = o })
+	ui.offerShade = new(
+		"Frame",
+		{ Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.4, ZIndex = 10, Parent = o }
+	)
 	local body = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -1223,7 +1470,10 @@ local function buildOffer()
 		})
 		-- body: dark, washed with the upgrade colour at the top
 		local cardGrad = new("UIGradient", { Rotation = 90, Parent = card })
-		local stroke = new("UIStroke", { Thickness = 2.5, Color = C.white, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = card })
+		local stroke = new(
+			"UIStroke",
+			{ Thickness = 2.5, Color = C.white, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = card }
+		)
 		local strokeGrad = new("UIGradient", { Rotation = 90, Parent = stroke })
 		local scale = new("UIScale", { Parent = card })
 		-- outer glow behind the card (a sibling under it), follows the card and grows with focus
@@ -1247,7 +1497,11 @@ local function buildOffer()
 		})
 		local artGrad = new("UIGradient", {
 			Rotation = 90,
-			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.7, 0.85), NumberSequenceKeypoint.new(1, 1) }),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.5),
+				NumberSequenceKeypoint.new(0.7, 0.85),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
 			Parent = art,
 		})
 		local hex = new("ImageLabel", {
@@ -1288,7 +1542,11 @@ local function buildOffer()
 		local haloStroke = new("UIStroke", { Thickness = 2, Transparency = 0.35, Parent = halo })
 		new("UIGradient", {
 			Rotation = 90,
-			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 0) }),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.5, 0.6),
+				NumberSequenceKeypoint.new(1, 0),
+			}),
 			Parent = haloStroke,
 		})
 		local iconHolder = new("Frame", {
@@ -1317,7 +1575,10 @@ local function buildOffer()
 			ZIndex = 16,
 			Parent = badge,
 		})
-		local key = Theme.key(tostring(i), { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 14), ZIndex = 15 })
+		local key = Theme.key(
+			tostring(i),
+			{ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 14), ZIndex = 15 }
+		)
 		key.Parent = card
 		for _, d in key:GetDescendants() do
 			if d:IsA("GuiObject") then
@@ -1357,7 +1618,11 @@ local function buildOffer()
 			Parent = card,
 		})
 		new("UIGradient", {
-			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.1), NumberSequenceKeypoint.new(1, 1) }),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.5, 0.1),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
 			Parent = divider,
 		})
 		local statPill = new("Frame", {
@@ -1401,8 +1666,28 @@ local function buildOffer()
 			ZIndex = 20,
 			Parent = card,
 		})
-		icon("banish", 64, C.white, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.4), ZIndex = 21, Parent = banOverlay })
-		label("ИЗГНАТЬ", { Position = UDim2.fromScale(0, 0.5), Size = UDim2.new(1, 0, 0, 40), FontFace = F.display, TextSize = 26, ZIndex = 21, Parent = banOverlay })
+		icon(
+			"banish",
+			64,
+			C.white,
+			{
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.4),
+				ZIndex = 21,
+				Parent = banOverlay,
+			}
+		)
+		label(
+			"ИЗГНАТЬ",
+			{
+				Position = UDim2.fromScale(0, 0.5),
+				Size = UDim2.new(1, 0, 0, 40),
+				FontFace = F.display,
+				TextSize = 26,
+				ZIndex = 21,
+				Parent = banOverlay,
+			}
+		)
 		-- DD-051 guided first card: the others are shown but closed this once
 		local lockShade = new("Frame", {
 			Size = UDim2.fromScale(1, 1),
@@ -1413,8 +1698,29 @@ local function buildOffer()
 			ZIndex = 20,
 			Parent = card,
 		})
-		icon("lock", 44, C.dim, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.36), ZIndex = 21, Parent = lockShade })
-		label("В СЛЕДУЮЩИЙ РАЗ", { Position = UDim2.fromScale(0, 0.47), Size = UDim2.new(1, 0, 0, 22), FontFace = F.head, TextSize = 14, TextColor3 = C.dim, ZIndex = 21, Parent = lockShade })
+		icon(
+			"lock",
+			44,
+			C.dim,
+			{
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.36),
+				ZIndex = 21,
+				Parent = lockShade,
+			}
+		)
+		label(
+			"В СЛЕДУЮЩИЙ РАЗ",
+			{
+				Position = UDim2.fromScale(0, 0.47),
+				Size = UDim2.new(1, 0, 0, 22),
+				FontFace = F.head,
+				TextSize = 14,
+				TextColor3 = C.dim,
+				ZIndex = 21,
+				Parent = lockShade,
+			}
+		)
 		-- ribbon + bouncing pointer over the guided card
 		local guide = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0),
@@ -1426,7 +1732,17 @@ local function buildOffer()
 			ZIndex = 22,
 			Parent = card,
 		})
-		label("ВОЗЬМИ ЭТО", { Size = UDim2.fromScale(1, 1), FontFace = F.head, TextSize = 15, TextColor3 = C.ink, ZIndex = 23, Parent = guide })
+		label(
+			"ВОЗЬМИ ЭТО",
+			{
+				Size = UDim2.fromScale(1, 1),
+				FontFace = F.head,
+				TextSize = 15,
+				TextColor3 = C.ink,
+				ZIndex = 23,
+				Parent = guide,
+			}
+		)
 		local guideArrow = label("▲", {
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 0, 4),
@@ -1484,7 +1800,11 @@ local function buildOffer()
 		Size = UDim2.fromOffset(800, 44),
 		ZIndex = 12,
 		Parent = body,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6) },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
+		},
 	})
 	local actions = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -1492,12 +1812,18 @@ local function buildOffer()
 		Size = UDim2.fromOffset(600, 46),
 		ZIndex = 12,
 		Parent = body,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 12) },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 12),
+		},
 	})
-	ui.rerollBtn, ui.rerollLabel = Theme.button("ПЕРЕБРОС", { Size = UDim2.fromOffset(200, 46), ZIndex = 12, TextSize = 14 })
+	ui.rerollBtn, ui.rerollLabel =
+		Theme.button("ПЕРЕБРОС", { Size = UDim2.fromOffset(200, 46), ZIndex = 12, TextSize = 14 })
 	ui.rerollBtn.Parent = actions
 	ui.rerollLabel.ZIndex = 13
-	ui.banishBtn, ui.banishLabel = Theme.button("ИЗГНАТЬ", { Size = UDim2.fromOffset(200, 46), ZIndex = 12, TextSize = 14 })
+	ui.banishBtn, ui.banishLabel =
+		Theme.button("ИЗГНАТЬ", { Size = UDim2.fromOffset(200, 46), ZIndex = 12, TextSize = 14 })
 	ui.banishBtn.Parent = actions
 	ui.banishLabel.ZIndex = 13
 	ui.rerollBtn.Activated:Connect(function()
@@ -1583,9 +1909,13 @@ function Menus.showOffer(me, run)
 	ui.offerMe = me
 	ui.offerSub.Text = if run.solo
 		then "Выбери одно  ·  время остановлено"
-		else string.format("Выбери одно  ·  отряд ждёт  ·  %d с", math.max(0, math.ceil(Defs.Run.ChoiceTimeoutCoop - run.pauseClock)))
+		else string.format(
+			"Выбери одно  ·  отряд ждёт  ·  %d с",
+			math.max(0, math.ceil(Defs.Run.ChoiceTimeoutCoop - run.pauseClock))
+		)
 	if offer.lock then
-		ui.offerSub.Text = "Первое улучшение: пуль станет три — бери «Расщепление». Дальше выбираешь сам"
+		ui.offerSub.Text =
+			"Первое улучшение: пуль станет три — бери «Расщепление». Дальше выбираешь сам"
 	end
 	if offer.id == ui.shownOfferId and ui.offer.Visible then
 		Menus.refreshOfferModes()
@@ -1600,7 +1930,13 @@ function Menus.showOffer(me, run)
 	ui.offer.Visible = true
 	setBlur(16)
 	ui.offerScale.Scale = viewportScale(Vector2.new(1200, 660))
-	ui.offerTitle.Text = "УРОВЕНЬ " .. run.level .. (if me.pending > 1 then string.format('  <font size="22" color="#B8A6DA">ещё +%d</font>', me.pending - 1) else "")
+	ui.offerTitle.Text = "УРОВЕНЬ "
+		.. run.level
+		.. (
+			if me.pending > 1
+				then string.format('  <font size="22" color="#B8A6DA">ещё +%d</font>', me.pending - 1)
+				else ""
+		)
 	if fresh then
 		ui.offerTitleScale.Scale = 1.5
 		tween(ui.offerTitleScale, 0.45, { Scale = 1 }, Enum.EasingStyle.Back)
@@ -1620,7 +1956,11 @@ function Menus.showOffer(me, run)
 			clear(c.iconHolder)
 			icon(iconName, 96, color, { ZIndex = 15, Parent = c.iconHolder })
 			local deep = C.ink:Lerp(color, 0.16)
-			c.cardGrad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, deep), ColorSequenceKeypoint.new(0.55, C.ink), ColorSequenceKeypoint.new(1, C.ink) })
+			c.cardGrad.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, deep),
+				ColorSequenceKeypoint.new(0.55, C.ink),
+				ColorSequenceKeypoint.new(1, C.ink),
+			})
 			c.strokeGrad.Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0, color:Lerp(C.white, 0.45)),
 				ColorSequenceKeypoint.new(0.45, color),
@@ -1678,7 +2018,17 @@ function Menus.showOffer(me, run)
 				ZIndex = 12,
 				Parent = ui.offerBuild,
 			})
-			icon(def.icon, 24, def.color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), ZIndex = 13, Parent = slot })
+			icon(
+				def.icon,
+				24,
+				def.color,
+				{
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromScale(0.5, 0.45),
+					ZIndex = 13,
+					Parent = slot,
+				}
+			)
 			label(tostring(me.ranks[id]), {
 				AnchorPoint = Vector2.new(1, 1),
 				Position = UDim2.new(1, -3, 1, 0),
@@ -1722,9 +2072,13 @@ end
 
 -- Splash and flash ---------------------------------------------------------------------------------------
 local function buildSplash()
-	local s = new("Frame", { Name = "Splash", Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 30, Parent = gui })
+	local s =
+		new("Frame", { Name = "Splash", Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 30, Parent = gui })
 	ui.splash = s
-	ui.flash = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BackgroundColor3 = C.white, ZIndex = 30, Parent = s })
+	ui.flash = new(
+		"Frame",
+		{ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BackgroundColor3 = C.white, ZIndex = 30, Parent = s }
+	)
 	ui.splashModel = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.42),
@@ -1806,9 +2160,13 @@ end
 
 -- Results ---------------------------------------------------------------------------------------------------
 local function buildResults()
-	local r = new("Frame", { Name = "Results", Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 20, Parent = gui })
+	local r =
+		new("Frame", { Name = "Results", Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 20, Parent = gui })
 	ui.results = r
-	ui.resShade = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.3, ZIndex = 20, Parent = r })
+	ui.resShade = new(
+		"Frame",
+		{ Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.3, ZIndex = 20, Parent = r }
+	)
 	local body = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -1855,7 +2213,11 @@ local function buildResults()
 		Size = UDim2.new(1, 0, 0, 100),
 		ZIndex = 22,
 		Parent = ui.resList,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 14) },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 14),
+		},
 	})
 	-- the run in one line: weapon (and its evolution), every upgrade taken with its rank
 	ui.resBuild = new("Frame", {
@@ -1863,15 +2225,35 @@ local function buildResults()
 		Size = UDim2.new(1, 0, 0, 46),
 		ZIndex = 22,
 		Parent = ui.resList,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8) },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		},
 	})
-	ui.resReward = Theme.panel({ LayoutOrder = 6, Size = UDim2.fromOffset(560, 92), CornerRadius = 20, ZIndex = 22, Parent = ui.resList }, C.pink)
+	ui.resReward = Theme.panel(
+		{ LayoutOrder = 6, Size = UDim2.fromOffset(560, 92), CornerRadius = 20, ZIndex = 22, Parent = ui.resList },
+		C.pink
+	)
 	ui.resRewardAmount = label("", {
 		Position = UDim2.fromOffset(0, 10),
 		Size = UDim2.new(1, 0, 0, 46),
 		FontFace = F.display,
 		TextSize = 40,
 		TextColor3 = C.pink,
+		ZIndex = 23,
+		Parent = ui.resReward,
+	})
+	-- where it goes: the cableway from the drill to the shelter (DD-065)
+	ui.resRewardTag = label("С БУРА ПО КАНАТКЕ → В УБЕЖИЩЕ", {
+		Position = UDim2.fromOffset(16, 8),
+		Size = UDim2.fromOffset(300, 14),
+		FontFace = F.head,
+		TextSize = 10,
+		TextColor3 = C.lime,
+		TextTransparency = 0.2,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 23,
 		Parent = ui.resReward,
 	})
@@ -1890,13 +2272,60 @@ local function buildResults()
 		AutomaticSize = Enum.AutomaticSize.Y,
 		ZIndex = 22,
 		Parent = ui.resList,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 12) },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 12),
+		},
 	})
-	ui.resGoal = Theme.panel({ LayoutOrder = 8, Size = UDim2.fromOffset(560, 84), CornerRadius = 18, ZIndex = 22, Parent = ui.resList }, C.lime)
-	ui.resGoalIcon = new("Frame", { Position = UDim2.fromOffset(14, 20), Size = UDim2.fromOffset(44, 44), ZIndex = 23, Parent = ui.resGoal })
-	label("ДАЛЬШЕ", { Position = UDim2.fromOffset(70, 8), Size = UDim2.fromOffset(120, 14), FontFace = F.head, TextSize = 10, TextColor3 = C.lime, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.resGoal })
-	ui.resGoalTitle = label("", { Position = UDim2.fromOffset(70, 22), Size = UDim2.new(1, -84, 0, 20), FontFace = F.display, TextSize = 17, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23, Parent = ui.resGoal })
-	ui.resGoalText = label("", { Position = UDim2.fromOffset(70, 43), Size = UDim2.new(1, -84, 0, 34), FontFace = F.body, TextSize = 13, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 23, Parent = ui.resGoal })
+	ui.resGoal = Theme.panel(
+		{ LayoutOrder = 8, Size = UDim2.fromOffset(560, 84), CornerRadius = 18, ZIndex = 22, Parent = ui.resList },
+		C.lime
+	)
+	ui.resGoalIcon = new(
+		"Frame",
+		{ Position = UDim2.fromOffset(14, 20), Size = UDim2.fromOffset(44, 44), ZIndex = 23, Parent = ui.resGoal }
+	)
+	label(
+		"ДАЛЬШЕ",
+		{
+			Position = UDim2.fromOffset(70, 8),
+			Size = UDim2.fromOffset(120, 14),
+			FontFace = F.head,
+			TextSize = 10,
+			TextColor3 = C.lime,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 23,
+			Parent = ui.resGoal,
+		}
+	)
+	ui.resGoalTitle = label(
+		"",
+		{
+			Position = UDim2.fromOffset(70, 22),
+			Size = UDim2.new(1, -84, 0, 20),
+			FontFace = F.display,
+			TextSize = 17,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 23,
+			Parent = ui.resGoal,
+		}
+	)
+	ui.resGoalText = label(
+		"",
+		{
+			Position = UDim2.fromOffset(70, 43),
+			Size = UDim2.new(1, -84, 0, 34),
+			FontFace = F.body,
+			TextSize = 13,
+			TextColor3 = C.dim,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			ZIndex = 23,
+			Parent = ui.resGoal,
+		}
+	)
 	ui.resButton, ui.resButtonLabel = Theme.button("НА БАЗУ", {
 		Name = "Continue",
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -1935,7 +2364,12 @@ local function buildResults()
 		ZIndex = 22,
 		Visible = false,
 		Parent = ui.resList,
-		List = { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), Wraps = true },
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+			Wraps = true,
+		},
 	})
 	ui.resVotes = label("", {
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -1958,8 +2392,19 @@ local function buildResults()
 end
 
 local function statTile(iconName: string, title: string, value: string, color: Color3, order: number)
-	local t = Theme.panel({ Size = UDim2.fromOffset(150, 96), CornerRadius = 18, LayoutOrder = order, ZIndex = 22, Parent = ui.resStats })
-	icon(iconName, 24, color, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), ZIndex = 23, Parent = t })
+	local t = Theme.panel({
+		Size = UDim2.fromOffset(150, 96),
+		CornerRadius = 18,
+		LayoutOrder = order,
+		ZIndex = 22,
+		Parent = ui.resStats,
+	})
+	icon(
+		iconName,
+		24,
+		color,
+		{ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), ZIndex = 23, Parent = t }
+	)
 	local v = label(value, {
 		Position = UDim2.fromOffset(0, 40),
 		Size = UDim2.new(1, 0, 0, 30),
@@ -1981,7 +2426,10 @@ local function statTile(iconName: string, title: string, value: string, color: C
 end
 
 local function unlockCard(iconName: string, tag: string, text: string, color: Color3, order: number)
-	local t = Theme.panel({ Size = UDim2.fromOffset(320, 96), CornerRadius = 20, LayoutOrder = order, ZIndex = 22, Parent = ui.resUnlocks }, color)
+	local t = Theme.panel(
+		{ Size = UDim2.fromOffset(320, 96), CornerRadius = 20, LayoutOrder = order, ZIndex = 22, Parent = ui.resUnlocks },
+		color
+	)
 	local disc = Icons.disc(iconName, 62, color, 23)
 	disc.AnchorPoint = Vector2.new(0, 0.5)
 	disc.Position = UDim2.new(0, 16, 0.5, 0)
@@ -2027,12 +2475,52 @@ local function buildChip(iconName: string, text: string, color: Color3, order: n
 		ZIndex = 22,
 		Parent = ui.resBuild,
 	})
-	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, if text ~= "" then 14 else 6), Parent = chip })
-	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = chip })
-	local disc = new("Frame", { Size = UDim2.fromOffset(30, 30), BackgroundColor3 = color, BackgroundTransparency = 0.8, Corner = UDim.new(1, 0), LayoutOrder = 1, ZIndex = 23, Parent = chip })
-	icon(iconName, 20, color, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 24, Parent = disc })
+	new(
+		"UIPadding",
+		{ PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, if text ~= "" then 14 else 6), Parent = chip }
+	)
+	new(
+		"UIListLayout",
+		{
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = chip,
+		}
+	)
+	local disc = new(
+		"Frame",
+		{
+			Size = UDim2.fromOffset(30, 30),
+			BackgroundColor3 = color,
+			BackgroundTransparency = 0.8,
+			Corner = UDim.new(1, 0),
+			LayoutOrder = 1,
+			ZIndex = 23,
+			Parent = chip,
+		}
+	)
+	icon(
+		iconName,
+		20,
+		color,
+		{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 24, Parent = disc }
+	)
 	if text ~= "" then
-		label(text, { Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, FontFace = F.head, TextSize = 13, TextColor3 = color, LayoutOrder = 2, ZIndex = 23, Parent = chip })
+		label(
+			text,
+			{
+				Size = UDim2.fromOffset(0, 30),
+				AutomaticSize = Enum.AutomaticSize.X,
+				FontFace = F.head,
+				TextSize = 13,
+				TextColor3 = color,
+				LayoutOrder = 2,
+				ZIndex = 23,
+				Parent = chip,
+			}
+		)
 	end
 	local sc = new("UIScale", { Scale = 0, Parent = chip })
 	task.delay(0.35 + order * 0.05, function()
@@ -2096,13 +2584,20 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		ui.resTitle.Text = if result.victory then "БУР ВЫСТОЯЛ" else "БУР ПАЛ"
 	elseif mode == "raid" then
 		ui.resTag.Text = "ВТОРЖЕНИЕ  ·  " .. (if result.raid then result.raid.name else "")
-		ui.resTitle.Text = if result.victory then "ВТОРЖЕНИЕ УСПЕШНО" else "ОБОРОНА ВЫСТОЯЛА"
+		ui.resTitle.Text = if result.victory
+			then "ВТОРЖЕНИЕ УСПЕШНО"
+			else "ОБОРОНА ВЫСТОЯЛА"
 	else
-		ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ВЫЛАЗКА " .. op.index) .. "  ·  " .. op.name .. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
+		ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ВЫЛАЗКА " .. op.index)
+			.. "  ·  "
+			.. op.name
+			.. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
 		ui.resTitle.Text = if result.victory then "ВЫЛАЗКА УДАЛАСЬ" else "ТЫ ПАЛ"
 	end
 	ui.resTitle.TextColor3 = if result.victory then C.lime else C.red
-	ui.resReason.Text = if result.chapterEnd and result.victory then "Глава завершена. " .. result.reason else result.reason
+	ui.resReason.Text = if result.chapterEnd and result.victory
+		then "Глава завершена. " .. result.reason
+		else result.reason
 	ui.resReason.TextColor3 = C.text
 	-- stats
 	clear(ui.resStats)
@@ -2115,7 +2610,13 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	local tv = statTile("timer", "ВРЕМЯ", Theme.fmtTime(result.time), C.cyan, 1)
 	local kv = statTile("skull", if n > 1 then "ТВОИ УБИЙСТВА" else "УБИТО", "0", C.orange, 2)
 	local dv = statTile("boom", "УРОН", "0", C.pink, 3)
-	statTile("burst", "ЛУЧШЕЕ КОМБО", if mine and (mine.bestCombo or 0) > 1 then "×" .. mine.bestCombo else "—", C.gold, 4)
+	statTile(
+		"burst",
+		"ЛУЧШЕЕ КОМБО",
+		if mine and (mine.bestCombo or 0) > 1 then "×" .. mine.bestCombo else "—",
+		C.gold,
+		4
+	)
 	statTile("level", "УРОВЕНЬ", tostring(result.level), C.lime, 5)
 	countUp(kv, if mine then mine.kills else result.kills, "%s", 1.1)
 	countUp(dv, if mine then mine.damage or 0 else 0, "%s", 1.3)
@@ -2133,21 +2634,59 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 				BackgroundColor3 = C.ink,
 				BackgroundTransparency = 0.2,
 				Corner = UDim.new(1, 0),
-				Stroke = { Color = if p.id == id then C.lime else C.white, Transparency = if p.id == id then 0.4 else 0.85 },
+				Stroke = {
+					Color = if p.id == id then C.lime else C.white,
+					Transparency = if p.id == id then 0.4 else 0.85,
+				},
 				LayoutOrder = i,
 				ZIndex = 23,
 				Parent = ui.resSquad,
 			})
 			new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = chip })
-			local parts = { tostring(p.name or "?"), Theme.commas(p.damage or 0) .. " урона", tostring(p.kills or 0) .. " убийств" }
+			local parts = {
+				tostring(p.name or "?"),
+				Theme.commas(p.damage or 0) .. " урона",
+				tostring(p.kills or 0) .. " убийств",
+			}
 			if (p.revives or 0) > 0 then
 				table.insert(parts, tostring(p.revives) .. " спасений")
 			end
-			new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = chip })
-			label(table.concat(parts, "  ·  "), { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 32), FontFace = F.bodyBold, TextSize = 13, ZIndex = 24, Parent = chip })
+			new(
+				"UIListLayout",
+				{
+					FillDirection = Enum.FillDirection.Horizontal,
+					VerticalAlignment = Enum.VerticalAlignment.Center,
+					Padding = UDim.new(0, 8),
+					SortOrder = Enum.SortOrder.LayoutOrder,
+					Parent = chip,
+				}
+			)
+			label(
+				table.concat(parts, "  ·  "),
+				{
+					AutomaticSize = Enum.AutomaticSize.X,
+					Size = UDim2.fromOffset(0, 32),
+					FontFace = F.bodyBold,
+					TextSize = 13,
+					ZIndex = 24,
+					Parent = chip,
+				}
+			)
 			for k, a in awards[p.id] or {} do
 				icon(a[1], 16, C.gold, { LayoutOrder = k * 2, ZIndex = 24, Parent = chip })
-				label(a[2], { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 32), FontFace = F.head, TextSize = 12, TextColor3 = C.gold, LayoutOrder = k * 2 + 1, ZIndex = 24, Parent = chip })
+				label(
+					a[2],
+					{
+						AutomaticSize = Enum.AutomaticSize.X,
+						Size = UDim2.fromOffset(0, 32),
+						FontFace = F.head,
+						TextSize = 12,
+						TextColor3 = C.gold,
+						LayoutOrder = k * 2 + 1,
+						ZIndex = 24,
+						Parent = chip,
+					}
+				)
 			end
 		end
 	end
@@ -2172,7 +2711,13 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	if reward then
 		countUp(ui.resRewardAmount, reward.total + (reward.grant or 0), "+%s УТИЛЬ", 1.3)
 		local parts = {}
-		local names = { skull = "за убийства", level = "за уровни", crown = "за победу", timer = "за стойкость", hive = "ульи" }
+		local names = {
+			skull = "за убийства",
+			level = "за уровни",
+			crown = "за победу",
+			timer = "за стойкость",
+			hive = "ульи",
+		}
 		for _, line in reward.lines or {} do
 			if line[2] > 0 then
 				table.insert(parts, "+" .. line[2] .. " " .. (names[line[1]] or ""))
@@ -2197,7 +2742,13 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		if kind == "op" then
 			k += 1
 			local nop = Ops.get(u[2])
-			unlockCard("pin", if nop.code == "C-A01" then "НОВЫЙ КОНТРАКТ" else "НОВАЯ ВЫЛАЗКА", nop.name, C.lime, k)
+			unlockCard(
+				"pin",
+				if nop.code == "C-A01" then "НОВЫЙ КОНТРАКТ" else "НОВАЯ ВЫЛАЗКА",
+				nop.name,
+				C.lime,
+				k
+			)
 		elseif kind == "s01" then
 			k += 1
 			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
@@ -2209,14 +2760,24 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	end
 	if reward and reward.capped then
 		k += 1
-		unlockCard("timer", "БЕЗ НАГРАДЫ", if reward.capped == "pair" then "Этот бур уже приносил тебе утиль сегодня" else "Лимит налётов с наградой на сегодня: " .. Meta.RaidDailyCap, C.dim, k)
+		unlockCard(
+			"timer",
+			"БЕЗ НАГРАДЫ",
+			if reward.capped == "pair"
+				then "Этот бур уже приносил тебе утиль сегодня"
+				else "Лимит налётов с наградой на сегодня: " .. Meta.RaidDailyCap,
+			C.dim,
+			k
+		)
 	elseif reward and reward.rating then
 		k += 1
 		local d = reward.rating.delta
 		unlockCard(
 			"crown",
 			"РЕЙТИНГ НАЛЁТЧИКА",
-			if reward.rating.unrated then "Свежий снимок обороны — без рейтинга" else string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now),
+			if reward.rating.unrated
+				then "Свежий снимок обороны — без рейтинга"
+				else string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now),
 			if d >= 0 then C.gold else C.red,
 			k
 		)
@@ -2237,7 +2798,13 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	end
 	if result.victory then
 		for wid, opId in Defs.Blueprints do
-			if opId == result.op and table.find(SHOWN_WEAPONS, wid) and profile and not profile.weapons[wid] and first then
+			if
+				opId == result.op
+				and table.find(SHOWN_WEAPONS, wid)
+				and profile
+				and not profile.weapons[wid]
+				and first
+			then
 				k += 1
 				unlockCard("star", "ЧЕРТЁЖ ОРУЖИЯ", Defs.Weapons[wid].name, C.gold, k)
 			end
