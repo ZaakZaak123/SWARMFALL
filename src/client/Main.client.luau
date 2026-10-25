@@ -231,6 +231,7 @@ local WEAPON_BY_INDEX = Defs.WeaponByIndex
 local arenaMap = nil
 local burrowDustT = 0
 local lastFirstPerson = -1
+local heroOutline: Highlight? = nil
 local remoteBeams = {} -- pid -> { untilT, from, to, evolved }
 local wasReloading = false
 local localSpread = 0 -- predicted accuracy bloom (degrees), reconciled toward the server value
@@ -282,6 +283,18 @@ local function onCharacter(char: Model)
 	hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	if heroOutline then
+		heroOutline:Destroy()
+	end
+	heroOutline = Instance.new("Highlight")
+	heroOutline.Name = "SurvivorOutline"
+	heroOutline.Adornee = char
+	heroOutline.FillTransparency = 1
+	heroOutline.OutlineColor = C.cyan
+	heroOutline.OutlineTransparency = 0.25
+	heroOutline.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	heroOutline.Enabled = false
+	heroOutline.Parent = char
 	local att = Instance.new("Attachment")
 	att.Name = "DashAttachment"
 	att.Parent = root
@@ -1620,6 +1633,8 @@ local function animateArena(now: number)
 					table.insert(animated.rings, { r, r.CFrame, tonumber(r.Name:sub(-1)) or 1 })
 				elseif r.Name == "Core" then
 					animated.core = r
+				elseif r.Name == "Auger" then
+					animated.auger = { r, r.CFrame }
 				end
 			end
 		end
@@ -1633,11 +1648,14 @@ local function animateArena(now: number)
 		if reactorModel then
 			local cf, size = reactorModel:GetBoundingBox()
 			local top = cf.Position + Vector3.new(0, size.Y * 0.3, -2)
-			local rim = Vector3.new(-22, 24, -172)
+			-- Route freight along the west edge, rather than drawing a black cable through the
+			-- hero and the entire southern fighting lane from the top-down camera.
+			local side = Vector3.new(-94, 20, -64)
+			local rim = Vector3.new(-136, 24, -172)
 			arenaCable = Cableway.new(
 				decor,
-				{ top, rim },
-				{ posts = { [2] = Vector3.new(rim.X, 0, rim.Z) }, every = 4.5 }
+				{ top, side, rim },
+				{ posts = { [2] = Vector3.new(side.X, 0, side.Z), [3] = Vector3.new(rim.X, 0, rim.Z) }, every = 4.5 }
 			)
 		end
 		DecorLod.scan(decor)
@@ -1687,6 +1705,9 @@ local function animateArena(now: number)
 		ring[1].CFrame = ring[2]
 			* CFrame.new(math.sin(now * 2 + ring[3]) * 0.4, 0, 0)
 			* CFrame.Angles(0, math.sin(now * 1.3 + ring[3]) * 0.18, math.sin(now * 1.7 + ring[3] * 2) * 0.18)
+	end
+	if animated.auger then
+		animated.auger[1].CFrame = animated.auger[2] * CFrame.Angles(0, now * 2.4, 0)
 	end
 	if animated.core then
 		animated.core.Transparency = 0.45 + (math.sin(now * 2.5) + 1) * 0.08
@@ -1754,7 +1775,7 @@ local function computeArrows(cam: Camera)
 		elseif rec.kind == 6 then
 			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "ГНЕЗДО")
 		elseif rec.kind == 11 then
-			add(Vector3.new(rec.dx, 4, rec.dz), C.violet, "УЗЕЛ")
+			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "УЗЕЛ")
 		elseif rec.kind == 12 then
 			add(Vector3.new(rec.dx, 4, rec.dz), C.lime, "ИСТОЧНИК")
 		elseif rec.kind == 17 then
@@ -1823,6 +1844,9 @@ local function frame(dt: number)
 	local cam = workspace.CurrentCamera
 	local root, hum = myRoot()
 	local isPlaying = playing()
+	if heroOutline then
+		heroOutline.Enabled = isPlaying and CameraRig.mode() == "top"
+	end
 	local choosing = Menus.offerVisible()
 	-- the shooting range on the base drives the gun while the hunter stands on its mark (DD-055)
 	local ranging = (mode == "LOBBY" or mode == "HUB") and Base.isActive() and Range.wants(root and root.Position)

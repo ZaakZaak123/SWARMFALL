@@ -158,6 +158,11 @@ local function acquire(kind: number)
 end
 
 local function release(m)
+	-- Rings are pooled separately from the animated pieces. Snapshot removal and returning home
+	-- also release models, without going through kill(), so they must hide the ring here too.
+	if m.ring then
+		m.ring.CFrame = HIDDEN
+	end
 	for i, p in m.parts do
 		local spec = m.specs[i]
 		p.CFrame = HIDDEN
@@ -178,7 +183,7 @@ local function attachBar(rec)
 	local BAR = {
 		[5] = "ЭЛИТА",
 		[6] = "ГНЕЗДО",
-		[10] = "НОСИТЕЛЬ ЯДРА",
+		[10] = "АЛЬФА",
 		[11] = "ПИТАЮЩИЙ УЗЕЛ",
 		[12] = "КИСЛОТНЫЙ ИСТОЧНИК",
 	}
@@ -209,7 +214,7 @@ local function attachBar(rec)
 	fill.Size = UDim2.fromScale(1, 1)
 	fill.BackgroundColor3 = if elite
 		then rgb(255, 200, 60)
-		elseif rec.kind == 11 then rgb(180, 120, 255)
+		elseif rec.kind == 11 then rgb(190, 235, 100)
 		else rgb(170, 255, 80)
 	fill.BorderSizePixel = 0
 	fill.Parent = back

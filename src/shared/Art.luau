@@ -8,60 +8,253 @@
 local Art = {}
 
 Art.Meshes = {
-	MUSHROOM = { mesh = "rbxassetid://127176737419976", tex = "rbxassetid://115346285824557", size = Vector3.new(19.45, 26.00, 19.56) },
-	BLOOM = { mesh = "rbxassetid://89615528547561", tex = "rbxassetid://76787471648665", size = Vector3.new(26.00, 38.60, 25.91) },
-	RIB = { mesh = "rbxassetid://76552285360656", tex = "rbxassetid://92198972359951", size = Vector3.new(17.89, 34.00, 5.45) },
-	BOULDER = { mesh = "rbxassetid://107685891222586", tex = "rbxassetid://134921464973189", size = Vector3.new(9.31, 9.00, 7.92) },
-	EXTRACTOR = { mesh = "rbxassetid://127921250773990", tex = "rbxassetid://128477091016348", size = Vector3.new(11.13, 24.00, 13.42) },
+	MUSHROOM = {
+		mesh = "rbxassetid://127176737419976",
+		tex = "rbxassetid://115346285824557",
+		size = Vector3.new(19.45, 26.00, 19.56),
+	},
+	BLOOM = {
+		mesh = "rbxassetid://89615528547561",
+		tex = "rbxassetid://76787471648665",
+		size = Vector3.new(26.00, 38.60, 25.91),
+	},
+	RIB = {
+		mesh = "rbxassetid://76552285360656",
+		tex = "rbxassetid://92198972359951",
+		size = Vector3.new(17.89, 34.00, 5.45),
+	},
+	BOULDER = {
+		mesh = "rbxassetid://107685891222586",
+		tex = "rbxassetid://134921464973189",
+		size = Vector3.new(9.31, 9.00, 7.92),
+	},
+	EXTRACTOR = {
+		mesh = "rbxassetid://127921250773990",
+		tex = "rbxassetid://128477091016348",
+		size = Vector3.new(11.13, 24.00, 13.42),
+	},
 	-- DD-062: a mossy cargo plane wreck instead of the sci-fi dropship
-	DROPSHIP = { mesh = "rbxassetid://80290448750003", tex = "rbxassetid://116574695486126", size = Vector3.new(10.11, 3.76, 10.00) },
-	CRYSTALS = { mesh = "rbxassetid://112145949782550", tex = "rbxassetid://136220619906967", size = Vector3.new(14.00, 16.33, 13.87) },
-	SKULL = { mesh = "rbxassetid://82192057619826", tex = "rbxassetid://81798771343243", size = Vector3.new(33.47, 32.00, 34.13) },
-	SPIRE = { mesh = "rbxassetid://94986255398164", tex = "rbxassetid://126474191942050", size = Vector3.new(13.82, 29.45, 14.00) },
-	CORAL = { mesh = "rbxassetid://92825752917091", tex = "rbxassetid://127925072991301", size = Vector3.new(5.00, 4.21, 4.85) },
-	SHROOMS = { mesh = "rbxassetid://130822987044504", tex = "rbxassetid://128593386257525", size = Vector3.new(2.52, 3.00, 3.02) },
-	VERTEBRA = { mesh = "rbxassetid://134075089674530", tex = "rbxassetid://114885826516165", size = Vector3.new(4.31, 4.00, 4.31) },
-	NEST = { mesh = "rbxassetid://117090663428529", tex = "rbxassetid://72630042741257", size = Vector3.new(10.82, 7.46, 11.00) },
-	POD = { mesh = "rbxassetid://128575161451927", tex = "rbxassetid://123339923204332", size = Vector3.new(2.47, 4.00, 2.47) },
+	DROPSHIP = {
+		mesh = "rbxassetid://80290448750003",
+		tex = "rbxassetid://116574695486126",
+		size = Vector3.new(10.11, 3.76, 10.00),
+	},
+	CRYSTALS = {
+		mesh = "rbxassetid://112145949782550",
+		tex = "rbxassetid://136220619906967",
+		size = Vector3.new(14.00, 16.33, 13.87),
+	},
+	SKULL = {
+		mesh = "rbxassetid://82192057619826",
+		tex = "rbxassetid://81798771343243",
+		size = Vector3.new(33.47, 32.00, 34.13),
+	},
+	SPIRE = {
+		mesh = "rbxassetid://94986255398164",
+		tex = "rbxassetid://126474191942050",
+		size = Vector3.new(13.82, 29.45, 14.00),
+	},
+	CORAL = {
+		mesh = "rbxassetid://92825752917091",
+		tex = "rbxassetid://127925072991301",
+		size = Vector3.new(5.00, 4.21, 4.85),
+	},
+	SHROOMS = {
+		mesh = "rbxassetid://130822987044504",
+		tex = "rbxassetid://128593386257525",
+		size = Vector3.new(2.52, 3.00, 3.02),
+	},
+	VERTEBRA = {
+		mesh = "rbxassetid://134075089674530",
+		tex = "rbxassetid://114885826516165",
+		size = Vector3.new(4.31, 4.00, 4.31),
+	},
+	NEST = {
+		mesh = "rbxassetid://117090663428529",
+		tex = "rbxassetid://72630042741257",
+		size = Vector3.new(10.82, 7.46, 11.00),
+	},
+	POD = {
+		mesh = "rbxassetid://128575161451927",
+		tex = "rbxassetid://123339923204332",
+		size = Vector3.new(2.47, 4.00, 2.47),
+	},
 	-- DD-062: old-world tesla towers instead of the alien spore pylons
-	PYLON = { mesh = "rbxassetid://89110031400162", tex = "rbxassetid://103373434637158", size = Vector3.new(4.96, 7.46, 5.00) },
+	PYLON = {
+		mesh = "rbxassetid://89110031400162",
+		tex = "rbxassetid://103373434637158",
+		size = Vector3.new(4.96, 7.46, 5.00),
+	},
 	-- the Devourer (head mouth along -Z, segment ring along Z) and objective props
-	WORM_HEAD = { mesh = "rbxassetid://79671816990444", tex = "rbxassetid://105313698074617", size = Vector3.new(12.00, 11.47, 13.85) },
-	WORM_SEG = { mesh = "rbxassetid://74734924143594", tex = "rbxassetid://102711938528429", size = Vector3.new(10.00, 10.00, 5.79) },
-	ACID_MOUND = { mesh = "rbxassetid://139925648626653", tex = "rbxassetid://110939098198125", size = Vector3.new(10.00, 3.88, 8.55) },
-	NODE = { mesh = "rbxassetid://72526567722949", tex = "rbxassetid://78275345757328", size = Vector3.new(7.00, 11.88, 6.99) },
+	WORM_HEAD = {
+		mesh = "rbxassetid://79671816990444",
+		tex = "rbxassetid://105313698074617",
+		size = Vector3.new(12.00, 11.47, 13.85),
+	},
+	WORM_SEG = {
+		mesh = "rbxassetid://74734924143594",
+		tex = "rbxassetid://102711938528429",
+		size = Vector3.new(10.00, 10.00, 5.79),
+	},
+	ACID_MOUND = {
+		mesh = "rbxassetid://139925648626653",
+		tex = "rbxassetid://110939098198125",
+		size = Vector3.new(10.00, 3.88, 8.55),
+	},
+	NODE = {
+		mesh = "rbxassetid://72526567722949",
+		tex = "rbxassetid://78275345757328",
+		size = Vector3.new(7.00, 11.88, 6.99),
+	},
 	-- outpost structures
-	STING = { mesh = "rbxassetid://80090267900953", tex = "rbxassetid://103192068127186", size = Vector3.new(2.19, 5.00, 3.33) },
-	ARC = { mesh = "rbxassetid://98095369516956", tex = "rbxassetid://79042425410058", size = Vector3.new(4.46, 8.00, 4.37) },
-	MORTAR = { mesh = "rbxassetid://111403659986596", tex = "rbxassetid://139055413227105", size = Vector3.new(3.31, 5.00, 5.15) },
-	SHIELD = { mesh = "rbxassetid://76777776984180", tex = "rbxassetid://130063375754441", size = Vector3.new(3.98, 8.46, 4.00) },
+	STING = {
+		mesh = "rbxassetid://80090267900953",
+		tex = "rbxassetid://103192068127186",
+		size = Vector3.new(2.19, 5.00, 3.33),
+	},
+	ARC = {
+		mesh = "rbxassetid://98095369516956",
+		tex = "rbxassetid://79042425410058",
+		size = Vector3.new(4.46, 8.00, 4.37),
+	},
+	MORTAR = {
+		mesh = "rbxassetid://111403659986596",
+		tex = "rbxassetid://139055413227105",
+		size = Vector3.new(3.31, 5.00, 5.15),
+	},
+	SHIELD = {
+		mesh = "rbxassetid://76777776984180",
+		tex = "rbxassetid://130063375754441",
+		size = Vector3.new(3.98, 8.46, 4.00),
+	},
 	-- XP gem (drawn Neon, coloured by tier)
-	GEM = { mesh = "rbxassetid://82319770548580", tex = "rbxassetid://106570994593008", size = Vector3.new(0.62, 1.60, 0.57) },
-	HARVEST = { mesh = "rbxassetid://71957833199002", tex = "rbxassetid://137686635194541", size = Vector3.new(5.00, 4.45, 3.80) },
+	GEM = {
+		mesh = "rbxassetid://82319770548580",
+		tex = "rbxassetid://106570994593008",
+		size = Vector3.new(0.62, 1.60, 0.57),
+	},
+	HARVEST = {
+		mesh = "rbxassetid://71957833199002",
+		tex = "rbxassetid://137686635194541",
+		size = Vector3.new(5.00, 4.45, 3.80),
+	},
 	-- base stations and furniture (DD-056)
-	ARMORY = { mesh = "rbxassetid://121893845271506", tex = "rbxassetid://129955545877203", size = Vector3.new(5.94, 7.00, 3.66) },
-	BUILDDESK = { mesh = "rbxassetid://124355537983434", tex = "rbxassetid://108790107511088", size = Vector3.new(7.00, 6.50, 7.00) },
-	BEACON = { mesh = "rbxassetid://109356532071460", tex = "rbxassetid://80652932562427", size = Vector3.new(2.74, 10.00, 2.79) },
-	BOARD = { mesh = "rbxassetid://76491411634190", tex = "rbxassetid://88214790030886", size = Vector3.new(6.46, 7.00, 1.84) },
-	RADAR = { mesh = "rbxassetid://89625350262556", tex = "rbxassetid://73147736121457", size = Vector3.new(6.00, 8.43, 4.85) },
-	FLOODLIGHT = { mesh = "rbxassetid://116061092931530", tex = "rbxassetid://91763926511926", size = Vector3.new(3.00, 4.50, 1.20) },
-	CRATES = { mesh = "rbxassetid://94138031272825", tex = "rbxassetid://136163660888408", size = Vector3.new(3.50, 4.00, 3.32) },
-	HABITAT = { mesh = "rbxassetid://134465806873246", tex = "rbxassetid://116198100759129", size = Vector3.new(7.44, 3.70, 7.00) },
+	ARMORY = {
+		mesh = "rbxassetid://121893845271506",
+		tex = "rbxassetid://129955545877203",
+		size = Vector3.new(5.94, 7.00, 3.66),
+	},
+	BUILDDESK = {
+		mesh = "rbxassetid://124355537983434",
+		tex = "rbxassetid://108790107511088",
+		size = Vector3.new(7.00, 6.50, 7.00),
+	},
+	BEACON = {
+		mesh = "rbxassetid://109356532071460",
+		tex = "rbxassetid://80652932562427",
+		size = Vector3.new(2.74, 10.00, 2.79),
+	},
+	BOARD = {
+		mesh = "rbxassetid://76491411634190",
+		tex = "rbxassetid://88214790030886",
+		size = Vector3.new(6.46, 7.00, 1.84),
+	},
+	RADAR = {
+		mesh = "rbxassetid://89625350262556",
+		tex = "rbxassetid://73147736121457",
+		size = Vector3.new(6.00, 8.43, 4.85),
+	},
+	FLOODLIGHT = {
+		mesh = "rbxassetid://116061092931530",
+		tex = "rbxassetid://91763926511926",
+		size = Vector3.new(3.00, 4.50, 1.20),
+	},
+	CRATES = {
+		mesh = "rbxassetid://94138031272825",
+		tex = "rbxassetid://136163660888408",
+		size = Vector3.new(3.50, 4.00, 3.32),
+	},
+	HABITAT = {
+		mesh = "rbxassetid://134465806873246",
+		tex = "rbxassetid://116198100759129",
+		size = Vector3.new(7.44, 3.70, 7.00),
+	},
 	-- the shelter in the grove (DD-057)
-	SHELTER = { mesh = "rbxassetid://72863952493813", tex = "rbxassetid://98774809571481", size = Vector3.new(13.43, 10.00, 9.88) },
-	OAK = { mesh = "rbxassetid://85741782673464", tex = "rbxassetid://72414915952681", size = Vector3.new(16.00, 18.09, 14.86) },
-	BIRCH = { mesh = "rbxassetid://95251548212501", tex = "rbxassetid://107780517233658", size = Vector3.new(9.00, 10.29, 7.91) },
-	BUSH = { mesh = "rbxassetid://131228805977078", tex = "rbxassetid://121191056187020", size = Vector3.new(3.45, 3.50, 3.39) },
-	RUIN_WALL = { mesh = "rbxassetid://120281890088193", tex = "rbxassetid://140554157908571", size = Vector3.new(7.92, 5.02, 3.00) },
-	CAR_WRECK = { mesh = "rbxassetid://114241734504890", tex = "rbxassetid://115583847011097", size = Vector3.new(3.08, 2.61, 5.00) },
-	GENERATOR = { mesh = "rbxassetid://78569986644475", tex = "rbxassetid://120462046279033", size = Vector3.new(1.92, 4.00, 3.48) },
-	WORKBENCH = { mesh = "rbxassetid://108049539930078", tex = "rbxassetid://94143747733396", size = Vector3.new(3.47, 5.00, 2.76) },
-	RADIO = { mesh = "rbxassetid://80968043748132", tex = "rbxassetid://130421780513354", size = Vector3.new(5.99, 6.64, 4.00) },
-	RUBBLE = { mesh = "rbxassetid://136407996252517", tex = "rbxassetid://75414344452594", size = Vector3.new(5.15, 1.86, 5.00) },
-	GARDEN = { mesh = "rbxassetid://97951323835600", tex = "rbxassetid://119584403913449", size = Vector3.new(4.22, 4.00, 2.43) },
-	TANK_FRAME = { mesh = "rbxassetid://76141219891860", tex = "rbxassetid://133587076996859", size = Vector3.new(5.00, 7.73, 4.72) },
-	SHELF = { mesh = "rbxassetid://82018081089569", tex = "rbxassetid://116668348407983", size = Vector3.new(3.91, 4.21, 2.00) },
-	PLINTH = { mesh = "rbxassetid://123821428304518", tex = "rbxassetid://83838900429311", size = Vector3.new(4.04, 2.00, 4.05) },
+	SHELTER = {
+		mesh = "rbxassetid://72863952493813",
+		tex = "rbxassetid://98774809571481",
+		size = Vector3.new(13.43, 10.00, 9.88),
+	},
+	OAK = {
+		mesh = "rbxassetid://85741782673464",
+		tex = "rbxassetid://72414915952681",
+		size = Vector3.new(16.00, 18.09, 14.86),
+	},
+	BIRCH = {
+		mesh = "rbxassetid://95251548212501",
+		tex = "rbxassetid://107780517233658",
+		size = Vector3.new(9.00, 10.29, 7.91),
+	},
+	BUSH = {
+		mesh = "rbxassetid://131228805977078",
+		tex = "rbxassetid://121191056187020",
+		size = Vector3.new(3.45, 3.50, 3.39),
+	},
+	RUIN_WALL = {
+		mesh = "rbxassetid://120281890088193",
+		tex = "rbxassetid://140554157908571",
+		size = Vector3.new(7.92, 5.02, 3.00),
+	},
+	CAR_WRECK = {
+		mesh = "rbxassetid://114241734504890",
+		tex = "rbxassetid://115583847011097",
+		size = Vector3.new(3.08, 2.61, 5.00),
+	},
+	GENERATOR = {
+		mesh = "rbxassetid://78569986644475",
+		tex = "rbxassetid://120462046279033",
+		size = Vector3.new(1.92, 4.00, 3.48),
+	},
+	WORKBENCH = {
+		mesh = "rbxassetid://108049539930078",
+		tex = "rbxassetid://94143747733396",
+		size = Vector3.new(3.47, 5.00, 2.76),
+	},
+	RADIO = {
+		mesh = "rbxassetid://80968043748132",
+		tex = "rbxassetid://130421780513354",
+		size = Vector3.new(5.99, 6.64, 4.00),
+	},
+	RUBBLE = {
+		mesh = "rbxassetid://136407996252517",
+		tex = "rbxassetid://75414344452594",
+		size = Vector3.new(5.15, 1.86, 5.00),
+	},
+	GARDEN = {
+		mesh = "rbxassetid://97951323835600",
+		tex = "rbxassetid://119584403913449",
+		size = Vector3.new(4.22, 4.00, 2.43),
+	},
+	TANK_FRAME = {
+		mesh = "rbxassetid://76141219891860",
+		tex = "rbxassetid://133587076996859",
+		size = Vector3.new(5.00, 7.73, 4.72),
+	},
+	SPECIMEN_FRAME = {
+		mesh = "rbxassetid://79165134563393",
+		tex = "rbxassetid://129633240664066",
+		size = Vector3.new(5.54, 8.34, 5.20),
+	},
+	SHELF = {
+		mesh = "rbxassetid://82018081089569",
+		tex = "rbxassetid://116668348407983",
+		size = Vector3.new(3.91, 4.21, 2.00),
+	},
+	PLINTH = {
+		mesh = "rbxassetid://123821428304518",
+		tex = "rbxassetid://83838900429311",
+		size = Vector3.new(4.04, 2.00, 4.05),
+	},
 }
 
 -- Swarm species (DD-048): segmented generated creatures, one mesh per animated piece. Coordinates are
@@ -72,11 +265,40 @@ Art.Meshes = {
 local function cr(rows)
 	local parts = {}
 	for _, r in rows do
-		table.insert(parts, { name = r[1], mesh = "rbxassetid://" .. r[2], tex = "rbxassetid://" .. r[3], size = r[4], pos = r[5] })
+		table.insert(
+			parts,
+			{ name = r[1], mesh = "rbxassetid://" .. r[2], tex = "rbxassetid://" .. r[3], size = r[4], pos = r[5] }
+		)
 	end
 	return parts
 end
 local V = Vector3.new
+
+-- DD-067: grounded industrial machinery. Segments retain their measured offsets; never lay out
+-- generated parts independently using their bounding boxes (that tears an assembled model apart).
+Art.Industrial = {
+	DRILL = cr({
+		{
+			"housing",
+			"88063151636192",
+			"118558142547047",
+			V(8.45125, 10.29501, 9.04447),
+			V(-0.00597, 9.85236, -0.50059),
+		},
+		{ "legs", "86783874725789", "113628954193147", V(10.02315, 5.57642, 10.05631), V(0.00010, 2.78807, 0) },
+		{ "auger", "72319230492343", "97605968194894", V(1.74580, 3.69208, 1.71290), V(-0.00867, 2.97051, -0.00125) },
+	}),
+	NODE = cr({
+		{ "cabinet", "83804536927279", "86907064478165", V(5.09525, 7, 3.30507), V(0, 3.5, 0.49693) },
+		{ "roots", "138280684010130", "74804489985162", V(4.94228, 4.66311, 2.24556), V(0.06804, 3.08046, -1.02664) },
+		{ "sac", "94565925980616", "123065834638915", V(2.89150, 3.57622, 3.20238), V(-0.00386, 3.12746, 0.23627) },
+	}),
+}
+for key, parts in Art.Industrial do
+	for i, p in parts do
+		Art.Meshes["IND_" .. key .. "_" .. i] = { mesh = p.mesh, tex = p.tex, size = p.size }
+	end
+end
 
 Art.Creatures = {
 	RUNNER = cr({

@@ -640,6 +640,10 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 				local metal = Color3.fromRGB(70, 74, 80)
 				local brass = Color3.fromRGB(196, 150, 70)
 				local holder = new("Model", { Name = "Tank", Parent = sp.holder })
+				local frame = artModel("SPECIMEN_FRAME", 8.34, base, holder)
+				if frame then
+					frame.Name = "SpecimenFrame"
+				end
 				local function cyl(
 					name: string,
 					h: number,
@@ -662,14 +666,18 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 					c.CastShadow = transparency == nil
 					return c
 				end
-				cyl("Plinth", 1.2, 4.6, 0.6, metal, Enum.Material.DiamondPlate)
-				cyl("Rim", 0.25, 4.3, 1.3, brass, Enum.Material.Metal)
+				if not frame then
+					cyl("Plinth", 1.2, 4.6, 0.6, metal, Enum.Material.DiamondPlate)
+					cyl("Rim", 0.25, 4.3, 1.3, brass, Enum.Material.Metal)
+				end
 				local glass = cyl("Glass", 5.4, 3.8, 4.1, Color3.fromRGB(200, 236, 228), Enum.Material.Glass, 0.62)
 				local liquid = cyl("Liquid", 4.9, 3.5, 3.9, Color3.fromRGB(120, 255, 170), Enum.Material.Neon, 0.82)
-				cyl("RimTop", 0.25, 4.1, 6.9, brass, Enum.Material.Metal)
-				cyl("Cap", 0.9, 4.3, 7.4, metal, Enum.Material.Metal)
-				cyl("Valve", 0.6, 1.2, 8.1, brass, Enum.Material.Metal)
-				for k = 0, 1 do
+				if not frame then
+					cyl("RimTop", 0.25, 4.1, 6.9, brass, Enum.Material.Metal)
+					cyl("Cap", 0.9, 4.3, 7.4, metal, Enum.Material.Metal)
+					cyl("Valve", 0.6, 1.2, 8.1, brass, Enum.Material.Metal)
+				end
+				for k = 0, (if frame then -1 else 1) do
 					local pipe = part({
 						Name = "Pipe",
 						Size = Vector3.new(0.35, 7.5, 0.35),
@@ -756,6 +764,23 @@ updateTank = function()
 		return
 	end
 	local stage = sampleStage(labSample)
+	-- A permanent collection: fill rises continuously between research milestones, including
+	-- within a stage. DNA crafting never drains this liquid or removes the specimen.
+	local thresholds = Defs.Research[SAMPLE_KIND]
+	local stops = { 0.06, 0.32, 0.65, 1 }
+	local fill = 1
+	local previous = 0
+	for i, target in thresholds do
+		if labSample < target then
+			local alpha = math.clamp((labSample - previous) / (target - previous), 0, 1)
+			fill = stops[i] + (stops[i + 1] - stops[i]) * alpha
+			break
+		end
+		previous = target
+	end
+	local height = 4.9 * fill
+	tank.liquid.Size = Vector3.new(height, 3.5, 3.5)
+	tank.liquid.CFrame = tank.base * CFrame.new(0, 1.45 + height / 2, 0) * CFrame.Angles(0, 0, math.rad(90))
 	if labShown == stage then
 		return
 	end
@@ -1135,7 +1160,6 @@ function Base.setShowcase(entry)
 	local n = if entry and entry.sample then entry.sample else 0
 	if n ~= labSample then
 		labSample = n
-		labShown = nil
 		updateTank()
 	end
 	local key = if entry

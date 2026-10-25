@@ -18,7 +18,10 @@ local Controls = {
 	aimX = 0,
 	aimZ = 1,
 	firing = false,
-	device = if Settings.touch then "touch" elseif UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled then "gamepad" else "pc",
+	device = if Settings.touch
+		then "touch"
+		elseif UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled then "gamepad"
+		else "pc",
 	cursor = Vector2.new(0, 0),
 	enabled = false,
 	actions = {}, -- name -> callback
@@ -29,6 +32,28 @@ local padFire = false
 local touchAim: InputObject? = nil
 local touchVec = Vector2.zero
 local gui, pad, knob, buttons
+local touchLayoutSize = Vector2.zero
+
+-- Keep the aim pad and abilities in the right thumb's corner on short landscape screens.
+-- The original fixed offsets put Dash over the vitals/tutorial and Reload near the top edge.
+local function layoutTouch()
+	local size = workspace.CurrentCamera.ViewportSize
+	if size == touchLayoutSize then
+		return
+	end
+	touchLayoutSize = size
+	local k = math.clamp(size.Y / 600, 0.68, 1)
+	pad.Position = UDim2.new(1, -150 * k, 1, -150 * k)
+	pad.Size = UDim2.fromOffset(200 * k, 200 * k)
+	knob.Size = UDim2.fromOffset(74 * k, 74 * k)
+	for _, b in buttons do
+		local p = b.position
+		b.button.Position = UDim2.new(p.X.Scale, p.X.Offset * k, p.Y.Scale, p.Y.Offset * k)
+		local diameter = math.max(44, b.size * k)
+		b.button.Size = UDim2.fromOffset(diameter, diameter)
+		b.icon.Size = UDim2.fromOffset(diameter * 0.46, diameter * 0.46)
+	end
+end
 
 local function act(name: string)
 	local fn = Controls.actions[name]
@@ -54,13 +79,37 @@ local function makeButton(name: string, label: string, sub: string, pos: UDim2, 
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.fromScale(0.5, 0.42)
 	ic.Parent = b
-	local subLabel = Theme.label(sub, { Name = "Sub", Size = UDim2.fromScale(1, 0.22), Position = UDim2.fromScale(0, 0.66), FontFace = Theme.F.num, TextScaled = true, TextColor3 = C.dim, Parent = b })
-	local fill = new("Frame", { Name = "Cooldown", Size = UDim2.fromScale(1, 0), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1), BackgroundColor3 = color, BackgroundTransparency = 0.75, Corner = UDim.new(1, 0), Parent = b })
-	return { button = b, sub = subLabel, fill = fill, color = color }
+	local subLabel = Theme.label(sub, {
+		Name = "Sub",
+		Size = UDim2.fromScale(1, 0.22),
+		Position = UDim2.fromScale(0, 0.66),
+		FontFace = Theme.F.num,
+		TextScaled = true,
+		TextColor3 = C.dim,
+		Parent = b,
+	})
+	local fill = new("Frame", {
+		Name = "Cooldown",
+		Size = UDim2.fromScale(1, 0),
+		Position = UDim2.fromScale(0, 1),
+		AnchorPoint = Vector2.new(0, 1),
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.75,
+		Corner = UDim.new(1, 0),
+		Parent = b,
+	})
+	return { button = b, sub = subLabel, fill = fill, color = color, size = size, position = pos, icon = ic }
 end
 
 function Controls.init(playerGui: PlayerGui)
-	gui = new("ScreenGui", { Name = "SwarmTouch", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 5, Enabled = false, Parent = playerGui })
+	gui = new("ScreenGui", {
+		Name = "SwarmTouch",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = 5,
+		Enabled = false,
+		Parent = playerGui,
+	})
 	pad = new("Frame", {
 		Name = "AimPad",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -123,7 +172,11 @@ function Controls.init(playerGui: PlayerGui)
 		-- Studio phone emulation keeps the touch layout while the developer's mouse moves around.
 		if t == Enum.UserInputType.Touch or (Settings.touch and workspace:GetAttribute("DevTouch")) then
 			Controls.device = "touch"
-		elseif t == Enum.UserInputType.Keyboard or t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.MouseMovement then
+		elseif
+			t == Enum.UserInputType.Keyboard
+			or t == Enum.UserInputType.MouseButton1
+			or t == Enum.UserInputType.MouseMovement
+		then
 			Controls.device = "pc"
 		elseif t.Name:find("Gamepad") then
 			Controls.device = "gamepad"
@@ -134,7 +187,12 @@ function Controls.init(playerGui: PlayerGui)
 		local key = input.KeyCode
 		if t == Enum.UserInputType.MouseButton1 then
 			mouseDown = true
-		elseif key == Enum.KeyCode.Space or key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.ButtonB or key == Enum.KeyCode.ButtonL2 then
+		elseif
+			key == Enum.KeyCode.Space
+			or key == Enum.KeyCode.LeftShift
+			or key == Enum.KeyCode.ButtonB
+			or key == Enum.KeyCode.ButtonL2
+		then
 			act("dash")
 		elseif key == Enum.KeyCode.Q or key == Enum.KeyCode.ButtonY then
 			act("overdrive")
@@ -225,8 +283,18 @@ end
 -- Call every frame while playing. rootPos = character root.
 -- immersive = third/first-person view: aim follows the camera (fwdX/fwdZ), sticks/drag turn the camera
 -- via Controls.look (read by CameraRig.processInput).
-function Controls.update(rootPos: Vector3, canFire: boolean, range: number, immersive: boolean?, fwdX: number?, fwdZ: number?)
+function Controls.update(
+	rootPos: Vector3,
+	canFire: boolean,
+	range: number,
+	immersive: boolean?,
+	fwdX: number?,
+	fwdZ: number?
+)
 	local device = Controls.device
+	if device == "touch" then
+		layoutTouch()
+	end
 	gui.Enabled = Controls.enabled and device == "touch"
 	UserInputService.MouseIconEnabled = not Controls.enabled or (device ~= "pc") or false
 	if immersive and device == "pc" and Controls.enabled then

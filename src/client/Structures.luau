@@ -23,15 +23,35 @@ local function blk(s, size, cf, color, mat, role)
 	table.insert(s, { size = size, cf = cf, color = color, mat = mat or M.SmoothPlastic, role = role })
 end
 local function ball(s, d, cf, color, mat, role)
-	table.insert(s, { size = Vector3.one * d, cf = cf, color = color, mat = mat or M.SmoothPlastic, shape = Enum.PartType.Ball, role = role })
+	table.insert(s, {
+		size = Vector3.one * d,
+		cf = cf,
+		color = color,
+		mat = mat or M.SmoothPlastic,
+		shape = Enum.PartType.Ball,
+		role = role,
+	})
 end
 -- vertical cylinder centred at y
 local function cyl(s, d, h, x, y, z, color, mat, role)
-	table.insert(s, { size = Vector3.new(h, d, d), cf = P(x, y, z) * A(0, 0, math.pi / 2), color = color, mat = mat or M.SmoothPlastic, shape = Enum.PartType.Cylinder, role = role })
+	table.insert(s, {
+		size = Vector3.new(h, d, d),
+		cf = P(x, y, z) * A(0, 0, math.pi / 2),
+		color = color,
+		mat = mat or M.SmoothPlastic,
+		shape = Enum.PartType.Cylinder,
+		role = role,
+	})
 end
 -- cylinder along local -Z (barrels)
 local function barrel(s, d, len, x, y, z, color, mat)
-	table.insert(s, { size = Vector3.new(len, d, d), cf = P(x, y, z - len / 2) * A(0, math.pi / 2, 0), color = color, mat = mat or M.Metal, shape = Enum.PartType.Cylinder })
+	table.insert(s, {
+		size = Vector3.new(len, d, d),
+		cf = P(x, y, z - len / 2) * A(0, math.pi / 2, 0),
+		color = color,
+		mat = mat or M.Metal,
+		shape = Enum.PartType.Cylinder,
+	})
 end
 
 local function base(s, accent: Color3, d: number)
@@ -73,12 +93,41 @@ function Structures.specs(id: string, lvl: number, hostile: boolean?)
 	local hull = if hostile then rgb(150, 60, 70) else HULL
 	local s = {}
 	lvl = math.clamp(lvl or 1, 1, 3)
+	if id == "CORE" then
+		local industrial = require(Shared.Art).Industrial.DRILL
+		local templates = game.ReplicatedStorage:FindFirstChild("ArtTemplates")
+		local complete = templates ~= nil
+		for i in industrial do
+			complete = complete and templates:FindFirstChild("IND_DRILL_" .. i) ~= nil
+		end
+		if complete then
+			for i, piece in industrial do
+				local tpl = meshTemplate("IND_DRILL_" .. i, hostile)
+				table.insert(s, {
+					mesh = tpl,
+					size = piece.size * 1.25,
+					cf = P(piece.pos * 1.25),
+					color = if hostile then HOSTILE else rgb(113, 127, 79),
+					mat = M.Metal,
+					role = "body",
+				})
+			end
+			return s
+		end
+	end
 	local meshed = MESHED[id]
 	local tpl = meshed and meshTemplate(id, hostile)
 	if tpl then
 		base(s, accent, 4.4)
 		local size = tpl.Size * (meshed.h * (0.9 + lvl * 0.1) / tpl.Size.Y)
-		table.insert(s, { size = size, cf = P(0, 0.7 + size.Y / 2, 0) * A(0, meshed.yaw, 0), color = hull, mat = M.SmoothPlastic, mesh = tpl, role = "body" })
+		table.insert(s, {
+			size = size,
+			cf = P(0, 0.7 + size.Y / 2, 0) * A(0, meshed.yaw, 0),
+			color = hull,
+			mat = M.SmoothPlastic,
+			mesh = tpl,
+			role = "body",
+		})
 		if meshed.orb then
 			ball(s, size.X * 0.32, P(0, 0.7 + size.Y * meshed.orb, 0), accent, M.Neon, "glow")
 			s[#s].transparency = 0.45
@@ -115,7 +164,13 @@ function Structures.specs(id: string, lvl: number, hostile: boolean?)
 	elseif id == "MORTAR" then
 		base(s, accent, 4.8)
 		blk(s, Vector3.new(3, 1.2, 3), P(0, 1.3, 0), hull, M.SmoothPlastic, "body")
-		table.insert(s, { size = Vector3.new(3.4, 1.5 + lvl * 0.15, 1.5 + lvl * 0.15), cf = P(0, 2.6, -0.6) * A(math.rad(55), 0, 0) * A(0, math.pi / 2, 0), color = DARK, mat = M.Metal, shape = Enum.PartType.Cylinder })
+		table.insert(s, {
+			size = Vector3.new(3.4, 1.5 + lvl * 0.15, 1.5 + lvl * 0.15),
+			cf = P(0, 2.6, -0.6) * A(math.rad(55), 0, 0) * A(0, math.pi / 2, 0),
+			color = DARK,
+			mat = M.Metal,
+			shape = Enum.PartType.Cylinder,
+		})
 		ball(s, 1.2, P(0, 3.6, -1.6), accent, M.Neon, "eye")
 		for _, x in { -1.1, 1.1 } do
 			blk(s, Vector3.new(0.3, 1.6, 1.8), P(x, 2.0, 0), accent, M.Metal)
@@ -125,9 +180,21 @@ function Structures.specs(id: string, lvl: number, hostile: boolean?)
 		blk(s, Vector3.new(0.9, 6 + lvl, 0.9), P(0, 3.5 + lvl / 2, 0), hull, M.SmoothPlastic, "body")
 		for k = 0, 2 do
 			local a = k / 3 * math.pi * 2
-			blk(s, Vector3.new(0.2, 4 + lvl * 0.6, 1.4), P(math.cos(a) * 0.9, 3.4, math.sin(a) * 0.9) * A(0, -a, 0), accent, M.Neon)
+			blk(
+				s,
+				Vector3.new(0.2, 4 + lvl * 0.6, 1.4),
+				P(math.cos(a) * 0.9, 3.4, math.sin(a) * 0.9) * A(0, -a, 0),
+				accent,
+				M.Neon
+			)
 		end
-		table.insert(s, { size = Vector3.one * 1.6, cf = P(0, 7.5 + lvl, 0) * A(math.rad(45), 0, math.rad(45)), color = accent, mat = M.Neon, role = "glow" })
+		table.insert(s, {
+			size = Vector3.one * 1.6,
+			cf = P(0, 7.5 + lvl, 0) * A(math.rad(45), 0, math.rad(45)),
+			color = accent,
+			mat = M.Neon,
+			role = "glow",
+		})
 	elseif id == "CRYO" or id == "ACID" then
 		local r = def.radius[lvl]
 		cyl(s, r * 2, 0.08, 0, 0.06, 0, accent, M.Neon)
@@ -144,23 +211,52 @@ function Structures.specs(id: string, lvl: number, hostile: boolean?)
 			cyl(s, 1.6, 1.2, 0, 0.6, 0, rgb(70, 90, 40), M.Slate)
 			ball(s, 1.1, P(0, 1.3, 0), accent, M.Neon)
 		else
-			table.insert(s, { size = Vector3.new(1, 2.4, 1), cf = P(0, 1.2, 0) * A(0, math.rad(45), 0), color = accent, mat = M.Glass, transparency = 0.2 })
+			table.insert(s, {
+				size = Vector3.new(1, 2.4, 1),
+				cf = P(0, 1.2, 0) * A(0, math.rad(45), 0),
+				color = accent,
+				mat = M.Glass,
+				transparency = 0.2,
+			})
 		end
 	elseif id == "HARVEST" then
 		base(s, accent, 4.4)
 		for k = 0, 2 do
 			local a = k / 3 * math.pi * 2
-			table.insert(s, { size = Vector3.new(0.5, 5.2, 0.5), cf = P(math.cos(a) * 1.4, 2.6, math.sin(a) * 1.4) * A(0, -a, 0) * A(0, 0, math.rad(15)), color = DARK, mat = M.Metal })
+			table.insert(s, {
+				size = Vector3.new(0.5, 5.2, 0.5),
+				cf = P(math.cos(a) * 1.4, 2.6, math.sin(a) * 1.4) * A(0, -a, 0) * A(0, 0, math.rad(15)),
+				color = DARK,
+				mat = M.Metal,
+			})
 		end
 		blk(s, Vector3.new(1.8, 1, 1.8), P(0, 5.2, 0), hull)
-		table.insert(s, { size = Vector3.new(1.3, 2.6 + lvl * 0.5, 1.3), cf = P(0, 1.8, 0) * A(0, math.rad(45), 0), color = accent, mat = M.Neon, role = "glow" })
+		table.insert(s, {
+			size = Vector3.new(1.3, 2.6 + lvl * 0.5, 1.3),
+			cf = P(0, 1.8, 0) * A(0, math.rad(45), 0),
+			color = accent,
+			mat = M.Neon,
+			role = "glow",
+		})
 	elseif id == "CORE" then
 		-- an enemy extractor: our rig in hostile red over a crystal
 		cyl(s, 15, 0.5, 0, 0.25, 0, DARK, M.Basalt, "body")
-		table.insert(s, { size = Vector3.new(5, 15, 5), cf = P(0, 7.5, 0) * A(0, math.rad(45), math.rad(5)), color = rgb(255, 80, 120), mat = M.Neon, role = "body", transparency = 0.25 })
+		table.insert(s, {
+			size = Vector3.new(5, 15, 5),
+			cf = P(0, 7.5, 0) * A(0, math.rad(45), math.rad(5)),
+			color = rgb(255, 80, 120),
+			mat = M.Neon,
+			role = "body",
+			transparency = 0.25,
+		})
 		for k = 0, 2 do
 			local a = k / 3 * math.pi * 2 + math.rad(30)
-			table.insert(s, { size = Vector3.new(1.1, 20, 1.1), cf = P(math.cos(a) * 3.8, 9.6, math.sin(a) * 3.8) * A(0, -a, 0) * A(0, 0, math.rad(-20)), color = rgb(150, 60, 70), mat = M.Metal })
+			table.insert(s, {
+				size = Vector3.new(1.1, 20, 1.1),
+				cf = P(math.cos(a) * 3.8, 9.6, math.sin(a) * 3.8) * A(0, -a, 0) * A(0, 0, math.rad(-20)),
+				color = rgb(150, 60, 70),
+				mat = M.Metal,
+			})
 		end
 		blk(s, Vector3.new(4.5, 2.6, 4.5), P(0, 19, 0), HOSTILE, M.Metal)
 		for k = 1, 3 do
@@ -178,7 +274,10 @@ function Structures.model(id: string, lvl: number, hostile: boolean?): Model
 	local specs = {}
 	for _, sp in Structures.specs(id, lvl, hostile) do
 		table.insert(specs, {
-			shape = if sp.shape == Enum.PartType.Ball then "Ball" elseif sp.shape == Enum.PartType.Cylinder then "Cylinder" else "Block",
+			shape = if sp.shape == Enum.PartType.Ball
+				then "Ball"
+				elseif sp.shape == Enum.PartType.Cylinder then "Cylinder"
+				else "Block",
 			size = sp.size,
 			cf = sp.cf,
 			color = sp.color,

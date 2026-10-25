@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "date": "2026-10-25",
+  "drill": {
+    "source": "Roblox Studio mesh generation",
+    "modelAssetId": "102168049935670",
+    "triangles": 3156,
+    "previousTriangles": 7618,
+    "meshes": ["88063151636192", "86783874725789", "72319230492343"]
+  },
+  "infestedTransformer": {
+    "source": "Roblox Studio mesh generation",
+    "modelAssetId": "136520414975992",
+    "triangles": 1792,
+    "previousTriangles": 3232,
+    "meshes": ["83804536927279", "138280684010130", "94565925980616"]
+  },
+  "specimenFrame": {
+    "source": "Original Blender model; build_frame.py",
+    "triangles": 1300,
+    "mesh": "79165134563393",
+    "texture": "129633240664066",
+    "nativeStudSize": [5.54, 8.34, 5.2]
+  },
+  "verification": "Triangle counts measured through EditableMesh:GetFaces in Studio; original frame also measured in Blender. See docs/CODEX_ART_COMBAT_PASS.md."
+}

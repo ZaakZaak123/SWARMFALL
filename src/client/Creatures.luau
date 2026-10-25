@@ -113,11 +113,12 @@ end
 
 BLUEPRINT[1] = function() -- Runner
 	-- the generated species first (DD-048): the Blender runner's mesh assets no longer render
-	local gen = Creatures.species and Creatures.species("RUNNER", {
-		scale = 1.6,
-		colors = { default = rgb(235, 110, 50) },
-		eyes = { piece = "body", color = rgb(255, 230, 90), size = 0.15, up = -0.05, apart = 0.14 },
-	})
+	local gen = Creatures.species
+		and Creatures.species("RUNNER", {
+			scale = 1.6,
+			colors = { default = rgb(235, 110, 50) },
+			eyes = { piece = "body", color = rgb(255, 230, 90), size = 0.15, up = -0.05, apart = 0.14 },
+		})
 	if gen then
 		return gen, 1.0
 	end
@@ -245,17 +246,14 @@ local function bulwark(scale: number, elite: boolean)
 		)
 	end
 	if elite then
-		table.insert(
-			s,
-			{
-				size = Vector3.one * 1.7,
-				cf = P(0, 4.6, 1.4),
-				color = trim,
-				mat = M.Neon,
-				shape = Enum.PartType.Ball,
-				role = "glow",
-			}
-		)
+		table.insert(s, {
+			size = Vector3.one * 1.7,
+			cf = P(0, 4.6, 1.4),
+			color = trim,
+			mat = M.Neon,
+			shape = Enum.PartType.Ball,
+			role = "glow",
+		})
 		for k = -1, 1 do
 			table.insert(s, blk(Vector3.new(0.5, 1.6, 0.5), P(k * 1.3, 5.3, -1.4) * A(0, 0, -k * 0.25), trim, M.Neon))
 		end
@@ -286,7 +284,16 @@ BLUEPRINT[6] = function() -- Hive
 	local nest = art and art:FindFirstChild("NEST")
 	if nest then
 		local size = nest.Size * (7.5 / nest.Size.Y)
-		local s = { { size = size, cf = P(0, size.Y / 2 - 0.3, 0), color = flesh, mat = M.SmoothPlastic, mesh = nest, role = "body" } }
+		local s = {
+			{
+				size = size,
+				cf = P(0, size.Y / 2 - 0.3, 0),
+				color = flesh,
+				mat = M.SmoothPlastic,
+				mesh = nest,
+				role = "body",
+			},
+		}
 		for i = 1, 6 do
 			local a = i / 6 * math.pi * 2
 			table.insert(s, {
@@ -308,17 +315,14 @@ BLUEPRINT[6] = function() -- Hive
 	}
 	for i = 1, 6 do
 		local a = i / 6 * math.pi * 2
-		table.insert(
-			s,
-			{
-				size = Vector3.one * 1.1,
-				cf = P(math.cos(a) * 3.6, 3 + (i % 3), math.sin(a) * 3.6),
-				color = pore,
-				mat = M.Neon,
-				shape = Enum.PartType.Ball,
-				role = "sac",
-			}
-		)
+		table.insert(s, {
+			size = Vector3.one * 1.1,
+			cf = P(math.cos(a) * 3.6, 3 + (i % 3), math.sin(a) * 3.6),
+			color = pore,
+			mat = M.Neon,
+			shape = Enum.PartType.Ball,
+			role = "sac",
+		})
 	end
 	return s, 0
 end
@@ -340,17 +344,14 @@ BLUEPRINT[7] = function() -- Broodmother
 	end
 	-- weak nodes
 	for k, off in { { -3, 13.5, 2 }, { 3, 13.5, 2 }, { 0, 12.5, 8 } } do
-		table.insert(
-			s,
-			{
-				size = Vector3.one * 2.4,
-				cf = P(off[1], off[2], off[3]),
-				color = glow,
-				mat = M.Neon,
-				shape = Enum.PartType.Ball,
-				role = "node",
-			}
-		)
+		table.insert(s, {
+			size = Vector3.one * 2.4,
+			cf = P(off[1], off[2], off[3]),
+			color = glow,
+			mat = M.Neon,
+			shape = Enum.PartType.Ball,
+			role = "node",
+		})
 	end
 	-- legs: two segments each
 	for i, h in { { 1, -3, 0 }, { -1, -3, math.pi }, { 1, 4, math.pi }, { -1, 4, 0 } } do
@@ -427,20 +428,52 @@ BLUEPRINT[9] = function() -- Devourer: armored maw + 7 trailing segments (placed
 		-- the generated maw; a red glow in the throat, the weak node on its crown
 		local hs = head.Size * (13 / head.Size.X)
 		local s = {
-			{ size = hs, cf = P(0, hs.Y / 2 - 0.4, -1), color = plate, mat = M.SmoothPlastic, mesh = head, role = "body" },
+			{
+				size = hs,
+				cf = P(0, hs.Y / 2 - 0.4, -1),
+				color = plate,
+				mat = M.SmoothPlastic,
+				mesh = head,
+				role = "body",
+			},
 			blk(Vector3.new(4, 1.2, 0.3), P(0, hs.Y * 0.32, -1 - hs.Z * 0.36), eye, M.Neon, "eye"),
-			{ size = Vector3.one * 3, cf = P(0, hs.Y + 0.6, 2), color = glow, mat = M.Neon, shape = Enum.PartType.Ball, role = "node" },
+			{
+				size = Vector3.one * 3,
+				cf = P(0, hs.Y + 0.6, 2),
+				color = glow,
+				mat = M.Neon,
+				shape = Enum.PartType.Ball,
+				role = "node",
+			},
 		}
 		-- armoured rings around a dark core, trailing along the path
 		for i = 1, 7 do
 			local d = 10.5 - i * 0.7
 			local z = 6 + i * 6.5
-			table.insert(s, { size = Vector3.one * d * 0.82, cf = P(0, d / 2 - 0.5, z), color = dark, mat = M.Slate, shape = Enum.PartType.Ball, seg = i })
+			table.insert(s, {
+				size = Vector3.one * d * 0.82,
+				cf = P(0, d / 2 - 0.5, z),
+				color = dark,
+				mat = M.Slate,
+				shape = Enum.PartType.Ball,
+				seg = i,
+			})
 			local rs = ring.Size * (d / ring.Size.X)
 			rs = Vector3.new(rs.X, rs.Y, rs.Z * 1.25)
-			table.insert(s, { size = rs, cf = P(0, d / 2 - 0.5, z), color = plate, mat = M.SmoothPlastic, mesh = ring, seg = i })
+			table.insert(
+				s,
+				{ size = rs, cf = P(0, d / 2 - 0.5, z), color = plate, mat = M.SmoothPlastic, mesh = ring, seg = i }
+			)
 			if i % 2 == 1 then
-				table.insert(s, { size = Vector3.one * 1.4, cf = P(0, d + 0.2, z), color = glow, mat = M.Neon, shape = Enum.PartType.Ball, seg = i, role = "node" })
+				table.insert(s, {
+					size = Vector3.one * 1.4,
+					cf = P(0, d + 0.2, z),
+					color = glow,
+					mat = M.Neon,
+					shape = Enum.PartType.Ball,
+					seg = i,
+					role = "node",
+				})
 			end
 		end
 		return s, 0.5
@@ -470,53 +503,41 @@ BLUEPRINT[9] = function() -- Devourer: armored maw + 7 trailing segments (placed
 			blk(Vector3.new(0.9, 0.9, 3.5), P(math.cos(a) * 4.2, 5 + math.sin(a) * 4.2, -5.6) * A(0, 0, a), dark)
 		)
 	end
-	table.insert(
-		s,
-		{
-			size = Vector3.one * 3,
-			cf = P(0, 11.5, 2),
-			color = glow,
-			mat = M.Neon,
-			shape = Enum.PartType.Ball,
-			role = "node",
-		}
-	)
+	table.insert(s, {
+		size = Vector3.one * 3,
+		cf = P(0, 11.5, 2),
+		color = glow,
+		mat = M.Neon,
+		shape = Enum.PartType.Ball,
+		role = "node",
+	})
 	for i = 1, 7 do
 		local d = 10.5 - i * 0.7
-		table.insert(
-			s,
-			{
-				size = Vector3.one * d,
-				cf = P(0, d / 2 - 0.5, 6 + i * 6.5),
-				color = if i % 2 == 0 then plate else dark,
-				mat = M.Slate,
+		table.insert(s, {
+			size = Vector3.one * d,
+			cf = P(0, d / 2 - 0.5, 6 + i * 6.5),
+			color = if i % 2 == 0 then plate else dark,
+			mat = M.Slate,
+			shape = Enum.PartType.Ball,
+			seg = i,
+		})
+		table.insert(s, {
+			size = Vector3.new(d * 0.9, 1.2, 2.2),
+			cf = P(0, d - 0.6, 6 + i * 6.5),
+			color = plate,
+			mat = M.Slate,
+			seg = i,
+		})
+		if i % 2 == 1 then
+			table.insert(s, {
+				size = Vector3.one * 1.4,
+				cf = P(0, d + 0.4, 6 + i * 6.5),
+				color = glow,
+				mat = M.Neon,
 				shape = Enum.PartType.Ball,
 				seg = i,
-			}
-		)
-		table.insert(
-			s,
-			{
-				size = Vector3.new(d * 0.9, 1.2, 2.2),
-				cf = P(0, d - 0.6, 6 + i * 6.5),
-				color = plate,
-				mat = M.Slate,
-				seg = i,
-			}
-		)
-		if i % 2 == 1 then
-			table.insert(
-				s,
-				{
-					size = Vector3.one * 1.4,
-					cf = P(0, d + 0.4, 6 + i * 6.5),
-					color = glow,
-					mat = M.Neon,
-					shape = Enum.PartType.Ball,
-					seg = i,
-					role = "node",
-				}
-			)
+				role = "node",
+			})
 		end
 	end
 	return s, 0.5
@@ -534,18 +555,15 @@ BLUEPRINT[10] = function() -- Core Carrier: a steel-blue elite hauling a crackli
 			spec.color = rgb(70, 92, 120)
 		end
 	end
-	table.insert(
-		s,
-		{
-			size = Vector3.one * 3.2,
-			cf = P(0, 6.4, 1.6),
-			color = rgb(160, 235, 255),
-			mat = M.ForceField,
-			shape = Enum.PartType.Ball,
-			role = "node",
-			transparency = 0.2,
-		}
-	)
+	table.insert(s, {
+		size = Vector3.one * 3.2,
+		cf = P(0, 6.4, 1.6),
+		color = rgb(160, 235, 255),
+		mat = M.ForceField,
+		shape = Enum.PartType.Ball,
+		role = "node",
+		transparency = 0.2,
+	})
 	for k = -1, 1, 2 do
 		table.insert(
 			s,
@@ -556,6 +574,24 @@ BLUEPRINT[10] = function() -- Core Carrier: a steel-blue elite hauling a crackli
 end
 
 BLUEPRINT[11] = function() -- Power node: a crystal pylon feeding the hive, pulsing violet
+	local industrial = require(game.ReplicatedStorage.Shared.Art).Industrial.NODE
+	if art("IND_NODE_1") and art("IND_NODE_2") and art("IND_NODE_3") then
+		local specs = {}
+		for i, def in industrial do
+			table.insert(specs, {
+				mesh = art("IND_NODE_" .. i),
+				name = def.name,
+				size = def.size * 1.3,
+				cf = P(def.pos * 1.3),
+				color = if i == 3 then rgb(175, 230, 90) else rgb(106, 121, 90),
+				mat = M.SmoothPlastic,
+				role = "body",
+			})
+		end
+		-- A small living core at the cabinet opening, keeping the weak point clear from above.
+		table.insert(specs, ball(1.6, P(0, 4.3, -1.6), rgb(190, 255, 85), M.Neon, "sac"))
+		return specs, 0
+	end
 	local base, crystal, core = rgb(40, 30, 54), rgb(150, 90, 255), rgb(220, 170, 255)
 	local node = art("NODE")
 	if node then
@@ -563,11 +599,26 @@ BLUEPRINT[11] = function() -- Power node: a crystal pylon feeding the hive, puls
 		local s = {
 			{ size = ns, cf = P(0, ns.Y / 2, 0), color = crystal, mat = M.SmoothPlastic, mesh = node, role = "body" },
 			-- the pulsing heart inside the crystals
-			{ size = Vector3.new(1.1, 7, 1.1), cf = P(0, 6, 0), color = core, mat = M.Neon, role = "sac", transparency = 0.35 },
+			{
+				size = Vector3.new(1.1, 7, 1.1),
+				cf = P(0, 6, 0),
+				color = core,
+				mat = M.Neon,
+				role = "sac",
+				transparency = 0.35,
+			},
 		}
 		for i = 1, 4 do
 			local a = i / 4 * math.pi * 2 + 0.4
-			table.insert(s, blk(Vector3.new(0.4, 0.4, 5), P(math.cos(a) * 4.5, 0.25, math.sin(a) * 4.5) * A(0, -a + math.pi / 2, 0), core, M.Neon))
+			table.insert(
+				s,
+				blk(
+					Vector3.new(0.4, 0.4, 5),
+					P(math.cos(a) * 4.5, 0.25, math.sin(a) * 4.5) * A(0, -a + math.pi / 2, 0),
+					core,
+					M.Neon
+				)
+			)
 		end
 		return s, 0
 	end
@@ -617,13 +668,35 @@ BLUEPRINT[12] = function() -- Acid source: a cracked mound venting a bubbling gr
 	if mound then
 		local ms = mound.Size * (10 / mound.Size.X)
 		local s = {
-			{ size = ms, cf = P(0, ms.Y / 2 - 0.2, 0), color = rock, mat = M.SmoothPlastic, mesh = mound, role = "body" },
+			{
+				size = ms,
+				cf = P(0, ms.Y / 2 - 0.2, 0),
+				color = rock,
+				mat = M.SmoothPlastic,
+				mesh = mound,
+				role = "body",
+			},
 			-- the pool surface glows and pulses (sac), bubbles pop above it
-			{ size = Vector3.new(0.2, ms.X * 0.45, ms.Z * 0.45), cf = P(0, ms.Y * 0.86, 0) * A(0, 0, math.rad(90)), color = acid, mat = M.Neon, shape = Enum.PartType.Cylinder, role = "sac", transparency = 0.35 },
+			{
+				size = Vector3.new(0.2, ms.X * 0.45, ms.Z * 0.45),
+				cf = P(0, ms.Y * 0.86, 0) * A(0, 0, math.rad(90)),
+				color = acid,
+				mat = M.Neon,
+				shape = Enum.PartType.Cylinder,
+				role = "sac",
+				transparency = 0.35,
+			},
 		}
 		for i = 1, 5 do
 			local a = i / 5 * math.pi * 2
-			table.insert(s, { size = Vector3.one * 0.9, cf = P(math.cos(a) * 1.6, ms.Y + 0.2 + (i % 2) * 0.5, math.sin(a) * 1.6), color = acid, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac" })
+			table.insert(s, {
+				size = Vector3.one * 0.9,
+				cf = P(math.cos(a) * 1.6, ms.Y + 0.2 + (i % 2) * 0.5, math.sin(a) * 1.6),
+				color = acid,
+				mat = M.Neon,
+				shape = Enum.PartType.Ball,
+				role = "sac",
+			})
 		end
 		return s, 0
 	end
@@ -642,17 +715,14 @@ BLUEPRINT[12] = function() -- Acid source: a cracked mound venting a bubbling gr
 	}
 	for i = 1, 5 do
 		local a = i / 5 * math.pi * 2
-		table.insert(
-			s,
-			{
-				size = Vector3.one * 1.2,
-				cf = P(math.cos(a) * 3.3, 4.2 + (i % 2) * 0.8, math.sin(a) * 3.3),
-				color = acid,
-				mat = M.Neon,
-				shape = Enum.PartType.Ball,
-				role = "sac",
-			}
-		)
+		table.insert(s, {
+			size = Vector3.one * 1.2,
+			cf = P(math.cos(a) * 3.3, 4.2 + (i % 2) * 0.8, math.sin(a) * 3.3),
+			color = acid,
+			mat = M.Neon,
+			shape = Enum.PartType.Ball,
+			role = "sac",
+		})
 	end
 	for k = -1, 1, 2 do
 		table.insert(s, blk(Vector3.new(0.9, 4, 0.9), P(k * 3.2, 3, 1.5) * A(0.3, 0, k * 0.4), rock, M.Slate))
@@ -715,7 +785,15 @@ local function variant(o)
 end
 
 local function glowBall(d: number, cf: CFrame, color: Color3, role: string?, transparency: number?)
-	return { size = Vector3.one * d, cf = cf, color = color, mat = M.Neon, shape = Enum.PartType.Ball, role = role, transparency = transparency }
+	return {
+		size = Vector3.one * d,
+		cf = cf,
+		color = color,
+		mat = M.Neon,
+		shape = Enum.PartType.Ball,
+		role = role,
+		transparency = transparency,
+	}
 end
 
 BLUEPRINT[2] = function() -- Leaper: long, lean, crimson, with two glowing scythes
@@ -728,8 +806,22 @@ BLUEPRINT[2] = function() -- Leaper: long, lean, crimson, with two glowing scyth
 		legs = rgb(90, 18, 46),
 		nodule = rgb(255, 140, 210),
 		extras = {
-			leg(Vector3.new(0.22, 2.5, 0.34), P(0.75, 2.2, -1.6), P(0.35, -0.5, -0.9) * A(-0.95, 0, 0.3), blade, 0, M.Neon),
-			leg(Vector3.new(0.22, 2.5, 0.34), P(-0.75, 2.2, -1.6), P(-0.35, -0.5, -0.9) * A(-0.95, 0, -0.3), blade, math.pi, M.Neon),
+			leg(
+				Vector3.new(0.22, 2.5, 0.34),
+				P(0.75, 2.2, -1.6),
+				P(0.35, -0.5, -0.9) * A(-0.95, 0, 0.3),
+				blade,
+				0,
+				M.Neon
+			),
+			leg(
+				Vector3.new(0.22, 2.5, 0.34),
+				P(-0.75, 2.2, -1.6),
+				P(-0.35, -0.5, -0.9) * A(-0.95, 0, -0.3),
+				blade,
+				math.pi,
+				M.Neon
+			),
 		},
 	})
 	if s then
@@ -749,7 +841,15 @@ BLUEPRINT[3] = function() -- Spitter: swollen, mustard shell, a translucent acid
 		eyes = acid,
 		nodule = false,
 		extras = {
-			{ size = Vector3.one * 2.9, cf = P(0, 3.1, 0.8), color = acid, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac", transparency = 0.25 },
+			{
+				size = Vector3.one * 2.9,
+				cf = P(0, 3.1, 0.8),
+				color = acid,
+				mat = M.Neon,
+				shape = Enum.PartType.Ball,
+				role = "sac",
+				transparency = 0.25,
+			},
 		},
 	})
 	if s then
@@ -763,13 +863,24 @@ local function bulwarkVariant(k: number, elite: boolean)
 	local trim = if elite then rgb(255, 180, 60) else rgb(230, 100, 40)
 	local plate = if elite then rgb(120, 92, 54) else rgb(92, 64, 76)
 	local extras = {
-		blk(Vector3.new(2.7 * k, 1.9 * k, 0.35 * k), P(0, 1.55 * k, -2.25 * k) * A(-0.25, 0, 0), plate, M.Metal, "body"),
+		blk(
+			Vector3.new(2.7 * k, 1.9 * k, 0.35 * k),
+			P(0, 1.55 * k, -2.25 * k) * A(-0.25, 0, 0),
+			plate,
+			M.Metal,
+			"body"
+		),
 		blk(Vector3.new(2.75 * k, 0.16 * k, 0.4 * k), P(0, 2.5 * k, -2.0 * k) * A(-0.25, 0, 0), trim, M.Neon),
 	}
 	for i = -1, 1 do
 		table.insert(
 			extras,
-			blk(Vector3.new(0.3 * k, 0.9 * k, 0.3 * k), P(i * 0.55 * k, 2.6 * k, (0.2 + math.abs(i) * 0.3) * k) * A(0.4, 0, -i * 0.35), trim, M.Neon)
+			blk(
+				Vector3.new(0.3 * k, 0.9 * k, 0.3 * k),
+				P(i * 0.55 * k, 2.6 * k, (0.2 + math.abs(i) * 0.3) * k) * A(0.4, 0, -i * 0.35),
+				trim,
+				M.Neon
+			)
 		)
 	end
 	if elite then
@@ -807,13 +918,29 @@ BLUEPRINT[7] = function() -- Broodmother: a colossal runner with a glowing brood
 	local k = 4.6
 	local glow = rgb(255, 120, 200)
 	local extras = {
-		{ size = Vector3.one * 8, cf = P(0, 6.2, 7.5), color = rgb(255, 90, 160), mat = M.Neon, shape = Enum.PartType.Ball, role = "sac", transparency = 0.35 },
+		{
+			size = Vector3.one * 8,
+			cf = P(0, 6.2, 7.5),
+			color = rgb(255, 90, 160),
+			mat = M.Neon,
+			shape = Enum.PartType.Ball,
+			role = "sac",
+			transparency = 0.35,
+		},
 	}
 	for _, off in { { -2.6, 11.2, 1.5 }, { 2.6, 11.2, 1.5 }, { 0, 10.4, 7.2 } } do
 		table.insert(extras, glowBall(2.4, P(off[1], off[2], off[3]), rgb(170, 255, 80), "node"))
 	end
 	for i = -2, 2 do
-		table.insert(extras, blk(Vector3.new(0.8, 4.2, 0.8), P(i * 1.5, 10.6 - math.abs(i) * 0.5, -3.6) * A(-0.5, 0, -i * 0.22), glow, M.Neon))
+		table.insert(
+			extras,
+			blk(
+				Vector3.new(0.8, 4.2, 0.8),
+				P(i * 1.5, 10.6 - math.abs(i) * 0.5, -3.6) * A(-0.5, 0, -i * 0.22),
+				glow,
+				M.Neon
+			)
+		)
 	end
 	local s = variant({
 		scale = Vector3.new(k, k * 0.92, k),
@@ -842,7 +969,15 @@ BLUEPRINT[8] = function() -- Bomber: a runner carrying a bloated burning sac
 		eyes = rgb(255, 230, 120),
 		nodule = false,
 		extras = {
-			{ size = Vector3.one * 3.1, cf = P(0, 2.9, 0.6), color = sac, mat = M.Neon, shape = Enum.PartType.Ball, role = "sac", transparency = 0.12 },
+			{
+				size = Vector3.one * 3.1,
+				cf = P(0, 2.9, 0.6),
+				color = sac,
+				mat = M.Neon,
+				shape = Enum.PartType.Ball,
+				role = "sac",
+				transparency = 0.12,
+			},
 		},
 	})
 	if s then
@@ -855,10 +990,25 @@ BLUEPRINT[10] = function() -- The Alpha: leader of the pack — huge, gold, crow
 	local k = 2.6
 	local gold = rgb(255, 176, 60)
 	local extras = {
-		{ size = Vector3.new(1.5, 4, 1.5), cf = P(0, 4.2, 1.0) * A(0.25, math.rad(45), 0), color = rgb(255, 90, 200), mat = M.Neon, role = "node", transparency = 0.1 },
+		{
+			size = Vector3.new(1.5, 4, 1.5),
+			cf = P(0, 4.2, 1.0) * A(0.25, math.rad(45), 0),
+			color = rgb(255, 90, 200),
+			mat = M.Neon,
+			role = "node",
+			transparency = 0.1,
+		},
 	}
 	for i = -2, 2 do
-		table.insert(extras, blk(Vector3.new(0.35, 1.6, 0.35), P(i * 0.45, 2.95, -2.6 + math.abs(i) * 0.2) * A(-0.35, 0, -i * 0.3), gold, M.Neon))
+		table.insert(
+			extras,
+			blk(
+				Vector3.new(0.35, 1.6, 0.35),
+				P(i * 0.45, 2.95, -2.6 + math.abs(i) * 0.2) * A(-0.35, 0, -i * 0.3),
+				gold,
+				M.Neon
+			)
+		)
 	end
 	local s = variant({
 		scale = Vector3.new(k, k, k * 0.95),
@@ -948,7 +1098,15 @@ local function species(key: string, o)
 		local d = o.eyes.size * k
 		local front = eyeAt.pos + Vector3.new(0, eyeAt.size.Y * (o.eyes.up or 0.1), -eyeAt.size.Z * 0.46)
 		for _, side in { -1, 1 } do
-			table.insert(s, glowBall(d, P(front + Vector3.new(side * eyeAt.size.X * (o.eyes.apart or 0.22), 0, 0)), o.eyes.color, "eye"))
+			table.insert(
+				s,
+				glowBall(
+					d,
+					P(front + Vector3.new(side * eyeAt.size.X * (o.eyes.apart or 0.22), 0, 0)),
+					o.eyes.color,
+					"eye"
+				)
+			)
 		end
 	end
 	for _, e in o.extras or {} do

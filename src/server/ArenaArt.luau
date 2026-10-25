@@ -4,6 +4,7 @@
 -- Yaw constants rotate each mesh so its "front" faces where the layout needs it (verified in Studio).
 
 local ArtLoader = require(script.Parent.ArtLoader)
+local Art = require(game.ReplicatedStorage.Shared.Art)
 
 local ArenaArt = {}
 
@@ -84,15 +85,12 @@ function ArenaArt.titan(map, decor, H): boolean
 	local mouth = H.W(0, 0, 128)
 	H.disc(model, mouth + Vector3.new(0, 0.05, 0), 24, 0.05, rgb(255, 90, 40), Enum.Material.Neon, 0.55)
 	H.light(model, mouth + Vector3.new(0, 6, -4), rgb(255, 120, 50), 44, 3)
-	local vent = H.part(
-		model,
-		{
-			Name = "Wound",
-			Size = Vector3.new(18, 1, 10),
-			CFrame = CFrame.new(mouth + Vector3.new(0, 1, 4)),
-			Transparency = 1,
-		}
-	)
+	local vent = H.part(model, {
+		Name = "Wound",
+		Size = Vector3.new(18, 1, 10),
+		CFrame = CFrame.new(mouth + Vector3.new(0, 1, 4)),
+		Transparency = 1,
+	})
 	H.spores(vent, rgb(255, 120, 50), 10, 0.8, 2)
 	-- ribs: one arch per pair of feet, spanning the corridor
 	for _, o in map.obstacles do
@@ -143,15 +141,12 @@ function ArenaArt.dropship(map, decor, H): boolean
 	for _, s in { -1, 1 } do
 		local base = Vector3.new(o.x + s * 22, 0, o.z + 12)
 		H.rod(model, base, base + Vector3.new(0, 9, 0), 0.7, rgb(52, 56, 66), Enum.Material.Metal)
-		local head = H.part(
-			model,
-			{
-				Size = Vector3.new(2.4, 1.2, 1.2),
-				CFrame = CFrame.lookAt(base + Vector3.new(0, 9.4, 0), Vector3.new(0, 0, o.z + 60)),
-				Color = rgb(255, 235, 200),
-				Material = Enum.Material.Neon,
-			}
-		)
+		local head = H.part(model, {
+			Size = Vector3.new(2.4, 1.2, 1.2),
+			CFrame = CFrame.lookAt(base + Vector3.new(0, 9.4, 0), Vector3.new(0, 0, o.z + 60)),
+			Color = rgb(255, 235, 200),
+			Material = Enum.Material.Neon,
+		})
 		local sl = Instance.new("SpotLight")
 		sl.Angle = 60
 		sl.Range = 60
@@ -168,6 +163,34 @@ end
 
 -- Centre: the drill rig over the mother crystal. Keeps the names the client animates (HaloRing, Core).
 function ArenaArt.extractor(o, decor, H): boolean
+	local drill = Art.Industrial.DRILL
+	if has("IND_DRILL_1", "IND_DRILL_2", "IND_DRILL_3") then
+		local model = Instance.new("Model")
+		model.Name = "Reactor"
+		model.Parent = decor
+		local c = Vector3.new(o.x, 0, o.z)
+		-- Match the original collision footprint; keep the silhouette lower than the old rig.
+		local k = 1.25
+		for i, def in drill do
+			local p = ArtLoader.place("IND_DRILL_" .. i, model, CFrame.new(c + def.pos * k), k, false)
+			p.Name = if def.name == "auger" then "Auger" else def.name
+			p.CastShadow = true
+			H.fade(p)
+		end
+		local core = H.part(model, {
+			Name = "Core",
+			Size = Vector3.new(1.2, 0.35, 0.22),
+			CFrame = CFrame.new(c + Vector3.new(0, 10, -6.15)),
+			Color = rgb(255, 184, 70),
+			Material = Enum.Material.Neon,
+			Transparency = 0.12,
+		})
+		H.fade(core)
+		H.light(model, c + Vector3.new(0, 5, 0), rgb(255, 196, 130), 12, 0.6, false)
+		-- Low, subdued foundation: no airborne neon discs competing with attack telegraphs.
+		H.disc(decor, c + Vector3.new(0, 0.025, 0), 25, 0.05, rgb(83, 76, 63), Enum.Material.Concrete, 0)
+		return true
+	end
 	if not has("EXTRACTOR") then
 		return false
 	end
@@ -179,17 +202,14 @@ function ArenaArt.extractor(o, decor, H): boolean
 	rig.CastShadow = true
 	H.fade(rig)
 	-- an inner glow the client pulses: a working machine's warm amber, not the swarm's pink (DD-063)
-	local core = H.part(
-		model,
-		{
-			Name = "Core",
-			Size = Vector3.new(3, 9, 3),
-			CFrame = CFrame.new(c + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(45), 0),
-			Color = rgb(255, 168, 64),
-			Material = Enum.Material.Neon,
-			Transparency = 0.6,
-		}
-	)
+	local core = H.part(model, {
+		Name = "Core",
+		Size = Vector3.new(3, 9, 3),
+		CFrame = CFrame.new(c + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(45), 0),
+		Color = rgb(255, 168, 64),
+		Material = Enum.Material.Neon,
+		Transparency = 0.6,
+	})
 	H.fade(core)
 	H.light(model, c + Vector3.new(0, 7, 0), rgb(255, 196, 130), 14, 1, true)
 	for i = 1, 3 do
@@ -379,19 +399,16 @@ function ArenaArt.wounds(map, decor, H): boolean
 			local len = H.rnd(6, 14)
 			local d2 = (-dir * math.cos(ang) + Vector3.new(-dir.Z, 0, dir.X) * math.sin(ang))
 			local base = at - dir * 3
-			H.part(
-				model,
-				{
-					Size = Vector3.new(0.45, 0.08, len),
-					CFrame = CFrame.lookAt(
-						base + d2 * len / 2 + Vector3.new(0, 0.06, 0),
-						base + d2 * len + Vector3.new(0, 0.06, 0)
-					),
-					Color = ember,
-					Material = Enum.Material.Neon,
-					Transparency = 0.35,
-				}
-			)
+			H.part(model, {
+				Size = Vector3.new(0.45, 0.08, len),
+				CFrame = CFrame.lookAt(
+					base + d2 * len / 2 + Vector3.new(0, 0.06, 0),
+					base + d2 * len + Vector3.new(0, 0.06, 0)
+				),
+				Color = ember,
+				Material = Enum.Material.Neon,
+				Transparency = 0.35,
+			})
 		end
 		local vent = H.part(
 			model,
