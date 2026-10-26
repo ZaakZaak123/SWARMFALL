@@ -4,8 +4,6 @@
 -- Canon: design/handoff/02_GAME_SPECS/SWARMFALL_D02_OPERATIONS_SPEC_v0.3.md. Numbers are TUNABLE;
 -- tests/ops_run.luau checks that every operation is winnable by a defending bot with the start rifle.
 
-local Maps = require(script.Parent.Maps)
-
 local Ops = {}
 
 export type Phase = {
@@ -339,40 +337,41 @@ Ops.O06 = {
 	requires = "O05",
 }
 
--- O07 «ПОЖИРАТЕЛЬ» (was O06, D02 §9). Chapter finale: two elites, bombers, optional nests, the Devourer. His
--- death wins at once while the heart and the hero live.
-do
-	local depths = Maps.get("MAP_HIVE_DEPTHS")
-	Ops.O07 = {
-		id = "O07",
-		index = 7,
-		code = "O07",
-		name = "ПОЖИРАТЕЛЬ",
-		map = "MAP_HIVE_DEPTHS",
-		brief = "Финал главы. Из-под воронки поднимается Пожиратель. Сбереги бур и убей его.",
-		goal = "Защити бур и убей Пожирателя",
-		objective = "boss",
-		spawnMult = 0.85,
-		bossHpMult = 0.75, -- the Devourer burrows; keep a viable boss window (D02 §9)
-		reactor = { hp = 2400, name = "БУР" },
-		runEvolution = false,
-		hardLimit = 570,
-		phases = depths.phases,
-		beats = {
-			{ at = 70, type = "assault", count = 8 },
-			{ at = 150, type = "elite" },
-			{ at = 200, type = "assault", count = 10, kind = "EN_BOMBER" },
-			{ at = 270, type = "elite" },
-			{ at = 300, type = "assault", count = 12 },
-			{ at = 330, type = "hive" },
-			{ at = 375, type = "boss" },
-			{ at = 470, type = "enrage" },
-		},
-		unlocks = {},
-		requires = "O06",
-		chapterEnd = true,
-	}
-end
+-- O07 «ПОЖИРАТЕЛЬ» (DD-081) — the chapter finale, ~2:30, at night. One idea: the Devourer rises from under
+-- the funnel at ~0:35 and goes for the drill; it burrows and resurfaces, and its death wins at once. A short
+-- build-up with every kind of the chapter (Bombers included), six cards before it, the drill as the stake.
+-- The win ends the chapter: the Devourer's statue turns gold and the void heart (Копьё пустоты) rides home.
+Ops.O07 = {
+	id = "O07",
+	index = 7,
+	code = "O07",
+	name = "ПОЖИРАТЕЛЬ",
+	map = "MAP_HIVE_DEPTHS",
+	brief = "Финал главы. Из-под воронки поднимается Пожиратель и идёт на бур. Убей его.",
+	goal = "Защити бур",
+	objective = "boss",
+	bossHpMult = 0.38, -- it burrows: a short boss window, not a sponge
+	playerDamageMult = 0.6,
+	reactor = { hp = 3000, name = "БУР" },
+	runEvolution = false,
+	deadline = 300,
+	hardLimit = 360,
+	xpTable = XP_O05,
+	homeText = "Его смерть закроет главу — и сердце пустоты сделает из «Рельсотрона» «Копьё пустоты».",
+	phases = {
+		{ at = 0, label = "СПУСК", rate = 3.6, cap = 34, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 0.78, EN_BOMBER = 0.08, EN_STALKER = 0.08, EN_SPITTER = 0.06 }, quiet = true },
+		{ at = 16, label = "ДРОЖЬ ЗЕМЛИ", rate = 4.8, cap = 50, dirs = ALL, w = { EN_RUNNER = 0.74, EN_BOMBER = 0.1, EN_STALKER = 0.08, EN_SPITTER = 0.05, EN_BULWARK = 0.03 } },
+		{ at = 32, label = "ПОЖИРАТЕЛЬ", rate = 2.8, cap = 36, dirs = ALL, w = { EN_RUNNER = 0.86, EN_BOMBER = 0.14 }, quiet = true },
+	},
+	beats = {
+		{ at = 20, type = "assault", count = 8 },
+		{ at = 35, type = "boss" },
+		{ at = 130, type = "enrage" },
+	},
+	unlocks = {},
+	requires = "O06",
+	chapterEnd = true,
+}
 
 -- C-A01 «КИСЛОТНЫЙ ФРОНТ» — D02 §10. Optional contract after O02: Spitter-heavy yard, two acid sources
 -- that keep seeding acid until destroyed by direct fire. Not a story key.

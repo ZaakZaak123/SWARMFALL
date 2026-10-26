@@ -1053,7 +1053,7 @@ Defs.Components = {
 		id = "CMP_VOID_HEART",
 		name = "СЕРДЦЕ ПУСТОТЫ",
 		icon = "core",
-		text = "Сердце Копья Пустоты. Первая победа в O06.",
+		text = "Сердце Копья Пустоты. Первая победа над Пожирателем (O07).",
 	},
 	CMP_LINE_BREACH = {
 		id = "CMP_LINE_BREACH",

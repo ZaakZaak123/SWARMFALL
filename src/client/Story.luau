@@ -1053,6 +1053,28 @@ local HOMECOMING = {
 			sub = "Последняя вылазка главы: червь, что точит воронку снизу",
 		},
 	},
+	O07 = {
+		cargo = "WORM_HEAD",
+		glow = rgb(150, 90, 255),
+		title = "ПОЖИРАТЕЛЬ ПОВЕРЖЕН",
+		sub = "Его клык и сердце пустоты едут домой",
+		transit = { "ДОМОЙ", "Земля под воронкой больше не дрожит" },
+		beats = {
+			{
+				spot = "TROPHY_O07",
+				title = "ТРОФЕЙ: ПОЖИРАТЕЛЬ",
+				sub = "Три золотые статуи — вся глава на витрине убежища",
+				color = C.gold,
+			},
+		},
+		next = {
+			spot = "ARMORY",
+			marker = { "КОПЬЁ ПУСТОТЫ", "Форма «Рельсотрона»" },
+			title = "ГЛАВА ПРОЙДЕНА",
+			sub = "Воронка затихла. Дальше — оборона бура по уровням, вторжения и «Копьё пустоты»",
+			sting = "victory",
+		},
+	},
 }
 
 function Story.hasHomecoming(opId: string?): boolean
@@ -1083,8 +1105,16 @@ function Story.returnHome(opId: string, onDone)
 			from = from,
 			to = to,
 			cam = function(k)
-				local a = CFrame.lookAt(at + Vector3.new(12, 10, -17), at + Vector3.new(0, 2.5, 0))
-				local b = CFrame.lookAt(at + Vector3.new(9, 7, -13), at + Vector3.new(0, 3, 0))
+				-- trophies stand by the courtyard lamps: look at them from the gate side
+				local trophy = string.sub(spot, 1, 7) == "TROPHY_"
+				local a = CFrame.lookAt(
+					at + (if trophy then Vector3.new(-12, 9, -16) else Vector3.new(12, 10, -17)),
+					at + Vector3.new(0, 2.5, 0)
+				)
+				local b = CFrame.lookAt(
+					at + (if trophy then Vector3.new(-9, 7, -12) else Vector3.new(9, 7, -13)),
+					at + Vector3.new(0, 3, 0)
+				)
 				return a:Lerp(b, k)
 			end,
 		}
@@ -1179,6 +1209,9 @@ function Story.returnHome(opId: string, onDone)
 				-- a place in the shelter, not something to buy (DD-078: the own swarm in the lab)
 				base.sceneMarker(nextSpot, cfg.next.marker[1], cfg.next.marker[2])
 				Audio.play("level", 0.7, 1.5)
+				if cfg.next.sting then
+					Audio.sting(cfg.next.sting, 12) -- the chapter's end sounds like it
+				end
 				caption(cfg.next.title, cfg.next.sub, C.lime)
 				return
 			end
@@ -1292,6 +1325,19 @@ local DEPARTURE = {
 		focusRing = 12,
 		focusColor = C.violet,
 		preview = { art = "NODE", h = 9, at = { Vector3.new(-60, 0, 80), Vector3.new(72, 0, -70) } },
+	},
+	O07 = {
+		title = "ВЫЛАЗКА 7 · ПОЖИРАТЕЛЬ",
+		sub = "Финал главы",
+		transit = { "К БУРУ", "Земля у воронки дрожит уже третий день" },
+		funnel = {
+			"УБЕЙ ПОЖИРАТЕЛЯ",
+			"Он поднимется из-под земли и пойдёт на бур. Бей, пока он на поверхности",
+		},
+		focus = Vector3.new(0, 10, 100), -- where it rises (Maps MAP_HIVE_DEPTHS bossEntry)
+		focusRing = 24,
+		focusColor = C.violet,
+		focusEye = { Vector3.new(6, 62, -84), Vector3.new(4, 48, -66) },
 	},
 }
 

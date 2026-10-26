@@ -123,12 +123,14 @@ for _, id in CHAPTER do
 				check(w.boss == nil and w.bossSpawned, id .. " boss killed")
 				if id == "O05" then
 					check(r.time < 180, "O05 ends within ~3:00 — the boss at ~0:30 (DD-079)")
+				elseif id == "O07" then
+					check(r.time < 240, "O07 ends within ~4:00 — the Devourer at ~0:35 (DD-081)")
 				end
 			end
 		else
 			print("  NOTE " .. id .. " defending bot lost: " .. r.reason)
-			if id == "O05" then
-				check(false, "O05 must be won by the defending bot (DD-079)")
+			if id == "O05" or id == "O07" then
+				check(false, id .. " must be won by the defending bot (DD-079/081)")
 			end
 		end
 	end
