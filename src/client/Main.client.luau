@@ -114,6 +114,8 @@ local function goalAction()
 		send("restore", g.spot)
 	elseif g.station == "armory" then
 		Menus.showUpgrades()
+	elseif g.station == "swarm" then
+		MetaMenus.showSwarm()
 	end
 end
 Base.init(playerGui, send, {

@@ -117,6 +117,15 @@ do
 	pub.winsByOp.O03, pub.home.LAB, pub.scrap = 1, true, 300
 	pub.outpost.slots[1] = { id = "ARC", lvl = 1 }
 	check(step("won O03").key == "build_CRYO", "goal 9 (DD-077): the homecoming's promise — the Криополе")
+	pub.outpost.slots[2] = { id = "CRYO", lvl = 1 }
+	pub.home.GARDEN, pub.ops.O04, pub.scrap = true, 1, 50
+	local g10 = step("cryo")
+	check(g10.key == "op_O04" and g10.text:find("свой рой") ~= nil, "goal 10 (DD-078): the nest sortie promises the own swarm")
+	pub.winsByOp.O04 = 1
+	local g11 = step("won O04")
+	check(g11.key == "brood" and g11.station == "swarm", "goal 11 (DD-078): breed the first strain in the lab")
+	pub.brood = { { kind = "EN_RUNNER", muts = {} } }
+	check(step("brood").key ~= "brood", "goal 12: then the story goes on")
 	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")
 end
 

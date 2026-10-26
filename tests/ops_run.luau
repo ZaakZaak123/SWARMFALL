@@ -1,7 +1,7 @@
 -- Operation playtests: the bot plays operations end to end and checks objective rules.
 -- Usage (repo root):  lune run tests/ops_run [op|all] [weapon] [seed]
 -- O01 (DD-075): ~1:00 first hunt with exactly three guided cards, ends with the Alpha, nothing to guard, the Alpha, Runners only. O02: the S01 lesson.
--- O03 (DD-077): ~1:30, the charged pylon ends it. O04+: each hunt resolves and, when the bot wins, its objective was met.
+-- O03 (DD-077): ~1:30, the charged pylon ends it. O04 (DD-078): ~1:30, two nests end it. O05+: each hunt resolves and, when the bot wins, its objective was met.
 
 local process = require("@lune/process")
 local Bot = require("./bot")
@@ -113,6 +113,7 @@ for _, id in CHAPTER do
 				check(r.time < 130, "O03 ends within ~2:10 — the charged pylon's song is the win (DD-077)")
 			elseif id == "O04" then
 				check(m.destroyed >= 2, "O04 two of three nests destroyed (" .. m.destroyed .. ")")
+				check(r.time < 180, "O04 ends within ~3:00 — the second nest down is the win (DD-078)")
 			elseif id == "O06" or id == "CA01" then
 				check(m.destroyed >= 2, id .. " both targets destroyed")
 			else

@@ -509,7 +509,7 @@ end
 
 -- The rider: a pallet on four chains under a trolley; on it the hero (a still copy of the own avatar)
 -- and, on the way home, the generator.
-local function buildRider(cargoKey: string?)
+local function buildRider(cargoKey: string?, glowColor: Color3?)
 	local model = Instance.new("Model")
 	model.Name = "StoryRider"
 	local metal, wood, lime = rgb(52, 48, 44), rgb(150, 106, 62), rgb(176, 236, 60)
@@ -544,16 +544,10 @@ local function buildRider(cargoKey: string?)
 				parts,
 				{ cargo, CFrame.new(1.2, deck + cargo.Size.Y / 2, 0) * CFrame.Angles(0, math.pi / 2, 0) }
 			)
-			if cargoKey == "TANK_FRAME" then
-				-- the stunned sample glowing inside the tank
-				local glow = block(
-					model,
-					Vector3.one * 1.5,
-					CFrame.new(),
-					rgb(170, 255, 70),
-					Enum.Material.Neon,
-					Enum.PartType.Ball
-				)
+			if glowColor then
+				-- what rides home is alive: the stunned sample in its tank, the nest's beating heart
+				local glow =
+					block(model, Vector3.one * 1.5, CFrame.new(), glowColor, Enum.Material.Neon, Enum.PartType.Ball)
 				table.insert(parts, { glow, CFrame.new(1.2, deck + cargo.Size.Y * 0.45, 0) })
 			end
 		else
@@ -978,6 +972,7 @@ local HOMECOMING = {
 	},
 	O03 = {
 		cargo = "TANK_FRAME",
+		glow = rgb(170, 255, 70),
 		title = "ОБРАЗЕЦ ПОЙМАН",
 		sub = "Оглушённый плевун едет домой в пробирке",
 		transit = { "ДОМОЙ", "Пилон замолчал — рой придёт в себя не скоро" },
@@ -993,6 +988,27 @@ local HOMECOMING = {
 			structure = "CRYO",
 			title = "ХВАТАЕТ НА «КРИОПОЛЕ»",
 			sub = "Всё, что войдёт в поле у бура, увязнет и замедлится",
+		},
+	},
+	O04 = {
+		cargo = "POD",
+		glow = rgb(200, 120, 255),
+		title = "СЕРДЦЕ ГНЕЗДА ДОБЫТО",
+		sub = "Оно ещё бьётся — его ждёт лаборатория",
+		transit = { "ДОМОЙ", "Без корней рой в воронке поредеет" },
+		beats = {
+			{
+				spot = "LAB",
+				title = "СВОЙ РОЙ",
+				sub = "Из сердца гнезда выводится своя стая: она стережёт твой бур",
+				color = C.violet,
+			},
+		},
+		next = {
+			spot = "LAB",
+			marker = { "СВОЙ РОЙ", "Выведи первую стаю" },
+			title = "ОТКРЫТЫ ВТОРЖЕНИЯ",
+			sub = "Веди свою стаю на чужие буры — утиль с их канатки твой",
 		},
 	},
 }
@@ -1012,8 +1028,8 @@ function Story.returnHome(opId: string, onDone)
 	local path = makePath(track)
 	local L = path.length
 	local wasteland = buildWasteland()
-	local rider = buildRider(cfg.cargo)
-	local ride = motion({ { 1.4, 0 }, { 3.8, path.dist[arenaEnd] }, { 8.6, path.dist[transitEnd] }, { 11.2, L } })
+	local rider = buildRider(cfg.cargo, cfg.glow)
+	local ride = motion({ { 2.2, 0 }, { 4.4, path.dist[arenaEnd] }, { 8.8, path.dist[transitEnd] }, { 11.2, L } })
 	local s = 0
 	local term = base.point("TERMINAL")
 	local side = Cableway.ARENA_SIDE
@@ -1066,7 +1082,7 @@ function Story.returnHome(opId: string, onDone)
 			end,
 		},
 		{
-			1.4,
+			2.2,
 			function()
 				Audio.play("dash", 0.5, 0.8)
 			end,
@@ -1107,15 +1123,23 @@ function Story.returnHome(opId: string, onDone)
 		t += 3
 	end
 	-- the next step: what the loot buys, over the workbench (or what it is still short of)
-	local def = Meta.Structures[cfg.next.structure]
-	if cfg.beats[#cfg.beats].spot ~= "WORKBENCH" then
-		table.insert(shots, spotShot(t, t + 3.4, "WORKBENCH"))
+	local def = cfg.next.structure and Meta.Structures[cfg.next.structure]
+	local nextSpot = cfg.next.spot or "WORKBENCH"
+	if cfg.beats[#cfg.beats].spot ~= nextSpot then
+		table.insert(shots, spotShot(t, t + 3.4, nextSpot))
 	else
 		shots[#shots].to = t + 3.4
 	end
 	table.insert(cues, {
 		t + 0.3,
 		function()
+			if not def then
+				-- a place in the shelter, not something to buy (DD-078: the own swarm in the lab)
+				base.sceneMarker(nextSpot, cfg.next.marker[1], cfg.next.marker[2])
+				Audio.play("level", 0.7, 1.5)
+				caption(cfg.next.title, cfg.next.sub, C.lime)
+				return
+			end
 			local prof = deps.profile and deps.profile()
 			local enough = prof == nil or (prof.scrap or 0) >= def.cost[1]
 			base.sceneMarker(
@@ -1180,6 +1204,27 @@ local DEPARTURE = {
 		},
 		focus = Vector3.new(38, 4, 38), -- the pylon on the north-east diagonal (Maps coils[1])
 	},
+	O04 = {
+		title = "ВЫЛАЗКА 4 · СЕРДЦЕ ГНЕЗДА",
+		sub = "Рой пустил корни в воронке",
+		transit = {
+			"К БУРУ",
+			"Гнёзда — то, из чего рой растёт. Без них он поредеет",
+		},
+		funnel = {
+			"ВЫЖГИ ДВА ГНЕЗДА ИЗ ТРЁХ",
+			"Одно стережёт броненосец: броня спереди — заходи сбоку или со спины",
+		},
+		focus = Vector3.new(-60, 4, 80), -- the first nest site (Maps hiveSites[1])
+		focusRing = 14,
+		focusColor = C.lime,
+		-- the nests open with the fight; the scene shows where they will stand (Maps hiveSites)
+		preview = {
+			art = "NEST",
+			h = 8,
+			at = { Vector3.new(-60, 0, 80), Vector3.new(72, 0, -70), Vector3.new(-70, 0, -30) },
+		},
+	},
 }
 
 function Story.hasDeparture(opId: string?): boolean
@@ -1207,6 +1252,23 @@ function Story.depart(opId: string, onDone)
 	local term = base.point("TERMINAL")
 	local drill = Vector3.new(0, 8, 0)
 	local sp = player.Character and player.Character:GetPivot().Position or Vector3.new(0, 3, -26)
+	local preview = Instance.new("Folder")
+	preview.Name = "StoryPreview"
+	if cfg.preview then
+		local f = ReplicatedStorage:FindFirstChild("ArtTemplates")
+		local t = f and f:FindFirstChild(cfg.preview.art)
+		for _, at in cfg.preview.at do
+			if t and t:IsA("MeshPart") then
+				local m = t:Clone()
+				m.Anchored = true
+				m.CanCollide = false
+				m.Size = t.Size * (cfg.preview.h / t.Size.Y)
+				m.CFrame = CFrame.new(at + Vector3.new(0, m.Size.Y / 2, 0))
+				m.Parent = preview
+			end
+		end
+	end
+	preview.Parent = workspace
 	play({
 		length = 11.0,
 		shots = {
@@ -1287,10 +1349,10 @@ function Story.depart(opId: string, onDone)
 						local ground = Vector3.new(cfg.focus.X, 0.4, cfg.focus.Z)
 						for i = 0, 2 do
 							task.delay(i * 0.5, function()
-								Fx.ring(ground, 30, C.cyan, 0.9)
+								Fx.ring(ground, cfg.focusRing or 30, cfg.focusColor or C.cyan, 0.9)
 							end)
 						end
-						Fx.light(cfg.focus + Vector3.new(0, 6, 0), C.cyan, 40, 1.8)
+						Fx.light(cfg.focus + Vector3.new(0, 6, 0), cfg.focusColor or C.cyan, 40, 1.8)
 					end
 				end,
 			},
@@ -1304,6 +1366,7 @@ function Story.depart(opId: string, onDone)
 		cleanup = function()
 			rider.destroy()
 			wasteland:Destroy()
+			preview:Destroy()
 			heroVisible(true)
 			base.sceneEnd()
 			Fx.ring(Vector3.new(sp.X, 0.4, sp.Z), 6, C.lime, 0.6)

@@ -230,20 +230,16 @@ function Mission:objectiveDone(title: string, sub: string, x: number?, z: number
 	if self.op.winOnObjective then
 		-- DD-077: the objective is the end. One blast from where it was done stuns the swarm for good.
 		local cx, cz = x or 0, z or 0
-		w:emit(E.BOSS, 7, cx, cz)
+		w:emit(E.BOSS, self.op.winFx or 7, cx, cz)
 		for _, other in w.enemies do
 			if other.alive and not other.def.static and not other.objective then
 				other.dmgFromX, other.dmgFromZ = cx, cz
 				w:kill(other, nil, 1, Codec.Cause.BLAST)
 			end
 		end
-		w:banner(
-			"ПИЛОН ЗАПЕЛ",
-			"Рой оглушён — образец пойман живым",
-			C.CYAN,
-			3,
-			"crown"
-		)
+		local wb = self.op.winBanner
+			or { "ПИЛОН ЗАПЕЛ", "Рой оглушён — образец пойман живым" }
+		w:banner(wb[1], wb[2], if self.op.winFx == 6 then C.GOLD else C.CYAN, 3, "crown")
 		self.state = "FINALE"
 		self.finaleUntil = w.t + (self.op.finaleTime or 2.5)
 		self.goal = "Победа"
@@ -378,7 +374,9 @@ function Mission:onKill(e, p)
 			if e.objective == "nest" then
 				self:objectiveDone(
 					"ПРОРЫВ ОСТАНОВЛЕН",
-					"Два гнезда уничтожены. Третье — по желанию. Держись!"
+					"Два гнезда уничтожены. Третье — по желанию. Держись!",
+					e.x,
+					e.z
 				)
 			elseif e.objective == "node" then
 				self:objectiveDone(

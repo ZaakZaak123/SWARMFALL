@@ -296,8 +296,8 @@ do -- Вулкан's heavy frame takes 30% less damage
 	check(math.abs((a.maxHp - a.hp) - (b.maxHp - b.hp) * 0.7) < 1e-6, "Вулкан: −30% incoming damage")
 end
 
-do -- «Барьер» refill also shields the extractor (O04 is the first sortie with one since DD-077), without stacking
-	local w, p = world(nil, "O04")
+do -- «Барьер» refill also shields the extractor (O06 is the first story sortie with one since DD-078), without stacking
+	local w, p = world(nil, "O06")
 	give(w, p, { UPG_SHIELD = 3 })
 	p.shieldKills = 100
 	local e = w:spawnEnemy("EN_RUNNER", p.x + 30, p.z, 0)

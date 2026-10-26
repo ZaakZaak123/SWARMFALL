@@ -13,7 +13,7 @@ export type Goal = {
 	icon: string,
 	title: string, -- short, caps
 	text: string, -- one sentence: what, and what it gives
-	station: string, -- "launch" | "build" | "armory" | "home": where on the base it happens
+	station: string, -- "launch" | "build" | "armory" | "home" | "swarm": where on the base it happens
 	spot: string?, -- home goals: the shelter spot to restore (Meta.Home)
 	slot: number?, -- build goals: the socket to light up
 	structure: string?, -- a structure to show as a model (what is being bought or opened)
@@ -159,6 +159,17 @@ function Goals.next(pub): Goal?
 			structure = "STING",
 		}
 	end
+	-- DD-078: the nest's heart is in the lab — the first strain of the own swarm comes before anything else.
+	if won(pub, "O04") and home.LAB and next(pub.brood or {}) == nil then
+		return {
+			key = "brood",
+			icon = "hive",
+			title = "ВЫВЕДИ СВОЙ РОЙ",
+			text = "Сердце гнезда в лаборатории. Выведи первую стаю — она защищает твой бур и ходит во вторжения.",
+			station = "swarm",
+			spot = "LAB",
+		}
+	end
 	-- An opened structure the player can afford and has not built yet: build it (what the last sortie's
 	-- homecoming promised, DD-076).
 	for _, id in Meta.StructureOrder do
@@ -207,7 +218,10 @@ function Goals.next(pub): Goal?
 					brings = h
 				end
 			end
-			if brings and structDef then
+			if op.homeText then
+				text = op.brief .. " " .. op.homeText
+				structure = nil
+			elseif brings and structDef then
 				-- the cheapest of what it opens: the one the homecoming will point at
 				local cheapest = nil
 				for _, sid in Meta.StructureOrder do

@@ -80,6 +80,9 @@ export type OpDef = {
 	xpTable: { number }?, -- fixed XP per level; past its end the level is capped (O01: three cards)
 	winOnElite: boolean?, -- the elite's death ends the run: the leaderless swarm scatters (O01, first defence)
 	winOnObjective: boolean?, -- the objective done ends the run at once (O03: the charged pylon's song)
+	winBanner: { string }?, -- { title, sub } of that win (O04)
+	winFx: number?, -- BOSS event action of that win: 7 the pylon's cyan song (default), 6 a golden blast
+	homeText: string?, -- what the first win brings home, for the goal line before the sortie (O04)
 	guidedCards: { string }?, -- first offers in order, only that card can be taken (O01 for a newcomer)
 }
 
@@ -218,42 +221,42 @@ Ops.O03 = {
 	requires = "O02",
 }
 
--- O04 «ГНЁЗДА» (was O03, D02 §6). Three nests open at ~2:00; any two win (3/3 = optional +20 bonus).
--- Introduces the Bulwark, which escorts a nest.
+-- O04 «СЕРДЦЕ ГНЕЗДА» (was «ГНЁЗДА», DD-078) — the fourth sortie, ~1:30: the swarm has rooted in the
+-- funnel. One idea: three nests open at once; burn any two (a Bulwark guards one: hit it from the side or
+-- the back). The second nest down is the win — the swarm loses its roots and a nest's heart is taken home
+-- to the lab: the own swarm breeds from it and raids on other drills open. Nothing else to guard.
 Ops.O04 = {
 	id = "O04",
 	index = 4,
 	code = "O04",
-	name = "ГНЁЗДА",
+	name = "СЕРДЦЕ ГНЕЗДА",
 	map = "MAP_REACTOR_YARD",
-	brief = "Рой пустил корни в воронке. Уничтожь любые два гнезда из трёх и сбереги бур.",
-	goal = "Защити бур",
+	brief = "Рой пустил корни в воронке. Выжги любые два гнезда из трёх — и забери сердце гнезда.",
+	goal = "Выжги 2 гнезда из 3",
 	objective = "nests",
-	reactor = { hp = 2000, name = "БУР" },
+	playerDamageMult = 0.8,
 	runEvolution = false,
-	nests = { need = 2, hp = 900 },
-	finaleTime = 60,
-	deadline = 500,
-	hardLimit = 610,
-	finale = { at = 0, label = "ЗАКЛЮЧИТЕЛЬНЫЙ НАТИСК", rate = 7.4, cap = 88, dirs = ALL, w = { EN_RUNNER = 0.78, EN_STALKER = 0.1, EN_SPITTER = 0.08, EN_BULWARK = 0.04 } },
+	nests = { need = 2, hp = 520 },
+	winOnObjective = true,
+	winBanner = { "ГНЁЗДА ВЫЖЖЕНЫ", "Рой лишился корней — сердце гнезда твоё" },
+	winFx = 6,
+	homeText = "Вернёшься — в лаборатории заведётся свой рой, и откроются вторжения на чужие буры.",
+	finaleTime = 2.5,
+	deadline = 210,
+	hardLimit = 270,
+	xpTable = XP_O02,
+	finale = { at = 0, label = "КОРНИ ВЫЖЖЕНЫ", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
-		{ at = 0, label = "КОНТАКТ", rate = 2.4, cap = 30, dirs = { "N", "E", "W", "S" }, w = { EN_RUNNER = 0.86, EN_SPITTER = 0.07, EN_STALKER = 0.07 }, quiet = true },
-		{ at = 50, label = "НАРАСТАНИЕ", rate = 3.4, cap = 46, dirs = ALL, w = { EN_RUNNER = 0.84, EN_SPITTER = 0.08, EN_STALKER = 0.08 } },
-		{ at = 120, label = "ГНЁЗДА", rate = 3.6, cap = 56, dirs = ALL, w = { EN_RUNNER = 0.8, EN_SPITTER = 0.08, EN_STALKER = 0.08, EN_BULWARK = 0.04 }, quiet = true },
-		{ at = 200, label = "ВЫБОР ЦЕЛИ", rate = 4.6, cap = 66, dirs = ALL, w = { EN_RUNNER = 0.78, EN_SPITTER = 0.09, EN_STALKER = 0.09, EN_BULWARK = 0.04 } },
-		{ at = 320, label = "ДАВЛЕНИЕ", rate = 5.6, cap = 76, dirs = ALL, w = { EN_RUNNER = 0.78, EN_SPITTER = 0.09, EN_STALKER = 0.09, EN_BULWARK = 0.04 } },
+		{ at = 0, label = "КОНТАКТ", rate = 3.4, cap = 32, dirs = { "N", "E", "W", "S" }, w = { EN_RUNNER = 0.86, EN_SPITTER = 0.07, EN_STALKER = 0.07 }, quiet = true },
+		{ at = 25, label = "НАРАСТАНИЕ", rate = 4.6, cap = 48, dirs = ALL, w = { EN_RUNNER = 0.82, EN_SPITTER = 0.08, EN_STALKER = 0.08, EN_BULWARK = 0.02 } },
+		{ at = 50, label = "ДАВЛЕНИЕ", rate = 5.6, cap = 62, dirs = ALL, w = { EN_RUNNER = 0.8, EN_SPITTER = 0.08, EN_STALKER = 0.09, EN_BULWARK = 0.03 } },
+		{ at = 75, label = "КЛЕЩИ", rate = 5.8, cap = 66, dirs = ALL, w = { EN_RUNNER = 0.8, EN_SPITTER = 0.08, EN_STALKER = 0.09, EN_BULWARK = 0.03 } },
 	},
 	beats = {
-		{ at = 60, type = "assault", count = 6 },
-		{ at = 120, type = "nests" },
-		{ at = 135, type = "guard", index = 1 },
-		{ at = 136, type = "banner", title = "БРОНЕНОСЕЦ", sub = "Броня спереди — заходи сбоку или со спины", kind = "EN_BULWARK" },
-		{ at = 180, type = "assault", count = 7 },
-		{ at = 235, type = "guard", index = 2 },
-		{ at = 265, type = "assault", count = 8 },
-		{ at = 330, type = "assault", count = 8, kind = "EN_SPITTER" },
-		{ at = 400, type = "assault", count = 10 },
-		{ at = 460, type = "assault", count = 10 },
+		{ at = 5, type = "nests" },
+		{ at = 14, type = "guard", index = 1 },
+		{ at = 15, type = "banner", title = "БРОНЕНОСЕЦ", sub = "Броня спереди — заходи сбоку или со спины", kind = "EN_BULWARK" },
+		{ at = 45, type = "guard", index = 2 },
 	},
 	unlocks = { "O05" },
 	requires = "O03",

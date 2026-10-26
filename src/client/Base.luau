@@ -1593,6 +1593,9 @@ function Base.refresh()
 		local sd = SPOTS[goal.spot]
 		local def = Meta.Home[goal.spot]
 		showGoalMarker(W(sd.x, 0, sd.z), sd.color, def.name, "Починить · ◆ " .. def.cost, def.icon)
+	elseif goal and goal.station == "swarm" and goal.spot and SPOTS[goal.spot] then
+		local sd = SPOTS[goal.spot]
+		showGoalMarker(W(sd.x, 0, sd.z), sd.color, "СВОЙ РОЙ", "Выведи первую стаю", "hive")
 	elseif goal and goal.station == "build" and f.outpost then
 		local sd = SPOTS.WORKBENCH
 		local def = goal.structure and Meta.Structures[goal.structure]
@@ -1668,6 +1671,8 @@ function Base.refresh()
 		elseif goal.station == "home" then
 			local h = goal.spot and Meta.Home[goal.spot]
 			btn = if h and (profile.scrap or 0) >= h.cost then "ПОЧИНИТЬ" else nil
+		elseif goal.station == "swarm" then
+			btn = "В ЛАБОРАТОРИЮ"
 		end
 		ui.goalBtn.Visible = btn ~= nil and (goal.station ~= "build" or ownsBase)
 		ui.goalBtnLabel.Text = btn or ""
