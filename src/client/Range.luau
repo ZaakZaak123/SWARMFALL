@@ -16,10 +16,20 @@ local new, C, F = Theme.new, Theme.C, Theme.F
 
 local Range = {}
 
-local O = require(Shared:WaitForChild("Meta")).HomeOrigin
-local MARK = O + Vector3.new(36, 0, -12) -- the firing mark in the shelter; the dummies stand east (screen-left)
+local Layout = require(Shared:WaitForChild("ShelterLayout"))
+local Grove = require(Shared:WaitForChild("Grove"))
+-- The firing mark in the shelter; the dummies stand east (screen-left). DD-087: on the plot's frame.
+local frame = Grove.frame(1)
+local MARK, DUMMIES
 local MARK_R = 5
-local DUMMIES = { O + Vector3.new(54, 0, -5), O + Vector3.new(58, 0, -12), O + Vector3.new(54, 0, -19) }
+local function place()
+	MARK = frame:PointToWorldSpace(Vector3.new(Layout.RangeMark.x, 0, Layout.RangeMark.z))
+	DUMMIES = {}
+	for i, d in Layout.RangeDummies do
+		DUMMIES[i] = frame:PointToWorldSpace(Vector3.new(d[1], 0, d[2]))
+	end
+end
+place()
 local DUMMY_R = 2.4
 
 local folder
@@ -50,35 +60,29 @@ function Range.init(parent: Instance)
 		"Decal",
 		{ Face = Enum.NormalId.Top, Texture = Fx.Tex.ring, Color3 = C.red, Transparency = 0.25, Parent = mark }
 	)
-	hint = new(
-		"BillboardGui",
-		{
-			Size = UDim2.fromOffset(220, 44),
-			StudsOffsetWorldSpace = Vector3.new(0, 6, 0),
-			LightInfluence = 0,
-			AlwaysOnTop = true,
-			MaxDistance = 120,
-			Adornee = mark,
-			Parent = mark,
-		}
-	)
+	hint = new("BillboardGui", {
+		Size = UDim2.fromOffset(220, 44),
+		StudsOffsetWorldSpace = Vector3.new(0, 6, 0),
+		LightInfluence = 0,
+		AlwaysOnTop = true,
+		MaxDistance = 120,
+		Adornee = mark,
+		Parent = mark,
+	})
 	local t = Theme.label(
 		"ТИР",
 		{ Size = UDim2.new(1, 0, 0, 24), FontFace = F.display, TextSize = 22, TextColor3 = C.red, Parent = hint }
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 2.5, Parent = t })
-	local s = Theme.label(
-		"Встань в круг и стреляй",
-		{
-			Name = "Sub",
-			Position = UDim2.fromOffset(0, 24),
-			Size = UDim2.new(1, 0, 0, 16),
-			FontFace = F.bodyBold,
-			TextSize = 13,
-			TextColor3 = C.dim,
-			Parent = hint,
-		}
-	)
+	local s = Theme.label("Встань в круг и стреляй", {
+		Name = "Sub",
+		Position = UDim2.fromOffset(0, 24),
+		Size = UDim2.new(1, 0, 0, 16),
+		FontFace = F.bodyBold,
+		TextSize = 13,
+		TextColor3 = C.dim,
+		Parent = hint,
+	})
 	new("UIStroke", { Color = C.ink, Thickness = 2, Parent = s })
 	-- dummies: a practice runner on a post
 	for i, pos in DUMMIES do
@@ -107,38 +111,46 @@ function Range.init(parent: Instance)
 			body.WorldPivot = CFrame.new(cf.X, cf.Y - sz.Y / 2, cf.Z)
 			body.Parent = holder
 		end
-		local hl = new(
-			"Highlight",
-			{
-				FillColor = C.white,
-				FillTransparency = 1,
-				OutlineTransparency = 1,
-				DepthMode = Enum.HighlightDepthMode.Occluded,
-				Parent = holder,
-			}
-		)
+		local hl = new("Highlight", {
+			FillColor = C.white,
+			FillTransparency = 1,
+			OutlineTransparency = 1,
+			DepthMode = Enum.HighlightDepthMode.Occluded,
+			Parent = holder,
+		})
 		dummies[i] = { pos = pos, model = body, wobble = 0, flash = 0, highlight = hl }
 	end
 	-- DPS board over the middle dummy
 	local anchor = part({ Name = "Board", Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, Parent = folder })
 	anchor.CFrame = CFrame.new(DUMMIES[2] + Vector3.new(0, 7.5, 0))
-	board = new(
-		"BillboardGui",
-		{
-			Size = UDim2.fromOffset(180, 40),
-			LightInfluence = 0,
-			AlwaysOnTop = true,
-			MaxDistance = 120,
-			Enabled = false,
-			Adornee = anchor,
-			Parent = anchor,
-		}
-	)
+	board = new("BillboardGui", {
+		Size = UDim2.fromOffset(180, 40),
+		LightInfluence = 0,
+		AlwaysOnTop = true,
+		MaxDistance = 120,
+		Enabled = false,
+		Adornee = anchor,
+		Parent = anchor,
+	})
 	boardText = Theme.label(
 		"",
 		{ Size = UDim2.fromScale(1, 1), FontFace = F.display, TextSize = 22, TextColor3 = C.gold, Parent = board }
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 2.5, Parent = boardText })
+end
+
+-- The shelter moved to another plot (DD-087): the range moves with it.
+function Range.setFrame(cf: CFrame)
+	if cf == frame then
+		return
+	end
+	frame = cf
+	place()
+	local parent = folder.Parent
+	folder:Destroy()
+	table.clear(dummies)
+	Range.init(workspace)
+	folder.Parent = parent
 end
 
 function Range.setVisible(on: boolean)
@@ -226,6 +238,7 @@ function Range.update(
 			dm.model:PivotTo(
 				CFrame.new(dm.pos + Vector3.new(0, 2, 0))
 					* CFrame.Angles(d.Z * tilt, 0, -d.X * tilt)
+					* frame.Rotation
 					* CFrame.Angles(0, math.pi / 2, 0)
 			)
 		end

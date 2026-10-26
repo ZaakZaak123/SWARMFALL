@@ -30,6 +30,7 @@ export type Entry = {
 	collection: { [string]: number },
 	stock: number, -- coarse display tier, never the exact balance
 	saves: number,
+	trophyLog: { [string]: any },
 	trophyKey: string,
 }
 
@@ -217,6 +218,15 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 			elseif (d.scrap or 0) >= 300 then 300
 			elseif (d.scrap or 0) > 0 then 1
 			else 0,
+		trophyLog = (function() -- DD-087: when and with whom each boss fell (the plaque says it)
+			local out = {}
+			for op, log in d.trophyLog or {} do
+				if type(log) == "table" and won(d, op) then
+					out[op] = { t = log.t, team = log.team, with = log.with }
+				end
+			end
+			return out
+		end)(),
 		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07")
 			then "c"
 			else ""),

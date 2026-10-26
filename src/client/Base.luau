@@ -26,143 +26,86 @@ local Settings = require(script.Parent.Settings)
 local Cableway = require(script.Parent.Cableway)
 local Collection = require(Shared:WaitForChild("Collection"))
 local SpecimenGallery = require(script.Parent.SpecimenGallery)
+local Layout = require(Shared:WaitForChild("ShelterLayout"))
+local Grove = require(Shared:WaitForChild("Grove"))
+local Chronicle = require(Shared:WaitForChild("Chronicle"))
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
 
 local Base = {}
 
--- Layout, in shelter coordinates (Meta.HomeOrigin = courtyard centre; the camera looks north, +Z, so
--- screen-left is +X). Spawn (0, -4) facing the bunker.
-local O = Meta.HomeOrigin
+-- Layout, in shelter coordinates (shared/ShelterLayout: the courtyard centre is the origin, the bunker at
+-- +Z, the gate at -Z). DD-087: the shelter stands on its plot in the grove, so every point goes through
+-- the plot's frame (position and the turn that faces the gate to the Tree). Spawn (0, -4) facing the bunker.
+local frame: CFrame = Grove.frame(1)
 local function W(x: number, y: number, z: number): Vector3
-	return Vector3.new(O.X + x, y, O.Z + z)
+	return frame:PointToWorldSpace(Vector3.new(x, y, z))
 end
+-- a CFrame in shelter coordinates (turned with the plot)
+local function WC(x: number, y: number, z: number): CFrame
+	return frame * CFrame.new(x, y, z)
+end
+local L = Layout.Stations
 local STATIONS = {
 	{
 		key = "armory",
-		art = "ARMORY",
-		h = 6.5,
+		art = L.armory.art,
+		h = L.armory.h,
 		name = "ОРУЖЕЙНАЯ",
 		sub = "Оружие и улучшения",
 		icon = "swords",
 		color = C.gold,
-		x = -26,
-		z = 12,
+		x = L.armory.x,
+		z = L.armory.z,
 	},
 	{
 		key = "launch",
-		art = "BEACON",
-		h = 9,
+		art = L.launch.art,
+		h = L.launch.h,
 		name = "ВЫЛАЗКА",
 		sub = "Ворота в пустошь · к буру",
 		icon = "play",
 		color = C.lime,
-		x = 0,
-		z = -30,
-	},
-	-- camp only (DD-053): the settlement's shared posts
-	{
-		key = "board",
-		art = "BOARD",
-		h = 6.5,
-		name = "ДОСКА ОТРЯДОВ",
-		sub = "Найди напарников",
-		icon = "users",
-		color = C.orange,
-		x = -15,
-		z = -27,
-		camp = true,
-	},
-	{
-		key = "outposts",
-		art = "RADAR",
-		h = 7.5,
-		name = "УБЕЖИЩА",
-		sub = "Дома других выживших",
-		icon = "eye",
-		color = C.pink,
-		x = 15,
-		z = -27,
-		camp = true,
+		x = L.launch.x,
+		z = L.launch.z,
 	},
 }
 -- Prepared spots of the shelter (Meta.Home): rubble until restored, then the thing itself. A restored
 -- spot is also a station: the workshop builds the drill's defences, the radio picks the drill defence,
 -- the lab shows the samples.
-local SPOTS = {
-	GENERATOR = { art = "GENERATOR", h = 4.2, x = -11, z = 19, yaw = 0.3, color = C.gold },
+local SPOT_LOOK = {
+	GENERATOR = { color = C.gold },
 	WORKBENCH = {
-		art = "WORKBENCH",
-		h = 5,
-		x = 13,
-		z = 13,
-		yaw = -0.25,
 		color = C.cyan,
 		station = "build",
 		stationName = "МАСТЕРСКАЯ",
 		stationSub = "Оборона бура: турели, ловушки",
 	},
 	RADIO = {
-		art = "RADIO",
-		h = 6.5,
-		x = -24,
-		z = -3,
-		yaw = 0.35,
 		color = C.orange,
 		station = "radio",
 		stationName = "РАДИОСТАНЦИЯ",
 		stationSub = "Оборона бура по уровням",
 	},
 	LAB = {
-		art = "TANK_FRAME",
-		h = 7.5,
-		x = 27,
-		z = 9,
-		yaw = -0.3,
 		color = C.violet,
 		station = "swarm",
 		stationName = "ЛАБОРАТОРИЯ",
 		stationSub = "Образцы роя",
 	},
-	GARDEN = { art = "GARDEN", h = 4, x = -14, z = -14, yaw = 0.2, color = C.lime },
+	GARDEN = { color = C.lime },
 }
-local LAMPS = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
+local SPOTS = {}
+for id, s in Layout.Spots do
+	SPOTS[id] = table.clone(s)
+	for k, v in SPOT_LOOK[id] or {} do
+		SPOTS[id][k] = v
+	end
+end
+local LAMPS = Layout.Lamps
 -- The grove itself: the bunker, trees, old ruins, a wreck by the gate.
-local DECOR = { -- { art, height, x, z, yaw }
-	{ "SHELTER", 14, 0, 29, 0 },
-	{ "OAK", 20, -42, 34, 0.4 },
-	{ "OAK", 22, 72, 44, 2.1 },
-	{ "OAK", 18, -56, -8, 1.2 },
-	{ "OAK", 21, 74, 12, 3.3 },
-	{ "OAK", 19, -40, -50, 2.6 },
-	{ "OAK", 20, 44, -52, 0.9 },
-	{ "OAK", 24, 4, 62, 1.7 },
-	{ "BIRCH", 15, -26, 40, 0.3 },
-	{ "BIRCH", 14, 28, 44, 1.1 },
-	{ "BIRCH", 16, -60, 20, 2.2 },
-	{ "BIRCH", 15, 62, -26, 0.6 },
-	{ "BIRCH", 13, -30, -60, 1.9 }, -- (DD-082: off the line from the courtyard to the cave)
-	{ "BIRCH", 14, 50, -38, 2.8 },
-	{ "BIRCH", 17, -18, 56, 0.8 },
-	{ "BUSH", 3.2, -20, 26, 0 },
-	{ "BUSH", 2.8, 20, 28, 1 },
-	{ "BUSH", 3.4, -36, 8, 2 },
-	{ "BUSH", 3.0, 38, -6, 0.5 },
-	{ "BUSH", 3.0, 30, -36, 2.5 },
-	{ "BUSH", 3.6, -8, 40, 0.2 },
-	{ "BUSH", 2.8, 12, 42, 1.2 },
-	{ "BUSH", 2.9, 61, 22, 0.7 },
-	{ "RUIN_WALL", 5, -11, -36, 0 },
-	{ "RUIN_WALL", 5, 11, -36, math.pi },
-	{ "RUIN_WALL", 4.5, -48, 6, 1.57 },
-	{ "RUIN_WALL", 5, 50, -10, -1.57 },
-	{ "RUIN_WALL", 4.5, -22, 50, 0.1 },
-	{ "RUIN_WALL", 4.2, 26, 52, -0.15 },
-	{ "CAR_WRECK", 2.8, 9, -47, 0.5 },
-	{ "CRATES", 3, -18, 24, 0.4 },
-	{ "CRATES", 2.6, 19, 21, -0.6 },
-}
+local DECOR = Layout.Decor -- { art, height, x, z, yaw }
 
 local send, actions -- set in init
 local folder: Folder
@@ -303,9 +246,9 @@ local function buildWorld()
 			Transparency = 0.15,
 			Parent = holder,
 		})
-		pad.CFrame = CFrame.new(W(def.x, 0.12, def.z)) * CFrame.Angles(0, 0, math.rad(90))
+		pad.CFrame = WC(def.x, 0.12, def.z) * CFrame.Angles(0, 0, math.rad(90))
 		local ring = ringPart("Ring", 4.8, def.color, 0.3, holder)
-		ring.CFrame = CFrame.new(W(def.x, 0.3, def.z))
+		ring.CFrame = WC(def.x, 0.3, def.z)
 		local beam = part({
 			Name = "Beam",
 			Shape = Enum.PartType.Cylinder,
@@ -315,7 +258,7 @@ local function buildWorld()
 			Transparency = 0.5,
 			Parent = holder,
 		})
-		beam.CFrame = CFrame.new(W(def.x, 7, def.z)) * CFrame.Angles(0, 0, math.rad(90))
+		beam.CFrame = WC(def.x, 7, def.z) * CFrame.Angles(0, 0, math.rad(90))
 		local light =
 			new("PointLight", { Color = def.color, Range = 14, Brightness = 1.2, Shadows = false, Parent = pad })
 		local bb = board(pad, def.icon, def.name, def.sub, def.color, 8.5)
@@ -337,7 +280,7 @@ local function buildWorld()
 			Material = Enum.Material.Metal,
 			Parent = m,
 		})
-		pole.CFrame = CFrame.new(W(xz[1], 5.5, xz[2]))
+		pole.CFrame = WC(xz[1], 5.5, xz[2])
 		pole.CastShadow = true
 		local toward = Vector3.new(0, 0, 0) - Vector3.new(xz[1], 0, xz[2])
 		local yaw = math.atan2(-toward.X, -toward.Z)
@@ -348,7 +291,7 @@ local function buildWorld()
 			Material = Enum.Material.Neon,
 			Parent = m,
 		})
-		head.CFrame = CFrame.new(W(xz[1], 11.2, xz[2])) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
+		head.CFrame = WC(xz[1], 11.2, xz[2]) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-35), 0, 0)
 		local spot = new("SpotLight", {
 			Face = Enum.NormalId.Front,
 			Angle = 75,
@@ -395,8 +338,7 @@ local function dressStations()
 		local def = sp.def
 		if def.art and not sp.model then
 			local yaw = math.clamp(-def.x / 60, -0.35, 0.35)
-			local m =
-				artModel(def.art, def.h, CFrame.new(W(def.x, 0.25, def.z + 1.6)) * CFrame.Angles(0, yaw, 0), sp.holder)
+			local m = artModel(def.art, def.h, WC(def.x, 0.25, def.z + 1.6) * CFrame.Angles(0, yaw, 0), sp.holder)
 			if m then
 				sp.model = m
 				sp.beam.Transparency = 1
@@ -408,7 +350,7 @@ local function dressStations()
 		decorDone = true
 		local grove = new("Folder", { Name = "Grove", Parent = folder })
 		for _, d in DECOR do
-			local m = artModel(d[1], d[2], CFrame.new(W(d[3], 0, d[4])) * CFrame.Angles(0, d[5], 0), grove)
+			local m = artModel(d[1], d[2], WC(d[3], 0, d[4]) * CFrame.Angles(0, d[5], 0), grove)
 			if m then
 				m.CanCollide = d[1] ~= "BUSH"
 			end
@@ -420,7 +362,7 @@ local function dressStations()
 			local m = artModel(
 				"FLOODLIGHT",
 				11,
-				CFrame.new(pos.X, 0, pos.Z) * CFrame.Angles(0, l.yaw + math.pi, 0),
+				CFrame.new(pos.X, 0, pos.Z) * frame.Rotation * CFrame.Angles(0, l.yaw + math.pi, 0),
 				l.head.Parent
 			)
 			if m then
@@ -428,6 +370,7 @@ local function dressStations()
 				l.pole.Transparency = 1
 				l.head.Transparency = 1
 				l.head.CFrame = CFrame.new(pos.X, 10.4, pos.Z)
+					* frame.Rotation
 					* CFrame.Angles(0, l.yaw, 0)
 					* CFrame.Angles(math.rad(-35), 0, 0)
 			end
@@ -446,7 +389,7 @@ local function buildSpots()
 		local sd = SPOTS[id]
 		local holder = new("Model", { Name = "Spot_" .. id, Parent = folder })
 		local ring = ringPart("Ring", 4, sd.color, 0.3, holder)
-		ring.CFrame = CFrame.new(W(sd.x, 0.3, sd.z))
+		ring.CFrame = WC(sd.x, 0.3, sd.z)
 		local light = new(
 			"PointLight",
 			{ Color = Color3.fromRGB(255, 214, 160), Range = 12, Brightness = 0, Shadows = false, Parent = ring }
@@ -499,7 +442,7 @@ end
 -- The cableway terminal (DD-065) ------------------------------------------------------------------------
 -- At the courtyard's edge, in sight of the camp camera: the end of the cable from the drill in the funnel. Utility arrives here in the same crates
 -- that leave the drill in a fight; the stack beside the frame grows with the utility on hand.
-local TERMINAL = { x = -37, z = -9 }
+local TERMINAL = Layout.Terminal
 local cable = nil
 local pileShown = -1
 local pileFolder = nil
@@ -513,7 +456,7 @@ local function buildTerminal()
 	part({
 		Name = "Slab",
 		Size = Vector3.new(7, 0.5, 10),
-		CFrame = CFrame.new(W(t.x, 0.25, t.z)),
+		CFrame = WC(t.x, 0.25, t.z),
 		Color = Color3.fromRGB(122, 118, 110),
 		Material = Enum.Material.Concrete,
 		Parent = holder,
@@ -522,7 +465,7 @@ local function buildTerminal()
 	for _, s in { -1, 1 } do
 		part({
 			Size = Vector3.new(0.6, 8.8, 0.6),
-			CFrame = CFrame.new(W(t.x, 4.4, t.z + s * 2.8)),
+			CFrame = WC(t.x, 4.4, t.z + s * 2.8),
 			Color = metal,
 			Material = Enum.Material.Metal,
 			Parent = holder,
@@ -531,7 +474,7 @@ local function buildTerminal()
 	local beam = part({
 		Name = "Beam",
 		Size = Vector3.new(0.8, 0.6, 6.8),
-		CFrame = CFrame.new(W(t.x, 8.9, t.z)),
+		CFrame = WC(t.x, 8.9, t.z),
 		Color = metal,
 		Material = Enum.Material.Metal,
 		Parent = holder,
@@ -539,7 +482,7 @@ local function buildTerminal()
 	-- the shelter's lime: the same mark as on every crate that leaves the drill
 	part({
 		Size = Vector3.new(0.85, 0.25, 6.9),
-		CFrame = CFrame.new(W(t.x, 8.5, t.z)),
+		CFrame = WC(t.x, 8.5, t.z),
 		Color = Color3.fromRGB(176, 236, 60),
 		Material = Enum.Material.SmoothPlastic,
 		Parent = holder,
@@ -553,9 +496,9 @@ local function buildTerminal()
 		3.2
 	)
 	-- out of the cave at the foot of the hill (the tunnel from the funnel, DD-082) to the frame
-	local mouth = Cableway.MOUTH_B
-	Cableway.cave(folder, W(mouth.X, 0, mouth.Z), Cableway.FACING_B)
-	cable = Cableway.new(folder, { W(mouth.X, Cableway.CABLE_H, mouth.Z), W(t.x, 8.4, t.z) }, {})
+	local mouth = Layout.Cave
+	Cableway.cave(folder, W(mouth.x, 0, mouth.z), frame:VectorToWorldSpace(Vector3.new(mouth.fx, 0, mouth.fz)))
+	cable = Cableway.new(folder, { W(mouth.x, Cableway.CABLE_H, mouth.z), W(t.x, 8.4, t.z) }, {})
 end
 
 -- The stack of crates beside the terminal: more utility on hand, more crates.
@@ -575,7 +518,7 @@ local function setPile(scrap: number)
 		if i > n then
 			break
 		end
-		local base = CFrame.new(W(t.x + o[1], 0.5, t.z + o[2])) * CFrame.Angles(0, o[3], 0)
+		local base = WC(t.x + o[1], 0.5, t.z + o[2]) * CFrame.Angles(0, o[3], 0)
 		for k = 0, o[4] - 1 do
 			Cableway.crate(pileFolder, base * CFrame.new(0, k * 1.95, 0) * CFrame.Angles(0, k * 0.35, 0))
 		end
@@ -631,7 +574,7 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 		return
 	end
 	local sd = sp.sd
-	local base = CFrame.new(W(sd.x, 0.25, sd.z + 0.8)) * CFrame.Angles(0, sd.yaw, 0)
+	local base = WC(sd.x, 0.25, sd.z + 0.8) * CFrame.Angles(0, sd.yaw, 0)
 	if restored then
 		if sp.rubble then
 			sp.rubble:Destroy()
@@ -743,7 +686,7 @@ local function setShelf(slots, workshop: boolean)
 	local sd = SPOTS.WORKBENCH
 	local at = W(sd.x + 7.5, 0, sd.z + 2.5)
 	shelfFolder = new("Model", { Name = "Shelf", Parent = folder })
-	local shelf = artModel("SHELF", 4.6, CFrame.new(at) * CFrame.Angles(0, -0.25, 0), shelfFolder)
+	local shelf = artModel("SHELF", 4.6, CFrame.new(at) * frame.Rotation * CFrame.Angles(0, -0.25, 0), shelfFolder)
 	local anchor = shelf
 		or part({
 			Name = "ShelfAnchor",
@@ -755,7 +698,7 @@ local function setShelf(slots, workshop: boolean)
 	if not shelf then
 		anchor.CFrame = CFrame.new(at + Vector3.new(0, 2, 0))
 	end
-	local base = CFrame.new(at) * CFrame.Angles(0, -0.25, 0)
+	local base = CFrame.new(at) * frame.Rotation * CFrame.Angles(0, -0.25, 0)
 	for i, it in list do
 		local row = (i - 1) // 4 -- three shelves, four places each
 		local col = (i - 1) % 4
@@ -786,7 +729,7 @@ local function setShelf(slots, workshop: boolean)
 	local holder = shelf or anchor
 	-- the label sits at the shelf's foot, on the camera side: above it the workshop's own sign covers it
 	local at = new("Attachment", { Name = "Label", Parent = holder })
-	at.WorldCFrame = CFrame.new(W(sd.x + 7.5, 0.6, sd.z - 0.6))
+	at.WorldCFrame = WC(sd.x + 7.5, 0.6, sd.z - 0.6)
 	local b = new("BillboardGui", {
 		Size = UDim2.fromOffset(190, 36),
 		LightInfluence = 0,
@@ -1037,12 +980,8 @@ end
 -- In front of the drill: the favourite gun on a stand and one pedestal per boss. A beaten boss stands in
 -- gold; one not yet beaten is a faint hologram with the hunt that earns it — a goal you can walk up to.
 -- Shows the base's owner: yours, or the hunter you are visiting.
-local TROPHIES = {
-	{ op = "O01", kind = 10, name = "АЛЬФА", hunt = "вылазка 1" },
-	{ op = "O05", kind = 7, name = "МАТЬ РОЯ", hunt = "вылазка 5" },
-	{ op = "O07", kind = 9, name = "ПОЖИРАТЕЛЬ", hunt = "вылазка 7" },
-}
-local SHOW_Z = -16 -- shelter coordinates
+local TROPHIES = Layout.Trophies
+local SHOW_Z = Layout.ShowZ -- shelter coordinates
 local showFolder = nil
 local showKey = nil
 local showEntry = nil -- the last showcase entry (a story scene can light a trophy on it, DD-079)
@@ -1060,7 +999,7 @@ local function fitTo(model: Model, height: number, longest: boolean?)
 end
 
 local function pedestal(x: number, color: Color3, lit: boolean): BasePart
-	local plinth = artModel("PLINTH", 1.3, CFrame.new(W(x, 0, SHOW_Z)), showFolder)
+	local plinth = artModel("PLINTH", 1.3, WC(x, 0, SHOW_Z), showFolder)
 	local base = part({
 		Name = "Pedestal",
 		Shape = Enum.PartType.Cylinder,
@@ -1069,15 +1008,15 @@ local function pedestal(x: number, color: Color3, lit: boolean): BasePart
 		Material = Enum.Material.Slate,
 		Parent = showFolder,
 	})
-	base.CFrame = CFrame.new(W(x, 0.6, SHOW_Z)) * CFrame.Angles(0, 0, math.rad(90))
+	base.CFrame = WC(x, 0.6, SHOW_Z) * CFrame.Angles(0, 0, math.rad(90))
 	base.CastShadow = true
 	if plinth then
 		base.Transparency = 1 -- the generated plinth carries the look; this part stays as the anchor
 		plinth.Size = Vector3.new(5.6, plinth.Size.Y, 5.6)
-		plinth.CFrame = CFrame.new(W(x, plinth.Size.Y / 2, SHOW_Z))
+		plinth.CFrame = WC(x, plinth.Size.Y / 2, SHOW_Z)
 	end
 	local ring = ringPart("Ring", 3.2, color, 1.24, showFolder)
-	ring.CFrame = CFrame.new(W(x, 1.24, SHOW_Z))
+	ring.CFrame = WC(x, 1.24, SHOW_Z)
 	setRing(ring, if lit then 0.1 else 0.7)
 	if lit then
 		new("PointLight", { Color = color, Range = 9, Brightness = 1.2, Shadows = false, Parent = base })
@@ -1187,7 +1126,7 @@ function Base.setShowcase(entry)
 			end
 			fitTo(gun, 5, true)
 			gun.Parent = showFolder
-			table.insert(spinners, { model = gun, cf = CFrame.new(W(-2, 2.2, SHOW_Z)), speed = 0.6 })
+			table.insert(spinners, { model = gun, cf = WC(-2, 2.2, SHOW_Z), speed = 0.6 })
 		end
 		plaque(
 			base,
@@ -1198,7 +1137,7 @@ function Base.setShowcase(entry)
 	end
 	-- the trophies
 	for i, t in TROPHIES do
-		local x = 8 + (i - 1) * 9
+		local x = Layout.trophyX(i)
 		local won = entry.won and entry.won[t.op]
 		local base = pedestal(x, if won then C.gold else C.dim, won)
 		local ok, m = pcall(Models.creature, t.kind)
@@ -1206,18 +1145,18 @@ function Base.setShowcase(entry)
 			statue(m, won)
 			fitTo(m, if t.kind == 10 then 5 else 6, t.kind == 9) -- the Devourer is long: fit its length
 			m.Parent = showFolder
-			table.insert(spinners, { model = m, cf = CFrame.new(W(x, 1.3, SHOW_Z)), speed = if won then 0.25 else 0.1 })
+			table.insert(spinners, { model = m, cf = WC(x, 1.3, SHOW_Z), speed = if won then 0.25 else 0.1 })
 		end
 		plaque(
 			base,
 			t.name,
-			if won then "Повержен · " .. t.hunt else t.hunt .. " · трофей",
+			if won then Chronicle.provenance((entry.trophyLog or {})[t.op], os.time()) else t.hunt .. " · трофей",
 			if won then C.gold else C.dim
 		)
 	end
 	-- the siege record on the drill-side
 	if (entry.siege or 0) > 0 then
-		local base = pedestal(-26, C.orange, true)
+		local base = pedestal(Layout.SiegeX, C.orange, true)
 		plaque(
 			base,
 			"ОБОРОНА " .. entry.siege,
@@ -1492,7 +1431,7 @@ local function buildHud(playerGui: PlayerGui)
 	ui.stBuild = stationButton(ui.stations, "build", "МАСТЕРСКАЯ", "gear", C.cyan, 2)
 	ui.stLaunch = stationButton(ui.stations, "launch", "ВЫЛАЗКА", "play", C.lime, 3)
 	ui.stBoard = stationButton(ui.stations, "board", "ОТРЯДЫ", "users", C.orange, 4)
-	ui.stOutposts = stationButton(ui.stations, "outposts", "УБЕЖИЩА", "eye", C.pink, 5)
+	ui.stOutposts = stationButton(ui.stations, "outposts", "ЖИТЕЛИ", "eye", C.pink, 5)
 	ui.stSwarm = stationButton(ui.stations, "swarm", "ЛАБОРАТОРИЯ", "hive", C.violet, 6)
 	for _, b in { ui.stArmory, ui.stBuild, ui.stLaunch, ui.stBoard, ui.stOutposts, ui.stSwarm } do
 		b.Size = UDim2.fromOffset(156, 56)
@@ -1688,8 +1627,6 @@ function Base.refresh()
 	lastVisit = visitHome
 	local won = profile.winsByOp or {}
 	stationParts.armory.holder.Parent = if (profile.runs or 0) > 0 then folder else nil
-	stationParts.board.holder.Parent = if camp then folder else nil
-	stationParts.outposts.holder.Parent = if camp then folder else nil
 	-- the generator brings the light: floodlights, string lights, the bunker's windows
 	local powered = home.GENERATOR == true
 	if powered ~= lampsOn and not scene then
@@ -1798,13 +1735,24 @@ function Base.refresh()
 		end
 	end
 	if camp then
-		ui.tag.Text = string.format("ПОСЕЛЕНИЕ ВЫЖИВШИХ  ·  ЗДЕСЬ: %d", #(camp.hunters or {}))
+		-- DD-087: the grove — your plot among the neighbours'
+		local plot, open = nil, false
+		for _, h in camp.hunters or {} do
+			if h.id == myId then
+				plot, open = h.plot, h.statusKey == "open"
+			end
+		end
+		ui.tag.Text = string.format(
+			"ПОСЛЕДНЯЯ РОЩА  ·  ЖИТЕЛЕЙ: %d%s",
+			#(camp.hunters or {}),
+			if plot then "  ·  УЧАСТОК " .. plot else ""
+		)
 		ui.owner.Text = if #players > 1
 			then "ОТРЯД " .. hostName:upper() .. string.format("  %d/4", #players)
-			else "ТВОЁ УБЕЖИЩЕ"
-		ui.ownerNote.Text = if visitHome
-			then "Вы в гостях: хозяин и его гости видят тебя и одну общую коллекцию."
-			else "Твой безопасный дом. Позови гостей через карточку охотника или загляни к соседям."
+			else "ТВОЙ ДОМ"
+		ui.ownerNote.Text = if open
+			then "Фонарь у таблички горит: соседи видят, что ты ищешь напарника."
+			else "Соседи видят твой дом. Зажги фонарь у таблички — позовёшь их с собой. G — сигнал."
 	else
 		ui.tag.Text = if isHost or hostName == ""
 			then "ТВОЁ УБЕЖИЩЕ"
@@ -1947,6 +1895,7 @@ end)
 -- API --------------------------------------------------------------------------------------------------------
 local bindOrbitInput -- the free camera's input (defined with the camera below)
 
+local artReady = false
 function Base.init(playerGui: PlayerGui, sender, acts)
 	send = sender
 	actions = acts
@@ -1962,9 +1911,51 @@ function Base.init(playerGui: PlayerGui, sender, acts)
 		while f and not f:GetAttribute("Ready") and os.clock() - t0 < 30 do
 			task.wait(0.5)
 		end
+		artReady = true
 		dressStations()
 		applyQuality()
 	end)
+end
+
+-- DD-087: the shelter stands on the player's plot in the grove. A new plot (another server, a plot
+-- given out again) moves the whole home: it is rebuilt in the new frame, the look kept.
+function Base.setFrame(cf: CFrame)
+	if cf == frame then
+		return
+	end
+	frame = cf
+	if not folder then
+		return
+	end
+	local parent = folder.Parent
+	folder:Destroy()
+	table.clear(stationParts)
+	table.clear(lamps)
+	table.clear(spotParts)
+	table.clear(restoredShown)
+	table.clear(bulbs)
+	table.clear(spinners)
+	decorDone = false
+	goalMarker, cable, gallery, arrow = nil, nil, nil, nil
+	pileShown, pileFolder = -1, nil
+	shelfKey, shelfFolder = nil, nil
+	showFolder, showKey = nil, nil
+	lampsOn = false
+	buildWorld()
+	buildSpots()
+	buildTerminal()
+	folder.Parent = parent
+	if artReady then
+		dressStations()
+		applyQuality()
+	end
+	Base.setShowcase(showEntry)
+	Base.refresh()
+end
+
+-- The frame of the shelter on screen (story scenes and the range place themselves by it).
+function Base.frame(): CFrame
+	return frame
 end
 
 function Base.setProfile(pub)
@@ -2383,7 +2374,7 @@ function Base.point(name: string): Vector3
 	elseif string.sub(name, 1, 7) == "TROPHY_" then
 		for i, t in TROPHIES do
 			if "TROPHY_" .. t.op == name then
-				return W(8 + (i - 1) * 9, 0, SHOW_Z)
+				return W(Layout.trophyX(i), 0, SHOW_Z)
 			end
 		end
 	end

@@ -132,12 +132,12 @@ local function buildGui(playerGui: PlayerGui)
 		Visible = false,
 		Parent = gui,
 	})
-	ui.coverTitle = label("SPOREFALL", {
+	ui.coverTitle = label("THE LAST GROVE", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.44),
 		Size = UDim2.new(0.9, 0, 0, 80),
 		FontFace = F.display,
-		TextSize = 72,
+		TextSize = 56,
 		TextColor3 = rgb(226, 214, 190),
 		ZIndex = 11,
 		Parent = ui.cover,
@@ -354,8 +354,10 @@ local function nightfall()
 end
 
 -- The route and the tunnel -------------------------------------------------------------------------------------
-local function homeWorld(rel: Vector3): Vector3
-	return Meta.HomeOrigin + rel
+
+-- An offset in shelter coordinates, turned with the plot the shelter stands on (DD-087).
+local function rel(x: number, y: number, z: number): Vector3
+	return deps.base.frame():VectorToWorldSpace(Vector3.new(x, y, z))
 end
 
 -- The whole ride from the post inside the funnel to the terminal in the courtyard (the cable's own sag):
@@ -373,9 +375,9 @@ local function routeTrack(terminal: Vector3): ({ Vector3 }, number, number)
 	local up = Vector3.new(0, Cableway.CABLE_H, 0)
 	add(Cableway.track({ Cableway.ARENA_SIDE, Cableway.MOUTH_A + up }))
 	local arenaEnd = #track
-	add(Cableway.track(Cableway.tunnelAnchors(Meta.HomeOrigin)))
+	add(Cableway.track(Cableway.tunnelAnchors(deps.base.frame())))
 	local transitEnd = #track
-	add(Cableway.track({ homeWorld(Cableway.MOUTH_B) + up, terminal }))
+	add(Cableway.track({ (Cableway.mouthB(deps.base.frame())) + up, terminal }))
 	return track, arenaEnd, transitEnd
 end
 
@@ -482,7 +484,7 @@ end
 local function buildTunnel(): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = "StoryTunnel"
-	local line = Cableway.tunnelLine(Meta.HomeOrigin)
+	local line = Cableway.tunnelLine(deps.base.frame())
 	local W, H = 18, 18
 	local rockC, floorC, ribC = rgb(58, 54, 50), rgb(44, 40, 36), rgb(92, 64, 46)
 	local lampN = 0
@@ -522,20 +524,23 @@ local function buildTunnel(): Folder
 		end
 	end
 	-- the cable itself, hanger by hanger under the roof
-	Cableway.new(folder, Cableway.tunnelAnchors(Meta.HomeOrigin), {})
+	Cableway.new(folder, Cableway.tunnelAnchors(deps.base.frame()), {})
 	-- DD-083: where the tunnel runs through the funnel wall and the grove's hill, the hillside showed
 	-- inside it (grass through the walls, flickering). For the scene the terrain is hollowed out along
 	-- the tube on this screen only, and put back exactly as it was when the tunnel goes.
+	-- DD-087: only the two ends (cave, ramp) cross the ground; the long run is deep under it (below the
+	-- ground's floor), and under the grove it must not dig a trench through the square.
 	local terrain = workspace.Terrain
-	local O = Meta.HomeOrigin
 	local saved = {}
-	for _, box in
-		{
-			{ Vector3.new(-240, -48, 40), Vector3.new(-60, 72, 400) },
-			{ O + Vector3.new(-200, -48, -200), O + Vector3.new(-30, 52, -10) },
-		}
-	do
-		local region = Region3.new(box[1], box[2]):ExpandToGrid(4)
+	local ends = { { 1, 3 }, { 4, 6 } } -- line points of the funnel end and the grove end
+	for _, e in ends do
+		local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+		for k = e[1], e[2] do
+			lo, hi = lo:Min(line[k]), hi:Max(line[k])
+		end
+		local pad = Vector3.new(W + 20, 0, W + 20)
+		local region = Region3.new(lo - pad - Vector3.new(0, 14, 0), hi + pad + Vector3.new(0, H + 40, 0))
+			:ExpandToGrid(4)
 		local ok, mats, occ = pcall(function()
 			return terrain:ReadVoxels(region, 4)
 		end)
@@ -546,6 +551,9 @@ local function buildTunnel(): Folder
 	for i = 1, #line - 1 do
 		local a, b = line[i], line[i + 1]
 		local len = (b - a).Magnitude
+		if i == 3 then
+			continue -- the long run
+		end
 		terrain:FillBlock(
 			CFrame.lookAt(a, b) * CFrame.new(0, H / 2, -len / 2),
 			Vector3.new(W + 12, H + 12, len + 6),
@@ -868,9 +876,12 @@ function Story.intro(onDone)
 				from = 0,
 				to = 7.4,
 				cam = function(k)
-					local a = CFrame.lookAt(shelter + Vector3.new(30, 30, -66), shelter + Vector3.new(0, 4, 0))
-					local b = CFrame.lookAt(shelter + Vector3.new(12, 17, -40), shelter + Vector3.new(0, 5, 0))
-					return a:Lerp(b, k)
+					-- DD-087: from high over the grove (the Tree, the neighbours' lights) down to the own shelter
+					local a = CFrame.lookAt(shelter + rel(30, 78, -170), shelter + Vector3.new(0, 4, 0))
+					local b = CFrame.lookAt(shelter + rel(12, 17, -40), shelter + Vector3.new(0, 5, 0))
+					-- the descent starts as the title card lifts (3.0 s) and settles before the hold (7.0 s)
+					local u = math.clamp((k * 7.4 - 3.0) / 3.4, 0, 1)
+					return a:Lerp(b, u * u * (3 - 2 * u))
 				end,
 			},
 			{
@@ -878,9 +889,9 @@ function Story.intro(onDone)
 				to = 10.55,
 				cam = function(k)
 					-- from the courtyard: the pallet rides off to the cave in the hill
-					local eye = term + Vector3.new(16, -2, 10)
+					local eye = term + rel(16, -2, 10)
 					local pos = path.at(s)
-					return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 3, -4), k), pos + Vector3.new(0, -3, 0))
+					return CFrame.lookAt(eye:Lerp(eye + rel(-2, 3, -4), k), pos + Vector3.new(0, -3, 0))
 				end,
 			},
 			{
@@ -1260,13 +1271,11 @@ function Story.returnHome(opId: string, onDone)
 				-- trophies stand by the courtyard lamps: look at them from the gate side
 				local trophy = string.sub(spot, 1, 7) == "TROPHY_"
 				local a = CFrame.lookAt(
-					at + (if trophy then Vector3.new(-12, 9, -16) else Vector3.new(12, 10, -17)),
+					at + (if trophy then rel(-12, 9, -16) else rel(12, 10, -17)),
 					at + Vector3.new(0, 2.5, 0)
 				)
-				local b = CFrame.lookAt(
-					at + (if trophy then Vector3.new(-9, 7, -12) else Vector3.new(9, 7, -13)),
-					at + Vector3.new(0, 3, 0)
-				)
+				local b =
+					CFrame.lookAt(at + (if trophy then rel(-9, 7, -12) else rel(9, 7, -13)), at + Vector3.new(0, 3, 0))
 				return a:Lerp(b, k)
 			end,
 		}
@@ -1308,8 +1317,8 @@ function Story.returnHome(opId: string, onDone)
 			to = 9.0,
 			cam = function(k)
 				-- from the side of the courtyard: the cave at the hill's foot, the pallet riding out to the frame
-				local eye = term + Vector3.new(6, 5, 16)
-				return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 1, 2), k), path.at(s) + Vector3.new(0, -3, 0))
+				local eye = term + rel(6, 5, 16)
+				return CFrame.lookAt(eye:Lerp(eye + rel(-2, 1, 2), k), path.at(s) + Vector3.new(0, -3, 0))
 			end,
 		},
 	}
@@ -1579,9 +1588,9 @@ function Story.depart(opId: string, onDone)
 				to = 3.35,
 				cam = function(k)
 					-- beside the cable just out of the courtyard: the hero rides past to the cave in the hill
-					local eye = term + Vector3.new(-12, -1, 7)
+					local eye = term + rel(-12, -1, 7)
 					local pos = path.at(s)
-					return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-3, 2, 0), k), pos + Vector3.new(0, -3.5, 0))
+					return CFrame.lookAt(eye:Lerp(eye + rel(-3, 2, 0), k), pos + Vector3.new(0, -3.5, 0))
 				end,
 			},
 			{
@@ -1765,12 +1774,12 @@ function Story.teleportGui(): ScreenGui
 	local g = new("ScreenGui", { Name = "SporeTeleport", IgnoreGuiInset = true })
 	local f =
 		new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = rgb(6, 5, 8), BorderSizePixel = 0, Parent = g })
-	label("SPOREFALL", {
+	label("THE LAST GROVE", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.46),
 		Size = UDim2.new(0.9, 0, 0, 80),
 		FontFace = F.display,
-		TextSize = 72,
+		TextSize = 56,
 		TextColor3 = rgb(226, 214, 190),
 		Parent = f,
 	})

@@ -24,7 +24,7 @@ function Gallery.new(base, parent, artModel, onInspect)
 	deck.Name, deck.Anchored, deck.CanCollide, deck.CanQuery, deck.CanTouch, deck.CastShadow =
 		"GalleryDeck", true, false, false, false, false
 	deck.Size = Vector3.new(28, 0.16, 42)
-	deck.Position = Vector3.new(base.X + 16, 0.1, base.Z + 24)
+	deck.CFrame = base * CFrame.new(16, 0.1 - base.Y, 24) -- DD-087: turned with the plot
 	deck.Color, deck.Material, deck.Parent = Color3.fromRGB(85, 94, 76), Enum.Material.WoodPlanks, parent
 	return setmetatable(
 		{ base = base, parent = parent, artModel = artModel, inspect = onInspect, tanks = {}, clock = 0, deck = deck },
@@ -40,7 +40,7 @@ function Gallery:makeTank(kind, index)
 	local offset = if index == 1
 		then Vector3.zero
 		else Vector3.new(8 + ((index - 2) % 3) * 8, 0, 8 + math.floor((index - 2) / 3) * 10)
-	local base = (self.base + offset)
+	local base = self.base * CFrame.new(offset)
 	local frame = self.artModel("SPECIMEN_FRAME", 8.34, base, model)
 	local function cyl(name, h, d, y, color, mat, transparency)
 		return part(
@@ -210,7 +210,7 @@ function Gallery:update(research, visible)
 		self.deck.Transparency = if index > 1 then 0 else 1
 		local cols, rows = math.min(3, math.max(1, index - 1)), math.max(1, math.ceil((index - 1) / 3))
 		self.deck.Size = Vector3.new(cols * 8 + 4, 0.16, (rows - 1) * 10 + 8)
-		self.deck.Position = Vector3.new(self.base.X + 8 + (cols - 1) * 4, 0.1, self.base.Z + 8 + (rows - 1) * 5)
+		self.deck.CFrame = self.base * CFrame.new(8 + (cols - 1) * 4, 0.1 - self.base.Y, 8 + (rows - 1) * 5)
 	end
 end
 

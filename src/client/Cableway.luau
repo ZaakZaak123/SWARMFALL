@@ -13,6 +13,8 @@
 -- line:update(dt)          move the crates (call every frame while the line is in the world)
 -- line:destroy()
 
+local Layout = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("ShelterLayout"))
+
 local Cableway = {}
 Cableway.__index = Cableway
 
@@ -83,26 +85,33 @@ end
 -- in its north-west wall, runs under the dead city along an old metro tunnel and comes out of a cave in
 -- the grove's hill, straight to the terminal. (Owner playtest: the open wasteland under the cable
 -- looked crooked and the ride was long; underground nothing breaks the picture and the way is short.)
--- World points; the shelter's are relative to Meta.HomeOrigin (the courtyard centre).
+-- World points on the arena's side; the shelter's end goes through the plot's frame (DD-087: every plot
+-- has its own cave, in the hill between it and the next plot, shared/ShelterLayout.Cave).
 Cableway.ARENA_SIDE = Vector3.new(-104, 20, 34) -- post inside the funnel, west of the drill
 Cableway.MOUTH_A = Vector3.new(-120, 0, 84) -- the cave in the funnel wall (floor centre)
 Cableway.FACING_A = Vector3.new(0.42, 0, -0.91).Unit -- out of the cave, into the funnel
-Cableway.MOUTH_B = Vector3.new(-64, 0, -37) -- the cave at the foot of the grove's west hill (relative)
-Cableway.FACING_B = Vector3.new(0.7, 0, 0.71).Unit -- out of the cave, towards the terminal
 Cableway.CABLE_H = 13 -- the cable's height over a cave's / the tunnel's floor
-Cableway.DEPTH = 22 -- how far the tunnel dips under the surface between the two caves
+-- DD-087: the long run goes under the whole grove, so it keeps below the ground's floor (-12) entirely:
+-- nothing has to be dug out along it, only at the two ends.
+Cableway.DEPTH = 34
+
+-- The shelter's cave (floor centre) and the way out of it, in world space, for a plot frame.
+function Cableway.mouthB(home: CFrame): (Vector3, Vector3)
+	local c = Layout.Cave
+	return home:PointToWorldSpace(Vector3.new(c.x, 0, c.z)), home:VectorToWorldSpace(Vector3.new(c.fx, 0, c.fz)).Unit
+end
 
 -- The tunnel's floor line from cave A to cave B (world): in, down a ramp, the long run, up, out.
-function Cableway.tunnelLine(homeOrigin: Vector3): { Vector3 }
+function Cableway.tunnelLine(home: CFrame): { Vector3 }
 	local a, fa = Cableway.MOUTH_A, Cableway.FACING_A
-	local b, fb = homeOrigin + Cableway.MOUTH_B, Cableway.FACING_B
+	local b, fb = Cableway.mouthB(home)
 	local down = Vector3.new(0, -Cableway.DEPTH, 0)
 	return { a, a - fa * 40, a - fa * 140 + down, b - fb * 140 + down, b - fb * 40, b }
 end
 
 -- The cable heads along the tunnel: under the roof, a hanger every ~140 studs on the long run.
-function Cableway.tunnelAnchors(homeOrigin: Vector3): { Vector3 }
-	local line = Cableway.tunnelLine(homeOrigin)
+function Cableway.tunnelAnchors(home: CFrame): { Vector3 }
+	local line = Cableway.tunnelLine(home)
 	local up = Vector3.new(0, Cableway.CABLE_H, 0)
 	local out = {}
 	for i, p in line do

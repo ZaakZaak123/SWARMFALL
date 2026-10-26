@@ -34,6 +34,8 @@ local HubMenus = require(script.Parent:WaitForChild("HubMenus"))
 local Range = require(script.Parent:WaitForChild("Range"))
 local Cableway = require(script.Parent:WaitForChild("Cableway"))
 local ShelterVisibility = require(script.Parent:WaitForChild("ShelterVisibility"))
+local Settlement = require(script.Parent:WaitForChild("Settlement"))
+local Grove = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Grove"))
 Range.init(workspace)
 local Rig = require(script.Parent:WaitForChild("Rig"))
 local Calm = require(script.Parent:WaitForChild("Calm"))
@@ -615,48 +617,27 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		end
 		HubMenus.setHub(info.hub, myId)
 		Base.setCamp(info.hub)
-		-- A visit changes authoritative room membership. Everyone in this room sees the same
-		-- owner's restoration, tanks and trophies; a client request alone cannot change the view.
-		local room = myId
-		for _, h in info.hub.hunters do
-			if h.id == myId then
-				room = h.room or myId
-			end
+		-- DD-087: one open grove. Everyone is visible; each home stands on its owner's plot, ours is
+		-- drawn in full (client/Base), the neighbours' around it (client/Settlement).
+		Settlement.setHub(info.hub, myId)
+		local plot = Settlement.myPlot()
+		if plot then
+			Base.setFrame(Grove.frame(plot))
+			Range.setFrame(Grove.frame(plot))
 		end
-		local nextVisit = if room ~= myId then room else nil
-		if visitingUid ~= nextVisit then
-			Base.resetCamera()
+		ShelterVisibility.update(nil)
+		if visitingUid then
+			visitingUid = nil
+			HubMenus.setVisiting(nil)
 		end
-		visitingUid = nextVisit
-		HubMenus.setVisiting(visitingUid)
-		local visible = {}
-		for _, h in info.hub.hunters do
-			if (h.room or h.id) == room then
-				visible[h.id] = true
-			end
-		end
-		ShelterVisibility.update(visible)
 		if mine then
 			Menus.showLobby(mine, myId, Controls.device)
 			Base.setLobby(mine, myId)
 		end
-		local visit = visitingUid and HubMenus.hunter(visitingUid)
-		if visitingUid and not visit then
-			visitingUid = nil
-			HubMenus.setVisiting(nil)
-		end
-		Base.setVisitHome(
-			if visit then visit.home else nil,
-			if visit then visit.slots else nil,
-			if visit then visit.stock else nil
-		)
-		if visit then
-			showOutpost(visit.slots, "V" .. visitingUid .. outpostKeyOf(visit.slots))
-		else
-			local prof = Menus.profile()
-			local slots = prof and prof.outpost and prof.outpost.slots or {}
-			showOutpost(slots, "L" .. outpostKeyOf(slots))
-		end
+		Base.setVisitHome(nil)
+		local prof = Menus.profile()
+		local slots = prof and prof.outpost and prof.outpost.slots or {}
+		showOutpost(slots, "L" .. outpostKeyOf(slots))
 		return
 	end
 	campState = nil
@@ -874,15 +855,76 @@ HubMenus.init(Menus.helpers(), {
 			research = prof.research,
 		})
 	end,
+	-- DD-087: «к его дому» — a quick way to the plot's sign (walking there is the same)
 	visit = function(uid: number)
-		send("visit", uid)
+		local plot = Settlement.plotOf(uid)
+		if plot then
+			send("visit", plot)
+		end
 	end,
 	home = function()
-		send("visit", myId)
+		local plot = Settlement.myPlot()
+		if plot then
+			send("visit", plot)
+		end
+	end,
+	take = function(uid: number)
+		send("take", uid)
+	end,
+})
+Settlement.init({
+	card = function(uid: number, entry)
+		if uid == myId then
+			local e = ownShowcase and ownShowcase()
+			if e then
+				HubMenus.showCard(myId, e)
+			end
+		else
+			HubMenus.showCard(uid, entry)
+		end
+	end,
+	join = function(squadId: number)
+		send("join", squadId)
+		Audio.play("level", 0.5, 1.3)
+	end,
+	ask = function(uid: number)
+		send("ask", uid)
+	end,
+	lantern = function()
+		local sq = HubMenus.mySquad()
+		send("recruit", not (sq and sq.open))
+		Audio.play("ui", 0.7, if sq and sq.open then 0.8 else 1.2)
+	end,
+	board = function()
+		HubMenus.showBoard()
+	end,
+	residents = function()
+		HubMenus.showOutposts()
+	end,
+	collection = function(research, owner, kind, isOwn)
+		MetaMenus.showCollection(research, owner, kind, isOwn)
+	end,
+	say = function(i: number)
+		send("say", i)
 	end,
 })
 remotes:WaitForChild(Codec.Remotes.Social).OnClientEvent:Connect(function(kind, data)
-	if type(kind) == "string" then
+	if type(kind) ~= "string" then
+		return
+	end
+	if kind == "say" and type(data) == "table" then
+		Settlement.say(tonumber(data.uid) or 0, tonumber(data.i) or 0)
+	elseif kind == "chronicle" and type(data) == "table" then
+		Settlement.chronicle(data)
+	elseif kind == "grove" and type(data) == "table" then
+		-- a squad's own server: where our home stands in the grove we came from, and the neighbours
+		Settlement.setSnapshot(data.plots, data.grove, myId)
+		local plot = Settlement.myPlot()
+		if plot then
+			Base.setFrame(Grove.frame(plot))
+			Range.setFrame(Grove.frame(plot))
+		end
+	else
 		HubMenus.onSocial(kind, data)
 	end
 end)
@@ -925,6 +967,19 @@ local function plateFor(char: Model, uid: number)
 	st2.Thickness = 2
 	st2.Color = C.ink
 	st2.Parent = title
+	-- DD-087: what they are up to (the same line as on their plot's sign)
+	local status = Theme.label("", {
+		Position = UDim2.fromOffset(0, 42),
+		Size = UDim2.new(1, 0, 0, 16),
+		FontFace = Theme.F.bodyBold,
+		TextSize = 12,
+		Parent = g,
+	})
+	local st3 = Instance.new("UIStroke")
+	st3.Thickness = 2
+	st3.Color = C.ink
+	st3.Parent = status
+	g.Size = UDim2.fromOffset(220, 60)
 	g.Parent = head
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Осмотреть"
@@ -937,7 +992,7 @@ local function plateFor(char: Model, uid: number)
 	prompt.Triggered:Connect(function()
 		HubMenus.showCard(uid)
 	end)
-	rec = { gui = g, name = name, title = title, prompt = prompt, uid = uid }
+	rec = { gui = g, name = name, title = title, status = status, prompt = prompt, uid = uid }
 	plates[char] = rec
 	return rec
 end
@@ -959,6 +1014,7 @@ ownShowcase = function()
 		research = prof.research,
 		saves = prof.saves,
 		title = prof.title,
+		trophyLog = prof.trophyLog,
 	}
 	local weapon = Menus.selectedWeapon()
 	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])
@@ -974,16 +1030,16 @@ updateShowcase = function()
 	Base.setShowcase(shown or ownShowcase())
 	local list = {}
 	if mode == "HUB" and campState then
-		local room = visitingUid or myId
+		-- DD-087: the whole grove is one place — everyone carries their gun and their sign line
 		for _, h in campState.hunters do
-			if (h.room or h.id) == room then
-				list[h.id] = { weapon = h.weapon, form = h.form, name = h.name, title = h.title }
-			else
-				local p = Players:GetPlayerByUserId(h.id)
-				if p and p.Character then
-					Gear.remove(p.Character)
-				end
-			end
+			list[h.id] = {
+				weapon = h.weapon,
+				form = h.form,
+				name = h.name,
+				title = h.title,
+				status = h.status,
+				statusKey = h.statusKey,
+			}
 		end
 	elseif mode == "LOBBY" then
 		local info = Menus.lobbyState()
@@ -1005,6 +1061,8 @@ updateShowcase = function()
 				if rec then
 					rec.name.Text = e.name
 					rec.title.Text = e.title
+					rec.status.Text = e.status or ""
+					rec.status.TextColor3 = Settlement.StatusColor[e.statusKey or "home"] or C.text
 					rec.prompt.Enabled = mode == "HUB" and Base.isActive()
 				end
 			end
@@ -2433,6 +2491,7 @@ local function frame(dt: number)
 	end
 	local baseWorld = mode ~= "RUN" or Base.sceneActive()
 	Base.setWorldVisible(baseWorld)
+	Settlement.setVisible(baseWorld)
 	Range.setVisible(mode ~= "RUN")
 	local onBase = (mode == "LOBBY" or mode == "HUB")
 		and not Menus.modalOpen()
@@ -2440,6 +2499,8 @@ local function frame(dt: number)
 		and not Base.sceneActive()
 	Base.setActive(onBase)
 	Base.update(dt, if root then root.Position else nil)
+	Settlement.update(dt, onBase and mode == "HUB" and not Story.active())
+	Settlement.setSignalsVisible(onBase and mode == "HUB" and not Story.active())
 
 	-- Overdrive grade
 	local grade = Lighting:FindFirstChild("Grade")

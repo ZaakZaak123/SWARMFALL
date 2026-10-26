@@ -64,7 +64,18 @@ local function defaults()
 		species = { EN_RUNNER = false }, -- unlocked strain species
 		mutations = {}, -- "SPECIES:MUT" -> true (unlocked for that species)
 		brood = {}, -- up to 3 strains { kind, muts }
-		raid = { rating = Meta.StartRating, wins = 0, losses = 0, defWins = 0, defLosses = 0, attack = Meta.StartRating, held = 0, day = 0, count = 0, pairs = {} },
+		raid = {
+			rating = Meta.StartRating,
+			wins = 0,
+			losses = 0,
+			defWins = 0,
+			defLosses = 0,
+			attack = Meta.StartRating,
+			held = 0,
+			day = 0,
+			count = 0,
+			pairs = {},
+		},
 		lastDay = 0,
 		likes = 0, -- «Крутой аванпост» marks from visitors (DD-053)
 		liked = {}, -- owner user id (string) -> day index of the last like given
@@ -72,6 +83,7 @@ local function defaults()
 		saves = 0, -- allies raised in runs, lifetime (DD-060)
 		title = nil, -- chosen earned title id (Showcase.titles)
 		tut = {}, -- one-time onboarding beats (DD-052): drill = victory scene seen, strike = first defence done
+		trophyLog = {}, -- DD-087: how each boss trophy was won: op -> { t, threat, team, with = { names } }
 	}
 end
 
@@ -257,7 +269,13 @@ function Profile.public(player: Player)
 		offline = e.offline,
 		-- meta
 		features = Profile.features(d),
-		outpost = { slots = d.outpost.slots, siege = d.outpost.siege, best = d.outpost.best, harvest = Meta.harvest(d.outpost.slots, d.outpost.harvestT, os.time()), harvestT = d.outpost.harvestT },
+		outpost = {
+			slots = d.outpost.slots,
+			siege = d.outpost.siege,
+			best = d.outpost.best,
+			harvest = Meta.harvest(d.outpost.slots, d.outpost.harvestT, os.time()),
+			harvestT = d.outpost.harvestT,
+		},
 		dna = (function()
 			local out = {}
 			for _, kind in Meta.SpeciesOrder do
@@ -274,6 +292,7 @@ function Profile.public(player: Player)
 		home = d.home,
 		saves = d.saves,
 		title = d.title,
+		trophyLog = d.trophyLog,
 	}
 end
 
@@ -624,7 +643,22 @@ function Profile.like(liker: Player, owner: Player, day: number): boolean
 end
 
 -- One-time onboarding flags the client may set (the victory scene was watched).
-local CLIENT_TUT = { drill = true, intro = true, go_O02 = true, home_O02 = true, go_O03 = true, home_O03 = true, go_O04 = true, home_O04 = true, go_O05 = true, home_O05 = true, go_O06 = true, home_O06 = true, go_O07 = true, home_O07 = true } -- story scenes watched (DD-075/076)
+local CLIENT_TUT = {
+	drill = true,
+	intro = true,
+	go_O02 = true,
+	home_O02 = true,
+	go_O03 = true,
+	home_O03 = true,
+	go_O04 = true,
+	home_O04 = true,
+	go_O05 = true,
+	home_O05 = true,
+	go_O06 = true,
+	home_O06 = true,
+	go_O07 = true,
+	home_O07 = true,
+} -- story scenes watched (DD-075/076)
 function Profile.markTut(player: Player, key: string): boolean
 	local d = Profile.get(player)
 	if not d or not CLIENT_TUT[key] or d.tut[key] then
@@ -793,7 +827,11 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	end
 	-- «Первый натиск» (DD-052): a one-time scene with a small fixed payout; won or lost, it is done.
 	if opId == "STRIKE" then
-		reward = { total = Meta.StrikeReward, lines = { { if result.victory then "crown" else "timer", Meta.StrikeReward } }, mult = 1 }
+		reward = {
+			total = Meta.StrikeReward,
+			lines = { { if result.victory then "crown" else "timer", Meta.StrikeReward } },
+			mult = 1,
+		}
 		d.tut.strike = true
 		d.lastRun = runId
 		d.lastReward = reward
@@ -901,6 +939,16 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		d.wins += 1
 		d.wins_by_op = d.wins_by_op or {}
 		d.wins_by_op[opId] = (d.wins_by_op[opId] or 0) + 1
+		-- DD-087: the trophy remembers when and with whom (shown on its plaque in the grove)
+		if (opId == "O01" or opId == "O05" or opId == "O07") and not d.trophyLog[opId] then
+			local with = {}
+			for _, entry in result.players or {} do
+				if entry.id ~= player.UserId and type(entry.name) == "string" and #with < 3 then
+					table.insert(with, entry.name)
+				end
+			end
+			d.trophyLog[opId] = { t = os.time(), threat = threat, team = result.squad or 1, with = with }
+		end
 		-- DD-057: a spot the hunt itself restores (the generator from the first sortie)
 		for _, hid in Meta.HomeOrder do
 			local hdef = Meta.Home[hid]

@@ -64,17 +64,13 @@ local function disc(parent, iconName: string, color: Color3, size: number, pos: 
 end
 
 local function button(parent, text: string, kind: string?, w: number, onClick)
-	local b, bl = Theme.button(
-		text,
-		{
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(w, 40),
-			TextSize = 12,
-			ZIndex = 44,
-		},
-		kind
-	)
+	local b, bl = Theme.button(text, {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		Size = UDim2.fromOffset(w, 40),
+		TextSize = 12,
+		ZIndex = 44,
+	}, kind)
 	b.Parent = parent
 	bl.ZIndex = 45
 	b.Activated:Connect(function()
@@ -103,9 +99,8 @@ end
 local function buildBoard()
 	local m = H.modal("SquadBoard", 760, 560, "ДОСКА ОТРЯДОВ", C.lime)
 	ui.board = m
-	ui.boardSub = label(
-		"Вступай в открытый отряд одной кнопкой или собери свой.",
-		{
+	ui.boardSub =
+		label("Вступай в открытый отряд одной кнопкой или собери свой.", {
 			Position = UDim2.fromOffset(28, 62),
 			Size = UDim2.new(1, -56, 0, 20),
 			FontFace = F.body,
@@ -114,18 +109,14 @@ local function buildBoard()
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 42,
 			Parent = m.panel,
-		}
-	)
-	local bar = new(
-		"Frame",
-		{
-			Position = UDim2.fromOffset(28, 92),
-			Size = UDim2.new(1, -56, 0, 44),
-			ZIndex = 42,
-			Parent = m.panel,
-			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
-		}
-	)
+		})
+	local bar = new("Frame", {
+		Position = UDim2.fromOffset(28, 92),
+		Size = UDim2.new(1, -56, 0, 44),
+		ZIndex = 42,
+		Parent = m.panel,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
+	})
 	local match, _ = Theme.button(
 		"ПОДОБРАТЬ ОТРЯД",
 		{ Size = UDim2.fromOffset(230, 44), TextSize = 13, ZIndex = 43, LayoutOrder = 1 },
@@ -211,19 +202,16 @@ function HubMenus.refreshBoard()
 				48,
 				UDim2.fromOffset(12, 14)
 			)
-			label(
-				sq.title,
-				{
-					Position = UDim2.fromOffset(72, 12),
-					Size = UDim2.new(1, -250, 0, 22),
-					FontFace = F.bodyHeavy,
-					TextSize = 16,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextTruncate = Enum.TextTruncate.AtEnd,
-					ZIndex = 44,
-					Parent = r,
-				}
-			)
+			label(sq.title, {
+				Position = UDim2.fromOffset(72, 12),
+				Size = UDim2.new(1, -250, 0, 22),
+				FontFace = F.bodyHeavy,
+				TextSize = 16,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 44,
+				Parent = r,
+			})
 			local need = 4 - #sq.players
 			local sub = string.format(
 				"%s  ·  %d/4%s",
@@ -289,10 +277,10 @@ end
 
 -- Outposts terminal ---------------------------------------------------------------------------------------
 local function buildOutposts()
-	local m = H.modal("CampOutposts", 760, 560, "УБЕЖИЩА ВЫЖИВШИХ", C.cyan)
+	local m = H.modal("CampOutposts", 760, 560, "ЖИТЕЛИ РОЩИ", C.cyan)
 	ui.outposts = m
 	label(
-		"Дома выживших в этом поселении. В гостях можно встретить хозяина и других посетителей.",
+		"Кто живёт в этой роще и чем занят. Дома стоят вокруг Древа — дойди или нажми «К ДОМУ».",
 		{
 			Position = UDim2.fromOffset(28, 62),
 			Size = UDim2.new(1, -56, 0, 20),
@@ -322,7 +310,9 @@ function HubMenus.refreshOutposts()
 	local key = tostring(featured)
 	for _, h in list do
 		local specimens = Collection.summary(h.collection)
-		key ..= h.id .. ":" .. h.power .. ":" .. h.likes .. ":" .. h.title .. ":" .. specimens.found .. ":" .. specimens.exemplary .. "|"
+		key ..= h.id .. ":" .. h.power .. ":" .. h.likes .. ":" .. h.title .. ":" .. specimens.found .. ":" .. specimens.exemplary .. ":" .. tostring(
+			h.status
+		) .. "|"
 	end
 	if key == ui.outKey then
 		return
@@ -352,7 +342,9 @@ function HubMenus.refreshOutposts()
 		)
 		label(
 			string.format(
-				"Коллекция %d видов · эталонов %d · оборона %s · ♥ %d",
+				'<font color="#%s">%s</font>  ·  коллекция %d · эталонов %d · оборона %s · ♥ %d',
+				if h.statusKey == "open" then "C6FF42" elseif h.statusKey == "away" then "FF8A38" else "ACA0CC",
+				h.status or "Дома",
 				Collection.summary(h.collection).found,
 				Collection.summary(h.collection).exemplary,
 				if h.siege > 0 then tostring(h.siege) else "—",
@@ -369,7 +361,7 @@ function HubMenus.refreshOutposts()
 				Parent = r,
 			}
 		)
-		local b = button(r, "ПОСЕТИТЬ", "primary", 130, function()
+		local b = button(r, "К ДОМУ", "primary", 130, function()
 			ui.outposts.hide()
 			acts.visit(h.id)
 		end)
@@ -395,19 +387,16 @@ local function buildCard()
 		"Frame",
 		{ Position = UDim2.fromOffset(28, 66), Size = UDim2.new(1, -56, 1, -150), ZIndex = 42, Parent = m.panel }
 	)
-	local bar = new(
-		"Frame",
-		{
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 28, 1, -22),
-			Size = UDim2.new(1, -56, 0, 46),
-			ZIndex = 42,
-			Parent = m.panel,
-			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
-		}
-	)
+	local bar = new("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 28, 1, -22),
+		Size = UDim2.new(1, -56, 0, 46),
+		ZIndex = 42,
+		Parent = m.panel,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
+	})
 	ui.cardVisit, ui.cardVisitLabel = Theme.button(
-		"ОСМОТРЕТЬ БАЗУ",
+		"К ЕГО ДОМУ",
 		{ Size = UDim2.fromOffset(240, 46), TextSize = 13, ZIndex = 43, LayoutOrder = 1 },
 		"primary"
 	)
@@ -444,58 +433,56 @@ function HubMenus.showCard(uid: number, override)
 	H.clear(ui.cardBody)
 	local b = ui.cardBody
 	disc(b, h.titleIcon, C.gold, 72, UDim2.fromOffset(0, 0))
-	label(
-		h.name,
-		{
-			Position = UDim2.fromOffset(88, 0),
-			Size = UDim2.new(1, -88, 0, 34),
-			FontFace = F.display,
-			TextSize = 28,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			ZIndex = 43,
-			Parent = b,
-		}
-	)
-	label(
-		h.title,
-		{
-			Position = UDim2.fromOffset(88, 36),
-			Size = UDim2.new(1, -88, 0, 22),
-			FontFace = F.head,
-			TextSize = 15,
-			TextColor3 = C.gold,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 43,
-			Parent = b,
-		}
-	)
-	-- where the title came from (DD-060)
-	label(h.titleWhy or "", {
-		Position = UDim2.fromOffset(88, 58),
-		Size = UDim2.new(1, -88, 0, 18),
-		FontFace = F.body,
-		TextSize = 12,
-		TextColor3 = C.dim,
+	label(h.name, {
+		Position = UDim2.fromOffset(88, 0),
+		Size = UDim2.new(1, -88, 0, 34),
+		FontFace = F.display,
+		TextSize = 28,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 43,
+		Parent = b,
+	})
+	label(h.title, {
+		Position = UDim2.fromOffset(88, 36),
+		Size = UDim2.new(1, -88, 0, 22),
+		FontFace = F.head,
+		TextSize = 15,
+		TextColor3 = C.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 43,
 		Parent = b,
 	})
+	-- where the title came from (DD-060)
+	label(
+		if h.ghost
+			then (if h.demo
+				then "Демо-сосед для проверки в Studio"
+				else "Живёт в другой роще · сейчас не в сети")
+			else (h.titleWhy or ""),
+		{
+			Position = UDim2.fromOffset(88, 58),
+			Size = UDim2.new(1, -88, 0, 18),
+			FontFace = F.body,
+			TextSize = 12,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = b,
+		}
+	)
 	-- your own card: pick which earned title to wear
 	if uid == myId and acts.ownTitles then
-		label(
-			"ТИТУЛ НАД ГОЛОВОЙ — ВЫБЕРИ ЗАСЛУЖЕННЫЙ",
-			{
-				Position = UDim2.fromOffset(0, 270),
-				Size = UDim2.new(1, 0, 0, 16),
-				FontFace = F.head,
-				TextSize = 10,
-				TextColor3 = C.dim,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 43,
-				Parent = b,
-			}
-		)
+		label("ТИТУЛ НАД ГОЛОВОЙ — ВЫБЕРИ ЗАСЛУЖЕННЫЙ", {
+			Position = UDim2.fromOffset(0, 270),
+			Size = UDim2.new(1, 0, 0, 16),
+			FontFace = F.head,
+			TextSize = 10,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = b,
+		})
 		local chips = new("Frame", {
 			Position = UDim2.fromOffset(0, 292),
 			Size = UDim2.new(1, 0, 0, 60),
@@ -505,17 +492,13 @@ function HubMenus.showCard(uid: number, override)
 		})
 		for i, t in acts.ownTitles() do
 			local on = t.name == h.title
-			local c, cl = Theme.button(
-				t.name,
-				{
-					Size = UDim2.fromOffset(0, 28),
-					AutomaticSize = Enum.AutomaticSize.X,
-					TextSize = 11,
-					ZIndex = 44,
-					LayoutOrder = i,
-				},
-				if on then "primary" else "ghost"
-			)
+			local c, cl = Theme.button(t.name, {
+				Size = UDim2.fromOffset(0, 28),
+				AutomaticSize = Enum.AutomaticSize.X,
+				TextSize = 11,
+				ZIndex = 44,
+				LayoutOrder = i,
+			}, if on then "primary" else "ghost")
 			cl.Size = UDim2.new(0, 0, 1, 0)
 			cl.AutomaticSize = Enum.AutomaticSize.X
 			cl.ZIndex = 45
@@ -534,18 +517,15 @@ function HubMenus.showCard(uid: number, override)
 	wr.Position = UDim2.fromOffset(0, 88)
 	wr.Size = UDim2.new(1, 0, 0, 64)
 	disc(wr, "crosshair", C.cyan, 44, UDim2.fromOffset(10, 10))
-	label(
-		if form then form.name else (w and w.name or "Оружие"),
-		{
-			Position = UDim2.fromOffset(64, 10),
-			Size = UDim2.new(1, -80, 0, 22),
-			FontFace = F.bodyHeavy,
-			TextSize = 16,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 44,
-			Parent = wr,
-		}
-	)
+	label(if form then form.name else (w and w.name or "Оружие"), {
+		Position = UDim2.fromOffset(64, 10),
+		Size = UDim2.new(1, -80, 0, 22),
+		FontFace = F.bodyHeavy,
+		TextSize = 16,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 44,
+		Parent = wr,
+	})
 	label(
 		string.format(
 			"Любимое оружие  ·  мастерство M%d%s",
@@ -563,16 +543,13 @@ function HubMenus.showCard(uid: number, override)
 			Parent = wr,
 		}
 	)
-	local stats = new(
-		"Frame",
-		{
-			Position = UDim2.fromOffset(0, 164),
-			Size = UDim2.new(1, 0, 0, 64),
-			ZIndex = 43,
-			Parent = b,
-			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
-		}
-	)
+	local stats = new("Frame", {
+		Position = UDim2.fromOffset(0, 164),
+		Size = UDim2.new(1, 0, 0, 64),
+		ZIndex = 43,
+		Parent = b,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
+	})
 	for i, st in
 		{
 			{ "Побед", tostring(h.wins) },
@@ -588,40 +565,31 @@ function HubMenus.showCard(uid: number, override)
 			ZIndex = 43,
 			Parent = stats,
 		})
-		label(
-			st[2],
-			{
-				Position = UDim2.fromOffset(0, 8),
-				Size = UDim2.new(1, 0, 0, 28),
-				FontFace = F.display,
-				TextSize = 22,
-				ZIndex = 44,
-				Parent = t,
-			}
-		)
-		label(
-			st[1],
-			{
-				Position = UDim2.fromOffset(0, 38),
-				Size = UDim2.new(1, 0, 0, 16),
-				FontFace = F.head,
-				TextSize = 10,
-				TextColor3 = C.dim,
-				ZIndex = 44,
-				Parent = t,
-			}
-		)
+		label(st[2], {
+			Position = UDim2.fromOffset(0, 8),
+			Size = UDim2.new(1, 0, 0, 28),
+			FontFace = F.display,
+			TextSize = 22,
+			ZIndex = 44,
+			Parent = t,
+		})
+		label(st[1], {
+			Position = UDim2.fromOffset(0, 38),
+			Size = UDim2.new(1, 0, 0, 16),
+			FontFace = F.head,
+			TextSize = 10,
+			TextColor3 = C.dim,
+			ZIndex = 44,
+			Parent = t,
+		})
 	end
-	local tro = new(
-		"Frame",
-		{
-			Position = UDim2.fromOffset(0, 240),
-			Size = UDim2.new(1, 0, 0, 36),
-			ZIndex = 43,
-			Parent = b,
-			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
-		}
-	)
+	local tro = new("Frame", {
+		Position = UDim2.fromOffset(0, 240),
+		Size = UDim2.new(1, 0, 0, 36),
+		ZIndex = 43,
+		Parent = b,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
+	})
 	if #h.trophies == 0 then
 		label(
 			if h.newbie
@@ -639,104 +607,86 @@ function HubMenus.showCard(uid: number, override)
 		)
 	end
 	for i, t in h.trophies do
-		local chip = new(
-			"Frame",
-			{
-				Size = UDim2.fromOffset(0, 32),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BackgroundColor3 = C.ink,
-				BackgroundTransparency = 0.2,
-				Corner = UDim.new(1, 0),
-				Stroke = { Color = C.gold, Transparency = 0.5 },
-				LayoutOrder = i,
-				ZIndex = 44,
-				Parent = tro,
-				List = {
-					FillDirection = Enum.FillDirection.Horizontal,
-					VerticalAlignment = Enum.VerticalAlignment.Center,
-					Padding = UDim.new(0, 6),
-				},
-			}
-		)
+		local chip = new("Frame", {
+			Size = UDim2.fromOffset(0, 32),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = C.ink,
+			BackgroundTransparency = 0.2,
+			Corner = UDim.new(1, 0),
+			Stroke = { Color = C.gold, Transparency = 0.5 },
+			LayoutOrder = i,
+			ZIndex = 44,
+			Parent = tro,
+			List = {
+				FillDirection = Enum.FillDirection.Horizontal,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				Padding = UDim.new(0, 6),
+			},
+		})
 		new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 12), Parent = chip })
 		local ic = Icons.new(t[1], 18, C.gold)
 		ic.ZIndex = 45
 		ic.Parent = chip
-		label(
-			t[2],
-			{
-				AutomaticSize = Enum.AutomaticSize.X,
-				Size = UDim2.fromOffset(0, 32),
-				FontFace = F.bodyBold,
-				TextSize = 13,
-				ZIndex = 45,
-				Parent = chip,
-			}
-		)
+		label(t[2], {
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 32),
+			FontFace = F.bodyBold,
+			TextSize = 13,
+			ZIndex = 45,
+			Parent = chip,
+		})
 	end
 	local built = 0
 	for _ in h.slots do
 		built += 1
 	end
+	-- DD-087: a home from another grove, or one whose owner is out on a fight: look, but nobody to ask
 	ui.cardVisit.Visible = uid ~= myId
-	ui.cardInvite.Visible = uid ~= myId
+	ui.cardInvite.Visible = uid ~= myId and override == nil
 	ui.cardInviteLabel.Text = "ПОЗВАТЬ В ОТРЯД"
 	ui.card.show()
 end
 
 -- Visit banner -------------------------------------------------------------------------------------------------
 local function buildBanner()
-	local b = Theme.panel(
-		{
-			Name = "VisitBanner",
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 14),
-			Size = UDim2.fromOffset(620, 64),
-			CornerRadius = 32,
-			Visible = false,
-			ZIndex = 30,
-			Parent = H.gui,
-		},
-		C.cyan
-	)
+	local b = Theme.panel({
+		Name = "VisitBanner",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 14),
+		Size = UDim2.fromOffset(620, 64),
+		CornerRadius = 32,
+		Visible = false,
+		ZIndex = 30,
+		Parent = H.gui,
+	}, C.cyan)
 	ui.banner = b
-	ui.bannerTitle = label(
-		"",
-		{
-			Position = UDim2.fromOffset(26, 8),
-			Size = UDim2.new(1, -330, 0, 26),
-			FontFace = F.display,
-			TextSize = 20,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			ZIndex = 31,
-			Parent = b,
-		}
-	)
-	ui.bannerSub = label(
-		"",
-		{
-			Position = UDim2.fromOffset(26, 34),
-			Size = UDim2.new(1, -330, 0, 18),
-			FontFace = F.body,
-			TextSize = 12,
-			TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 31,
-			Parent = b,
-		}
-	)
-	ui.like, ui.likeLabel = Theme.button(
-		"♥ УЮТНОЕ УБЕЖИЩЕ",
-		{
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -150, 0.5, 0),
-			Size = UDim2.fromOffset(170, 42),
-			TextSize = 11,
-			ZIndex = 31,
-		},
-		"primary"
-	)
+	ui.bannerTitle = label("", {
+		Position = UDim2.fromOffset(26, 8),
+		Size = UDim2.new(1, -330, 0, 26),
+		FontFace = F.display,
+		TextSize = 20,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 31,
+		Parent = b,
+	})
+	ui.bannerSub = label("", {
+		Position = UDim2.fromOffset(26, 34),
+		Size = UDim2.new(1, -330, 0, 18),
+		FontFace = F.body,
+		TextSize = 12,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 31,
+		Parent = b,
+	})
+	ui.like, ui.likeLabel = Theme.button("♥ УЮТНОЕ УБЕЖИЩЕ", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -150, 0.5, 0),
+		Size = UDim2.fromOffset(170, 42),
+		TextSize = 11,
+		ZIndex = 31,
+	}, "primary")
 	ui.like.Parent = b
 	ui.likeLabel.ZIndex = 32
 	ui.like.Activated:Connect(function()
@@ -747,16 +697,13 @@ local function buildBanner()
 			ui.liked = visiting
 		end
 	end)
-	local back, bl = Theme.button(
-		"ДОМОЙ",
-		{
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(126, 42),
-			TextSize = 12,
-			ZIndex = 31,
-		}
-	)
+	local back, bl = Theme.button("ДОМОЙ", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		Size = UDim2.fromOffset(126, 42),
+		TextSize = 12,
+		ZIndex = 31,
+	})
 	back.Parent = b
 	bl.ZIndex = 32
 	back.Activated:Connect(function()
@@ -780,44 +727,34 @@ end
 
 -- Toasts -----------------------------------------------------------------------------------------------------
 local function buildToast()
-	local t = Theme.panel(
-		{
-			Name = "CampToast",
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 92),
-			Size = UDim2.fromOffset(560, 64),
-			CornerRadius = 20,
-			Visible = false,
-			ZIndex = 35,
-			Parent = H.gui,
-		},
-		C.lime
-	)
+	local t = Theme.panel({
+		Name = "CampToast",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 92),
+		Size = UDim2.fromOffset(560, 64),
+		CornerRadius = 20,
+		Visible = false,
+		ZIndex = 35,
+		Parent = H.gui,
+	}, C.lime)
 	ui.toast = t
-	ui.toastText = label(
-		"",
-		{
-			Position = UDim2.fromOffset(22, 0),
-			Size = UDim2.new(1, -200, 1, 0),
-			FontFace = F.bodyBold,
-			TextSize = 15,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 36,
-			Parent = t,
-		}
-	)
-	ui.toastBtn, ui.toastBtnLabel = Theme.button(
-		"",
-		{
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(160, 42),
-			TextSize = 12,
-			ZIndex = 36,
-		},
-		"primary"
-	)
+	ui.toastText = label("", {
+		Position = UDim2.fromOffset(22, 0),
+		Size = UDim2.new(1, -200, 1, 0),
+		FontFace = F.bodyBold,
+		TextSize = 15,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 36,
+		Parent = t,
+	})
+	ui.toastBtn, ui.toastBtnLabel = Theme.button("", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		Size = UDim2.fromOffset(160, 42),
+		TextSize = 12,
+		ZIndex = 36,
+	}, "primary")
 	ui.toastBtn.Parent = t
 	ui.toastBtnLabel.ZIndex = 37
 	ui.toastBtn.Activated:Connect(function()
@@ -863,10 +800,25 @@ function HubMenus.onSocial(kind: string, data)
 		HubMenus.toast(tostring(data) .. " в твоём отряде", C.lime)
 	elseif kind == "liked" then
 		Audio.play("orb", 0.8, 1.2)
-		HubMenus.toast(tostring(data) .. " оценил твоё убежище ♥", C.pink)
+		HubMenus.toast("♥ твоему дому от " .. tostring(data), C.pink)
+	elseif kind == "ask" and type(data) == "table" then
+		-- DD-087: a neighbour asks to come along (at your sign, with the lantern out)
+		Audio.play("level", 0.7, 1.25)
+		HubMenus.toast(
+			string.format("%s хочет пойти с тобой", tostring(data.from)),
+			C.lime,
+			"ВЗЯТЬ",
+			function()
+				if acts.take then
+					acts.take(data.uid)
+				end
+			end
+		)
+	elseif kind == "asked" then
+		HubMenus.toast(string.format("Спросили %s — ждём ответа", tostring(data)), C.cyan)
 	elseif kind == "visitor" then
 		Audio.play("orb", 0.6, 1.2)
-		HubMenus.toast(tostring(data) .. " заглянул в твоё убежище", C.cyan)
+		HubMenus.toast(tostring(data) .. " — в гостях у твоего дома", C.cyan)
 	elseif kind == "match" then
 		HubMenus.toast(
 			if data == "joined"

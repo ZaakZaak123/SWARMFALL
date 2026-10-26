@@ -24,8 +24,11 @@ local Home = require(script.Parent.Home)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 local Squads = require(script.Parent.Squads)
-local ShelterRooms = require(script.Parent.ShelterRooms)
-local shelterRooms = ShelterRooms.new()
+local Neighbors = require(script.Parent.Neighbors)
+local Grove = require(Shared:WaitForChild("Grove"))
+local Layout = require(Shared:WaitForChild("ShelterLayout"))
+local Chronicle = require(Shared:WaitForChild("Chronicle"))
+local Goals = require(Shared:WaitForChild("Goals"))
 local PhysicsService = game:GetService("PhysicsService")
 pcall(PhysicsService.RegisterCollisionGroup, PhysicsService, "Survivors")
 PhysicsService:CollisionGroupSetCollidable("Survivors", "Survivors", false)
@@ -69,7 +72,14 @@ local sessionPlan = nil -- { members = {userId}, autostart, since } until the se
 -- Server state ----------------------------------------------------------------------------------------
 local mode = if IS_SESSION then "LOBBY" else "HUB" -- HUB | LOBBY | RUN
 ReplicatedStorage:SetAttribute("ServerRole", if IS_SESSION then "SESSION" else "HUB")
-print(string.format("[SWARMFALL] role %s  place %d  job %s", if IS_SESSION then "SESSION" else "HUB", game.PlaceId, game.JobId))
+print(
+	string.format(
+		"[SWARMFALL] role %s  place %d  job %s",
+		if IS_SESSION then "SESSION" else "HUB",
+		game.PlaceId,
+		game.JobId
+	)
+)
 -- mode: "hunt" (story operations) | "siege" (host's outpost) | "raid" (lobby.target, chosen by the host)
 local lobby = {
 	ready = {},
@@ -294,7 +304,8 @@ local function startRun()
 	local hostPlayer = host()
 	local hostData = hostPlayer and Profile.get(hostPlayer)
 	local replay = hostData ~= nil and hostData.wins_by_op ~= nil and (hostData.wins_by_op[lobby.op] or 0) > 0
-	local opts = { seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay }
+	local opts =
+		{ seed = seedCounter * 7919 + 13, players = infos, op = lobby.op, threat = lobby.threat, replay = replay }
 	-- the first voluntary defence of the drill is the short lesson (DD-057: no longer forced)
 	local firstDefence = lobby.mode == "strike" or (lobby.mode == "siege" and hostData and not hostData.tut.strike)
 	if firstDefence and hostData then
@@ -337,7 +348,15 @@ local function startRun()
 			task.spawn(prepareCharacter, player, p.x, p.z)
 		end
 	end
-	print(string.format("[SWARMFALL] run start %s threat=%d seed=%d players=%d", world.op.id, lobby.threat, world.seed, #infos))
+	print(
+		string.format(
+			"[SWARMFALL] run start %s threat=%d seed=%d players=%d",
+			world.op.id,
+			lobby.threat,
+			world.seed,
+			#infos
+		)
+	)
 end
 
 local function settle()
@@ -346,7 +365,15 @@ local function settle()
 	end
 	settled = true
 	local r = world.result
-	print(string.format("[SWARMFALL] run end %s %s t=%.1f kills=%d", if r.victory then "VICTORY" else "DEFEAT", r.reason, r.time, r.kills))
+	print(
+		string.format(
+			"[SWARMFALL] run end %s %s t=%.1f kills=%d",
+			if r.victory then "VICTORY" else "DEFEAT",
+			r.reason,
+			r.time,
+			r.kills
+		)
+	)
 	for userId, player in participants do
 		if player.Parent then
 			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat)
@@ -378,31 +405,63 @@ local function settle()
 	end
 end
 
--- Between hunts the squad is on its base (DD-052): the yard between the dropship and the drill. They
--- arrive facing the drill, with the armory left, the launch pad behind and the outpost ahead.
--- (DD-057: now the shelter in the grove, Meta.HomeOrigin; coordinates below are relative to it)
-local LOBBY_SPOTS = { { 0, -4 }, { -5, -6 }, { 5, -6 }, { 0, -9 } }
-local HOME = Meta.HomeOrigin
-local LOBBY_FACING = math.pi
+-- Between fights everyone is at home (DD-052 → DD-087): in the grove, each on their own plot, facing
+-- the bunker; a squad's session server keeps the host's shelter on the host's plot (the grove they came
+-- from). A lodger (no plot free) waits on the square under the Tree.
+local LOBBY_SPOTS = Layout.Spawns
+local sessionPlots: { [number]: number } = {} -- session: user id -> their plot in the grove they flew from
+local sessionGrove = nil -- session: the neighbours' homes as they were at launch (for the ride home)
+local sessionFrom: string? = nil -- session: the grove server to fly back to
+local leavingFor: { [Player]: string } = {} -- off to a fight: the sortie's name (their plot waits)
+local function facingOf(f: CFrame): number
+	local look = f:VectorToWorldSpace(Vector3.new(0, 0, 1)) -- towards the bunker
+	return math.atan2(-look.X, -look.Z)
+end
 local function toHub(player: Player)
 	if (mode ~= "LOBBY" and mode ~= "HUB") or not player.Parent then
 		return
 	end
 	local i = table.find(Players:GetPlayers(), player) or 1
 	if mode == "HUB" then
-		shelterRooms:add(player.UserId)
-		-- the camp can hold a crowd: a loose ring in the yard
-		local a = (i - 1) * 2.4
-		local r = if i == 1 then 0 else 4 + (i % 3) * 3
-		prepareCharacter(player, HOME.X + math.cos(a) * r, HOME.Z - 4 + math.sin(a) * r * 0.6, LOBBY_FACING)
+		local plot = Neighbors.plotOf(player.UserId)
+		if not plot then
+			local a = i * 1.3
+			local c = Grove.Center
+			prepareCharacter(player, c.X + math.sin(a) * 22, c.Z - math.cos(a) * 22, a)
+			return
+		end
+		local f = Grove.frame(plot)
+		local w = f:PointToWorldSpace(Vector3.new(LOBBY_SPOTS[1][1], 0, LOBBY_SPOTS[1][2]))
+		prepareCharacter(player, w.X, w.Z, facingOf(f))
 		return
 	end
+	local f = Grove.frame(sessionPlots[sessionHostId or 0] or 1)
 	local spot = LOBBY_SPOTS[(i - 1) % #LOBBY_SPOTS + 1]
-	prepareCharacter(player, HOME.X + spot[1], HOME.Z + spot[2], LOBBY_FACING)
+	local w = f:PointToWorldSpace(Vector3.new(spot[1], 0, spot[2]))
+	prepareCharacter(player, w.X, w.Z, facingOf(f))
 end
 
+local regroup, groveLook, toCamp, nextOpFor -- the grove and the camp (defined below)
+local sessionSquad = nil -- session: { host, members, open } — the squad flies home as one (DD-087)
+local homeBound: { [Player]: boolean } = {} -- session: on the way home (a failed hop retries any grove)
+local function flyHome(player: Player, anyGrove: boolean)
+	local options = Instance.new("TeleportOptions")
+	if sessionFrom and not anyGrove then
+		options.ServerInstanceId = sessionFrom
+	end
+	options:SetTeleportData({ v = 1, back = true, squad = sessionSquad })
+	return pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, { player }, options)
+end
+local fromCamp = nil -- Studio: the squad the camp turned into a session in place; it comes home to the grove
 local function backToLobby()
 	settle()
+	if IS_SESSION and TELEPORTS then
+		-- DD-087: a session has no home of its own; everyone still here flies back to the grove (the
+		-- squad base below is only the fallback while a hop fails)
+		for _, player in Players:GetPlayers() do
+			toCamp(player)
+		end
+	end
 	-- «Продолжить»: after a first win the lobby pre-selects the next story operation. Nothing starts
 	-- until the squad presses В БОЙ again (GDD §3.2).
 	if world and world.result and world.result.victory then
@@ -417,6 +476,29 @@ local function backToLobby()
 		end
 	end
 	world = nil
+	if fromCamp then
+		-- DD-087: home to the grove, each to their plot, the squad still a squad
+		local back = fromCamp
+		fromCamp = nil
+		mode = "HUB"
+		setLight(true)
+		sessionHostId = nil
+		table.clear(participants)
+		table.clear(tracking)
+		table.clear(lobby.ready)
+		lobby.countdown = nil
+		lobby.strikeAt = nil
+		for _, player in Players:GetPlayers() do
+			squads:solo(player, nextOpFor(player))
+		end
+		regroup(back.host, back.members, back.open)
+		for _, player in Players:GetPlayers() do
+			clearCharacter(player)
+			task.spawn(toHub, player)
+			groveLook(player)
+		end
+		return
+	end
 	mode = "LOBBY"
 	setLight(true)
 	table.clear(participants)
@@ -435,7 +517,7 @@ local function social(player: Player, kind: string, data)
 end
 
 -- The hunt a hunter's own squad starts on: their next unwon story hunt.
-local function nextOpFor(player: Player): string
+function nextOpFor(player: Player): string
 	local d = Profile.get(player)
 	if not d then
 		return "O01"
@@ -459,6 +541,7 @@ local function canPlay(player: Player, sq): boolean
 	return Profile.get(player) ~= nil
 end
 
+local hubInfo, groveInfo -- the camp state (defined with the replication below)
 local function teleportData(sq)
 	local data = {
 		v = 1,
@@ -470,10 +553,28 @@ local function teleportData(sq)
 		members = {},
 		weapons = {},
 		autostart = true,
+		-- DD-087: the way home — this grove, each member's plot, the neighbours' homes for the ride back
+		from = game.JobId,
+		open = sq.open,
+		plots = {},
+		grove = {},
 	}
+	local inSquad = {}
 	for _, m in sq.members do
 		table.insert(data.members, m.UserId)
 		data.weapons[tostring(m.UserId)] = sq.weapon[m] or "W_ARC_RIFLE"
+		data.plots[tostring(m.UserId)] = Neighbors.plotOf(m.UserId)
+		inSquad[m.UserId] = true
+	end
+	for _, h in hubInfo().hunters do
+		if h.plot and not inSquad[h.id] then
+			local e = table.clone(h)
+			e.slots, e.trophies = nil, nil
+			data.grove[tostring(h.plot)] = e
+		end
+	end
+	for plot, e in groveInfo().ghosts do
+		data.grove[tostring(plot)] = data.grove[tostring(plot)] or e
 	end
 	return data
 end
@@ -491,6 +592,10 @@ local function enterSessionInPlace(sq)
 		lobby.weapon[m] = sq.weapon[m] or "W_ARC_RIFLE"
 	end
 	sessionHostId = sq.host.UserId
+	fromCamp = { host = sq.host.UserId, members = {}, open = sq.open }
+	for _, m in sq.members do
+		table.insert(fromCamp.members, m.UserId)
+	end
 	for _, m in table.clone(sq.members) do
 		squads:remove(m)
 	end
@@ -519,8 +624,13 @@ local function launch(sq)
 		return
 	end
 	local members = table.clone(sq.members)
+	local fightName = if sq.mode == "siege"
+		then "оборона бура"
+		elseif sq.mode == "raid" then "налёт"
+		else "«" .. Goals.titleCase(Ops.get(sq.op).name) .. "»"
 	for _, m in members do
 		social(m, "launch", Ops.get(sq.op).name)
+		leavingFor[m] = fightName -- their plot waits for them (DD-087)
 	end
 	print(string.format("[SWARMFALL] launch squad %d: %d hunters, %s %s", sq.id, #members, sq.mode, sq.op))
 	task.spawn(function()
@@ -530,6 +640,9 @@ local function launch(sq)
 		local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, members, options)
 		if not ok then
 			warn("[SWARMFALL] launch failed", err)
+			for _, m in members do
+				leavingFor[m] = nil
+			end
 			sq.launching = false
 			table.clear(sq.ready)
 			for _, m in members do
@@ -541,6 +654,13 @@ end
 
 TeleportService.TeleportInitFailed:Connect(function(player: Player, _result, message)
 	warn("[SWARMFALL] teleport failed", player.Name, message)
+	leavingFor[player] = nil
+	if homeBound[player] and sessionFrom then
+		-- the grove closed or filled up meanwhile: any grove (the home travels with the profile)
+		homeBound[player] = nil
+		task.spawn(flyHome, player, true)
+		return
+	end
 	local sq = squads:squadOf(player)
 	if sq then
 		sq.launching = false
@@ -550,15 +670,21 @@ TeleportService.TeleportInitFailed:Connect(function(player: Player, _result, mes
 end)
 
 -- «В ЛАГЕРЬ»: back to a public camp server (live) or, in Studio, the whole server back to the camp.
-local function toCamp(player: Player): boolean
+function toCamp(player: Player): boolean
 	if TELEPORTS then
 		if not IS_SESSION then
 			return false
 		end
 		task.spawn(function()
-			local ok = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, { player })
+			-- DD-087: back to the grove the squad flew from (its plots are waiting), else any grove
+			homeBound[player] = true
+			local ok = flyHome(player, false)
+			if not ok and sessionFrom then
+				ok = flyHome(player, true)
+			end
 			if not ok then
-				social(player, "error", "Не удалось вернуться в лагерь")
+				homeBound[player] = nil
+				social(player, "error", "Не удалось вернуться в рощу")
 			end
 		end)
 		return true
@@ -594,12 +720,42 @@ local function sessionJoin(player: Player)
 	end
 	sessionHostId = tonumber(data.host)
 	sessionPlan = { members = {}, since = os.clock(), data = data }
-	print(string.format("[SWARMFALL] session plan from %s: host %d, %s %s", player.Name, sessionHostId, tostring(data.mode), tostring(data.op)))
+	sessionFrom = if type(data.from) == "string" and #data.from > 0 then data.from else nil
+	for k, v in (if type(data.plots) == "table" then data.plots else {}) do
+		local uid, plot = tonumber(k), tonumber(v)
+		if uid and plot and plot >= 1 and plot <= Grove.Plots then
+			sessionPlots[uid] = math.floor(plot)
+		end
+	end
+	sessionGrove = if type(data.grove) == "table" then data.grove else nil
+	print(
+		string.format(
+			"[SWARMFALL] session plan from %s: host %d, %s %s",
+			player.Name,
+			sessionHostId,
+			tostring(data.mode),
+			tostring(data.op)
+		)
+	)
 	for _, uid in (if type(data.members) == "table" then data.members else {}) do
 		if tonumber(uid) then
 			table.insert(sessionPlan.members, tonumber(uid))
 		end
 	end
+	sessionSquad = { host = sessionHostId, members = table.clone(sessionPlan.members), open = data.open == true }
+end
+
+-- Session clients: where each survivor's home stands in the grove they came from, and the neighbours'
+-- homes around it (the ride home arrives there, DD-087).
+local function sendGrove(player: Player)
+	if not IS_SESSION or not player.Parent then
+		return
+	end
+	local plots = {}
+	for uid, plot in sessionPlots do
+		plots[tostring(uid)] = plot
+	end
+	social(player, "grove", { plots = plots, grove = sessionGrove })
 end
 
 local function sessionStart()
@@ -610,12 +766,20 @@ local function sessionStart()
 	if not h then
 		return
 	end
-	local opId = if type(d.op) == "string" and table.find(Ops.Order, d.op) and Profile.maxThreat(h, d.op) >= 1 then d.op else "O01"
+	local opId = if type(d.op) == "string"
+			and table.find(Ops.Order, d.op)
+			and Profile.maxThreat(h, d.op) >= 1
+		then d.op
+		else "O01"
 	lobby.op = opId
 	lobby.threat = math.clamp(math.floor(tonumber(d.threat) or 1), 1, math.max(1, Profile.maxThreat(h, opId)))
 	local f = Profile.features(Profile.get(h) or {})
 	local m = d.mode
-	lobby.mode = if m == "siege" and f.siege then "siege" elseif m == "strike" and f.outpost then "strike" elseif m == "raid" and f.raids then "raid" else "hunt"
+	lobby.mode = if m == "siege" and f.siege
+		then "siege"
+		elseif m == "strike" and f.outpost then "strike"
+		elseif m == "raid" and f.raids then "raid"
+		else "hunt"
 	if lobby.mode == "raid" then
 		lobby.target = if tonumber(d.target) then Outposts.find(tonumber(d.target)) else nil
 		if not lobby.target then
@@ -681,6 +845,83 @@ local function autoDeploy(player: Player)
 	lobby.countdown = math.min(lobby.countdown or 2, 2)
 end
 
+-- DD-087: the grove notices what a survivor has done since it last saw them (a chronicle line for all).
+function groveLook(player: Player)
+	local d = Profile.get(player)
+	-- the first look is taken in any mode (a newcomer may be off to the first sortie at once); news is
+	-- only told in the grove, so a fight's deeds come out when the hunter is home
+	if not d or (mode ~= "HUB" and Neighbors.seen(player.UserId)) then
+		return
+	end
+	for _, e in Neighbors.look(player, d) do
+		for _, p in Players:GetPlayers() do
+			social(p, "chronicle", e)
+		end
+	end
+end
+
+-- A squad back from a fight forms again round its host (who stays its host).
+local function link(hostP: Player, memberP: Player)
+	local hsq = squads:squadOf(hostP)
+	if hsq and hsq.host == hostP and squads:squadOf(memberP) ~= hsq and #hsq.members < Squads.Max then
+		hsq.invited[memberP.UserId] = true
+		squads:join(memberP, hsq.id)
+	end
+end
+function regroup(hostUid: number?, members, open: boolean?)
+	local hostP = hostUid and Players:GetPlayerByUserId(hostUid)
+	if not hostP then
+		return
+	end
+	local sq = squads:squadOf(hostP)
+	if sq and sq.host == hostP and open ~= nil then
+		sq.open = open
+	end
+	for _, uid in members or {} do
+		local m = tonumber(uid) and Players:GetPlayerByUserId(tonumber(uid) :: number)
+		if m and m ~= hostP then
+			link(hostP, m)
+		end
+	end
+end
+-- Live: whoever arrives back from a session brings the squad with them (teleport data); the first one
+-- home waits for the rest as they land.
+local function regroupFrom(player: Player)
+	local ok, jd = pcall(player.GetJoinData, player)
+	local data = ok and jd and jd.TeleportData
+	if type(data) ~= "table" or data.back ~= true or type(data.squad) ~= "table" then
+		return
+	end
+	local members = if type(data.squad.members) == "table" then data.squad.members else {}
+	regroup(
+		tonumber(data.squad.host),
+		members,
+		if player.UserId == tonumber(data.squad.host) then data.squad.open == true else nil
+	)
+end
+
+-- The favourite gun for a home seen from another grove: the most mastered one.
+local function favouriteWeapon(d): string
+	local best, kills = "W_ARC_RIFLE", -1
+	for id, n in d.mastery or {} do
+		if Defs.Weapons[id] and n > kills then
+			best, kills = id, n
+		end
+	end
+	return best
+end
+Profile.onChanged(function(player)
+	groveLook(player)
+	local d = Profile.get(player)
+	if d and mode == "HUB" then
+		local w = favouriteWeapon(d)
+		Neighbors.publish(
+			player,
+			Showcase.build(player.UserId, player.DisplayName, d, w, Profile.equippedForm(player, w))
+		)
+	end
+end)
+
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(function()
 		for _ = 1, 40 do
@@ -695,13 +936,17 @@ Players.PlayerAdded:Connect(function(player)
 			if sq and #sq.members == 1 and not sq.launching then
 				sq.op = nextOpFor(player)
 			end
+			groveLook(player)
 		end
 	end)
 	if mode == "HUB" then
+		Neighbors.arrive(player)
 		squads:solo(player, "O01")
+		regroupFrom(player)
 	end
 	sessionJoin(player)
 	task.wait(1)
+	sendGrove(player)
 	if mode == "LOBBY" or mode == "HUB" then
 		toHub(player)
 		if lobby.countdown then
@@ -712,6 +957,7 @@ Players.PlayerAdded:Connect(function(player)
 end)
 for _, player in Players:GetPlayers() do
 	if mode == "HUB" then
+		Neighbors.arrive(player)
 		squads:solo(player, nextOpFor(player))
 	end
 	sessionJoin(player)
@@ -729,7 +975,12 @@ local function lobbyOnly(): boolean
 end
 
 function handlers.ready(player: Player, weapon)
-	if not lobbyOnly() or type(weapon) ~= "string" or not Defs.Weapons[weapon] or not Profile.ownsWeapon(player, weapon) then
+	if
+		not lobbyOnly()
+		or type(weapon) ~= "string"
+		or not Defs.Weapons[weapon]
+		or not Profile.ownsWeapon(player, weapon)
+	then
 		return false
 	end
 	lobby.weapon[player] = weapon
@@ -940,7 +1191,11 @@ function handlers.craftModule(player: Player, id)
 end
 
 function handlers.equipModule(player: Player, weaponId, slot, id)
-	return lobbyOnly() and type(weaponId) == "string" and type(slot) == "string" and type(id) == "string" and Profile.equipModule(player, weaponId, slot, id)
+	return lobbyOnly()
+		and type(weaponId) == "string"
+		and type(slot) == "string"
+		and type(id) == "string"
+		and Profile.equipModule(player, weaponId, slot, id)
 end
 
 function handlers.s01Branch(player: Player, branch)
@@ -956,7 +1211,10 @@ function handlers.craftForm(player: Player, evoId)
 end
 
 function handlers.equipForm(player: Player, weaponId, evoId)
-	return lobbyOnly() and type(weaponId) == "string" and type(evoId) == "string" and Profile.equipForm(player, weaponId, evoId)
+	return lobbyOnly()
+		and type(weaponId) == "string"
+		and type(evoId) == "string"
+		and Profile.equipForm(player, weaponId, evoId)
 end
 
 local function participant(player: Player)
@@ -1035,6 +1293,11 @@ end
 function handlers.continue(player: Player)
 	if mode ~= "RUN" or not world or world.phase ~= "RESULTS" then
 		return false
+	end
+	if IS_SESSION and TELEPORTS then
+		-- DD-087: «ДОМОЙ» — each flies home to the grove at once; the squad forms again there
+		settle()
+		return toCamp(player)
 	end
 	continueVotes[player] = true
 	for _, pl in participants do
@@ -1116,6 +1379,14 @@ if RunService:IsStudio() then
 		p.iframeUntil, p.graceUntil = 0, 0
 		world.t = math.max(world.t, Defs.Run.SafeSeconds + 0.1)
 		world:hurtPlayer(p, p.hp + p.maxHp * 10, p.x + 4, p.z, nil)
+		return true
+	end
+	-- the end of a sortie without fighting it (the way home, the chronicle, DD-087)
+	function handlers.devWin(player: Player)
+		if not world or world.result or not participant(player) then
+			return false
+		end
+		world:finish(true, "dev")
 		return true
 	end
 	function handlers.devSkip(player: Player, seconds)
@@ -1206,12 +1477,23 @@ function handlers.match(player: Player)
 	return true
 end
 
+-- DD-087: a survivor is «at» a plot when they stand in its area or by its sign on the road.
+local function nearPlot(player: Player, plot: number?): boolean
+	local root = rootOf(player)
+	if not root or not plot then
+		return false
+	end
+	local c = Grove.frame(plot).Position
+	return Vector3.new(root.Position.X - c.X, 0, root.Position.Z - c.Z).Magnitude < Grove.Reach + 24
+end
+
 function handlers.like(player: Player, uid)
 	local owner = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
 	if
 		not campOnly()
 		or not owner
-		or shelterRooms:owner(player.UserId) ~= uid
+		or owner == player
+		or not nearPlot(player, Neighbors.plotOf(uid))
 		or not Profile.like(player, owner, Meta.dayIndex(os.time()))
 	then
 		return false
@@ -1220,35 +1502,78 @@ function handlers.like(player: Player, uid)
 	return true
 end
 
-function handlers.visit(player: Player, uid)
-	local owner = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
+-- «Посетить» (the residents' list, a hunter's card): a quick way to a plot's sign, facing the gate. The
+-- grove is open — walking there is the same thing, only longer.
+function handlers.visit(player: Player, plot)
+	if not campOnly() or not finite(plot) then
+		return false
+	end
+	plot = math.floor(plot)
+	if plot < 1 or plot > Grove.Plots then
+		return false
+	end
 	local sq = squads:squadOf(player)
-	local targetSquad = owner and squads:squadOf(owner)
-	if
-		not campOnly()
-		or not owner
-		or not Profile.get(owner)
-		or not Profile.get(player)
-		or (sq and sq.launching)
-		or (targetSquad and targetSquad.launching)
-	then
-		return false
-	end
-	if shelterRooms:owner(player.UserId) == uid then
-		return true
-	end
-	if not shelterRooms:visit(player.UserId, uid) then
-		return false
-	end
 	local root = rootOf(player)
-	if root then
-		root.AssemblyLinearVelocity = Vector3.zero
-		player.Character:PivotTo(CFrame.new(HOME.X, 3.2, HOME.Z - 8) * CFrame.Angles(0, LOBBY_FACING, 0))
+	if (sq and sq.launching) or not root then
+		return false
 	end
-	if owner ~= player then
+	local f = Grove.frame(plot)
+	local w = f:PointToWorldSpace(Vector3.new(Layout.Arrive.x, 0, Layout.Arrive.z))
+	root.AssemblyLinearVelocity = Vector3.zero
+	player.Character:PivotTo(CFrame.new(w.X, 3.2, w.Z) * CFrame.Angles(0, facingOf(f), 0))
+	local ownerUid = Neighbors.plots()[plot].uid
+	local owner = ownerUid and Players:GetPlayerByUserId(ownerUid)
+	if owner and owner ~= player then
 		social(owner, "visitor", player.DisplayName)
 	end
 	return true
+end
+
+-- Quick signals (DD-087 §6): fixed phrases over the head, seen by everyone in the grove.
+function handlers.say(player: Player, i)
+	if not campOnly() or not finite(i) then
+		return false
+	end
+	i = math.floor(i)
+	if not Chronicle.Signals[i] or not Neighbors.canSay(player.UserId) then
+		return false
+	end
+	for _, p in Players:GetPlayers() do
+		social(p, "say", { uid = player.UserId, i = i })
+	end
+	return true
+end
+
+-- «Попроситься» at a neighbour's sign: a lit lantern (open squad) takes you at once; otherwise the owner
+-- is asked and can «ВЗЯТЬ» you within a minute.
+function handlers.ask(player: Player, uid)
+	local owner = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
+	local sq = owner and squads:squadOf(owner)
+	if not campOnly() or not owner or owner == player or not sq then
+		return false
+	end
+	if squads:squadOf(player) == sq then
+		return false
+	end
+	if sq.open then
+		return handlers.join(player, sq.id)
+	end
+	if #sq.members >= Squads.Max or sq.launching or not Neighbors.ask(player.UserId, owner.UserId) then
+		return false
+	end
+	social(owner, "ask", { from = player.DisplayName, uid = player.UserId })
+	social(player, "asked", owner.DisplayName)
+	return true
+end
+
+function handlers.take(player: Player, uid)
+	local asker = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
+	local sq = squads:squadOf(player)
+	if not campOnly() or not asker or not sq or not Neighbors.take(player.UserId, asker.UserId) then
+		return false
+	end
+	sq.invited[asker.UserId] = true
+	return handlers.join(asker, sq.id)
 end
 
 function handlers.camp(player: Player)
@@ -1400,8 +1725,45 @@ local function lobbyInfo(L, h, members, shared)
 	}
 end
 
--- The camp in one table: every squad (lobby-shaped, so the base UI reads it) and every hunter's showcase.
-local function hubInfo()
+-- What a survivor is up to, for their sign and nameplate (DD-087 §5).
+local function statusOf(player: Player, sq): (string, string)
+	local st = {}
+	if sq then
+		st.launching = sq.launching or (sq.countdown ~= nil and not sq.hold)
+		st.ready = next(sq.ready) ~= nil
+		st.open = sq.open
+		if #sq.members > 1 then
+			local other = if sq.members[1] == player then sq.members[2] else sq.members[1]
+			st.squadWith = other.DisplayName
+		end
+	end
+	local root = rootOf(player)
+	if root then
+		Neighbors.moved(player.UserId, root.Position)
+		local at = Grove.plotAt(root.Position)
+		if at and at ~= Neighbors.plotOf(player.UserId) then
+			local ownerUid = Neighbors.plots()[at].uid
+			st.guestOf = ownerUid and Neighbors.name(ownerUid)
+		end
+		st.square = Grove.onSquare(root.Position)
+	end
+	st.idle = Neighbors.idle(player.UserId)
+	return Chronicle.status(st)
+end
+
+-- The grove's static part (homes from other groves, held plots, the chronicle) changes slowly.
+local groveCache, groveAt = nil, -1e9
+function groveInfo()
+	if not groveCache or os.clock() - groveAt > 2 then
+		groveAt = os.clock()
+		groveCache = { ghosts = Neighbors.ghosts(), held = Neighbors.held(), feed = Neighbors.feed() }
+	end
+	return groveCache
+end
+
+-- The camp in one table: every squad (lobby-shaped, so the base UI reads it), every hunter's showcase
+-- with their plot and status, and the grove around them (DD-087).
+function hubInfo()
 	local shared = { boards = Outposts.boards(), online = Outposts.online() }
 	local list = {}
 	for _, sq in squads:all() do
@@ -1423,13 +1785,21 @@ local function hubInfo()
 			if not Profile.ownsWeapon(player, weapon) then
 				weapon = "W_ARC_RIFLE"
 			end
-			local entry = Showcase.build(player.UserId, player.DisplayName, d, weapon, Profile.equippedForm(player, weapon))
+			local entry =
+				Showcase.build(player.UserId, player.DisplayName, d, weapon, Profile.equippedForm(player, weapon))
 			entry.squad = sq and sq.id or 0
-			entry.room = shelterRooms:owner(player.UserId)
+			entry.plot = Neighbors.plotOf(player.UserId)
+			entry.statusKey, entry.status = statusOf(player, sq)
+			Neighbors.remember(player.UserId, entry)
 			table.insert(hunters, entry)
 		end
 	end
-	return { squads = list, hunters = hunters, featured = Showcase.featured(hunters, math.floor(os.time() / 120)) }
+	return {
+		squads = list,
+		hunters = hunters,
+		featured = Showcase.featured(hunters, math.floor(os.time() / 120)),
+		grove = groveInfo(),
+	}
 end
 
 local function publish()
@@ -1471,6 +1841,24 @@ RunService.Heartbeat:Connect(function(dt)
 				root.AssemblyLinearVelocity = Vector3.zero
 				task.spawn(toHub, player)
 			end
+			-- DD-087: standing at the gathering fire lights your lantern (an open squad) until you walk off
+			local sq = mode == "HUB" and squads:squadOf(player)
+			if root and sq and sq.host == player and not sq.launching then
+				local near = Vector3.new(root.Position.X - Grove.Fire.X, 0, root.Position.Z - Grove.Fire.Z).Magnitude
+					< 13
+				if near and not sq.open then
+					sq.open = true
+					sq.byFire = true
+				elseif not near and sq.byFire then
+					sq.byFire = nil
+					if #sq.members == 1 then
+						sq.open = false
+					end
+				end
+			end
+		end
+		if mode == "HUB" then
+			Neighbors.tick()
 		end
 	end
 	if mode == "HUB" then
@@ -1558,12 +1946,10 @@ Players.PlayerRemoving:Connect(function(player)
 	if sessionHostId == player.UserId then
 		sessionHostId = nil
 	end
-	for _, uid in shelterRooms:remove(player.UserId) do
-		local guest = Players:GetPlayerByUserId(uid)
-		if guest then
-			social(guest, "error", "Хозяин вышел. Ты вернулся в своё убежище.")
-		end
+	if mode == "HUB" or leavingFor[player] then
+		Neighbors.leave(player, leavingFor[player])
 	end
+	leavingFor[player] = nil
 	funnel[player] = nil
 	squads:remove(player)
 	buckets[player] = nil

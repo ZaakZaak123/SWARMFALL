@@ -1,13 +1,16 @@
 --!nonstrict
--- The shelter's ground and daylight (DD-057). The home is a green grove far from the crater
--- (Meta.HomeOrigin): leafy grass, old concrete paths, low wooded hills closing the view. Everything you
--- walk past (the shelter, trees, ruins, the restored spots) is drawn by the client (client/Base) so it
--- can show each hunter their own home; the server only owns the terrain and the light.
+-- The grove's ground and daylight (DD-057 → DD-087). The settlement is a green grove far from the crater
+-- (Meta.HomeOrigin = the old Tree): leafy grass, old concrete paths, low wooded hills closing the view.
+-- Everything you walk past (the shelters, trees, ruins, the square's posts) is drawn by the clients
+-- (client/Base for the own home, client/Settlement for the rest); the server only owns the terrain and
+-- the light.
 -- Lighting is per server: the home light while the squad is between runs, the arena's during a run.
 
 local Lighting = game:GetService("Lighting")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Meta = require(Shared:WaitForChild("Meta"))
+local Grove = require(Shared:WaitForChild("Grove"))
+local Layout = require(Shared:WaitForChild("ShelterLayout"))
 
 local Home = {}
 
@@ -16,33 +19,79 @@ local rgb = Color3.fromRGB
 local O = Meta.HomeOrigin
 
 -- Terrain is wiped by every arena rebuild (Arena.paintTerrain clears it), so this runs after each one.
+-- DD-087: the whole grove — the square under the Tree, a road from it to every plot's gate, each plot's
+-- courtyard, a hill with the old metro's mouth between each two plots, wooded hills round the edge.
 function Home.build()
 	local terrain = workspace.Terrain
 	-- materials the crater does not use, so their colours are ours
 	terrain:SetMaterialColor(M.LeafyGrass, rgb(104, 160, 68))
 	terrain:SetMaterialColor(M.Concrete, rgb(150, 146, 136))
 	terrain:SetMaterialColor(M.Pavement, rgb(126, 122, 112))
+	terrain:SetMaterialColor(M.Cobblestone, rgb(132, 124, 112))
 	-- the grove floor: surface at Y = 0 (a half-filled top voxel, see DD-049)
-	terrain:FillBlock(CFrame.new(O.X, -7, O.Z), Vector3.new(320, 10, 320), M.LeafyGrass)
-	-- old concrete: the courtyard slab and the road out through the gate (south)
-	local function slab(cx: number, cz: number, sx: number, sz: number, mat)
-		local min = Vector3.new(O.X + cx - sx / 2, -4, O.Z + cz - sz / 2)
-		local max = Vector3.new(O.X + cx + sx / 2, 0, O.Z + cz + sz / 2)
-		terrain:ReplaceMaterial(Region3.new(min, max):ExpandToGrid(4), 4, M.LeafyGrass, mat)
+	terrain:FillBlock(CFrame.new(O.X, -7, O.Z), Vector3.new(760, 10, 760), M.LeafyGrass)
+	-- paving only recolours the grass (same ground, no steps): cell by cell under a turned rectangle
+	local done = {}
+	local function pave(f: CFrame, cx: number, cz: number, sx: number, sz: number, mat)
+		for x = -sx / 2, sx / 2, 3 do
+			for z = -sz / 2, sz / 2, 3 do
+				local w = f:PointToWorldSpace(Vector3.new(cx + x, 0, cz + z))
+				local gx, gz = math.floor(w.X / 4), math.floor(w.Z / 4)
+				local key = gx * 100000 + gz
+				if done[key] ~= mat then
+					done[key] = mat
+					local min = Vector3.new(gx * 4, -4, gz * 4)
+					terrain:ReplaceMaterial(Region3.new(min, min + Vector3.new(4, 4, 4)), 4, M.LeafyGrass, mat)
+					if mat ~= M.LeafyGrass then
+						terrain:ReplaceMaterial(Region3.new(min, min + Vector3.new(4, 4, 4)), 4, M.Pavement, mat)
+					end
+				end
+			end
+		end
 	end
-	slab(0, 4, 36, 28, M.Concrete)
-	slab(0, -40, 12, 56, M.Pavement)
-	slab(-2, -16, 8, 12, M.Pavement)
-	-- wooded hills close the grove on every side but the road
+	local centre = CFrame.new(O.X, 0, O.Z)
+	-- the square: cobbles round the edge, flagstones inside
+	for r = Grove.PlazaRadius + 3, 2, -3 do
+		local mat = if r > Grove.PlazaRadius - 3 then M.Cobblestone else M.Pavement
+		local n = math.max(8, math.floor(r * 2 * math.pi / 3))
+		for k = 1, n do
+			local a = k / n * math.pi * 2
+			pave(centre, math.cos(a) * r, math.sin(a) * r, 1, 1, mat)
+		end
+	end
+	for i = 1, Grove.Plots do
+		local f = Grove.frame(i)
+		-- the courtyard slab and the road out through the gate, then on to the square
+		pave(f, 0, 4, 36, 28, M.Concrete)
+		pave(f, 0, -40, 12, 56, M.Pavement)
+		pave(f, -2, -16, 8, 12, M.Pavement)
+		local toSquare = Grove.Radius - Grove.PlazaRadius - 66
+		pave(f, 0, -68 - toSquare / 2, 10, toSquare + 6, M.Pavement)
+		-- the hill with the metro's mouth: behind the cave, between this plot and the next
+		local c = Layout.Cave
+		-- (it grows outward, away from the square: the roads on either side stay clear)
+		local mouth = f:PointToWorldSpace(Vector3.new(c.x, 0, c.z))
+		local back = f:VectorToWorldSpace(Vector3.new(-c.fx, 0, -c.fz))
+		local out = Vector3.new(mouth.X - O.X, 0, mouth.Z - O.Z).Unit
+		for _, h in { { out * 20, 24 }, { out * 38 + back * 6, 22 }, { out * 6 + back * 9, 15 } } do
+			local at = mouth + h[1]
+			terrain:FillBall(Vector3.new(at.X, -h[2] * 0.42, at.Z), h[2], M.LeafyGrass)
+		end
+		terrain:FillBall(mouth + out * 30 + Vector3.new(0, -8, 0), 13, M.Rock)
+	end
+	-- wooded hills close the grove on every side
 	local rng = Random.new(31)
-	for i = 1, 26 do
-		local a = (i / 26) * math.pi * 2
-		local south = math.abs(a - math.pi * 1.5) < 0.22
-		local r = rng:NextNumber(98, 126) + (if south then 40 else 0)
-		local size = rng:NextNumber(30, 46)
+	for i = 1, 30 do
+		local a = (i / 30) * math.pi * 2
+		local r = rng:NextNumber(300, 336)
+		local size = rng:NextNumber(36, 54)
 		terrain:FillBall(Vector3.new(O.X + math.cos(a) * r, -size * 0.45, O.Z + math.sin(a) * r), size, M.LeafyGrass)
 		if i % 3 == 0 then
-			terrain:FillBall(Vector3.new(O.X + math.cos(a) * (r + 10), -size * 0.3, O.Z + math.sin(a) * (r + 10)), size * 0.6, M.Rock)
+			terrain:FillBall(
+				Vector3.new(O.X + math.cos(a) * (r + 12), -size * 0.3, O.Z + math.sin(a) * (r + 12)),
+				size * 0.6,
+				M.Rock
+			)
 		end
 	end
 end
