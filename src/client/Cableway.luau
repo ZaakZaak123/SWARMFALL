@@ -129,28 +129,22 @@ function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
 		return frame * CFrame.new(x, y, -z)
 	end
 	-- the darkness: what you see into the hill (and what a crate rides into)
-	part({ Size = Vector3.new(16, 16, 1), CFrame = at3(0, 8, -1.6), Color = rgb(5, 5, 7) }, folder)
+	part({ Name = "Dark", Size = Vector3.new(16, 16, 1), CFrame = at3(0, 8, -1.6), Color = rgb(5, 5, 7) }, folder)
 	-- the timbering
 	for _, x in { -7.6, 7.6 } do
-		part(
-			{
-				Size = Vector3.new(1.3, 16.6, 1.3),
-				CFrame = at3(x, 8.3, 0),
-				Color = timber,
-				Material = Enum.Material.WoodPlanks,
-			},
-			folder
-		)
-	end
-	part(
-		{
-			Size = Vector3.new(17.6, 1.5, 1.5),
-			CFrame = at3(0, 16.6, 0),
+		part({
+			Size = Vector3.new(1.3, 16.6, 1.3),
+			CFrame = at3(x, 8.3, 0),
 			Color = timber,
 			Material = Enum.Material.WoodPlanks,
-		},
-		folder
-	)
+		}, folder)
+	end
+	part({
+		Size = Vector3.new(17.6, 1.5, 1.5),
+		CFrame = at3(0, 16.6, 0),
+		Color = timber,
+		Material = Enum.Material.WoodPlanks,
+	}, folder)
 	-- the rock heaped round it
 	local rng = Random.new(math.floor(at.X * 7 + at.Z * 3))
 	local rocks = {
@@ -180,25 +174,19 @@ function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
 	end
 	-- the rails out of the tunnel and a lamp over the opening
 	for _, x in { -2.4, 2.4 } do
-		part(
-			{
-				Size = Vector3.new(0.35, 0.3, 10),
-				CFrame = at3(x, 0.15, 4.5),
-				Color = rgb(70, 62, 56),
-				Material = Enum.Material.Metal,
-			},
-			folder
-		)
+		part({
+			Size = Vector3.new(0.35, 0.3, 10),
+			CFrame = at3(x, 0.15, 4.5),
+			Color = rgb(70, 62, 56),
+			Material = Enum.Material.Metal,
+		}, folder)
 	end
-	local lamp = part(
-		{
-			Size = Vector3.new(0.9, 0.7, 0.9),
-			CFrame = at3(0, 15, 1.2),
-			Color = rgb(255, 196, 120),
-			Material = Enum.Material.Neon,
-		},
-		folder
-	)
+	local lamp = part({
+		Size = Vector3.new(0.9, 0.7, 0.9),
+		CFrame = at3(0, 15, 1.2),
+		Color = rgb(255, 196, 120),
+		Material = Enum.Material.Neon,
+	}, folder)
 	local light = Instance.new("PointLight")
 	light.Color = rgb(255, 196, 130)
 	light.Range = 18

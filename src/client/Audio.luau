@@ -212,7 +212,9 @@ local duckUntil = 0
 -- build, the fanfare when the Alpha falls, the warm sting when the shelter lights up. The beds duck under.
 local STINGS = {
 	intro = { "rbxassetid://9042968300", 0.5 }, -- «Superior Human Sting 1»
-	victory = { "rbxassetid://83315768373322", 0.6 }, -- «Conquering Heroes Link»
+	-- DD-083: a short hit, not a track — 3 s of «Kinetic Victory (Sting)», faded out, so nothing runs into
+	-- the scene and the shelter's music after it
+	victory = { "rbxassetid://133000497392138", 0.65, 3.0 },
 	home = { "rbxassetid://9047296345", 0.45 }, -- «Welcome Home Sting»
 	reveal = { "rbxassetid://9039981895", 0.6 }, -- «Hellish»: a boss / leader enters (DD-082)
 }
@@ -235,9 +237,40 @@ function Audio.sting(name: string, duck: number?)
 		s.Parent = SoundService
 		stingSounds[name] = s
 	end
+	s.Volume = def[2]
 	s.TimePosition = 0
 	s:Play()
 	duckUntil = os.clock() + (duck or 9)
+	local cut = def[3]
+	if cut then
+		local token = {}
+		s:SetAttribute("Token", tostring(token))
+		task.delay(cut - 0.6, function()
+			if s:GetAttribute("Token") == tostring(token) and s.IsPlaying then
+				game:GetService("TweenService"):Create(s, TweenInfo.new(0.6), { Volume = 0 }):Play()
+				task.delay(0.62, function()
+					if s:GetAttribute("Token") == tostring(token) then
+						s:Stop()
+					end
+				end)
+			end
+		end)
+	end
+end
+
+-- Let a sting die away (a scene that ends before its music does).
+function Audio.fadeStings(seconds: number)
+	for _, s in stingSounds do
+		if s.IsPlaying then
+			s:SetAttribute("Token", "fade")
+			game:GetService("TweenService"):Create(s, TweenInfo.new(seconds), { Volume = 0 }):Play()
+			task.delay(seconds + 0.05, function()
+				if s:GetAttribute("Token") == "fade" then
+					s:Stop()
+				end
+			end)
+		end
+	end
 end
 
 -- Hold the music down for a moment (the hero's fall, DD-082).
@@ -263,12 +296,14 @@ function Audio.preloadStings()
 	end
 end
 
+-- States: "run", "boss", "lobby" (home), "quiet" (a story scene or the moments after a fight: only its own
+-- music is heard, DD-083 — the beds no longer play under a scene's stings).
 function Audio.setMusic(state: string)
 	local fighting = state == "run" or state == "boss"
 	bedTarget.ambience = if fighting then 1 else 0
 	bedTarget.fight = if state == "run" then 1 else 0
 	bedTarget.boss = if state == "boss" then 1 else 0
-	bedTarget.home = if fighting then 0 else 1
+	bedTarget.home = if state == "lobby" then 1 else 0
 end
 function Audio.updateMusic(dt: number)
 	for key, def in BEDS do
@@ -284,7 +319,7 @@ function Audio.updateMusic(dt: number)
 			beds[key] = s
 		end
 		local goal = def[2] * bedTarget[key] * (if os.clock() < duckUntil then 0.12 else 1)
-		s.Volume += (goal - s.Volume) * math.min(1, dt * 0.8)
+		s.Volume += (goal - s.Volume) * math.min(1, dt * (if goal < s.Volume then 2.5 else 0.8)) -- out fast, in slow
 		if s.Volume > 0.005 and not s.IsPlaying then
 			s:Play()
 		elseif s.Volume <= 0.005 and goal == 0 and s.IsPlaying then

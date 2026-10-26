@@ -36,6 +36,7 @@ local Cableway = require(script.Parent:WaitForChild("Cableway"))
 local ShelterVisibility = require(script.Parent:WaitForChild("ShelterVisibility"))
 Range.init(workspace)
 local Rig = require(script.Parent:WaitForChild("Rig"))
+local Calm = require(script.Parent:WaitForChild("Calm"))
 local Shots = require(script.Parent:WaitForChild("Shots"))
 local WeaponFeel = require(script.Parent:WaitForChild("WeaponFeel"))
 
@@ -352,6 +353,7 @@ local fallen = nil -- DD-082: the hero's fall — a slow close-up before the res
 local FALL_TIME = 3.2
 local cameraHinted = false -- the first fight names the three camera views once (DD-082)
 local wasAlive = false
+local resultAt = nil -- when this run's result arrived (a victory holds the field a moment, DD-083)
 local function falling(): boolean
 	if fallen and RunService:IsStudio() and workspace:GetAttribute("SwarmHoldScene") then
 		return true
@@ -529,7 +531,7 @@ local storyChecked = false -- this run's opening scene (intro / arrival) was dec
 local function enterRun()
 	inRun = true
 	storyChecked = false
-	fallen, wasAlive, reveal = nil, false, nil
+	fallen, wasAlive, reveal, resultAt = nil, false, nil, nil
 	Hud.reset()
 	Menus.hideLobby()
 	Menus.hideResults()
@@ -756,12 +758,16 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	if run.result then
 		Hud.setVisible(false)
+		-- DD-083: a won fight holds on the field for a moment before the results or the ride home
+		resultAt = resultAt or os.clock()
+		local settled = not run.result.victory or os.clock() - resultAt > 2.0
 		-- DD-075/076: a story sortie won for the first time rides home on the cable before the results.
 		local prof = Menus.profile()
 		local opId = run.result.op
 		local tutKey = if opId == "O01" then "drill" else "home_" .. tostring(opId)
 		if
-			run.result.victory
+			settled
+			and run.result.victory
 			and Story.hasHomecoming(opId)
 			and run.solo
 			and prof
@@ -777,7 +783,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		end
 		-- the hero's fall plays first (it starts on the next frame when the death came with the result)
 		local fallNext = me ~= nil and not me.alive and wasAlive and not fallen
-		if not Base.sceneActive() and not Story.active() and not falling() and not fallNext then
+		if settled and not Base.sceneActive() and not Story.active() and not falling() and not fallNext then
 			Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)], info.camp)
 		end
 	end
@@ -1546,18 +1552,33 @@ end
 -- leaderless swarm blown apart by the shockwave (the server kills it), a white flash, the camera leaning
 -- in, a warm grade and the fanfare.
 local victoryGlow = 0
--- DD-077: the charged pylon's song ends O03 the same way, in the pylon's cyan.
+-- DD-077/083: the charged tesla tower ends O03 the same way, in its cyan: a discharge — lightning from
+-- the tower's top into the swarm all round, thunder and crackle (no roar: it is a machine).
 local function leaderDown(x: number, z: number, song: boolean?)
 	local at = Vector3.new(x, 0, z)
 	local gold = if song then Color3.fromRGB(110, 236, 255) else Color3.fromRGB(255, 204, 70)
-	Audio.play(if song then "evolveStorm" else "roar", 1, if song then 1.1 else 1.4)
+	if song then
+		Audio.play("thunder", 1, 0.9)
+		Audio.play("stormZap", 1, 0.8)
+		local top = at + Vector3.new(0, 16, 0)
+		for i = 1, 14 do
+			task.delay(i * 0.06, function()
+				local a = i / 14 * math.pi * 2 + math.random() * 0.4
+				local r = 12 + math.random() * 30
+				Fx.lightning(top, at + Vector3.new(math.cos(a) * r, 0.5, math.sin(a) * r), gold, 0.7, 0.35)
+				if i % 3 == 0 then
+					Audio.play("arc", 0.9, 0.8 + math.random() * 0.3)
+				end
+			end)
+		end
+	else
+		Audio.play("roar", 1, 1.4)
+	end
 	Audio.play("killBig", 1, 0.7)
-	Audio.sting("victory", 12)
+	Audio.sting("victory", 4)
 	Menus.whiteFlash(0.85)
-	CameraRig.shake(1)
-	CameraRig.punch(14)
-	CameraRig.closeUp(1.8)
-	victoryGlow = 2.6
+	CameraRig.shake(0.45) -- DD-083: no zoom or punch — the camera stays put so the moment can sink in
+	victoryGlow = 3.2
 	Fx.boom(at, 12, gold)
 	Fx.light(at + Vector3.new(0, 6, 0), gold, 90, 1.6)
 	Fx.debris(at + Vector3.new(0, 3, 0), 12, Color3.fromRGB(60, 44, 30), 34)
@@ -1677,8 +1698,8 @@ handlers[E.BOSS] = function(action, x, z)
 		CameraRig.shake(1)
 		Menus.whiteFlash(0.6)
 		-- DD-079: a boss down is the run won — the same fanfare and warm glow as the Alpha
-		Audio.sting("victory", 12)
-		victoryGlow = 2.6
+		Audio.sting("victory", 4)
+		victoryGlow = 3.2
 	end
 end
 handlers[E.SPIT] = function(fx, fz, tx, tz, flight)
@@ -2170,6 +2191,16 @@ local function frame(dt: number)
 		local slow = if me and me.slow then me.slow else 0
 		hum.WalkSpeed = if walkingBase then Defs.Player.Speed elseif frozen then 0 else Defs.Player.Speed * (1 - slow)
 		hum.AutoRotate = walkingBase and not ranging
+		-- DD-083: at home the ordinary Roblox pose and walk; the combat rig only at the range and in a fight
+		local calm = walkingBase and not ranging
+		Rig.setCalm(player.Character, calm)
+		Calm.update(player.Character, calm)
+		local home = mode == "LOBBY" or mode == "HUB"
+		for _, other in Players:GetPlayers() do
+			if other ~= player and other.Character then
+				Rig.setCalm(other.Character, home)
+			end
+		end
 		-- at home it is plain Roblox: run, jump, look around; in a fight the feet stay on the ground
 		if walkingBase ~= jumpOn then
 			jumpOn = walkingBase
@@ -2414,7 +2445,15 @@ local function frame(dt: number)
 	EnemyView.update(dt, cam.CFrame.Position)
 	Fx.update(dt)
 	Menus.update(dt)
-	Audio.setMusic(if mode ~= "RUN" or not run or run.result then "lobby" elseif run.boss then "boss" else "run")
+	Audio.setMusic(
+		if Story.active()
+				or Story.covered()
+				or (mode == "RUN" and (not run or run.result ~= nil))
+			then "quiet"
+			elseif mode ~= "RUN" then "lobby"
+			elseif run and run.boss then "boss"
+			else "run"
+	)
 	Audio.updateMusic(dt)
 
 	if run and me then

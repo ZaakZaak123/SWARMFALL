@@ -930,9 +930,33 @@ local function step(st, dt: number, now: number)
 	end
 end
 
+-- At home (DD-083) the body belongs to Roblox's own animations: the joints are let go and the gun is
+-- slung across the back. A fight (or the range) takes the body back.
+local SLUNG = CFrame.new(0.15, -0.35, 0.78) * CFrame.Angles(0, 0, math.rad(-38)) * CFrame.Angles(math.rad(90), 0, 0)
+function Rig.setCalm(character: Model, on: boolean)
+	local st = rigs[character]
+	if not st or st.calm == on then
+		return
+	end
+	st.calm = on
+	if on then
+		for _, info in st.j do
+			if info.motor.Parent then
+				info.motor.Transform = CFrame.identity
+			end
+		end
+	end
+end
+
 function Rig.update(dt: number)
 	local now = os.clock()
 	for character, st in rigs do
+		if st and st.calm and character.Parent then
+			if st.gun and st.gun.motor.Parent then
+				st.gun.motor.Transform = SLUNG
+			end
+			continue
+		end
 		if character.Parent and st and valid(st) then
 			local ok, err = pcall(step, st, dt, now)
 			if not ok and RunService:IsStudio() and not st.warned then

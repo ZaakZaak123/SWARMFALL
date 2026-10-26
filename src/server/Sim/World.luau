@@ -1011,7 +1011,7 @@ function World:openOffers()
 			any = true
 		end
 	end
-	if any and self.phase == "ACTIVE" and self.paused ~= "EVOLVE" then
+	if any and self.phase == "ACTIVE" and self.paused ~= "EVOLVE" and self.paused ~= "REVEAL" then
 		if self.paused ~= "CHOOSE" then
 			self.pauseClock = 0
 		end
@@ -1280,11 +1280,17 @@ function World:spawnBoss()
 	)
 end
 
--- The boss / leader entrance (DD-082) turns every camera to it for Codec.REVEAL_TIME: players can't
--- be hurt meanwhile (the swarm keeps coming, so the fight resumes where it was).
+-- The boss / leader entrance (DD-082) turns every camera to it for Codec.REVEAL_TIME. DD-083: the whole
+-- fight holds still meanwhile (owner playtest: the swarm surrounded you while the camera was away); a
+-- moment of grace after it, so nothing lands the instant the camera is back.
 function World:revealGrace(seconds: number)
 	for _, pl in self.playerList do
-		pl.iframeUntil = math.max(pl.iframeUntil, self.t + seconds)
+		pl.iframeUntil = math.max(pl.iframeUntil, self.t + 0.6)
+	end
+	if self.phase == "ACTIVE" and not self.paused then
+		self.paused = "REVEAL"
+		self.pauseUntil = seconds
+		self.pauseClock = 0
 	end
 end
 
@@ -1605,7 +1611,7 @@ function World:step(dt: number)
 	end
 	if self.paused then
 		self.pauseClock += dt
-		if self.paused == "EVOLVE" and self.pauseClock >= self.pauseUntil then
+		if (self.paused == "EVOLVE" or self.paused == "REVEAL") and self.pauseClock >= self.pauseUntil then
 			self.paused = nil
 			self:openOffers()
 		elseif self.paused == "CHOOSE" and not self.solo and self.pauseClock >= Defs.Run.ChoiceTimeoutCoop then

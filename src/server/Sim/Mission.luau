@@ -238,7 +238,7 @@ function Mission:objectiveDone(title: string, sub: string, x: number?, z: number
 			end
 		end
 		local wb = self.op.winBanner
-			or { "ПИЛОН ЗАПЕЛ", "Рой оглушён — образец пойман живым" }
+			or { "РАЗРЯД!", "Молния оглушила рой — образец пойман живым" }
 		w:banner(wb[1], wb[2], if self.op.winFx == 6 then C.GOLD else C.CYAN, 3, "crown")
 		self.state = "FINALE"
 		self.finaleUntil = w.t + (self.op.finaleTime or 2.5)
@@ -259,7 +259,7 @@ function Mission:activateRelay(index: number, carried: number)
 	local hp = cfg.hp * Defs.Reactor.hpScale(w.threat, #w.playerList)
 	local coil = {
 		obj = "relay",
-		name = "ПИЛОН",
+		name = "ТЕСЛА-ВЫШКА",
 		x = c.x,
 		z = c.z,
 		r = 3.5,
@@ -274,7 +274,7 @@ function Mission:activateRelay(index: number, carried: number)
 	self.relay.index = index
 	self.relay.used[index] = true
 	self.relay.charge = carried
-	self.goal = "Заряди пилон: убивай рядом с ним"
+	self.goal = "Заряди тесла-вышку: убивай рой в её круге"
 	w:emit(E.OBJECTIVE, 1, c.x, c.z, cfg.radius, carried, cfg.need)
 end
 
@@ -288,15 +288,15 @@ function Mission:relayLost()
 		local carried = self.relay.charge
 		self:activateRelay(self.relayBackup, carried)
 		w:banner(
-			"ПИЛОН ПОТЕРЯН",
-			`Запасной пилон активен · заряд сохранён {carried}/{self.relay.need}`,
+			"ВЫШКА ПОВАЛЕНА",
+			`Запасная вышка под током · заряд сохранён {carried}/{self.relay.need}`,
 			C.ORANGE,
 			4,
 			"reactor"
 		)
 		return
 	end
-	w:finish(false, "ОБА ПИЛОНА ПОТЕРЯНЫ")
+	w:finish(false, "ОБЕ ВЫШКИ ПОВАЛЕНЫ")
 end
 
 -- Nests / nodes / acid sources (O03 / O05 / C-A01) --------------------------------------------------
@@ -357,7 +357,7 @@ function Mission:onKill(e, p)
 			if self.relay.charge >= self.relay.need and before < self.relay.need then
 				w:emit(E.OBJECTIVE, 3, c.x, c.z, 0, self.relay.charge, self.relay.need)
 				self:objectiveDone(
-					"ПИЛОН ЗАРЯЖЕН",
+					"ВЫШКА ЗАРЯЖЕНА",
 					"Периметр закрыт. Вернись к буру и удержи его!",
 					c.x,
 					c.z
@@ -479,7 +479,7 @@ function Mission:assault(beat)
 	w:emit(E.ASSAULT, s.x, s.z, spawned, math.floor(eta + 0.5), obj.x, obj.z)
 	if toRelay then
 		w:banner(
-			"АТАКА НА ПИЛОН",
+			"АТАКА НА ВЫШКУ",
 			`Прыгуны идут с направления {DIR_NAME[key] or key} — защити заряд`,
 			C.ORANGE,
 			3,
@@ -516,7 +516,7 @@ end
 
 function Mission:elite()
 	local w = self.w
-	local e = w:spawnAtBreach("ELITE_CARRIER", w.map.spawnOrder, 1.8)
+	local e = w:spawnAtBreach("ELITE_CARRIER", w.map.spawnOrder, 0.4) -- out at once: the fight pauses on it
 	if not e then
 		return
 	end
@@ -620,8 +620,8 @@ function Mission:runBeat(beat)
 		local c = w.map.coils[self.relayPrimary]
 		w:emit(E.ASSAULT, c.x, c.z, 0, 0, 0, 0)
 		w:banner(
-			"ПОЮЩИЙ ПИЛОН",
-			"Убивай врагов в его зоне, чтобы зарядить",
+			"ТЕСЛА-ВЫШКА",
+			"Убивай рой в её круге — каждая смерть заряжает конденсаторы",
 			C.CYAN,
 			4,
 			"reactor"
@@ -745,7 +745,7 @@ function Mission:goalText(): string
 	local g = self.goal
 	if self.state == "FIGHT" then
 		if self.relay and self.relay.coil then
-			g = `Заряди пилон {self.relay.charge}/{self.relay.need}`
+			g = `Заряди вышку {self.relay.charge}/{self.relay.need}`
 		elseif #self.targets > 0 then
 			g = self.goal .. ` · {self.destroyed}/{self:need()}`
 		end

@@ -152,9 +152,44 @@ local function buildGui(playerGui: PlayerGui)
 		ZIndex = 11,
 		Parent = ui.cover,
 	})
+	-- DD-083 (owner playtest: «отдельная кнопка "дальше", чтобы успевать прочитать»): a scene stops
+	-- after what has to be read and waits for this
+	local nextB, nextLabel = Theme.button("ДАЛЬШЕ  ›", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -28, 0.95, 0),
+		Size = UDim2.fromOffset(220, 54),
+		TextSize = 18,
+		Visible = false,
+		ZIndex = 12,
+	}, "primary")
+	nextB.Parent = gui
+	nextLabel.ZIndex = 13
+	ui.next = nextB
+	ui.nextScale = new("UIScale", { Parent = nextB })
+	nextB.Activated:Connect(function()
+		if scene and scene.advance then
+			scene.advance()
+		end
+	end)
+	game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+		local k = input.KeyCode
+		if
+			not processed
+			and scene
+			and scene.waiting
+			and (
+				k == Enum.KeyCode.Return
+				or k == Enum.KeyCode.Space
+				or k == Enum.KeyCode.ButtonA
+				or k == Enum.KeyCode.E
+			)
+		then
+			scene.advance()
+		end
+	end)
 	local skip, skipLabel = Theme.button("ПРОПУСТИТЬ  ›", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -24, 0.95, 0),
+		Position = UDim2.new(1, -24, 0.05, 0),
 		Size = UDim2.fromOffset(190, 44),
 		TextSize = 13,
 		Visible = false,
@@ -449,12 +484,13 @@ local function buildTunnel(): Folder
 			seg(Vector3.new(1, H + 1, len + 1), x, H / 2, mid, rockC, Enum.Material.Slate)
 		end
 		for _, x in { -2.4, 2.4 } do
-			seg(Vector3.new(0.35, 0.3, len), x, 0.15, mid, rgb(80, 72, 64), Enum.Material.Metal)
+			seg(Vector3.new(0.35, 0.3, len), x, 0.19, mid, rgb(80, 72, 64), Enum.Material.Metal) -- clear of the floor: no shared faces
 		end
 		for d = 4, len - 2, 14 do
-			seg(Vector3.new(0.8, H - 0.6, 0.8), -(W / 2 - 0.4), H / 2 - 0.3, -d, ribC, Enum.Material.CorrodedMetal)
-			seg(Vector3.new(0.8, H - 0.6, 0.8), W / 2 - 0.4, H / 2 - 0.3, -d, ribC, Enum.Material.CorrodedMetal)
-			seg(Vector3.new(W, 0.8, 0.8), 0, H - 0.4, -d, ribC, Enum.Material.CorrodedMetal)
+			-- ribs stand a hair off the walls and the roof (a shared face flickers, owner playtest DD-083)
+			seg(Vector3.new(0.8, H - 0.8, 0.8), -(W / 2 - 0.5), H / 2 - 0.4, -d, ribC, Enum.Material.CorrodedMetal)
+			seg(Vector3.new(0.8, H - 0.8, 0.8), W / 2 - 0.5, H / 2 - 0.4, -d, ribC, Enum.Material.CorrodedMetal)
+			seg(Vector3.new(W - 1.1, 0.8, 0.8), 0, H - 0.5, -d, ribC, Enum.Material.CorrodedMetal)
 			seg(Vector3.new(7, 0.3, 0.9), 0, 0.05, -d - 7, rgb(70, 52, 38), Enum.Material.Wood)
 			lampN += 1
 			if lampN % 3 == 0 then
@@ -471,6 +507,53 @@ local function buildTunnel(): Folder
 	end
 	-- the cable itself, hanger by hanger under the roof
 	Cableway.new(folder, Cableway.tunnelAnchors(Meta.HomeOrigin), {})
+	-- DD-083: where the tunnel runs through the funnel wall and the grove's hill, the hillside showed
+	-- inside it (grass through the walls, flickering). For the scene the terrain is hollowed out along
+	-- the tube on this screen only, and put back exactly as it was when the tunnel goes.
+	local terrain = workspace.Terrain
+	local O = Meta.HomeOrigin
+	local saved = {}
+	for _, box in
+		{
+			{ Vector3.new(-240, -48, 40), Vector3.new(-60, 72, 400) },
+			{ O + Vector3.new(-200, -48, -200), O + Vector3.new(-30, 52, -10) },
+		}
+	do
+		local region = Region3.new(box[1], box[2]):ExpandToGrid(4)
+		local ok, mats, occ = pcall(function()
+			return terrain:ReadVoxels(region, 4)
+		end)
+		if ok then
+			table.insert(saved, { region, mats, occ })
+		end
+	end
+	for i = 1, #line - 1 do
+		local a, b = line[i], line[i + 1]
+		local len = (b - a).Magnitude
+		terrain:FillBlock(
+			CFrame.lookAt(a, b) * CFrame.new(0, H / 2, -len / 2),
+			Vector3.new(W + 12, H + 12, len + 6),
+			Enum.Material.Air
+		)
+	end
+	-- the hill is hollow now: the caves' painted darkness steps aside so the way out shows daylight
+	local darks = {}
+	for _, d in workspace:GetDescendants() do
+		if d.Name == "Dark" and d.Parent and d.Parent.Name == "CaveMouth" and d:IsA("BasePart") then
+			d.Transparency = 1
+			table.insert(darks, d)
+		end
+	end
+	folder.Destroying:Connect(function()
+		for _, d in darks do
+			d.Transparency = 0
+		end
+		for _, row in saved do
+			pcall(function()
+				terrain:WriteVoxels(row[1], 4, row[2], row[3])
+			end)
+		end
+	end)
 	folder.Parent = workspace
 	return folder
 end
@@ -487,7 +570,7 @@ local function buildRider(cargoKey: string?, glowColor: Color3?)
 		table.insert(parts, { p, offset })
 		return p
 	end
-	local deck = -5.2 -- the pallet's top under the cable
+	local deck = -6.1 -- the pallet's top under the cable (the trolley clears the hero's head)
 	add(Vector3.new(1.2, 0.9, 1.8), CFrame.new(0, -0.3, 0), metal, Enum.Material.Metal)
 	add(Vector3.new(0.18, 2.6, 0.18), CFrame.new(0, -2, 0), metal, Enum.Material.Metal)
 	for _, c in { { -2.4, -1.7 }, { 2.4, -1.7 }, { -2.4, 1.7 }, { 2.4, 1.7 } } do
@@ -594,6 +677,35 @@ local function play(def)
 	local fired = {}
 	local s = { t = 0 }
 	scene = s
+	local holds = def.holds or {}
+	table.sort(holds)
+	local nextHold = 1
+	local function showNext(on: boolean)
+		ui.next.Visible = on
+		if on then
+			ui.nextScale.Scale = 0.6
+			tween(ui.nextScale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+			Audio.play("uiHover", 0.8, 1.2)
+		end
+	end
+	function s.advance()
+		if s.waiting then
+			s.waiting = false
+			nextHold += 1
+			showNext(false)
+			Audio.play("ui", 0.6, 1.1)
+		end
+	end
+	-- Studio checks: jump to t past the holds before it
+	function s.seekTo(t: number)
+		s.t = t
+		s.waiting = false
+		showNext(false)
+		nextHold = 1
+		while holds[nextHold] and holds[nextHold] < t do
+			nextHold += 1
+		end
+	end
 	letterbox(def.letterbox ~= false)
 	setControls(false)
 	local done = false
@@ -605,6 +717,7 @@ local function play(def)
 		if scene == s then
 			scene = nil
 		end
+		showNext(false)
 		letterbox(false)
 		if def.cleanup then
 			def.cleanup()
@@ -615,10 +728,19 @@ local function play(def)
 		end
 	end
 	function s.step(dt: number): CFrame?
-		if s.frozen then
+		if s.frozen or s.waiting then
 			dt = 0
 		end
 		s.t += dt
+		local h = holds[nextHold]
+		if h and s.t >= h and not s.waiting then
+			s.t = h
+			s.waiting = true
+			showNext(true)
+		end
+		if s.waiting and ui.next.Visible then
+			ui.nextScale.Scale = 1 + math.sin(os.clock() * 4) * 0.04
+		end
 		local t = s.t
 		for i, cue in def.cues do
 			if t >= cue[1] and not fired[i] then
@@ -689,6 +811,7 @@ function Story.intro(onDone)
 	coverDeadline = 0
 	play({
 		length = 17.0,
+		holds = { 2.6, 7.0, 8.3, 16.0 }, -- the title, the shelter, the way out, the Alpha (DD-083)
 		shots = {
 			{
 				from = 0,
@@ -832,7 +955,7 @@ function Story.intro(onDone)
 			},
 		}, 10.2),
 		cleanup = function()
-			Audio.stopStings()
+			Audio.fadeStings(1)
 			lightRestore(snap)
 			rider.destroy()
 			tunnel:Destroy()
@@ -951,7 +1074,7 @@ local HOMECOMING = {
 		glow = rgb(170, 255, 70),
 		title = "ОБРАЗЕЦ ПОЙМАН",
 		sub = "Оглушённый плевун едет домой в пробирке",
-		transit = { "ДОМОЙ", "Пилон замолчал — рой придёт в себя не скоро" },
+		transit = { "ДОМОЙ", "Вышка остыла — рой придёт в себя не скоро" },
 		beats = {
 			{
 				spot = "LAB",
@@ -1177,6 +1300,7 @@ function Story.returnHome(opId: string, onDone)
 	}
 	tunnelDip(cues, 4.0)
 	local t = 9.0
+	local holds = {}
 	for _, beat in cfg.beats do
 		table.insert(shots, spotShot(t, t + 3, beat.spot))
 		table.insert(cues, {
@@ -1186,6 +1310,7 @@ function Story.returnHome(opId: string, onDone)
 				caption(beat.title, beat.sub, beat.color)
 			end,
 		})
+		table.insert(holds, t + 2.8)
 		t += 3
 	end
 	-- the next step: what the loot buys, over the workbench (or what it is still short of)
@@ -1228,8 +1353,10 @@ function Story.returnHome(opId: string, onDone)
 			end
 		end,
 	})
+	table.insert(holds, t + 3.1)
 	play({
 		length = t + 3.4,
+		holds = holds,
 		shots = shots,
 		update = function(time)
 			s = ride(time)
@@ -1240,6 +1367,7 @@ function Story.returnHome(opId: string, onDone)
 		end,
 		cues = cues,
 		cleanup = function()
+			Audio.fadeStings(1.5)
 			rider.destroy()
 			tunnel:Destroy()
 			base.sceneEnd()
@@ -1265,13 +1393,14 @@ local DEPARTURE = {
 		sub = "Лаборатории нужен живой образец роя",
 		transit = {
 			"К БУРУ",
-			"В воронке стоят старые споровые пилоны — они ещё работают",
+			"В воронке уцелели тесла-вышки старой электростанции",
 		},
 		funnel = {
-			"ЗАРЯДИ ПИЛОН",
-			"Убивай рой в его круге — песня пилона оглушит всех. Новый враг: плевун",
+			"ЗАРЯДИ ТЕСЛА-ВЫШКУ",
+			"Рой в теле несёт ксенит: убивай его в круге вышки — полный заряд даст разряд, он оглушит всех. Новый враг: плевун",
 		},
-		focus = Vector3.new(38, 4, 38), -- the pylon on the north-east diagonal (Maps coils[1])
+		focus = Vector3.new(38, 4, 38), -- the tesla tower on the north-east diagonal (Maps coils[1])
+		electric = true, -- crackle and thunder over it, not the swarm's roar
 	},
 	O04 = {
 		title = "ВЫЛАЗКА 4 · СЕРДЦЕ ГНЕЗДА",
@@ -1381,6 +1510,7 @@ function Story.depart(opId: string, onDone)
 	preview.Parent = workspace
 	play({
 		length = 9.6,
+		holds = { 7.3 }, -- what this sortie is about (DD-083)
 		shots = {
 			{
 				from = 0,
@@ -1455,7 +1585,26 @@ function Story.depart(opId: string, onDone)
 				5.4,
 				function()
 					caption(cfg.funnel[1], cfg.funnel[2], C.gold)
-					Audio.play("roar", 0.45, 0.7)
+					if cfg.electric then
+						Audio.play("thunder", 0.8, 1)
+						Audio.play("arc", 1, 0.8)
+						local top = cfg.focus + Vector3.new(0, 14, 0)
+						for i = 1, 5 do
+							task.delay(i * 0.3, function()
+								local a = i * 1.3
+								Fx.lightning(
+									top,
+									cfg.focus + Vector3.new(math.cos(a) * 14, -3, math.sin(a) * 14),
+									C.cyan,
+									0.5,
+									0.25
+								)
+								Audio.play("arc", 0.7, 0.9 + i * 0.05)
+							end)
+						end
+					else
+						Audio.play("roar", 0.45, 0.7)
+					end
 					if cfg.focus then
 						local ground = Vector3.new(cfg.focus.X, 0.4, cfg.focus.Z)
 						for i = 0, 2 do
@@ -1501,7 +1650,7 @@ function Story.seek(t: number?)
 		return
 	end
 	if t then
-		scene.t = t
+		scene.seekTo(t)
 		scene.frozen = true
 	else
 		scene.finish()

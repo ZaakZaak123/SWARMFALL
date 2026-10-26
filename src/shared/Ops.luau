@@ -77,9 +77,9 @@ export type OpDef = {
 	anomaly: any?, -- Meta anomaly applied to this run
 	xpTable: { number }?, -- fixed XP per level; past its end the level is capped (O01: three cards)
 	winOnElite: boolean?, -- the elite's death ends the run: the leaderless swarm scatters (O01, first defence)
-	winOnObjective: boolean?, -- the objective done ends the run at once (O03: the charged pylon's song)
+	winOnObjective: boolean?, -- the objective done ends the run at once (O03: the charged tower's discharge)
 	winBanner: { string }?, -- { title, sub } of that win (O04)
-	winFx: number?, -- BOSS event action of that win: 7 the pylon's cyan song (default), 6 a golden blast
+	winFx: number?, -- BOSS event action of that win: 7 the tesla tower's discharge (default), 6 a golden blast
 	homeText: string?, -- what the first win brings home, for the goal line before the sortie (O04)
 	guidedCards: { string }?, -- first offers in order, only that card can be taken (O01 for a newcomer)
 }
@@ -95,7 +95,7 @@ local XP_O05 = { 4, 10, 16, 24, 34, 46 }
 -- SPOREFALL hunts (DD-032): one new idea per hunt.
 --   O01 ВЫСАДКА       shoot, level up, pick cards; one big enemy at the end. No objective to guard.
 --   O02 ОКРУЖЕНИЕ     the Gravihammer (S01) is learned when the swarm closes a ring; the Leaper.
---   O03 ПОЮЩИЙ ПИЛОН  guard the extractor (БУР) and charge a spore pylon; the Spitter.
+--   O03 ОБРАЗЕЦ  charge the old tesla tower with kills; its discharge stuns the swarm; the Spitter.
 --   O04 ГНЁЗДА        destroy two of three nests; the Bulwark.
 --   O05 МАТЬ РОЯ      the Broodmother.
 --   O06 КРОВАВАЯ НОЧЬ the crater after dark, power nodes, the Bomber.
@@ -181,9 +181,10 @@ Ops.O02 = {
 	requires = "O01",
 }
 
--- O03 «ОБРАЗЕЦ» (was «ПОЮЩИЙ ПИЛОН», DD-077) — the third sortie, ~1:30: the shelter's lab needs a live
--- sample of the swarm. One idea: the spore pylon on the funnel's diagonal charges from kills inside its
--- circle; charged, its song stuns the whole swarm and a Spitter is taken alive — that is the win. Spitters
+-- O03 «ОБРАЗЕЦ» (was «ПОЮЩИЙ ПИЛОН», DD-077; DD-083: the pylon is what its model always was — an old
+-- tesla tower of the dead city) — the third sortie, ~1:30: the shelter's lab needs a live sample of the
+-- swarm. One idea: the xenite in the swarm's bodies charges the tower's capacitors when they die inside
+-- its circle; charged, it discharges — lightning stuns the whole swarm and a Spitter is taken alive. Spitters
 -- debut (acid from afar), Leaper groups go for the pylon; if it falls, the backup takes the charge over.
 -- Nothing else to guard. The win restores the lab; the loot buys the «Криополе».
 Ops.O03 = {
@@ -192,8 +193,8 @@ Ops.O03 = {
 	code = "O03",
 	name = "ОБРАЗЕЦ",
 	map = "MAP_REACTOR_YARD",
-	brief = "Лаборатории нужен живой образец роя. Заряди споровый пилон убийствами в его круге — его песня оглушит рой.",
-	goal = "Заряди пилон",
+	brief = "Лаборатории нужен живой образец роя. Убивай рой у старой тесла-вышки — она заряжается, и её разряд оглушит всех.",
+	goal = "Заряди тесла-вышку",
 	objective = "relay",
 	playerDamageMult = 0.85,
 	runEvolution = false,
@@ -203,7 +204,8 @@ Ops.O03 = {
 	deadline = 200,
 	hardLimit = 260,
 	xpTable = XP_O02,
-	finale = { at = 0, label = "ПИЛОН ЗАПЕЛ", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
+	winBanner = { "РАЗРЯД!", "Молния оглушила рой — образец пойман живым" },
+	finale = { at = 0, label = "РАЗРЯД", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
 		{ at = 0, label = "КОНТАКТ", rate = 3.4, cap = 30, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 0.94, EN_STALKER = 0.06 }, quiet = true },
 		{ at = 20, label = "ПЛЕВУНЫ", rate = 4.4, cap = 44, dirs = { "N", "NE", "NW", "E", "W" }, w = { EN_RUNNER = 0.84, EN_STALKER = 0.08, EN_SPITTER = 0.08 }, quiet = true },

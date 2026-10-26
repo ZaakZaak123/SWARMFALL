@@ -980,7 +980,7 @@ function Hud.update(run, me, extra, dt: number)
 	if mission and mission.relay and mission.relay.alive and mission.state == "FIGHT" then
 		goal = goal
 			.. string.format(
-				"  ·  пилон %d%%",
+				"  ·  вышка %d%%",
 				math.ceil(mission.relay.hp / math.max(1, mission.relay.max) * 100)
 			)
 	end

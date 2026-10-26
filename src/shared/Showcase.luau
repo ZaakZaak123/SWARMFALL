@@ -82,7 +82,7 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 		)
 	end
 	if won(d, "O03") then
-		add("SCOURGE", "Гроза роя", "crosshair", "Отстоял поющий пилон")
+		add("SCOURGE", "Гроза роя", "crosshair", "Разрядил тесла-вышку")
 	end
 	local home = d.home or {}
 	local all = true
