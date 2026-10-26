@@ -129,8 +129,8 @@ local function reconcile(data)
 	if next(data.outpost.slots) ~= nil or (won.O02 or 0) > 0 then
 		data.home.WORKBENCH = true
 	end
-	if (won.O02 or 0) > 0 and (data.outpost.best or 0) > 0 then
-		data.home.RADIO = true
+	if (won.O02 or 0) > 0 then
+		data.home.RADIO = true -- DD-076: the second sortie brings the radio's antenna home
 	end
 	if (won.O03 or 0) > 0 and (next(data.brood) ~= nil or (data.species.EN_STALKER ~= nil)) then
 		data.home.LAB = true
@@ -624,7 +624,7 @@ function Profile.like(liker: Player, owner: Player, day: number): boolean
 end
 
 -- One-time onboarding flags the client may set (the victory scene was watched).
-local CLIENT_TUT = { drill = true, intro = true } -- DD-075: the intro was watched
+local CLIENT_TUT = { drill = true, intro = true, go_O02 = true, home_O02 = true } -- story scenes watched (DD-075/076)
 function Profile.markTut(player: Player, key: string): boolean
 	local d = Profile.get(player)
 	if not d or not CLIENT_TUT[key] or d.tut[key] then

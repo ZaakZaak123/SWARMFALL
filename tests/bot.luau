@@ -50,7 +50,7 @@ function Bot.run(
 	if opts.onSpawn then
 		local spawn = w.spawnEnemy
 		w.spawnEnemy = function(self, kind, ...)
-			opts.onSpawn(kind)
+			opts.onSpawn(kind, self)
 			return spawn(self, kind, ...)
 		end
 	end

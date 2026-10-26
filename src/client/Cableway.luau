@@ -242,6 +242,18 @@ function Cableway:update(dt: number)
 	end
 end
 
+-- Crates still on the line leave it at once (a story scene rides this cable, DD-076). Queued ones too.
+function Cableway:clearCrates()
+	for _, c in self.crates do
+		c.box.CFrame = CFrame.new(0, -500, 0)
+		c.band.CFrame = c.box.CFrame
+		c.hook.CFrame = c.box.CFrame
+		table.insert(self.free, c)
+	end
+	table.clear(self.crates)
+	self.queue = 0
+end
+
 -- The end of the line (where crates arrive).
 function Cableway:last(): Vector3
 	return self.track[#self.track]

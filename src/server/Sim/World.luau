@@ -546,7 +546,8 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 	p.hp = math.max(0, p.hp - amount)
 	p.combo = 0
 	self:emit(E.HURT, p.id, math.floor(amount + absorbed + 0.5), fromX, fromZ)
-	if p.hp <= 0 and p.newbie and self.op.id == "O01" and (not p.secondWind or p.firstHunt) then
+	local story = self.op.id == "O01" or self.op.id == "O02" -- DD-076: the second sortie saves once too
+	if p.hp <= 0 and p.newbie and story and (not p.secondWind or (p.firstHunt and self.op.id == "O01")) then
 		-- A newcomer's first run must not end in the first minute while they learn the controls (DD-024).
 		-- DD-075: the very first sortie cannot be lost to the swarm at all — only to the clock.
 		local again = p.secondWind
@@ -1575,7 +1576,7 @@ function World:step(dt: number)
 		-- reading the controls must not cost them the run.
 		-- DD-075: the first defence waits too (its arrival scene shows the new turret first).
 		local waiting = false
-		if self.countdown <= 0 and self.solo and (self.op.id == "O01" or self.op.id == "STRIKE") and not self.gotInput then
+		if self.countdown <= 0 and self.solo and (self.op.id == "O01" or self.op.id == "STRIKE" or self.op.id == "O02") and not self.gotInput then
 			waiting = true
 			for _, p in self.playerList do
 				if not p.newbie and self.op.id == "O01" then

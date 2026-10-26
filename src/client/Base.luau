@@ -2124,6 +2124,9 @@ end
 
 function Base.sceneBegin()
 	scene = { story = true }
+	if cable then
+		cable:clearCrates() -- the scene's own pallet rides this cable
+	end
 end
 
 function Base.sceneEnd()

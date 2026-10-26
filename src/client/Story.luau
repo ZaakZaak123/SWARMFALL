@@ -509,7 +509,7 @@ end
 
 -- The rider: a pallet on four chains under a trolley; on it the hero (a still copy of the own avatar)
 -- and, on the way home, the generator.
-local function buildRider(withGenerator: boolean)
+local function buildRider(cargoKey: string?)
 	local model = Instance.new("Model")
 	model.Name = "StoryRider"
 	local metal, wood, lime = rgb(52, 48, 44), rgb(150, 106, 62), rgb(176, 236, 60)
@@ -530,14 +530,15 @@ local function buildRider(withGenerator: boolean)
 	add(Vector3.new(5.4, 0.45, 3.8), CFrame.new(0, deck - 0.22, 0), wood, Enum.Material.WoodPlanks)
 	add(Vector3.new(5.46, 0.2, 3.86), CFrame.new(0, deck - 0.3, 0), lime, Enum.Material.SmoothPlastic)
 	local cargo = nil
-	if withGenerator then
+	local withCargo = cargoKey ~= nil
+	if cargoKey then
 		local f = ReplicatedStorage:FindFirstChild("ArtTemplates")
-		local t = f and f:FindFirstChild("GENERATOR")
+		local t = f and f:FindFirstChild(cargoKey)
 		if t and t:IsA("MeshPart") then
 			cargo = t:Clone()
 			cargo.Anchored = true
 			cargo.CanCollide = false
-			cargo.Size = t.Size * (3.8 / t.Size.Y)
+			cargo.Size = t.Size * math.min(3.8 / t.Size.Y, 2.6 / math.max(t.Size.X, t.Size.Z)) -- fits beside the hero
 			cargo.Parent = model
 			table.insert(
 				parts,
@@ -583,7 +584,7 @@ local function buildRider(withGenerator: boolean)
 			local cf, size = clone:GetBoundingBox()
 			local feet = clone:GetPivot().Position.Y - (cf.Position.Y - size.Y / 2)
 			hero = clone
-			heroOffset = CFrame.new(if withGenerator then -1.3 else 0, deck + feet, 0)
+			heroOffset = CFrame.new(if withCargo then -1.3 else 0, deck + feet, 0)
 		end
 	end
 	model.Parent = workspace
@@ -694,7 +695,7 @@ function Story.intro(onDone)
 	-- the same marks counted from the terminal: the grove's edge, the funnel's rim
 	local grove, rim = L - forward.dist[transitEnd], L - forward.dist[arenaEnd]
 	local wasteland = buildWasteland()
-	local rider = buildRider(false)
+	local rider = buildRider(nil)
 	local snap = lightSnapshot()
 	local ride = motion({ { 8.4, 0 }, { 10.8, grove }, { 14.8, rim }, { 18.4, L } })
 	local s = 0
@@ -913,164 +914,342 @@ function Story.arrival(turret: Vector3, onDone)
 	})
 end
 
--- After the first win, ~18 s: the generator and the hero leave the funnel on the cable, cross the
--- wasteland, arrive at the courtyard's terminal; the generator lights the shelter, the workshop wakes up,
--- and the turret for the drill is what the loot buys next.
-function Story.returnHome(onDone)
+-- What each story sortie brings home (DD-075/076): the cargo on the pallet, the spots it wakes up in the
+-- shelter, and the next step it pays for (a beam over the workbench).
+local HOMECOMING = {
+	O01 = {
+		cargo = "GENERATOR",
+		title = "ГЕНЕРАТОР ДОБЫТ",
+		sub = "Канатка с бура увезёт его домой — в убежище в роще",
+		transit = {
+			"ЧЕРЕЗ ПУСТОШЬ — ДОМОЙ",
+			"Тем же тросом утиль с бура будет приезжать в убежище",
+		},
+		beats = {
+			{
+				spot = "GENERATOR",
+				title = "УБЕЖИЩЕ ОЖИВАЕТ",
+				sub = "Генератор дал свет и ток",
+				color = C.gold,
+			},
+			{
+				spot = "WORKBENCH",
+				title = "МАСТЕРСКАЯ ЗАРАБОТАЛА",
+				sub = "Ток пошёл на верстак",
+				color = C.cyan,
+			},
+		},
+		next = {
+			structure = "STING",
+			title = "ХВАТАЕТ НА ПЕРВУЮ ТУРЕЛЬ",
+			sub = "Рой вернётся к буру. «Жало» встанет рядом с ним и будет стрелять вместе с тобой",
+		},
+	},
+	O02 = {
+		cargo = "RADIO",
+		title = "АНТЕННА ДОБЫТА",
+		sub = "Её ждёт радиостанция в убежище",
+		transit = { "ДОМОЙ", "Рой без вожака притих — до следующей вылазки" },
+		beats = {
+			{
+				spot = "RADIO",
+				title = "РАДИО ЗАГОВОРИЛО",
+				sub = "Теперь слышно, когда рой идёт к буру: оборона бура по уровням",
+				color = C.orange,
+			},
+		},
+		next = {
+			structure = "ARC",
+			title = "ХВАТАЕТ НА «РАЗРЯДНИК»",
+			sub = "Разряд скачет по толпе — кольцо роя у бура рассыплется",
+		},
+	},
+}
+
+function Story.hasHomecoming(opId: string?): boolean
+	return opId ~= nil and HOMECOMING[opId] ~= nil
+end
+
+-- After a story sortie's first win, ~16–19 s: the cargo and the hero leave the funnel on the cable,
+-- cross the wasteland and arrive at the courtyard's terminal; the cargo wakes its spots up one by one,
+-- and the camera ends on the workbench with what the loot buys next.
+function Story.returnHome(opId: string, onDone)
+	local cfg = HOMECOMING[opId] or HOMECOMING.O01
 	local base = deps.base
 	base.sceneBegin()
 	local track, arenaEnd, transitEnd = routeTrack(base.point("TERMINAL"))
 	local path = makePath(track)
 	local L = path.length
 	local wasteland = buildWasteland()
-	local rider = buildRider(true)
+	local rider = buildRider(cfg.cargo)
 	local ride = motion({ { 1.4, 0 }, { 3.8, path.dist[arenaEnd] }, { 8.6, path.dist[transitEnd] }, { 11.2, L } })
 	local s = 0
 	local term = base.point("TERMINAL")
-	local gen = base.point("GENERATOR")
-	local wb = base.point("WORKBENCH")
 	local side = Cableway.ARENA_SIDE
-	-- close on the pallet at the post: the hero and the generator, the funnel behind them
-	local nearEye = side + Vector3.new(15, -6, -13)
-	local sting = Meta.Structures.STING
+	-- close on the pallet at the post: the hero and the cargo, the funnel behind them
+	local nearEye = side + Vector3.new(14, 3, -17) -- above the crystals by the post
+	local function spotShot(from: number, to: number, spot: string)
+		local at = base.point(spot)
+		return {
+			from = from,
+			to = to,
+			cam = function(k)
+				local a = CFrame.lookAt(at + Vector3.new(12, 10, -17), at + Vector3.new(0, 2.5, 0))
+				local b = CFrame.lookAt(at + Vector3.new(9, 7, -13), at + Vector3.new(0, 3, 0))
+				return a:Lerp(b, k)
+			end,
+		}
+	end
+	local shots = {
+		{
+			from = 0,
+			to = 3.4,
+			cam = function(k)
+				local pos = path.at(s)
+				return CFrame.lookAt(nearEye:Lerp(nearEye + Vector3.new(4, 3, -6), k), pos + Vector3.new(0, -4.5, 0))
+			end,
+		},
+		{
+			from = 3.4,
+			to = 9.0,
+			cam = function()
+				local pos, dir = path.at(s)
+				return chase(pos, dir, 22, 9, -8)
+			end,
+		},
+		{
+			from = 9.0,
+			to = 11.6,
+			cam = function(k)
+				-- from the courtyard side: the pallet comes in over the grove to the frame
+				local eye = term + Vector3.new(17, -3, 11)
+				return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 1, 2), k), term + Vector3.new(-9, -4, -7))
+			end,
+		},
+	}
+	local cues = {
+		{
+			0.3,
+			function()
+				caption(cfg.title, cfg.sub, C.gold)
+			end,
+		},
+		{
+			1.4,
+			function()
+				Audio.play("dash", 0.5, 0.8)
+			end,
+		},
+		{
+			4.2,
+			function()
+				caption(cfg.transit[1], cfg.transit[2])
+			end,
+		},
+		{
+			9.2,
+			function()
+				caption("ДОМА", "")
+				Audio.sting("home", 12)
+			end,
+		},
+		{
+			11.2,
+			function()
+				local deck = rider.deckPosition()
+				Fx.emitWith("dust", deck, 12, 1.4)
+				Audio.play("boom", 0.35, 1.4)
+				rider.destroy()
+			end,
+		},
+	}
+	local t = 11.6
+	for _, beat in cfg.beats do
+		table.insert(shots, spotShot(t, t + 3, beat.spot))
+		table.insert(cues, {
+			t + 0.3,
+			function()
+				base.sceneRestore(beat.spot)
+				caption(beat.title, beat.sub, beat.color)
+			end,
+		})
+		t += 3
+	end
+	-- the next step: what the loot buys, over the workbench (or what it is still short of)
+	local def = Meta.Structures[cfg.next.structure]
+	if cfg.beats[#cfg.beats].spot ~= "WORKBENCH" then
+		table.insert(shots, spotShot(t, t + 3.4, "WORKBENCH"))
+	else
+		shots[#shots].to = t + 3.4
+	end
+	table.insert(cues, {
+		t + 0.3,
+		function()
+			local prof = deps.profile and deps.profile()
+			local enough = prof == nil or (prof.scrap or 0) >= def.cost[1]
+			base.sceneMarker(
+				"WORKBENCH",
+				"СОБЕРИ «" .. def.name .. "»",
+				"Для бура · ◆ " .. def.cost[1]
+			)
+			Audio.play("level", 0.7, 1.5)
+			if enough then
+				caption(cfg.next.title, cfg.next.sub, C.lime)
+			else
+				caption(
+					"СЛЕДУЮЩАЯ ЦЕЛЬ — «" .. def.name .. "»",
+					"Ещё немного утиля — и он встанет у бура",
+					C.lime
+				)
+			end
+		end,
+	})
 	play({
-		length = 18.8,
+		length = t + 3.4,
+		shots = shots,
+		update = function(time)
+			s = ride(time)
+			local pos, dir = path.at(s)
+			if rider.model.Parent then
+				rider.place(pos, dir, math.sin(time * 1.9) * 0.05)
+			end
+		end,
+		cues = cues,
+		cleanup = function()
+			rider.destroy()
+			wasteland:Destroy()
+			base.sceneEnd()
+		end,
+		onDone = onDone,
+	})
+end
+
+-- A story sortie's departure (DD-076), ~11 s: the lit shelter, the hero rides the cable out over the
+-- wasteland, the funnel and what waits there, the hero at the post.
+local DEPARTURE = {
+	O02 = {
+		title = "ВЫЛАЗКА 2 · РАДИОМАЯК",
+		sub = "Антенна старой станции упала в воронку. Без неё радио в убежище молчит",
+		transit = { "К БУРУ", "Рой запомнил тебя — и стал хитрее" },
+		funnel = {
+			"РОЙ УЧИТСЯ ОКРУЖАТЬ",
+			"Когда кольцо сомкнётся — получишь Гравимолот. Новый враг: прыгун",
+		},
+	},
+}
+
+function Story.hasDeparture(opId: string?): boolean
+	return opId ~= nil and DEPARTURE[opId] ~= nil
+end
+
+function Story.depart(opId: string, onDone)
+	local cfg = DEPARTURE[opId]
+	if not cfg then
+		onDone()
+		return
+	end
+	local base = deps.base
+	base.sceneBegin()
+	heroVisible(false)
+	local track, arenaEnd, transitEnd = routeTrack(base.point("TERMINAL"))
+	local forward = makePath(track)
+	local path = makePath(reversed(track))
+	local L = path.length
+	local grove, rim = L - forward.dist[transitEnd], L - forward.dist[arenaEnd]
+	local wasteland = buildWasteland()
+	local rider = buildRider(nil)
+	local ride = motion({ { 1.2, 0 }, { 3.4, grove }, { 7.2, rim }, { 10.4, L } })
+	local s = 0
+	local term = base.point("TERMINAL")
+	local drill = Vector3.new(0, 8, 0)
+	local sp = player.Character and player.Character:GetPivot().Position or Vector3.new(0, 3, -26)
+	play({
+		length = 11.0,
 		shots = {
 			{
 				from = 0,
 				to = 3.4,
 				cam = function(k)
+					-- beside the cable just out of the courtyard: the hero rides past the camera
+					local eye = term + Vector3.new(-12, -1, 7)
 					local pos = path.at(s)
-					return CFrame.lookAt(
-						nearEye:Lerp(nearEye + Vector3.new(4, 3, -6), k),
-						pos + Vector3.new(0, -4.5, 0)
-					)
+					return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-3, 2, 0), k), pos + Vector3.new(0, -3.5, 0))
 				end,
 			},
 			{
 				from = 3.4,
-				to = 9.0,
+				to = 7.2,
 				cam = function()
 					local pos, dir = path.at(s)
-					return chase(pos, dir, 22, 9, -8)
+					return chase(pos, dir, 22, 9, 8)
 				end,
 			},
 			{
-				from = 9.0,
-				to = 11.6,
+				from = 7.2,
+				to = 9.2,
 				cam = function(k)
-					-- from the courtyard side: the pallet comes in over the grove to the frame
-					local eye = term + Vector3.new(17, -3, 11)
-					return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 1, 2), k), term + Vector3.new(-9, -4, -7))
+					local pos = path.at(s)
+					local eye = Vector3.new(-6, 66, -84):Lerp(Vector3.new(-18, 56, -66), k)
+					return CFrame.lookAt(eye, drill:Lerp(pos, 0.4))
 				end,
 			},
 			{
-				from = 11.6,
-				to = 14.6,
+				from = 9.2,
+				to = 11.0,
 				cam = function(k)
-					local a = CFrame.lookAt(gen + Vector3.new(12, 10, -17), gen + Vector3.new(0, 2.5, 0))
-					local b = CFrame.lookAt(gen + Vector3.new(9, 7, -13), gen + Vector3.new(0, 2.5, 0))
-					return a:Lerp(b, k)
-				end,
-			},
-			{
-				from = 14.6,
-				to = 18.8,
-				cam = function(k)
-					local a = CFrame.lookAt(wb + Vector3.new(4, 10, -18), wb + Vector3.new(0, 2.5, 0))
-					local b = CFrame.lookAt(wb + Vector3.new(3, 7, -14), wb + Vector3.new(0, 3, 0))
-					return a:Lerp(b, k)
+					local pos = path.at(s)
+					local side = Cableway.ARENA_SIDE
+					local eye = (side + Vector3.new(18, 8, -26)):Lerp(side + Vector3.new(14, 5, -20), k)
+					return CFrame.lookAt(eye, pos + Vector3.new(0, -4, 0))
 				end,
 			},
 		},
 		update = function(t)
 			s = ride(t)
 			local pos, dir = path.at(s)
-			if rider.model.Parent then
-				rider.place(pos, dir, math.sin(t * 1.9) * 0.05)
-			end
+			rider.place(pos, dir, math.sin(t * 1.7) * 0.04)
 		end,
 		cues = {
 			{
-				0.3,
+				0.2,
 				function()
-					caption(
-						"ГЕНЕРАТОР ДОБЫТ",
-						"Канатка с бура увезёт его домой — в убежище в роще",
-						C.gold
-					)
+					caption(cfg.title, cfg.sub, C.lime)
 				end,
 			},
 			{
-				1.4,
+				1.2,
 				function()
-					Audio.play("dash", 0.5, 0.8)
+					Audio.play("dash", 0.6, 0.8)
 				end,
 			},
 			{
-				4.2,
+				3.8,
 				function()
-					caption(
-						"ЧЕРЕЗ ПУСТОШЬ — ДОМОЙ",
-						"Тем же тросом утиль с бура будет приезжать в убежище"
-					)
+					caption(cfg.transit[1], cfg.transit[2])
 				end,
 			},
 			{
-				9.2,
+				7.4,
 				function()
-					caption("ДОМА", "")
-					Audio.sting("home", 12)
+					caption(cfg.funnel[1], cfg.funnel[2], C.gold)
+					Audio.play("roar", 0.45, 0.7)
 				end,
 			},
 			{
-				11.2,
+				10.6,
 				function()
-					local deck = rider.deckPosition()
-					Fx.emitWith("dust", deck, 12, 1.4)
-					Audio.play("boom", 0.35, 1.4)
-					rider.destroy()
-				end,
-			},
-			{
-				11.9,
-				function()
-					base.sceneRestore("GENERATOR")
-					caption("УБЕЖИЩЕ ОЖИВАЕТ", "Генератор дал свет и ток", C.gold)
-				end,
-			},
-			{
-				14.9,
-				function()
-					base.sceneRestore("WORKBENCH")
-					caption(
-						"МАСТЕРСКАЯ ЗАРАБОТАЛА",
-						"Ток пошёл на верстак",
-						C.cyan
-					)
-				end,
-			},
-			{
-				16.2,
-				function()
-					base.sceneMarker(
-						"WORKBENCH",
-						"СОБЕРИ «ЖАЛО»",
-						"Турель для бура · ◆ " .. sting.cost[1]
-					)
-					Audio.play("level", 0.7, 1.5)
-					caption(
-						"ХВАТАЕТ НА ПЕРВУЮ ТУРЕЛЬ",
-						"Рой вернётся к буру. «Жало» встанет рядом с ним и будет стрелять вместе с тобой",
-						C.lime
-					)
+					flash(0.6, 0.5)
 				end,
 			},
 		},
 		cleanup = function()
 			rider.destroy()
 			wasteland:Destroy()
+			heroVisible(true)
 			base.sceneEnd()
+			Fx.ring(Vector3.new(sp.X, 0.4, sp.Z), 6, C.lime, 0.6)
+			Fx.emitWith("dust", Vector3.new(sp.X, 0.5, sp.Z), 10, 1.4)
+			Audio.play("boom", 0.4, 1.3)
 		end,
 		onDone = onDone,
 	})

@@ -159,21 +159,8 @@ function Goals.next(pub): Goal?
 			structure = "STING",
 		}
 	end
-	-- A shelter spot that is open and affordable: restore it (the home grows first).
-	for _, id in Meta.HomeOrder do
-		local h = Meta.Home[id]
-		if not h.free and not home[id] and won(pub, h.unlock) and scrap >= h.cost then
-			return {
-				key = "home_" .. id,
-				icon = h.icon,
-				title = "ВОССТАНОВИ: " .. h.name,
-				text = h.text .. string.format(" Хватает утиля (%d).", h.cost),
-				station = "home",
-				spot = id,
-			}
-		end
-	end
-	-- An opened structure the player can afford and has not built yet: build it.
+	-- An opened structure the player can afford and has not built yet: build it (what the last sortie's
+	-- homecoming promised, DD-076).
 	for _, id in Meta.StructureOrder do
 		local def = Meta.Structures[id]
 		if won(pub, def.unlock) and not hasStructure(slots, id) and scrap >= def.cost[1] and def.kind ~= "harvest" then
@@ -191,6 +178,20 @@ function Goals.next(pub): Goal?
 			end
 		end
 	end
+	-- A shelter spot that is open and affordable: restore it (after the drill's new defence, DD-076).
+	for _, id in Meta.HomeOrder do
+		local h = Meta.Home[id]
+		if not h.free and not home[id] and won(pub, h.unlock) and scrap >= h.cost then
+			return {
+				key = "home_" .. id,
+				icon = h.icon,
+				title = "ВОССТАНОВИ: " .. h.name,
+				text = h.text .. string.format(" Хватает утиля (%d).", h.cost),
+				station = "home",
+				spot = id,
+			}
+		end
+	end
 	-- The next story hunt and what its first win opens.
 	for _, opId in Ops.Order do
 		if opId ~= "CA01" and not won(pub, opId) and ((pub.ops or {})[opId] or 0) >= 1 then
@@ -198,7 +199,22 @@ function Goals.next(pub): Goal?
 			local names, structure = Goals.opensWith(opId)
 			local text = op.brief
 			local structDef = structure and Meta.Structures[structure]
-			if structDef then
+			-- DD-076: a sortie that brings a piece of the shelter home says so first
+			local brings = nil
+			for _, hid in Meta.HomeOrder do
+				local h = Meta.Home[hid]
+				if h.free and h.unlock == opId and not home[hid] then
+					brings = h
+				end
+			end
+			if brings and structDef then
+				text = string.format(
+					"%s Вернёшься — заработает %s, и откроется %s.",
+					op.brief,
+					lowerFirst(Goals.titleCase(brings.name)),
+					names[1]
+				)
+			elseif structDef then
 				-- Lead with the headline structure, then the rest in one short tail.
 				text = string.format(
 					"Ещё одна вылазка — и откроется %s: %s",

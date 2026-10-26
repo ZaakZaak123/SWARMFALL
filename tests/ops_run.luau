@@ -75,16 +75,24 @@ if opArg == "O01" or opArg == "all" then
 end
 
 if opArg == "O02" or opArg == "all" or opArg == "chapter" then
-	print("=== O02 ОКРУЖЕНИЕ")
-	-- A profile without S01 learns it when the ring closes (~1:15) and the bot's press ends the pause.
+	print("=== O02 РАДИОМАЯК")
+	-- DD-076: a profile without S01 learns it when the ring closes (~0:26) and the bot's press ends the
+	-- pause; the Alpha's death ends the run at ~1:20.
 	local out = Bot.run(weapon, 1, seed + 2, false, nil, 1, nil, { op = "O02", orbit = 32, s01 = false })
 	report("O02", out)
 	local me = out.result.players[1]
 	local tut = out.milestones.s01Tutorial
-	check(tut ~= nil and tut >= 70 and tut <= 95, "S01 lesson at the ring (" .. (if tut then fmt(tut) else "never") .. ")")
+	check(tut ~= nil and tut >= 24 and tut <= 40, "S01 lesson at the ring (" .. (if tut then fmt(tut) else "never") .. ")")
+	local lv = {}
+	for _, t in out.milestones.levels or {} do
+		table.insert(lv, fmt(t))
+	end
+	print("  level-ups at " .. table.concat(lv, ", "))
+	check(#lv == 4, "four cards in the second sortie (" .. #lv .. ")")
 	check(me.s01Unlocked and me.s01.casts >= 1 and me.s01.best >= 4, string.format("S01 unlocked, lesson strike hits a crowd (casts %d, best %d)", me.s01.casts, me.s01.best))
 	check(out.result.victory, "O02 won by a bot with the start rifle")
-	check(out.result.time < 330, "O02 ends within ~5:30")
+	check(out.result.time > 60 and out.result.time < 110, "O02 ends in the 1:00–1:50 window (DD-076)")
+	check(out.result.reason == "Рой отброшен", "the Alpha's death ends O02 (no last wave)")
 end
 
 -- The rest of the chapter: each operation must resolve (no softlock), report a sane outcome and, when

@@ -104,10 +104,13 @@ do
 	pub.tut.strike = true
 	g = step("defended")
 	check(g.key == "op_O02" and g.structure == "ARC" and g.text:find("Разрядник") ~= nil, "goal 5: next sortie opens the Разрядник and the radio")
-	pub.winsByOp.O02, pub.ops.O03, pub.scrap = 1, 1, 400
-	check(step("won O02").key == "home_RADIO", "goal 6: the shelter grows first (radio)")
-	pub.home.RADIO, pub.home.GARDEN = true, true
-	check(step("radio").key == "build_ARC", "goal 7: then the Разрядник")
+	pub.winsByOp.O02, pub.ops.O03, pub.scrap, pub.home.RADIO = 1, 1, 400, true
+	check(step("won O02").key == "build_ARC", "goal 6 (DD-076): the homecoming's promise first — the Разрядник")
+	pub.outpost.slots[1] = { id = "ARC", lvl = 1 }
+	pub.scrap = 320
+	check(step("arc").key == "home_GARDEN", "goal 7: then the shelter grows (garden)")
+	pub.home.GARDEN = true
+	pub.outpost.slots[1] = nil
 	pub.scrap = 100
 	check(step("poor").key == "op_O03", "goal 8: otherwise the next sortie")
 	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")

@@ -85,6 +85,8 @@ export type OpDef = {
 local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 -- O01 levels: three cards in the first ~35 s, before the Alpha (TUNABLE against tests/ops_run O01).
 local XP_O01 = { 4, 17, 26 }
+-- O02: four cards, the last before the Alpha (~0:58).
+local XP_O02 = { 6, 20, 34, 50 }
 
 -- SPOREFALL hunts (DD-032): one new idea per hunt.
 --   O01 ВЫСАДКА       shoot, level up, pick cards; one big enemy at the end. No objective to guard.
@@ -134,38 +136,42 @@ Ops.O01 = {
 	unlocks = { "O02" },
 }
 
--- O02 «ОКРУЖЕНИЕ» — the old first operation's best moment, now its own hunt: the swarm closes a ring and
--- the Gravihammer is learned on the spot. Leapers debut. No objective to guard yet.
+-- O02 «РАДИОМАЯК» (was «ОКРУЖЕНИЕ», DD-076) — the second sortie, ~1:20: the antenna the shelter's radio
+-- needs fell into the funnel. One new idea: the swarm closes a ring (~0:26) and the Gravihammer is learned
+-- on the spot. Leapers debut with a warning. Four cards, free choice. The Alpha's death ends it; the win
+-- restores the radio (the drill defence ladder) and the loot buys the «Разрядник».
 Ops.O02 = {
 	id = "O02",
 	index = 2,
 	code = "O02",
-	name = "ОКРУЖЕНИЕ",
+	name = "РАДИОМАЯК",
 	map = "MAP_REACTOR_YARD",
-	brief = "Рой учится окружать. Пробей кольцо Гравимолотом и убей Альфу.",
+	brief = "Антенна для радио упала в воронку. Рой сомкнёт кольцо — пробей его Гравимолотом и убей Альфу.",
 	goal = "Продержись",
 	objective = "carrier",
 	playerDamageMult = 0.75,
 	eliteName = "АЛЬФА",
 	eliteGoal = "Убей Альфу",
-	eliteHpMult = 0.6,
+	eliteHpMult = 0.3,
 	runEvolution = false,
 	s01Event = true, -- the ring teaches S01 to profiles that do not have it yet
-	finaleTime = 25,
-	deadline = 330,
-	hardLimit = 400,
-	finale = { at = 0, label = "ПОСЛЕДНЯЯ ВОЛНА", rate = 9.0, cap = 86, dirs = ALL, w = { EN_RUNNER = 0.88, EN_STALKER = 0.12 } },
+	winOnElite = true,
+	finaleTime = 2.5,
+	deadline = 200,
+	hardLimit = 260,
+	xpTable = XP_O02,
+	finale = { at = 0, label = "РОЙ РАССЫПАЛСЯ", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
-		{ at = 0, label = "КОНТАКТ", rate = 2.8, cap = 28, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 1 }, quiet = true },
-		{ at = 30, label = "ПРЫГУНЫ", rate = 3.8, cap = 40, dirs = { "N", "NE", "NW", "E", "W" }, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 } },
-		{ at = 70, label = "КОЛЬЦО", rate = 4.6, cap = 56, dirs = ALL, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 } },
-		{ at = 120, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 72, dirs = ALL, w = { EN_RUNNER = 0.86, EN_STALKER = 0.14 } },
-		{ at = 168, label = "АЛЬФА", rate = 3.0, cap = 44, dirs = ALL, w = { EN_RUNNER = 0.88, EN_STALKER = 0.12 }, quiet = true },
+		{ at = 0, label = "КОНТАКТ", rate = 3.4, cap = 30, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 1 }, quiet = true },
+		{ at = 10, label = "ПРЫГУНЫ", rate = 4.2, cap = 40, dirs = { "N", "NE", "NW", "E", "W" }, w = { EN_RUNNER = 0.88, EN_STALKER = 0.12 } },
+		{ at = 24, label = "КОЛЬЦО", rate = 4.6, cap = 52, dirs = ALL, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 }, quiet = true },
+		{ at = 40, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 66, dirs = ALL, w = { EN_RUNNER = 0.86, EN_STALKER = 0.14 } },
+		{ at = 56, label = "АЛЬФА", rate = 3.0, cap = 44, dirs = ALL, w = { EN_RUNNER = 0.88, EN_STALKER = 0.12 }, quiet = true },
 	},
 	beats = {
-		{ at = 30, type = "banner", title = "ПРЫГУН", sub = "Замирает перед прыжком — уйди в сторону", kind = "EN_STALKER" },
-		{ at = 74, type = "ring", count = 26 },
-		{ at = 170, type = "elite" },
+		{ at = 10, type = "banner", title = "ПРЫГУН", sub = "Замирает перед прыжком — уйди в сторону", kind = "EN_STALKER" },
+		{ at = 26, type = "ring", count = 26 },
+		{ at = 58, type = "elite" },
 	},
 	unlocks = { "O03" },
 	requires = "O01",

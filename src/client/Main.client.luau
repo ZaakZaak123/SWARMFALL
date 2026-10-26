@@ -74,7 +74,12 @@ Audio.preloadStings()
 EnemyView.init()
 Fx.init()
 -- DD-075: a black title card from the very first frame; a newcomer's stays up until the intro starts
-Story.init(playerGui, { base = Base })
+Story.init(playerGui, {
+	base = Base,
+	profile = function()
+		return Menus.profile()
+	end,
+})
 Story.cover(true)
 pcall(function()
 	game:GetService("TeleportService"):SetTeleportGui(Story.teleportGui())
@@ -544,7 +549,7 @@ local function leaveRun()
 end
 
 local showOutpost, outpostKeyOf -- outpost views (defined with the turret handlers below)
-local sceneSeen = false -- the first-victory scene plays once per session at most
+local sceneSeen = {} -- op -> its homecoming scene played this session (once at most)
 local updateShowcase -- camp/base gear, nameplates and inspection (defined below)
 local campState = nil -- camp (public server) state: squads + hunters' showcases (DD-053)
 local visitingUid = nil -- whose outpost the camp shows instead of ours
@@ -687,6 +692,17 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 			else
 				Story.cover(false)
 			end
+		elseif
+			Story.hasDeparture(run.op)
+			and run.solo
+			and prof
+			and ((prof.winsByOp or {})[run.op] or 0) == 0
+			and not (prof.tut and prof.tut["go_" .. run.op])
+		then
+			storyChecked = true
+			Hud.setVisible(false)
+			Story.depart(run.op, back)
+			send("tut", "go_" .. run.op)
 		elseif run.op == "STRIKE" and run.solo then
 			storyChecked = true
 			local at = nil
@@ -720,20 +736,23 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	if run.result then
 		Hud.setVisible(false)
-		-- DD-075: the first hunt ever won rides home on the cable before the results.
+		-- DD-075/076: a story sortie won for the first time rides home on the cable before the results.
 		local prof = Menus.profile()
+		local opId = run.result.op
+		local tutKey = if opId == "O01" then "drill" else "home_" .. tostring(opId)
 		if
 			run.result.victory
-			and run.result.op == "O01"
+			and Story.hasHomecoming(opId)
+			and run.solo
 			and prof
-			and not (prof.tut and prof.tut.drill)
-			and not sceneSeen
+			and not (prof.tut and prof.tut[tutKey])
+			and not sceneSeen[opId]
 		then
-			sceneSeen = true
+			sceneSeen[opId] = true
 			Menus.hideOffer()
 			EnemyView.clear()
-			Story.returnHome(function()
-				send("tut", "drill")
+			Story.returnHome(opId, function()
+				send("tut", tutKey)
 			end)
 		end
 		if not Base.sceneActive() and not Story.active() then
@@ -2272,7 +2291,9 @@ if RunService:IsStudio() then
 		if what == "intro" then
 			Story.intro(function() end)
 		elseif what == "home" then
-			Story.returnHome(function() end)
+			Story.returnHome(t or "O01", function() end)
+		elseif what == "depart" then
+			Story.depart(t or "O02", function() end)
 		elseif what == "arrival" then
 			Story.arrival(Vector3.new(12, 0, -12), function() end)
 		elseif what == "seek" then
