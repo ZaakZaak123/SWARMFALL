@@ -525,7 +525,7 @@ function Ops.makeFirstStrike(): OpDef
 		finaleTime = 2.5,
 		deadline = 140,
 		hardLimit = 170,
-		xpTable = {},
+		xpTable = { 5, 16 }, -- two cards: the run is short, but a fight without a choice felt broken
 		finale = { at = 0, label = "РОЙ ОТБИТ", rate = 0, cap = 0, dirs = { "N" }, w = { EN_RUNNER = 1 } },
 		phases = {
 			{ at = 2, label = "РОЙ ИДЁТ НА БУР", rate = 3.4, cap = 34, dirs = { "N", "NE", "NW" }, w = { EN_RUNNER = 1 } },

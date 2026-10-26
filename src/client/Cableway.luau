@@ -79,13 +79,134 @@ function Cableway.crate(parent: Instance, cf: CFrame)
 	return c.model
 end
 
--- The route (DD-075): one cable from the drill to the shelter. It leaves the funnel over its north-west
--- rim, crosses the wasteland northwards and comes into the grove from the south-west to the terminal.
--- World points; the shelter's two are relative to Meta.HomeOrigin (the courtyard centre).
+-- The route (DD-075, DD-082): one cable from the drill to the shelter. It leaves the funnel into a cave
+-- in its north-west wall, runs under the dead city along an old metro tunnel and comes out of a cave in
+-- the grove's hill, straight to the terminal. (Owner playtest: the open wasteland under the cable
+-- looked crooked and the ride was long; underground nothing breaks the picture and the way is short.)
+-- World points; the shelter's are relative to Meta.HomeOrigin (the courtyard centre).
 Cableway.ARENA_SIDE = Vector3.new(-104, 20, 34) -- post inside the funnel, west of the drill
-Cableway.ARENA_RIM = Vector3.new(-128, 26, 152) -- post on the north-west rim
-Cableway.HOME_FAR = Vector3.new(-120, 34, -190) -- last wasteland mast, outside the grove (relative)
-Cableway.HOME_POST = Vector3.new(-64, 12, -33) -- post in the grove (relative)
+Cableway.MOUTH_A = Vector3.new(-120, 0, 84) -- the cave in the funnel wall (floor centre)
+Cableway.FACING_A = Vector3.new(0.42, 0, -0.91).Unit -- out of the cave, into the funnel
+Cableway.MOUTH_B = Vector3.new(-64, 0, -37) -- the cave at the foot of the grove's west hill (relative)
+Cableway.FACING_B = Vector3.new(0.7, 0, 0.71).Unit -- out of the cave, towards the terminal
+Cableway.CABLE_H = 13 -- the cable's height over a cave's / the tunnel's floor
+Cableway.DEPTH = 22 -- how far the tunnel dips under the surface between the two caves
+
+-- The tunnel's floor line from cave A to cave B (world): in, down a ramp, the long run, up, out.
+function Cableway.tunnelLine(homeOrigin: Vector3): { Vector3 }
+	local a, fa = Cableway.MOUTH_A, Cableway.FACING_A
+	local b, fb = homeOrigin + Cableway.MOUTH_B, Cableway.FACING_B
+	local down = Vector3.new(0, -Cableway.DEPTH, 0)
+	return { a, a - fa * 40, a - fa * 140 + down, b - fb * 140 + down, b - fb * 40, b }
+end
+
+-- The cable heads along the tunnel: under the roof, a hanger every ~140 studs on the long run.
+function Cableway.tunnelAnchors(homeOrigin: Vector3): { Vector3 }
+	local line = Cableway.tunnelLine(homeOrigin)
+	local up = Vector3.new(0, Cableway.CABLE_H, 0)
+	local out = {}
+	for i, p in line do
+		if i == 4 then
+			local from = line[3]
+			local n = math.max(1, math.floor((p - from).Magnitude / 140))
+			for k = 1, n - 1 do
+				table.insert(out, from:Lerp(p, k / n) + up)
+			end
+		end
+		table.insert(out, p + up)
+	end
+	return out
+end
+
+-- A cave mouth (DD-082): a timbered opening into darkness in a heap of rock, the rails running out of it
+-- and a lamp over it. `at` is the floor centre, `facing` points out of the cave.
+function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
+	local folder = Instance.new("Folder")
+	folder.Name = "CaveMouth"
+	local frame = CFrame.lookAt(at, at + Vector3.new(facing.X, 0, facing.Z)) -- -Z = out of the cave
+	local rock, timber = rgb(138, 128, 116), rgb(110, 80, 52)
+	local function at3(x, y, z)
+		return frame * CFrame.new(x, y, -z)
+	end
+	-- the darkness: what you see into the hill (and what a crate rides into)
+	part({ Size = Vector3.new(16, 16, 1), CFrame = at3(0, 8, -1.6), Color = rgb(5, 5, 7) }, folder)
+	-- the timbering
+	for _, x in { -7.6, 7.6 } do
+		part(
+			{
+				Size = Vector3.new(1.3, 16.6, 1.3),
+				CFrame = at3(x, 8.3, 0),
+				Color = timber,
+				Material = Enum.Material.WoodPlanks,
+			},
+			folder
+		)
+	end
+	part(
+		{
+			Size = Vector3.new(17.6, 1.5, 1.5),
+			CFrame = at3(0, 16.6, 0),
+			Color = timber,
+			Material = Enum.Material.WoodPlanks,
+		},
+		folder
+	)
+	-- the rock heaped round it
+	local rng = Random.new(math.floor(at.X * 7 + at.Z * 3))
+	local rocks = {
+		{ -11, 3, 7 },
+		{ -12, 9, 8 },
+		{ -11, 15, 7 },
+		{ 11, 3, 7 },
+		{ 12, 9, 8 },
+		{ 11, 15, 7 },
+		{ -7, 20, 8 },
+		{ 0, 21, 9 },
+		{ 7, 20, 8 },
+		{ -15, 1, 6 },
+		{ 15, 1, 6 },
+		{ 0, 25, 7 },
+	}
+	for _, r in rocks do
+		local d = r[3] * rng:NextNumber(1.1, 1.6)
+		local p = part({
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * d,
+			CFrame = at3(r[1] + rng:NextNumber(-1, 1), r[2], rng:NextNumber(-3, -0.5)),
+			Color = rock:Lerp(rgb(104, 96, 88), rng:NextNumber()),
+			Material = Enum.Material.Rock,
+		}, folder)
+		p.CastShadow = true
+	end
+	-- the rails out of the tunnel and a lamp over the opening
+	for _, x in { -2.4, 2.4 } do
+		part(
+			{
+				Size = Vector3.new(0.35, 0.3, 10),
+				CFrame = at3(x, 0.15, 4.5),
+				Color = rgb(70, 62, 56),
+				Material = Enum.Material.Metal,
+			},
+			folder
+		)
+	end
+	local lamp = part(
+		{
+			Size = Vector3.new(0.9, 0.7, 0.9),
+			CFrame = at3(0, 15, 1.2),
+			Color = rgb(255, 196, 120),
+			Material = Enum.Material.Neon,
+		},
+		folder
+	)
+	local light = Instance.new("PointLight")
+	light.Color = rgb(255, 196, 130)
+	light.Range = 18
+	light.Brightness = 1.6
+	light.Parent = lamp
+	folder.Parent = parent
+	return folder
+end
 
 -- Sampled cable through the anchors: every span sags a little. The crates' (and a rider's) track.
 function Cableway.track(anchors: { Vector3 }): { Vector3 }

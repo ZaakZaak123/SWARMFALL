@@ -2,7 +2,7 @@
 -- Story scenes (DD-075): the first minute is one journey on one cable. The shelter in the grove and the
 -- drill in the funnel are ~1.3 km apart and the cableway joins them (Cableway.ARENA_* / HOME_*): the hero
 -- rides it out to the drill in the intro and rides it home with the generator after the first win. The
--- wasteland between them exists only while a scene crosses it.
+-- tunnel between them exists only while a scene crosses it.
 --
 -- Story.init(playerGui, deps)      deps: { base = Base, onIntroDone = fn }
 -- Story.cover(on)                  black title screen (up from the first frame until we know who joined)
@@ -64,12 +64,39 @@ local function buildGui(playerGui: PlayerGui)
 		BorderSizePixel = 0,
 		Parent = gui,
 	})
+	-- the dip to black while a rider crosses the long dark of the tunnel (under the captions)
+	ui.dark = new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Parent = gui,
+	})
+	-- a dark band behind the words: they must read over any shot (owner playtest, DD-082)
+	ui.plate = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.845, 0),
+		Size = UDim2.new(1, 0, 0, 130),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Parent = gui,
+	})
+	new("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.25, 0.25),
+			NumberSequenceKeypoint.new(0.75, 0.25),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = ui.plate,
+	})
 	ui.cap = label("", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 0.84, 0),
-		Size = UDim2.new(0.9, 0, 0, 44),
+		Size = UDim2.new(0.9, 0, 0, 48),
 		FontFace = F.display,
-		TextSize = 36,
+		TextSize = 40,
 		TextTransparency = 1,
 		Parent = gui,
 	})
@@ -77,9 +104,9 @@ local function buildGui(playerGui: PlayerGui)
 	ui.sub = label("", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0.84, 6),
-		Size = UDim2.new(0.8, 0, 0, 46),
+		Size = UDim2.new(0.8, 0, 0, 54),
 		FontFace = F.bodyBold,
-		TextSize = 19,
+		TextSize = 23,
 		TextWrapped = true,
 		TextColor3 = C.text,
 		TextTransparency = 1,
@@ -151,6 +178,7 @@ local function caption(text: string, subText: string?, color: Color3?)
 	ui.sub.TextTransparency = 1
 	tween(ui.cap, 0.4, { TextTransparency = 0 })
 	tween(ui.sub, 0.6, { TextTransparency = 0 })
+	tween(ui.plate, 0.4, { BackgroundTransparency = if text == "" then 1 else 0.3 })
 end
 
 local function letterbox(on: boolean)
@@ -160,6 +188,8 @@ local function letterbox(on: boolean)
 	if not on then
 		tween(ui.cap, 0.3, { TextTransparency = 1 })
 		tween(ui.sub, 0.3, { TextTransparency = 1 })
+		tween(ui.plate, 0.3, { BackgroundTransparency = 1 })
+		tween(ui.dark, 0.3, { BackgroundTransparency = 1 })
 		-- the text's outline (UIStroke) does not fade with it: clear the words once they are gone
 		task.delay(0.35, function()
 			if not scene then
@@ -168,6 +198,25 @@ local function letterbox(on: boolean)
 			end
 		end)
 	end
+end
+
+local TUNNEL_TIME = 2.2 -- seconds from one cave mouth to the other (DD-082)
+
+-- Cues for the tunnel leg's dip to black (the rider enters at tIn).
+local function tunnelDip(cues, tIn: number)
+	table.insert(cues, {
+		tIn + 0.85,
+		function()
+			tween(ui.dark, 0.15, { BackgroundTransparency = 0 })
+		end,
+	})
+	table.insert(cues, {
+		tIn + TUNNEL_TIME - 0.85,
+		function()
+			tween(ui.dark, 0.25, { BackgroundTransparency = 1 })
+		end,
+	})
+	return cues
 end
 
 local function flash(amount: number, time: number?)
@@ -253,26 +302,14 @@ local function nightfall()
 	end
 end
 
--- The route and the wasteland ----------------------------------------------------------------------------------
+-- The route and the tunnel -------------------------------------------------------------------------------------
 local function homeWorld(rel: Vector3): Vector3
 	return Meta.HomeOrigin + rel
 end
 
--- Masts across the wasteland, from the funnel's rim to the grove's edge (fixed jitter: the same every time).
-local function transitAnchors(): { Vector3 }
-	local a, b = Cableway.ARENA_RIM, homeWorld(Cableway.HOME_FAR)
-	local list = { a }
-	local n = 7
-	local rng = Random.new(1306)
-	for i = 1, n do
-		local p = a:Lerp(b, i / (n + 1))
-		table.insert(list, Vector3.new(p.X + rng:NextNumber(-10, 10), 30 + rng:NextNumber(-3, 4), p.Z))
-	end
-	table.insert(list, b)
-	return list
-end
-
--- The whole ride from the post inside the funnel to the terminal in the courtyard (the cable's own sag).
+-- The whole ride from the post inside the funnel to the terminal in the courtyard (the cable's own sag):
+-- into cave A, the tunnel under the dead city, out of cave B (DD-082). arenaEnd / transitEnd are the
+-- indices of the two cave mouths.
 local function routeTrack(terminal: Vector3): ({ Vector3 }, number, number)
 	local track = {}
 	local function add(points)
@@ -282,12 +319,23 @@ local function routeTrack(terminal: Vector3): ({ Vector3 }, number, number)
 			end
 		end
 	end
-	add(Cableway.track({ Cableway.ARENA_SIDE, Cableway.ARENA_RIM }))
+	local up = Vector3.new(0, Cableway.CABLE_H, 0)
+	add(Cableway.track({ Cableway.ARENA_SIDE, Cableway.MOUTH_A + up }))
 	local arenaEnd = #track
-	add(Cableway.track(transitAnchors()))
+	add(Cableway.track(Cableway.tunnelAnchors(Meta.HomeOrigin)))
 	local transitEnd = #track
-	add(Cableway.track({ homeWorld(Cableway.HOME_FAR), homeWorld(Cableway.HOME_POST), terminal }))
+	add(Cableway.track({ homeWorld(Cableway.MOUTH_B) + up, terminal }))
 	return track, arenaEnd, transitEnd
+end
+
+-- The leg through the tunnel (DD-082): the rider rides in at a ride's pace, the screen dips to black
+-- while it crosses the long dark run, and it comes out the other end at a ride's pace again.
+local function tunnelKeys(keys, tIn: number, dIn: number, dOut: number)
+	table.insert(keys, { tIn, dIn })
+	table.insert(keys, { tIn + 0.8, dIn + 60 })
+	table.insert(keys, { tIn + TUNNEL_TIME - 0.8, dOut - 60 })
+	table.insert(keys, { tIn + TUNNEL_TIME, dOut })
+	return keys
 end
 
 local function makePath(track: { Vector3 })
@@ -323,7 +371,7 @@ local function reversed(list)
 	return out
 end
 
--- Monotone cubic through (time, distance) keys: the rider eases out, speeds over the wasteland, eases in.
+-- Monotone cubic through (time, distance) keys: the rider eases out, speeds through the tunnel, eases in.
 local function motion(keys)
 	local n = #keys
 	local m = {}
@@ -378,131 +426,51 @@ local function block(parent, size: Vector3, cf: CFrame, color: Color3, material,
 	return p
 end
 
--- The wasteland under the cable: ash and dust by the funnel turning to grass by the grove, dead trees,
--- broken walls, rusted cars, the stumps of towers on the horizon, and the cable's masts.
-local function buildWasteland(): Folder
+-- The old metro tunnel under the dead city (DD-082): rock walls and roof on rusted ribs, rails and
+-- sleepers on the floor, a caged lamp every few ribs. It exists only while a scene rides through it.
+local function buildTunnel(): Folder
 	local folder = Instance.new("Folder")
-	folder.Name = "StoryWasteland"
-	local anchors = transitAnchors()
-	local a, b = anchors[1], anchors[#anchors]
-	local cx = (a.X + b.X) / 2
-	local z0, z1 = a.Z + 14, b.Z + 24
-	local slabs = 7
-	for i = 0, slabs - 1 do
-		local k = i / (slabs - 1)
-		local len = (z1 - z0) / slabs
-		block(
-			folder,
-			Vector3.new(1100, 2, len + 2),
-			CFrame.new(cx, -1.02, z0 + len * (i + 0.5)),
-			rgb(112, 96, 78):Lerp(rgb(92, 122, 62), k * k),
-			if k < 0.6 then Enum.Material.Ground else Enum.Material.Grass
-		)
-	end
-	local rng = Random.new(2075)
-	local function lineX(z: number): number
-		local t = math.clamp((z - a.Z) / (b.Z - a.Z), 0, 1)
-		return a.X + (b.X - a.X) * t
-	end
-	local function spot(minOff: number, maxOff: number): (number, number, number)
-		local z = rng:NextNumber(z0 + 10, z1 - 30)
-		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		local x = lineX(z) + side * rng:NextNumber(minOff, maxOff)
-		local green = math.clamp((z - z0) / (z1 - z0), 0, 1)
-		return x, z, green
-	end
-	-- dead trees (greener and leafier towards the grove)
-	for _ = 1, 70 do
-		local x, z, green = spot(14, 260)
-		local h = rng:NextNumber(8, 17)
-		local w = rng:NextNumber(0.7, 1.3)
-		local bark = rgb(64, 56, 50):Lerp(rgb(80, 66, 48), green)
-		block(
-			folder,
-			Vector3.new(w, h, w),
-			CFrame.new(x, h / 2, z) * CFrame.Angles(0, rng:NextNumber(0, 6), rng:NextNumber(-0.08, 0.08)),
-			bark,
-			Enum.Material.Wood
-		)
-		for j = 1, 2 do
-			local bl = h * rng:NextNumber(0.25, 0.4)
-			block(
-				folder,
-				Vector3.new(w * 0.5, bl, w * 0.5),
-				CFrame.new(x, h * (0.55 + j * 0.15), z)
-					* CFrame.Angles(0, rng:NextNumber(0, 6), rng:NextNumber(0.5, 0.9) * (if j == 1 then 1 else -1))
-					* CFrame.new(0, bl / 2, 0),
-				bark,
-				Enum.Material.Wood
-			)
+	folder.Name = "StoryTunnel"
+	local line = Cableway.tunnelLine(Meta.HomeOrigin)
+	local W, H = 18, 18
+	local rockC, floorC, ribC = rgb(58, 54, 50), rgb(44, 40, 36), rgb(92, 64, 46)
+	local lampN = 0
+	for i = 1, #line - 1 do
+		local a, b = line[i], line[i + 1]
+		local len = (b - a).Magnitude
+		local frame = CFrame.lookAt(a, b) -- -Z along the tunnel
+		local function seg(size: Vector3, x: number, y: number, z: number, color: Color3, mat)
+			return block(folder, size, frame * CFrame.new(x, y, z), color, mat)
 		end
-		if green > 0.55 and rng:NextNumber() < green then
-			block(
-				folder,
-				Vector3.one * h * 0.55,
-				CFrame.new(x, h * 0.95, z),
-				rgb(78, 120, 54):Lerp(rgb(96, 142, 60), rng:NextNumber()),
-				Enum.Material.Grass,
-				Enum.PartType.Ball
-			)
+		local mid = -len / 2
+		seg(Vector3.new(W + 2, 1, len + 1), 0, -0.5, mid, floorC, Enum.Material.Ground)
+		seg(Vector3.new(W + 2, 1.2, len + 1), 0, H + 0.6, mid, rockC, Enum.Material.Slate)
+		for _, x in { -(W / 2 + 0.5), W / 2 + 0.5 } do
+			seg(Vector3.new(1, H + 1, len + 1), x, H / 2, mid, rockC, Enum.Material.Slate)
+		end
+		for _, x in { -2.4, 2.4 } do
+			seg(Vector3.new(0.35, 0.3, len), x, 0.15, mid, rgb(80, 72, 64), Enum.Material.Metal)
+		end
+		for d = 4, len - 2, 14 do
+			seg(Vector3.new(0.8, H - 0.6, 0.8), -(W / 2 - 0.4), H / 2 - 0.3, -d, ribC, Enum.Material.CorrodedMetal)
+			seg(Vector3.new(0.8, H - 0.6, 0.8), W / 2 - 0.4, H / 2 - 0.3, -d, ribC, Enum.Material.CorrodedMetal)
+			seg(Vector3.new(W, 0.8, 0.8), 0, H - 0.4, -d, ribC, Enum.Material.CorrodedMetal)
+			seg(Vector3.new(7, 0.3, 0.9), 0, 0.05, -d - 7, rgb(70, 52, 38), Enum.Material.Wood)
+			lampN += 1
+			if lampN % 3 == 0 then
+				local x = if lampN % 2 == 0 then -(W / 2 - 1) else W / 2 - 1
+				local lamp = seg(Vector3.new(0.7, 0.7, 1.2), x, 12.5, -d - 1.2, rgb(255, 190, 110), Enum.Material.Neon)
+				local light = Instance.new("PointLight")
+				light.Color = rgb(255, 186, 120)
+				light.Range = 22
+				light.Brightness = 1.4
+				light.Shadows = false
+				light.Parent = lamp
+			end
 		end
 	end
-	-- broken walls of the old city
-	for _ = 1, 30 do
-		local x, z = spot(18, 240)
-		local w, h = rng:NextNumber(10, 26), rng:NextNumber(5, 18)
-		local cf = CFrame.new(x, h / 2, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0)
-		local concrete = rgb(124, 118, 108):Lerp(rgb(96, 90, 84), rng:NextNumber())
-		block(folder, Vector3.new(w, h, 1.8), cf, concrete, Enum.Material.Concrete)
-		block(
-			folder,
-			Vector3.new(w * 0.45, h * 0.5, 1.8),
-			cf * CFrame.new(w * 0.4, h * 0.6, 0) * CFrame.Angles(0, 0, 0.3),
-			concrete,
-			Enum.Material.Concrete
-		)
-	end
-	-- rusted cars
-	for _ = 1, 14 do
-		local x, z = spot(12, 200)
-		local cf = CFrame.new(x, 1.5, z) * CFrame.Angles(0, rng:NextNumber(0, 6), rng:NextNumber(-0.2, 0.2))
-		local rust = rgb(120, 70, 44):Lerp(rgb(86, 60, 48), rng:NextNumber())
-		block(folder, Vector3.new(4.4, 2.4, 9), cf, rust, Enum.Material.CorrodedMetal)
-		block(folder, Vector3.new(3.8, 1.8, 4.6), cf * CFrame.new(0, 2, -0.6), rust, Enum.Material.CorrodedMetal)
-	end
-	-- rocks
-	for _ = 1, 26 do
-		local x, z = spot(10, 280)
-		local r = rng:NextNumber(3, 9)
-		block(
-			folder,
-			Vector3.new(r * 1.4, r, r * 1.2),
-			CFrame.new(x, r * 0.25, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0),
-			rgb(100, 94, 86),
-			Enum.Material.Slate,
-			Enum.PartType.Ball
-		)
-	end
-	-- the stumps of towers far off: the skyline of the city that was
-	for _ = 1, 12 do
-		local x, z = spot(200, 420)
-		local w, h = rng:NextNumber(20, 36), rng:NextNumber(36, 90)
-		block(
-			folder,
-			Vector3.new(w, h, w * rng:NextNumber(0.7, 1.2)),
-			CFrame.new(x, h / 2 - 2, z) * CFrame.Angles(0, rng:NextNumber(0, 6), rng:NextNumber(-0.06, 0.06)),
-			rgb(92, 88, 86),
-			Enum.Material.Concrete
-		)
-	end
-	-- the cable itself, mast by mast
-	local posts = {}
-	for i, p in anchors do
-		if i > 1 and i < #anchors then
-			posts[i] = Vector3.new(p.X, 0, p.Z)
-		end
-	end
-	Cableway.new(folder, anchors, { posts = posts })
+	-- the cable itself, hanger by hanger under the roof
+	Cableway.new(folder, Cableway.tunnelAnchors(Meta.HomeOrigin), {})
 	folder.Parent = workspace
 	return folder
 end
@@ -700,10 +668,12 @@ function Story.intro(onDone)
 	local L = path.length
 	-- the same marks counted from the terminal: the grove's edge, the funnel's rim
 	local grove, rim = L - forward.dist[transitEnd], L - forward.dist[arenaEnd]
-	local wasteland = buildWasteland()
+	local tunnel = buildTunnel()
 	local rider = buildRider(nil)
 	local snap = lightSnapshot()
-	local ride = motion({ { 8.4, 0 }, { 10.8, grove }, { 14.8, rim }, { 18.4, L } })
+	local introKeys = tunnelKeys({ { 8.4, 0 } }, 10.2, grove, rim)
+	table.insert(introKeys, { 15.0, L })
+	local ride = motion(introKeys)
 	local s = 0
 	local shelter = base.point("SHELTER")
 	local term = base.point("TERMINAL")
@@ -718,7 +688,7 @@ function Story.intro(onDone)
 	tween(ui.coverLine, 1.2, { TextTransparency = 0 })
 	coverDeadline = 0
 	play({
-		length = 19.2,
+		length = 17.0,
 		shots = {
 			{
 				from = 0,
@@ -731,34 +701,40 @@ function Story.intro(onDone)
 			},
 			{
 				from = 7.4,
-				to = 10.6,
+				to = 10.55,
 				cam = function(k)
+					-- from the courtyard: the pallet rides off to the cave in the hill
 					local eye = term + Vector3.new(16, -2, 10)
 					local pos = path.at(s)
 					return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 3, -4), k), pos + Vector3.new(0, -3, 0))
 				end,
 			},
 			{
-				from = 10.6,
-				to = 14.8,
+				from = 10.55,
+				to = 12.45,
 				cam = function()
 					local pos, dir = path.at(s)
-					return chase(pos, dir, 22, 9, 8)
+					return chase(pos, dir, 13, -1.5, 2.2)
 				end,
 			},
 			{
-				from = 14.8,
-				to = 17.2,
+				from = 12.45,
+				to = 14.6,
 				cam = function(k)
-					-- the funnel from above: the drill, the rim, the hero coming over it on the cable
+					-- inside the funnel: the pallet comes out of the wall, the drill and the swarm below
 					local pos = path.at(s)
-					local eye = Vector3.new(-6, 66, -84):Lerp(Vector3.new(-18, 56, -66), k)
-					return CFrame.lookAt(eye, drill:Lerp(pos, 0.4))
+					local m, f = Cableway.MOUTH_A, Cableway.FACING_A
+					local right = f:Cross(Vector3.yAxis)
+					local eye = (m + f * 62 + right * 24 + Vector3.new(0, 30, 0)):Lerp(
+						m + f * 52 + right * 18 + Vector3.new(0, 24, 0),
+						k
+					)
+					return CFrame.lookAt(eye, pos:Lerp(drill, 0.25) + Vector3.new(0, -4, 0))
 				end,
 			},
 			{
-				from = 17.2,
-				to = 19.2,
+				from = 14.6,
+				to = 17.0,
 				cam = function(k)
 					-- close: the hero slides down to the post inside the funnel
 					local pos = path.at(s)
@@ -773,7 +749,7 @@ function Story.intro(onDone)
 			local pos, dir = path.at(s)
 			rider.place(pos, dir, math.sin(t * 1.7) * 0.04)
 		end,
-		cues = {
+		cues = tunnelDip({
 			{
 				0.1,
 				function()
@@ -785,7 +761,7 @@ function Story.intro(onDone)
 			{
 				10.6,
 				function()
-					lightRestore(snap, 2.5) -- dusk lifts over the wasteland into the funnel's sunset
+					lightRestore(snap, 1.5) -- under the city it does not matter; out of it, the funnel's sunset
 				end,
 			},
 			{
@@ -823,16 +799,16 @@ function Story.intro(onDone)
 				end,
 			},
 			{
-				11.2,
+				10.5,
 				function()
 					caption(
-						"ЧЕРЕЗ ПУСТОШЬ",
-						"Километр мёртвого города. Канатка — единственная дорога"
+						"ПОД МЁРТВЫМ ГОРОДОМ",
+						"Старый тоннель метро — канатка идёт по нему до самой воронки"
 					)
 				end,
 			},
 			{
-				15.0,
+				12.6,
 				function()
 					caption(
 						"ВОРОНКА У БУРА",
@@ -849,17 +825,17 @@ function Story.intro(onDone)
 				end,
 			},
 			{
-				18.6,
+				16.5,
 				function()
 					flash(0.7, 0.6)
 				end,
 			},
-		},
+		}, 10.2),
 		cleanup = function()
 			Audio.stopStings()
 			lightRestore(snap)
 			rider.destroy()
-			wasteland:Destroy()
+			tunnel:Destroy()
 			ui.cover.Visible = false
 			heroVisible(true)
 			base.sceneEnd()
@@ -893,7 +869,7 @@ function Story.arrival(turret: Vector3, onDone)
 				0.3,
 				function()
 					caption(
-						"«ЖАЛО» У БУРА",
+						"ТУРЕЛЬ У БУРА",
 						"Оно стреляет само. Держись рядом — рой идёт с севера",
 						C.gold
 					)
@@ -929,7 +905,7 @@ local HOMECOMING = {
 		sub = "Канатка с бура увезёт его домой — в убежище в роще",
 		transit = {
 			"ЧЕРЕЗ ПУСТОШЬ — ДОМОЙ",
-			"Тем же тросом утиль с бура будет приезжать в убежище",
+			"Тем же тросом ксенит с бура будет приезжать в убежище",
 		},
 		beats = {
 			{
@@ -948,7 +924,7 @@ local HOMECOMING = {
 		next = {
 			structure = "STING",
 			title = "ХВАТАЕТ НА ПЕРВУЮ ТУРЕЛЬ",
-			sub = "Рой вернётся к буру. «Жало» встанет рядом с ним и будет стрелять вместе с тобой",
+			sub = "Рой вернётся к буру. «Турель» встанет рядом с ним и будет стрелять вместе с тобой",
 		},
 	},
 	O02 = {
@@ -1008,7 +984,7 @@ local HOMECOMING = {
 			spot = "LAB",
 			marker = { "СВОЙ РОЙ", "Выведи первую стаю" },
 			title = "ОТКРЫТЫ ВТОРЖЕНИЯ",
-			sub = "Веди свою стаю на чужие буры — утиль с их канатки твой",
+			sub = "Веди свою стаю на чужие буры — ксенит с их канатки твой",
 		},
 	},
 	O05 = {
@@ -1091,9 +1067,11 @@ function Story.returnHome(opId: string, onDone)
 	local track, arenaEnd, transitEnd = routeTrack(base.point("TERMINAL"))
 	local path = makePath(track)
 	local L = path.length
-	local wasteland = buildWasteland()
+	local tunnel = buildTunnel()
 	local rider = buildRider(cfg.cargo, cfg.glow)
-	local ride = motion({ { 2.2, 0 }, { 4.4, path.dist[arenaEnd] }, { 8.8, path.dist[transitEnd] }, { 11.2, L } })
+	local homeKeys = tunnelKeys({ { 2.2, 0 } }, 4.0, path.dist[arenaEnd], path.dist[transitEnd])
+	table.insert(homeKeys, { 8.6, L })
+	local ride = motion(homeKeys)
 	local s = 0
 	local term = base.point("TERMINAL")
 	local side = Cableway.ARENA_SIDE
@@ -1122,27 +1100,42 @@ function Story.returnHome(opId: string, onDone)
 	local shots = {
 		{
 			from = 0,
-			to = 3.4,
+			to = 3.0,
 			cam = function(k)
 				local pos = path.at(s)
 				return CFrame.lookAt(nearEye:Lerp(nearEye + Vector3.new(4, 3, -6), k), pos + Vector3.new(0, -4.5, 0))
 			end,
 		},
 		{
-			from = 3.4,
-			to = 9.0,
-			cam = function()
-				local pos, dir = path.at(s)
-				return chase(pos, dir, 22, 9, -8)
+			from = 3.0,
+			to = 4.35,
+			cam = function(k)
+				-- the pallet rides into the cave in the funnel wall
+				local pos = path.at(s)
+				local m, f = Cableway.MOUTH_A, Cableway.FACING_A
+				local right = f:Cross(Vector3.yAxis)
+				local eye = (m + f * 34 - right * 16 + Vector3.new(0, 12, 0)):Lerp(
+					m + f * 30 - right * 13 + Vector3.new(0, 11, 0),
+					k
+				)
+				return CFrame.lookAt(eye, pos:Lerp(m + Vector3.new(0, 8, 0), 0.5))
 			end,
 		},
 		{
-			from = 9.0,
-			to = 11.6,
+			from = 4.35,
+			to = 6.25,
+			cam = function()
+				local pos, dir = path.at(s)
+				return chase(pos, dir, 13, -1.5, 2.2)
+			end,
+		},
+		{
+			from = 6.25,
+			to = 9.0,
 			cam = function(k)
-				-- from the courtyard side: the pallet comes in over the grove to the frame
-				local eye = term + Vector3.new(17, -3, 11)
-				return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 1, 2), k), term + Vector3.new(-9, -4, -7))
+				-- from the side of the courtyard: the cave at the hill's foot, the pallet riding out to the frame
+				local eye = term + Vector3.new(6, 5, 16)
+				return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-2, 1, 2), k), path.at(s) + Vector3.new(0, -3, 0))
 			end,
 		},
 	}
@@ -1160,20 +1153,20 @@ function Story.returnHome(opId: string, onDone)
 			end,
 		},
 		{
-			4.2,
+			4.4,
 			function()
 				caption(cfg.transit[1], cfg.transit[2])
 			end,
 		},
 		{
-			9.2,
+			6.6,
 			function()
 				caption("ДОМА", "")
 				Audio.sting("home", 12)
 			end,
 		},
 		{
-			11.2,
+			8.6,
 			function()
 				local deck = rider.deckPosition()
 				Fx.emitWith("dust", deck, 12, 1.4)
@@ -1182,7 +1175,8 @@ function Story.returnHome(opId: string, onDone)
 			end,
 		},
 	}
-	local t = 11.6
+	tunnelDip(cues, 4.0)
+	local t = 9.0
 	for _, beat in cfg.beats do
 		table.insert(shots, spotShot(t, t + 3, beat.spot))
 		table.insert(cues, {
@@ -1228,7 +1222,7 @@ function Story.returnHome(opId: string, onDone)
 			else
 				caption(
 					"СЛЕДУЮЩАЯ ЦЕЛЬ — «" .. def.name .. "»",
-					"Ещё немного утиля — и он встанет у бура",
+					"Ещё немного ксенита — и он встанет у бура",
 					C.lime
 				)
 			end
@@ -1247,7 +1241,7 @@ function Story.returnHome(opId: string, onDone)
 		cues = cues,
 		cleanup = function()
 			rider.destroy()
-			wasteland:Destroy()
+			tunnel:Destroy()
 			base.sceneEnd()
 		end,
 		onDone = onDone,
@@ -1359,9 +1353,11 @@ function Story.depart(opId: string, onDone)
 	local path = makePath(reversed(track))
 	local L = path.length
 	local grove, rim = L - forward.dist[transitEnd], L - forward.dist[arenaEnd]
-	local wasteland = buildWasteland()
+	local tunnel = buildTunnel()
 	local rider = buildRider(nil)
-	local ride = motion({ { 1.2, 0 }, { 3.4, grove }, { 7.2, rim }, { 10.4, L } })
+	local goKeys = tunnelKeys({ { 1.2, 0 } }, 3.0, grove, rim)
+	table.insert(goKeys, { 8.2, L })
+	local ride = motion(goKeys)
 	local s = 0
 	local term = base.point("TERMINAL")
 	local drill = Vector3.new(0, 8, 0)
@@ -1384,29 +1380,29 @@ function Story.depart(opId: string, onDone)
 	end
 	preview.Parent = workspace
 	play({
-		length = 11.0,
+		length = 9.6,
 		shots = {
 			{
 				from = 0,
-				to = 3.4,
+				to = 3.35,
 				cam = function(k)
-					-- beside the cable just out of the courtyard: the hero rides past the camera
+					-- beside the cable just out of the courtyard: the hero rides past to the cave in the hill
 					local eye = term + Vector3.new(-12, -1, 7)
 					local pos = path.at(s)
 					return CFrame.lookAt(eye:Lerp(eye + Vector3.new(-3, 2, 0), k), pos + Vector3.new(0, -3.5, 0))
 				end,
 			},
 			{
-				from = 3.4,
-				to = 7.2,
+				from = 3.35,
+				to = 5.25,
 				cam = function()
 					local pos, dir = path.at(s)
-					return chase(pos, dir, 22, 9, 8)
+					return chase(pos, dir, 13, -1.5, 2.2)
 				end,
 			},
 			{
-				from = 7.2,
-				to = 9.2,
+				from = 5.25,
+				to = 7.6,
 				cam = function(k)
 					local pos = path.at(s)
 					if cfg.focus then
@@ -1421,8 +1417,8 @@ function Story.depart(opId: string, onDone)
 				end,
 			},
 			{
-				from = 9.2,
-				to = 11.0,
+				from = 7.6,
+				to = 9.6,
 				cam = function(k)
 					local pos = path.at(s)
 					local side = Cableway.ARENA_SIDE
@@ -1436,7 +1432,7 @@ function Story.depart(opId: string, onDone)
 			local pos, dir = path.at(s)
 			rider.place(pos, dir, math.sin(t * 1.7) * 0.04)
 		end,
-		cues = {
+		cues = tunnelDip({
 			{
 				0.2,
 				function()
@@ -1450,13 +1446,13 @@ function Story.depart(opId: string, onDone)
 				end,
 			},
 			{
-				3.8,
+				3.3,
 				function()
 					caption(cfg.transit[1], cfg.transit[2])
 				end,
 			},
 			{
-				7.4,
+				5.4,
 				function()
 					caption(cfg.funnel[1], cfg.funnel[2], C.gold)
 					Audio.play("roar", 0.45, 0.7)
@@ -1472,15 +1468,15 @@ function Story.depart(opId: string, onDone)
 				end,
 			},
 			{
-				10.6,
+				9.2,
 				function()
 					flash(0.6, 0.5)
 				end,
 			},
-		},
+		}, 3.0),
 		cleanup = function()
 			rider.destroy()
-			wasteland:Destroy()
+			tunnel:Destroy()
 			preview:Destroy()
 			heroVisible(true)
 			base.sceneEnd()

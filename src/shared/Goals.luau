@@ -136,11 +136,11 @@ function Goals.next(pub): Goal?
 			title = "ПЕРВАЯ ТУРЕЛЬ ДЛЯ БУРА",
 			text = if scrap >= cost
 				then string.format(
-					"Рой вернётся к буру. Собери «Жало» на верстаке (%d утиля) — оно встанет у бура и будет стрелять вместе с тобой.",
+					"Рой вернётся к буру. Собери «Турель» на верстаке (%d ксенита) — она встанет у бура и будет стрелять вместе с тобой.",
 					cost
 				)
 				else string.format(
-					"«Жало» стоит %d утиля — ещё одна вылазка, и хватит.",
+					"«Турель» стоит %d ксенита — ещё одна вылазка, и хватит.",
 					cost
 				),
 			station = if scrap >= cost then "build" else "launch",
@@ -153,7 +153,7 @@ function Goals.next(pub): Goal?
 			key = "strike",
 			icon = "shield",
 			title = "ОБОРОНА БУРА",
-			text = "«Жало» уже у бура. Рой идёт на шум — выйди и отбей первый натиск вместе с турелью.",
+			text = "«Турель» уже у бура. Рой идёт на шум — выйди и отбей первый натиск вместе с ней.",
 			station = "launch",
 			mode = "siege",
 			structure = "STING",
@@ -181,7 +181,7 @@ function Goals.next(pub): Goal?
 					key = "build_" .. id,
 					icon = def.icon,
 					title = "ПОСТРОЙ " .. def.name,
-					text = def.text .. string.format(" Хватает утиля (%d).", def.cost[1]),
+					text = def.text .. string.format(" Хватает ксенита (%d).", def.cost[1]),
 					station = "build",
 					slot = slot,
 					structure = id,
@@ -197,7 +197,7 @@ function Goals.next(pub): Goal?
 				key = "home_" .. id,
 				icon = h.icon,
 				title = "ВОССТАНОВИ: " .. h.name,
-				text = h.text .. string.format(" Хватает утиля (%d).", h.cost),
+				text = h.text .. string.format(" Хватает ксенита (%d).", h.cost),
 				station = "home",
 				spot = id,
 			}
@@ -276,7 +276,7 @@ function Goals.next(pub): Goal?
 			icon = "level",
 			title = "УЛУЧШИ " .. best.name,
 			text = string.format(
-				"Хватает утиля (%d) — турель станет сильнее в обороне бура и вылазках.",
+				"Хватает ксенита (%d) — турель станет сильнее в обороне бура и вылазках.",
 				bestCost
 			),
 			station = "build",

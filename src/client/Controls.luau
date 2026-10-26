@@ -142,8 +142,7 @@ function Controls.init(playerGui: PlayerGui)
 		reload = makeButton("Reload", "reload", "", UDim2.new(1, -60, 1, -290), 54, C.dim),
 		view = makeButton("View", "topdown", "", UDim2.new(1, -60, 1, -370), 54, C.cyan),
 	}
-	-- The minimal touch layout keeps the tactical camera: no view switch on phones.
-	buttons.view.button.Visible = false
+	-- DD-082: phones switch the view too (the first fight teaches the three views)
 	buttons.dash.button.Activated:Connect(function()
 		act("dash")
 	end)
@@ -393,9 +392,6 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	b.fill.Size = UDim2.fromScale(1, math.clamp(cooldownFrac or 0, 0, 1))
 	b.sub.Text = sub or ""
 	b.button.BackgroundTransparency = if ready then 0.1 else 0.45
-	if name == "view" then
-		b.button.Visible = false
-	end
 end
 
 function Controls.setViewIcon(name: string)

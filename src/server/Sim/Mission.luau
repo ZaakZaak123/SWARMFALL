@@ -400,7 +400,7 @@ function Mission:onKill(e, p)
 				"hive"
 			)
 		elseif e.objective == "nest" and self.destroyed == #self.targets then
-			w:banner("ВСЕ ГНЁЗДА", "3/3 — бонус Утиля", C.LIME, 2.5, "hive")
+			w:banner("ВСЕ ГНЁЗДА", "3/3 — бонус Ксенита", C.LIME, 2.5, "hive")
 		end
 	end
 end
@@ -526,6 +526,9 @@ function Mission:elite()
 	e.maxHp = e.hp
 	self.eliteSpawned = true
 	self.goal = self.op.eliteGoal or ("Убей " .. (self.op.eliteName or "элиту"))
+	-- DD-082: the camera flies to the leader and back; nobody is hit while it is away
+	w:emit(E.BOSS, 8, e.x, e.z)
+	w:revealGrace(Codec.REVEAL_TIME)
 	w:banner(self.op.eliteName or "ЭЛИТА", "Вожак стаи. Убей его!", C.GOLD, 4, "@" .. e.def.index)
 end
 

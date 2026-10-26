@@ -32,6 +32,7 @@ local gui
 local ui = {}
 local myId = 0
 local profile = nil
+local MODE_COLOR = { hunt = C.lime, siege = C.orange, raid = C.red } -- DD-082: one colour per mode
 local lobbyState = nil
 local device = "pc"
 local selectedWeapon = "W_ARC_RIFLE"
@@ -333,7 +334,7 @@ local function buildLobby()
 	})
 	-- why every sortie happens (DD-065): the same sentence the shelter's cableway tells in space
 	ui.huntWhy = label(
-		"Бур в центре воронки вскрывает погребённый город — утиль с него идёт по канатке в твоё убежище. Рой лезет на шум бура.",
+		"Бур в центре воронки вскрывает погребённый город — ксенит с него идёт по канатке в твоё убежище. Рой лезет на шум бура.",
 		{
 			Position = UDim2.fromOffset(24, 148),
 			Size = UDim2.new(1, -48, 0, 50),
@@ -486,7 +487,7 @@ local function buildLobby()
 		end)
 	end)
 	label(
-		"+10% утиля за каждого в отряде",
+		"+10% ксенита за каждого в отряде",
 		{
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, -56, 0, 92),
@@ -851,12 +852,23 @@ function Menus.refreshLobby()
 	ui.tabs.Visible = tabCount > 1
 	ui.tabButtons.siege.button.Visible = features.siege == true
 	ui.tabButtons.raid.button.Visible = features.raids == true
+	-- DD-082 (owner playtest): every mode wears its own colour — tab, card edge and tag — so a defence
+	-- never reads as another sortie
 	for key, t in ui.tabButtons do
 		local on = key == mode
-		t.button.BackgroundColor3 = if on then C.lime else C.ink
+		local col = MODE_COLOR[key] or C.lime
+		t.button.BackgroundColor3 = if on then col else C.ink
 		t.button.BackgroundTransparency = if on then 0 else 0.25
-		t.label.TextColor3 = if on then C.ink else C.text
+		t.label.TextColor3 = if on then C.ink else col
 		t.button.Active = isHost
+	end
+	local modeCol = MODE_COLOR[mode] or C.lime
+	ui.huntTag.TextColor3 = modeCol
+	local stroke = ui.hunt:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = modeCol
+		stroke.Transparency = 0.2
+		stroke.Thickness = 2.5
 	end
 	ui.hunt.Position = UDim2.fromOffset(0, if ui.tabs.Visible then 176 else 134)
 	-- anomaly of the day (hunts from the third one on, sieges)
@@ -898,7 +910,7 @@ function Menus.refreshLobby()
 		ui.huntTag.Text = "ОБОРОНА БУРА"
 		ui.huntName.Text = "УРОВЕНЬ " .. (info.siege or 1)
 		ui.huntBrief.Text = string.format(
-			"Рой идёт на шум бура: пять волн. Пока бур цел, канатка везёт утиль в убежище. Турели из мастерской: %d/%d.",
+			"Рой идёт на шум бура: пять волн. Пока бур цел, канатка везёт ксенит в убежище. Турели из мастерской: %d/%d.",
 			built,
 			Meta.SocketCount
 		)
@@ -920,7 +932,7 @@ function Menus.refreshLobby()
 		ui.huntName.Text = if t then t.name else "Ищем аванпосты…"
 		ui.huntBrief.Text = if t
 			then string.format(
-				"Чужой бур: пробей оборону и разрушь его за 4 минуты — утиль с его канатки твой (мощь обороны %d, до ◆ %d). Хозяин ничего не теряет: это копия.",
+				"Чужой бур: пробей оборону и разрушь его за 4 минуты — ксенит с его канатки твой (мощь обороны %d, до ◆ %d). Хозяин ничего не теряет: это копия.",
 				t.power or 0,
 				Meta.raidRewardFor(t.power or 0, true)
 			)
@@ -985,7 +997,7 @@ function Menus.refreshLobby()
 		end
 		if held + lost > 0 then
 			ui.toastText.Text = string.format(
-				"Налётов на бур: %d  ·  отбито %d (+%d утиля)  ·  прорвано %d — ты ничего не потерял",
+				"Налётов на бур: %d  ·  отбито %d (+%d ксенита)  ·  прорвано %d — ты ничего не потерял",
 				held + lost,
 				held,
 				held * Meta.DefenseReward,
@@ -1183,7 +1195,7 @@ local function buildUpgrades()
 	local m = modal("Upgrades", 860, 560, "УЛУЧШЕНИЯ", nil)
 	ui.upgrades = m
 	label(
-		"Навсегда. Покупаются за Утиль, который приносит каждая вылазка.",
+		"Навсегда. Покупаются за Ксенит, который приносит каждая вылазка.",
 		{
 			Position = UDim2.fromOffset(28, 60),
 			Size = UDim2.new(1, -56, 0, 20),
@@ -2192,13 +2204,16 @@ local function buildResults()
 	local body = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(900, 740),
+		Size = UDim2.fromOffset(1200, 740),
 		ZIndex = 21,
 		Parent = r,
 	})
 	ui.resScale = new("UIScale", { Parent = body })
+	-- DD-082 (owner playtest: «много всего, непонятно куда смотреть»): the centre column keeps what
+	-- matters — the verdict, the loot, what opened, what to do next; the numbers sit in a side column.
 	ui.resList = new("Frame", {
-		Size = UDim2.new(1, 0, 1, -110),
+		Position = UDim2.fromOffset(230, 0),
+		Size = UDim2.new(0, 740, 1, -110),
 		ZIndex = 21,
 		Parent = body,
 		List = { HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 14) },
@@ -2230,28 +2245,43 @@ local function buildResults()
 		ZIndex = 22,
 		Parent = ui.resList,
 	})
-	ui.resStats = new("Frame", {
-		LayoutOrder = 4,
-		Size = UDim2.new(1, 0, 0, 100),
+	-- the side column: the run's numbers, then the build (weapon + every card with its rank)
+	ui.resSide = new("Frame", {
+		Position = UDim2.fromOffset(0, 130),
+		Size = UDim2.fromOffset(200, 560),
 		ZIndex = 22,
-		Parent = ui.resList,
-		List = {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			Padding = UDim.new(0, 14),
-		},
+		Parent = body,
+		List = { Padding = UDim.new(0, 8) },
 	})
-	-- the run in one line: weapon (and its evolution), every upgrade taken with its rank
-	ui.resBuild = new("Frame", {
-		LayoutOrder = 5,
-		Size = UDim2.new(1, 0, 0, 46),
+	label("ИТОГИ", {
+		LayoutOrder = 0,
+		Size = UDim2.new(1, 0, 0, 16),
+		FontFace = F.head,
+		TextSize = 12,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 22,
-		Parent = ui.resList,
+		Parent = ui.resSide,
+	})
+	ui.resStats = new("Frame", {
+		LayoutOrder = 1,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		ZIndex = 22,
+		Parent = ui.resSide,
+		List = { Padding = UDim.new(0, 6) },
+	})
+	ui.resBuild = new("Frame", {
+		LayoutOrder = 2,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		ZIndex = 22,
+		Parent = ui.resSide,
 		List = {
 			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 8),
+			Padding = UDim.new(0, 6),
+			Wraps = true,
 		},
 	})
 	ui.resReward = Theme.panel(
@@ -2314,7 +2344,7 @@ local function buildResults()
 		"Frame",
 		{ Position = UDim2.fromOffset(14, 20), Size = UDim2.fromOffset(44, 44), ZIndex = 23, Parent = ui.resGoal }
 	)
-	label(
+	ui.resGoalHead = label(
 		"ДАЛЬШЕ",
 		{
 			Position = UDim2.fromOffset(70, 8),
@@ -2421,32 +2451,34 @@ end
 
 local function statTile(iconName: string, title: string, value: string, color: Color3, order: number)
 	local t = Theme.panel({
-		Size = UDim2.fromOffset(150, 96),
-		CornerRadius = 18,
+		Size = UDim2.new(1, 0, 0, 46),
+		CornerRadius = 14,
 		LayoutOrder = order,
 		ZIndex = 22,
 		Parent = ui.resStats,
 	})
 	icon(
 		iconName,
-		24,
+		20,
 		color,
-		{ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), ZIndex = 23, Parent = t }
+		{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), ZIndex = 23, Parent = t }
 	)
 	local v = label(value, {
-		Position = UDim2.fromOffset(0, 40),
-		Size = UDim2.new(1, 0, 0, 30),
+		Position = UDim2.fromOffset(42, 4),
+		Size = UDim2.new(1, -50, 0, 22),
 		FontFace = F.display,
-		TextSize = 26,
+		TextSize = 19,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 23,
 		Parent = t,
 	})
 	label(title, {
-		Position = UDim2.fromOffset(0, 70),
-		Size = UDim2.new(1, 0, 0, 16),
+		Position = UDim2.fromOffset(42, 26),
+		Size = UDim2.new(1, -50, 0, 14),
 		FontFace = F.head,
 		TextSize = 10,
 		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 23,
 		Parent = t,
 	})
@@ -2499,7 +2531,7 @@ end
 -- A chip in the results build strip: icon disc + short text; pops in after the stats.
 local function buildChip(iconName: string, text: string, color: Color3, order: number)
 	local chip = new("Frame", {
-		Size = UDim2.fromOffset(0, 40),
+		Size = UDim2.fromOffset(0, 34),
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundColor3 = C.ink,
 		BackgroundTransparency = 0.25,
@@ -2526,7 +2558,7 @@ local function buildChip(iconName: string, text: string, color: Color3, order: n
 	local disc = new(
 		"Frame",
 		{
-			Size = UDim2.fromOffset(30, 30),
+			Size = UDim2.fromOffset(26, 26),
 			BackgroundColor3 = color,
 			BackgroundTransparency = 0.8,
 			Corner = UDim.new(1, 0),
@@ -2560,6 +2592,35 @@ local function buildChip(iconName: string, text: string, color: Color3, order: n
 	task.delay(0.35 + order * 0.05, function()
 		tween(sc, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
 	end)
+end
+
+-- After a loss (DD-082): what would have helped, from what the player can do right now.
+local function defeatTip(result): (string, string, string)
+	local scrap = profile and profile.scrap or 0
+	local best = nil
+	for _, id in Defs.PerkOrder do
+		local def = Defs.Perks[id]
+		local rank = (profile and profile.perks and profile.perks[id]) or 0
+		local cost = def.costs[rank + 1]
+		if cost and cost <= scrap and (not best or cost < best.cost) then
+			best = { def = def, cost = cost, rank = rank }
+		end
+	end
+	if best then
+		return "heart",
+			"В ОРУЖЕЙНОЙ: «" .. best.def.name .. "»",
+			string.format(
+				"Хватает ксенита (◆ %d): %s — навсегда, в каждой вылазке.",
+				best.cost,
+				best.def.stat(best.rank + 1)
+			)
+	end
+	if (result.mode or "hunt") == "siege" or result.op == "STRIKE" then
+		return "crosshair", "ПОСТАВЬ ЕЩЁ ТУРЕЛЕЙ", "Каждая турель у бура стреляет вместе с тобой. Верстак в убежище."
+	end
+	return "burst",
+		"НЕ СТОЙ НА МЕСТЕ",
+		"Рой окружает того, кто стоит. Рывок (ПРОБЕЛ) — сквозь толпу; бери карты урона по площади."
 end
 
 -- Count a label up from 0 for the "earned" feeling.
@@ -2597,7 +2658,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	Menus.hideOffer()
 	ui.results.Visible = true
 	setBlur(18)
-	ui.resScale.Scale = viewportScale(Vector2.new(940, 780))
+	ui.resScale.Scale = viewportScale(Vector2.new(1240, 780))
 	local op = Ops.get(result.op)
 	if first then
 		ui.resClicked = false
@@ -2734,7 +2795,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	-- reward
 	ui.resReward.Visible = reward ~= nil
 	if reward then
-		countUp(ui.resRewardAmount, reward.total + (reward.grant or 0), "+%s УТИЛЬ", 1.3)
+		countUp(ui.resRewardAmount, reward.total + (reward.grant or 0), "+%s КСЕНИТ", 1.3)
 		local parts = {}
 		local names = {
 			skull = "за убийства",
@@ -2809,7 +2870,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			"timer",
 			"БЕЗ НАГРАДЫ",
 			if reward.capped == "pair"
-				then "Этот бур уже приносил тебе утиль сегодня"
+				then "Этот бур уже приносил тебе ксенит сегодня"
 				else "Лимит налётов с наградой на сегодня: " .. Meta.RaidDailyCap,
 			C.dim,
 			k
@@ -2856,10 +2917,18 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		end
 	end
 	ui.resUnlocks.Visible = k > 0
-	-- DD-052: one nearest goal under the loot, so the next step is obvious before leaving the screen
-	local g = Goals.next(profile)
-	ui.resGoal.Visible = g ~= nil
-	if g then
+	-- DD-052: one nearest goal under the loot, so the next step is obvious before leaving the screen;
+	-- after a loss, how to come back stronger instead (DD-082)
+	local g = if result.victory then Goals.next(profile) else nil
+	ui.resGoal.Visible = g ~= nil or not result.victory
+	ui.resGoalHead.Text = if result.victory then "ДАЛЬШЕ" else "КАК СТАТЬ СИЛЬНЕЕ"
+	if not result.victory then
+		local ic, title, text = defeatTip(result)
+		ui.resGoalTitle.Text = title
+		ui.resGoalText.Text = text
+		clear(ui.resGoalIcon)
+		Icons.disc(ic, 44, C.gold, 23).Parent = ui.resGoalIcon
+	elseif g then
 		ui.resGoalTitle.Text = g.title
 		ui.resGoalText.Text = g.text
 		clear(ui.resGoalIcon)
@@ -2896,7 +2965,7 @@ local function buildNotes()
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromScale(0, 1),
 		FontFace = F.display,
-		TextSize = 17,
+		TextSize = 22,
 		ZIndex = 9,
 		Parent = ui.note,
 	})

@@ -104,11 +104,11 @@ local rejected = 0
 local seedCounter = os.time() % 100000
 local builtMap = nil
 
+Arena.onClear = Home.build
 local function buildArena(mapId: string)
 	if builtMap ~= mapId then
 		builtMap = mapId
-		Arena.build(Maps.get(mapId))
-		Home.build() -- the arena rebuild clears all terrain, the grove's too
+		Arena.build(Maps.get(mapId)) -- clears all terrain; Arena.onClear rebuilds the grove's at once
 	end
 end
 
@@ -1106,6 +1106,18 @@ if RunService:IsStudio() then
 		pushProfile(player)
 		return true
 	end
+	-- the hero's fall (DD-082) without waiting for the swarm: no saving shield, one big hit
+	function handlers.devDie(player: Player)
+		local p = participant(player)
+		if not p or not world then
+			return false
+		end
+		p.newbie = false
+		p.iframeUntil, p.graceUntil = 0, 0
+		world.t = math.max(world.t, Defs.Run.SafeSeconds + 0.1)
+		world:hurtPlayer(p, p.hp + p.maxHp * 10, p.x + 4, p.z, nil)
+		return true
+	end
 	function handlers.devSkip(player: Player, seconds)
 		if not world or not finite(seconds) then
 			return false
@@ -1447,7 +1459,20 @@ local function publish()
 	end
 end
 
+local fallClock = 0
 RunService.Heartbeat:Connect(function(dt)
+	-- safety net at home: anyone who drops under the shelter ground is put back in the yard
+	fallClock += dt
+	if fallClock > 1 and (mode == "HUB" or mode == "LOBBY") then
+		fallClock = 0
+		for _, player in Players:GetPlayers() do
+			local root = rootOf(player)
+			if root and root.Position.Y < -30 then
+				root.AssemblyLinearVelocity = Vector3.zero
+				task.spawn(toHub, player)
+			end
+		end
+	end
 	if mode == "HUB" then
 		for _, sq in squads:all() do
 			if sq.launching then

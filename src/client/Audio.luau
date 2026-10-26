@@ -64,6 +64,8 @@ local CUES = {
 	evolve = { PSE .. "9116384485", 0.8, 0.9, 0, 2, "sfx", { 0.08, 1.6 } },
 	coil = { PSE .. "9125446705", 0.5, 1.0, 0.05, 3, "sfx" },
 	banner = { PSE .. "9113867372", 0.35, 1.0, 0, 4, "ui" },
+	-- the drill's machine-gun turret: a short belt-fed burst per server volley (PSE «Machine Gun Bursts 12»)
+	turretBurst = { PSE .. "9116361236", 0.42, 1.0, 0.06, 5, "sfx", { 0, 0.4 } },
 	step = { S .. "action_footsteps_plastic.mp3", 0.0, 1, 0, 1, "sfx" },
 }
 
@@ -193,14 +195,17 @@ function Audio.loop(key: string, id: string, volume: number, pitch: number)
 	end
 end
 
--- Music beds (DD-036): the crater's ambience under everything, a fight track during hunts. Both are
--- Roblox-licensed library assets (Pro Sound Effects "Electric Forest", APM "Independant Fight").
+-- Music beds (DD-036, DD-082), Roblox-licensed library assets. The crater's ambience under a fight;
+-- a driving action-rock track in a fight (APM «Hot Chase (A)», 159 bpm), heavy metal while a boss is up
+-- (APM «No Compromise»), warm acoustic guitar at home to rest (APM «Campfire Embers Light Mix»).
 local BEDS = {
-	ambience = { PSE .. "9114244977", 0.32 },
-	fight = { PSE .. "9042560019", 0.22 },
+	ambience = { PSE .. "9114244977", 0.22 },
+	fight = { "rbxassetid://1846216372", 0.3 },
+	boss = { "rbxassetid://9038251821", 0.32 },
+	home = { "rbxassetid://9040514814", 0.3 },
 }
 local beds = {}
-local bedTarget = { ambience = 0, fight = 0 }
+local bedTarget = { ambience = 0, fight = 0, boss = 0, home = 0 }
 local duckUntil = 0
 
 -- One-shot music cues over the beds (DD-075), APM library assets licensed for Roblox: the intro's slow
@@ -209,6 +214,7 @@ local STINGS = {
 	intro = { "rbxassetid://9042968300", 0.5 }, -- «Superior Human Sting 1»
 	victory = { "rbxassetid://83315768373322", 0.6 }, -- «Conquering Heroes Link»
 	home = { "rbxassetid://9047296345", 0.45 }, -- «Welcome Home Sting»
+	reveal = { "rbxassetid://9039981895", 0.6 }, -- «Hellish»: a boss / leader enters (DD-082)
 }
 local stingSounds = {}
 function Audio.sting(name: string, duck: number?)
@@ -234,6 +240,11 @@ function Audio.sting(name: string, duck: number?)
 	duckUntil = os.clock() + (duck or 9)
 end
 
+-- Hold the music down for a moment (the hero's fall, DD-082).
+function Audio.duck(seconds: number)
+	duckUntil = math.max(duckUntil, os.clock() + seconds)
+end
+
 function Audio.stopStings()
 	for _, s in stingSounds do
 		s:Stop()
@@ -253,8 +264,11 @@ function Audio.preloadStings()
 end
 
 function Audio.setMusic(state: string)
-	bedTarget.ambience = if state == "run" then 0.45 else 1
-	bedTarget.fight = if state == "run" then 1 elseif state == "boss" then 1.25 else 0
+	local fighting = state == "run" or state == "boss"
+	bedTarget.ambience = if fighting then 1 else 0
+	bedTarget.fight = if state == "run" then 1 else 0
+	bedTarget.boss = if state == "boss" then 1 else 0
+	bedTarget.home = if fighting then 0 else 1
 end
 function Audio.updateMusic(dt: number)
 	for key, def in BEDS do

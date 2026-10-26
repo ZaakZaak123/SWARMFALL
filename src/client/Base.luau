@@ -142,7 +142,7 @@ local DECOR = { -- { art, height, x, z, yaw }
 	{ "BIRCH", 14, 28, 44, 1.1 },
 	{ "BIRCH", 16, -60, 20, 2.2 },
 	{ "BIRCH", 15, 62, -26, 0.6 },
-	{ "BIRCH", 13, -48, -30, 1.9 },
+	{ "BIRCH", 13, -30, -60, 1.9 }, -- (DD-082: off the line from the courtyard to the cave)
 	{ "BIRCH", 14, 50, -38, 2.8 },
 	{ "BIRCH", 17, -18, 56, 0.8 },
 	{ "BUSH", 3.2, -20, 26, 0 },
@@ -548,15 +548,14 @@ local function buildTerminal()
 		beam,
 		"reactor",
 		"КАНАТКА С БУРА",
-		"Утиль из воронки — в убежище",
+		"Ксенит из воронки — в убежище",
 		C.lime,
 		3.2
 	)
-	-- from far beyond the grove (towards the funnel) over one post to the frame
-	local far, post = Cableway.HOME_FAR, Cableway.HOME_POST
-	cable = Cableway.new(folder, { W(far.X, far.Y, far.Z), W(post.X, post.Y, post.Z), W(t.x, 8.4, t.z) }, {
-		posts = { [1] = W(far.X, 0, far.Z), [2] = W(post.X, 0, post.Z) },
-	})
+	-- out of the cave at the foot of the hill (the tunnel from the funnel, DD-082) to the frame
+	local mouth = Cableway.MOUTH_B
+	Cableway.cave(folder, W(mouth.X, 0, mouth.Z), Cableway.FACING_B)
+	cable = Cableway.new(folder, { W(mouth.X, Cableway.CABLE_H, mouth.Z), W(t.x, 8.4, t.z) }, {})
 end
 
 -- The stack of crates beside the terminal: more utility on hand, more crates.
@@ -583,7 +582,7 @@ local function setPile(scrap: number)
 	end
 end
 
--- A floating "+N УТИЛЬ" over the terminal as the last crate of a delivery lands.
+-- A floating "+N КСЕНИТ" over the terminal as the last crate of a delivery lands.
 local function deliveryPop(amount: number)
 	local at = new("Attachment", { Parent = workspace.Terrain })
 	at.WorldPosition = W(TERMINAL.x, 11, TERMINAL.z)
@@ -592,7 +591,7 @@ local function deliveryPop(amount: number)
 		{ Size = UDim2.fromOffset(240, 44), AlwaysOnTop = true, LightInfluence = 0, Adornee = at, Parent = at }
 	)
 	local l = label(
-		"+" .. Theme.commas(amount) .. " УТИЛЬ",
+		"+" .. Theme.commas(amount) .. " КСЕНИТ",
 		{ Size = UDim2.fromScale(1, 1), FontFace = F.display, TextSize = 28, TextColor3 = C.pink, Parent = b }
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 2.5, Parent = l })
@@ -875,6 +874,163 @@ local function showGoalMarker(pos: Vector3, color: Color3, title: string, sub: s
 	beam.CFrame = CFrame.new(pos.X, 30, pos.Z) * CFrame.Angles(0, 0, math.rad(90))
 	-- the spot under the beam already carries its own sign
 	goalMarker = { holder = holder, ring = ring, beam = beam, key = key }
+end
+
+-- Leading the player (DD-082, owner playtest: «каждый шаг подсвечивать и вести игрока к действию»).
+-- Where the current goal happens in the shelter.
+local function goalTarget(): Vector3?
+	if not goal then
+		return nil
+	end
+	if (goal.station == "home" or goal.station == "swarm") and goal.spot and SPOTS[goal.spot] then
+		local sd = SPOTS[goal.spot]
+		return W(sd.x, 0, sd.z)
+	elseif goal.station == "build" then
+		return W(SPOTS.WORKBENCH.x, 0, SPOTS.WORKBENCH.z)
+	elseif goal.station == "launch" then
+		return W(0, 0, -30)
+	elseif goal.station == "armory" then
+		return W(STATIONS[1].x, 0, STATIONS[1].z)
+	end
+	return nil
+end
+
+-- A lime chevron on the ground by the hero, pointing the way to the goal.
+local arrow = nil
+local function arrowModel(): Model
+	if arrow and arrow.Parent then
+		return arrow
+	end
+	arrow = new("Model", { Name = "GoalArrow" })
+	for k = 0, 1 do
+		for _, side in { -1, 1 } do
+			local p = part({
+				Name = "Arm",
+				Size = Vector3.new(0.45, 0.2, 2.2),
+				Color = C.lime,
+				Material = Enum.Material.Neon,
+				Transparency = 0.1 + k * 0.35,
+				Parent = arrow,
+			})
+			p:SetAttribute("Off", Vector3.new(side * 0.62, 0, 0.45 + k * 1.9))
+			p:SetAttribute("Yaw", side * math.rad(34))
+		end
+	end
+	arrow.Parent = folder
+	return arrow
+end
+
+local revealedKey = nil -- the goal the camera last flew to
+local activeFor = 0 -- seconds the player has been walking the shelter (a fly-over waits for them to settle)
+local revealGui = nil
+local function revealCaption(title: string, sub: string, show: boolean)
+	if not revealGui then
+		revealGui = new("ScreenGui", {
+			Name = "SporeGoalReveal",
+			ResetOnSpawn = false,
+			IgnoreGuiInset = true,
+			DisplayOrder = 40,
+			Parent = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui"),
+		})
+		local plate = new("Frame", {
+			Name = "Plate",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.8),
+			Size = UDim2.new(1, 0, 0, 140),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Parent = revealGui,
+		})
+		new("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.25, 0.3),
+				NumberSequenceKeypoint.new(0.75, 0.3),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Parent = plate,
+		})
+		label("ДАЛЬШЕ", {
+			Name = "Tag",
+			Position = UDim2.new(0, 0, 0, 14),
+			Size = UDim2.new(1, 0, 0, 20),
+			FontFace = F.head,
+			TextSize = 16,
+			TextColor3 = C.lime,
+			TextTransparency = 1,
+			Parent = plate,
+		})
+		label("", {
+			Name = "Title",
+			Position = UDim2.new(0, 0, 0, 36),
+			Size = UDim2.new(1, 0, 0, 44),
+			FontFace = F.display,
+			TextSize = 38,
+			TextTransparency = 1,
+			Parent = plate,
+		})
+		label("", {
+			Name = "Sub",
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 84),
+			Size = UDim2.new(0.7, 0, 0, 48),
+			FontFace = F.bodyBold,
+			TextSize = 20,
+			TextWrapped = true,
+			TextTransparency = 1,
+			Parent = plate,
+		})
+	end
+	local plate = revealGui:FindFirstChild("Plate") :: Frame
+	if show then
+		(plate:FindFirstChild("Title") :: TextLabel).Text = title;
+		(plate:FindFirstChild("Sub") :: TextLabel).Text = sub
+	end
+	local k = if show then 0 else 1
+	tween(plate, 0.35, { BackgroundTransparency = if show then 0.2 else 1 })
+	for _, n in { "Tag", "Title", "Sub" } do
+		tween(plate:FindFirstChild(n), 0.35, { TextTransparency = k })
+	end
+end
+
+-- The camera flies to the place of a new goal, holds while its title reads, and flies back.
+local REVEAL_TIME = 4.6
+local function startReveal(target: Vector3, hero: Vector3)
+	local cam = workspace.CurrentCamera
+	local from = cam.CFrame
+	local flat = Vector3.new(target.X - hero.X, 0, target.Z - hero.Z)
+	local dir = if flat.Magnitude > 1 then flat.Unit else Vector3.zAxis
+	local right = dir:Cross(Vector3.yAxis)
+	local eye = target - dir * 20 + right * 8 + Vector3.new(0, 13, 0)
+	local shot = CFrame.lookAt(eye, target + Vector3.new(0, 3, 0))
+	local t = 0
+	revealCaption(goal and goal.title or "", goal and goal.text or "", true)
+	Audio.play("level", 0.7, 1.3)
+	scene = {
+		step = function(dt: number): CFrame?
+			t += dt
+			if game:GetService("RunService"):IsStudio() and workspace:GetAttribute("SwarmHoldScene") then
+				t = math.min(t, 2) -- Studio checks: hold the shot for a screenshot
+			end
+			if t >= REVEAL_TIME then
+				scene = nil
+				revealCaption("", "", false)
+				return nil
+			end
+			if t > REVEAL_TIME - 0.9 and t - dt <= REVEAL_TIME - 0.9 then
+				revealCaption("", "", false)
+			end
+			local k = 1
+			if t < 1 then
+				k = t
+			elseif t > REVEAL_TIME - 0.9 then
+				k = (REVEAL_TIME - t) / 0.9
+			end
+			k = k * k * (3 - 2 * k)
+			return from:Lerp(shot * CFrame.new(0, 0, -t * 0.6), k)
+		end,
+	}
 end
 
 -- Showcase row (DD-054) -----------------------------------------------------------------------------------
@@ -1416,8 +1572,8 @@ local function buildHud(playerGui: PlayerGui)
 	local UIS = game:GetService("UserInputService")
 	ui.camHint = label(
 		if UIS.TouchEnabled and not UIS.MouseEnabled
-			then "Проведи пальцем справа — повернуть камеру  ·  щипок — ближе/дальше"
-			else "ПКМ или Z / X — повернуть камеру  ·  колесо — ближе/дальше",
+			then "Проведи пальцем — повернуть камеру  ·  щипок — ближе/дальше  ·  кнопка — прыжок"
+			else "Зажми ПКМ — повернуть камеру  ·  колесо — ближе/дальше  ·  ПРОБЕЛ — прыжок",
 		{
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -4),
@@ -1598,6 +1754,21 @@ function Base.refresh()
 	elseif goal and goal.station == "swarm" and goal.spot and SPOTS[goal.spot] then
 		local sd = SPOTS[goal.spot]
 		showGoalMarker(W(sd.x, 0, sd.z), sd.color, "СВОЙ РОЙ", "Выведи первую стаю", "hive")
+	elseif goal and goal.station == "launch" then
+		-- DD-082: the sortie gate is a place to walk to as well, not only a button
+		local op = goal.op and Ops.get(goal.op)
+		showGoalMarker(
+			W(0, 0, -30),
+			if goal.mode == "siege" then C.orange else C.lime,
+			if goal.mode == "siege"
+				then "ОБОРОНА БУРА"
+				elseif op then "ВЫЛАЗКА " .. op.index
+				else "ВЫЛАЗКА",
+			if op then op.name else "",
+			"play"
+		)
+	elseif goal and goal.station == "armory" then
+		showGoalMarker(Base.point("ARMORY"), C.gold, "ОРУЖЕЙНАЯ", "", "swords")
 	elseif goal and goal.station == "build" and f.outpost then
 		local sd = SPOTS.WORKBENCH
 		local def = goal.structure and Meta.Structures[goal.structure]
@@ -1725,7 +1896,7 @@ function Base.refresh()
 	if not amReady and goal and not visitHome then
 		if goal.key == "sting" and goal.station == "build" then
 			ui.playLabel.Text = "СОБРАТЬ"
-			ui.playSub.Text = "«ЖАЛО» ДЛЯ БУРА · ◆ " .. Meta.Structures.STING.cost[1]
+			ui.playSub.Text = "ТУРЕЛЬ ДЛЯ БУРА · ◆ " .. Meta.Structures.STING.cost[1]
 		elseif goal.key == "strike" then
 			ui.playSub.Text = "ЗАЩИТИ БУР · ПЕРВЫЙ НАТИСК"
 		end
@@ -1971,6 +2142,32 @@ function Base.update(dt: number, _root: Vector3?)
 			sp.model:PivotTo(sp.cf * CFrame.Angles(0, now * sp.speed, 0))
 		end
 	end
+	-- the way to the goal: a new goal gets a camera fly-over, then a chevron at the hero's feet points
+	local target = goalTarget()
+	activeFor = if active and not scene then activeFor + dt else 0
+	if activeFor > 1.2 and _root and goal and target and (profile and (profile.runs or 0) > 0) then
+		if goal.key ~= revealedKey and not visitHome then
+			revealedKey = goal.key
+			startReveal(target, _root)
+		end
+	end
+	local flat = if _root and target then Vector3.new(target.X - _root.X, 0, target.Z - _root.Z) else nil
+	if active and flat and flat.Magnitude > 10 and not scene and not visitHome then
+		local m = arrowModel()
+		local dir = flat.Unit
+		local base = CFrame.lookAt(
+			Vector3.new(_root.X, 0, _root.Z) + dir * (3.2 + math.sin(now * 4) * 0.4),
+			Vector3.new(_root.X, 0, _root.Z) + dir * 10
+		)
+		for _, a in m:GetChildren() do
+			local off = a:GetAttribute("Off") :: Vector3
+			a.CFrame = base * CFrame.new(off.X, 0.3, -off.Z) * CFrame.Angles(0, a:GetAttribute("Yaw") :: number, 0)
+		end
+	elseif arrow then
+		for _, a in arrow:GetChildren() do
+			a.CFrame = CFrame.new(0, -500, 0)
+		end
+	end
 	if goalMarker then
 		local pulse = 0.5 + math.sin(now * 3.2) * 0.5
 		setRing(goalMarker.ring, pulse * 0.4, 3.6 + pulse * 0.8)
@@ -2113,6 +2310,16 @@ function Base.camera(dt: number, hero: Vector3): CFrame
 	return CFrame.lookAt(camPos + dir * orbit.dist + ahead, camPos + ahead)
 end
 
+-- The base walks with the Roblox camera now (owner playtest: «свободный бег, как в обычном роблоксе»).
+-- This only retires the hint once the player has had time to use it.
+local hintT = 0
+function Base.freeCamera(dt: number)
+	hintT += dt
+	if ui.camHint and ui.camHint.Visible and hintT > 14 then
+		ui.camHint.Visible = false
+	end
+end
+
 -- Back to the opening framing (a new visit to the shelter starts from the familiar view).
 function Base.resetCamera()
 	camPos = nil
@@ -2130,6 +2337,9 @@ function Base.sceneActive(): boolean
 end
 
 function Base.sceneBegin()
+	if scene and not scene.story then
+		revealCaption("", "", false) -- a goal fly-over gives way to a story scene
+	end
 	scene = { story = true }
 	if cable then
 		cable:clearCrates() -- the scene's own pallet rides this cable
@@ -2143,6 +2353,7 @@ function Base.sceneEnd()
 	scene = nil
 	clearGoalMarker()
 	Base.refresh()
+	revealedKey = goal and goal.key -- the scene ended on the next step itself: no second fly-over
 end
 
 -- Named places of the shelter in world space.

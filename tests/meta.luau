@@ -173,7 +173,7 @@ do
 	local r = out.result
 	print(string.format("  strike: %s (%s) at %s  kills %d  level %d  bur %s", if r.victory then "VICTORY" else "DEFEAT", r.reason, fmt(r.time), r.kills, r.level, if r.reactor then math.floor(r.reactor * 100) .. "%" else "-"))
 	check(r.victory and r.time >= 45 and r.time <= 75, "«Первый натиск» is a won defence of about a minute (45–75 s)")
-	check(r.level == 1, "no cards in «Первый натиск» (it is a scene, not a run)")
+	check(r.level == 3, "two cards in «Первый натиск» (DD-082: a fight without a choice felt broken)")
 	-- A player who just stands at the base spawn: the turret alone must not lose the lesson.
 	local w = World.new({ seed = 5, players = { { id = 1, name = "IDLE", weapon = "W_ARC_RIFLE", s01 = false } }, opDef = Ops.makeFirstStrike(), structures = first })
 	w:setPlayerPosition(1, 0, -58)

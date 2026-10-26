@@ -1,5 +1,5 @@
 --!nonstrict
--- Persistent player profile (Утиль — ключ `scrap`, perks, unlocks). Server-only, DataStore-backed with retries.
+-- Persistent player profile (Ксенит — ключ `scrap`, perks, unlocks). Server-only, DataStore-backed with retries.
 -- If the DataStore is unavailable (e.g. Studio without API access) the profile runs in session-only
 -- "offline" mode: nothing is ever written, so a failed load can never wipe real data.
 
@@ -335,7 +335,7 @@ function Profile.hasBlueprint(player: Player, weaponId: string): boolean
 	return (d.ops[opId] or 0) >= 2 or (d.wins_by_op and d.wins_by_op[opId] or 0) > 0
 end
 
--- Modules (D03 §3): craft once (mastery gate + previous tier of the same branch + Утиль), then equip as
+-- Modules (D03 §3): craft once (mastery gate + previous tier of the same branch + Ксенит), then equip as
 -- CORE or ADAPTER. Owned and equipped are separate states.
 function Profile.craftModule(player: Player, id: string): boolean
 	local d = Profile.get(player)
@@ -450,7 +450,7 @@ function Profile.buyTech(player: Player, id: string): boolean
 	return true
 end
 
--- Permanent form: owned weapon + M10 with it + its component + Утиль, crafted once.
+-- Permanent form: owned weapon + M10 with it + its component + Ксенит, crafted once.
 function Profile.formStatus(player: Player, evoId: string)
 	local d = Profile.get(player)
 	local evo = Defs.Evolutions[evoId]
@@ -529,7 +529,7 @@ function Profile.features(d)
 	local hasTurret = d.outpost ~= nil and next(d.outpost.slots or {}) ~= nil
 	return {
 		outpost = (won.O01 or 0) > 0 and home.WORKBENCH == true,
-		siege = hasTurret,
+		siege = hasTurret and home.RADIO == true, -- the first defence runs from its goal; the tab waits for the radio
 		siegeLadder = home.RADIO == true,
 		swarm = (won.O03 or 0) > 0 and home.LAB == true,
 		raids = (won.O04 or 0) > 0,

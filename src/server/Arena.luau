@@ -40,6 +40,7 @@ local PAL = {
 }
 
 local Arena = {}
+Arena.onClear = nil :: (() -> ())? -- set by Main: rebuilds the shelter ground right after the terrain clear
 
 -- Map coordinates (east = +X) -> world (east renders on screen-right, so X is mirrored like Maps).
 local function W(x: number, y: number, z: number): Vector3
@@ -217,6 +218,11 @@ end
 -- Terrain -------------------------------------------------------------------------------------------------
 local function paintTerrain(map)
 	terrain:Clear()
+	-- the clear wipes the shelter's ground too: put it back before the first yield, or anyone standing
+	-- at home falls through while the crater is painted
+	if Arena.onClear then
+		Arena.onClear()
+	end
 	-- Readability first (DD-047): the walkable floor is one calm, mid-value, low-saturation surface so
 	-- the warm swarm, pickups and telegraphs own the colour; the rim is clearly darker so the edge of
 	-- the arena reads at a glance. Ground/Grass/Basalt/Slate carry generated variants: tint only shades.

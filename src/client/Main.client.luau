@@ -156,7 +156,7 @@ Base.init(playerGui, send, {
 			if def and (prof.scrap or 0) < def.cost then
 				HubMenus.toast(
 					string.format(
-						"Не хватает утиля: нужно %d, у тебя %d. Утиль приносят вылазки.",
+						"Не хватает ксенита: нужно %d, у тебя %d. Ксенит приносят вылазки.",
 						def.cost,
 						prof.scrap or 0
 					),
@@ -300,6 +300,7 @@ local function myRoot(): (BasePart?, Humanoid?)
 end
 
 -- Character setup ---------------------------------------------------------------------------------
+local jumpOn = false -- jumping is allowed on the base only
 local function onCharacter(char: Model)
 	local hum = char:WaitForChild("Humanoid", 5)
 	local root = char:WaitForChild("HumanoidRootPart", 5)
@@ -308,6 +309,7 @@ local function onCharacter(char: Model)
 	end
 	hum.AutoRotate = false
 	hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	jumpOn = false
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	if heroOutline then
@@ -345,8 +347,23 @@ if player.Character then
 end
 
 -- Actions -----------------------------------------------------------------------------------------
+local reveal = nil -- a boss / leader entrance the camera is looking at (DD-082)
+local fallen = nil -- DD-082: the hero's fall — a slow close-up before the results ease in
+local FALL_TIME = 3.2
+local cameraHinted = false -- the first fight names the three camera views once (DD-082)
+local wasAlive = false
+local function falling(): boolean
+	if fallen and RunService:IsStudio() and workspace:GetAttribute("SwarmHoldScene") then
+		return true
+	end
+	return fallen ~= nil and os.clock() - fallen.t0 < FALL_TIME
+end
 local function playing(): boolean
-	if not (mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.paused == "") or Story.active() then
+	if
+		not (mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.paused == "")
+		or Story.active()
+		or reveal
+	then
 		return false
 	end
 	-- A newcomer's first hunt waits for their first move or shot (DD-024): that input must be possible.
@@ -454,7 +471,7 @@ Controls.actions.view = function()
 		return
 	end
 	local m = CameraRig.cycle(Controls.aimX, Controls.aimZ)
-	Hud.setView(m, CameraRig.ModeIcons[m], CameraRig.ModeNames[m], Controls.device)
+	Hud.viewSwitched(m, CameraRig.ModeNames[m], Controls.device)
 	Audio.play("dash", 0.6, 0.7)
 end
 Hud.ui.view.Activated:Connect(function()
@@ -512,6 +529,7 @@ local storyChecked = false -- this run's opening scene (intro / arrival) was dec
 local function enterRun()
 	inRun = true
 	storyChecked = false
+	fallen, wasAlive, reveal = nil, false, nil
 	Hud.reset()
 	Menus.hideLobby()
 	Menus.hideResults()
@@ -757,7 +775,9 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 				send("tut", tutKey)
 			end)
 		end
-		if not Base.sceneActive() and not Story.active() then
+		-- the hero's fall plays first (it starts on the next frame when the death came with the result)
+		local fallNext = me ~= nil and not me.alive and wasAlive and not fallen
+		if not Base.sceneActive() and not Story.active() and not falling() and not fallNext then
 			Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)], info.camp)
 		end
 	end
@@ -1420,17 +1440,43 @@ handlers[E.TURRET] = function(ref, fx, fz, tx, tz, kind)
 	local color = if hostile then C.red else TURRET_COLOR[kind] or C.gold
 	local from = Vector3.new(fx, 3.2, fz)
 	local to = Vector3.new(tx, 1.4, tz)
-	if not hostile then
-		local m = outpostModels[ref]
-		if m and kind ~= 4 then
-			local yaw = math.atan2(-(tx - fx), -(tz - fz))
-			m:PivotTo(CFrame.new(fx, 0, fz) * CFrame.Angles(0, yaw, 0))
-		end
+	local flat = Vector3.new(tx - fx, 0, tz - fz)
+	local dir = if flat.Magnitude > 0.01 then flat.Unit else Vector3.zAxis
+	local m = if hostile then nil else outpostModels[ref]
+	if m and kind ~= 4 then
+		local yaw = math.atan2(-(tx - fx), -(tz - fz))
+		m:PivotTo(CFrame.new(fx, 0, fz) * CFrame.Angles(0, yaw, 0))
 	end
 	if kind == 1 then
-		Fx.tracer(from, to, color, 0.35, 0.08)
-		Fx.light(from, color, 10, 0.08)
-		Audio.at("rifleClick", from, 0.5, 1.4)
+		-- a machine gun (owner playtest): out of the barrel, not the middle, in a short belt-fed burst
+		local muzzleH, muzzleF = 3.2, 3.2
+		if m then
+			muzzleH = m:GetAttribute("MuzzleH") :: number?
+			muzzleF = m:GetAttribute("MuzzleF") :: number?
+			if not muzzleH or not muzzleF then
+				local ext = m:GetExtentsSize()
+				muzzleH, muzzleF = ext.Y * 0.68, math.min(ext.X, ext.Z) * 0.55
+				m:SetAttribute("MuzzleH", muzzleH)
+				m:SetAttribute("MuzzleF", muzzleF)
+			end
+		end
+		local muzzle = Vector3.new(fx, muzzleH, fz) + dir * muzzleF
+		local side = dir:Cross(Vector3.yAxis)
+		Audio.at("turretBurst", muzzle, 0.9)
+		for k = 0, 2 do
+			task.delay(k * 0.085, function()
+				local jitter = side * (math.random() - 0.5) * 1.6 + Vector3.yAxis * (math.random() - 0.5) * 0.8
+				local hit = to + jitter
+				local cf = CFrame.lookAt(muzzle, muzzle + dir) -- the flash wants the barrel along -Z
+				Fx.muzzle(cf, "star", color, 1.1, 0.045)
+				Fx.tracer(muzzle, hit, color, 0.22, 0.06)
+				Fx.impact("spark", hit, dir, color, 0.55)
+				if k == 1 then
+					Fx.light(muzzle, color, 14, 0.07)
+					Fx.shell(CFrame.lookAt(muzzle - dir * 1.2, muzzle - dir * 1.2 + side), "shell", color)
+				end
+			end)
+		end
 	elseif kind == 2 then
 		Fx.light(from + Vector3.yAxis * 2, color, 16, 0.2)
 		Audio.at("arc", from, 0.6, 0.9)
@@ -1536,9 +1582,88 @@ local function leaderDown(x: number, z: number, song: boolean?)
 	end
 end
 
+-- DD-082 (owner playtest: «появление босса ярче, эпичнее, камера на него и обратно»): the camera
+-- flies to whoever enters, the ground bursts red under it, then the camera comes back to the hero.
+local function bossReveal(x: number, z: number, big: boolean)
+	local at = Vector3.new(x, 0, z)
+	reveal = { at = at, t0 = os.clock(), big = big, from = nil }
+	local red = Color3.fromRGB(255, 64, 44)
+	Audio.sting("reveal", Codec.REVEAL_TIME + 0.8)
+	Audio.play("boom", 1, 0.55)
+	task.delay(0.5, function()
+		Audio.play("roar", 1, if big then 0.75 else 0.95)
+		Menus.whiteFlash(0.3)
+		CameraRig.shake(if big then 1 else 0.75)
+		Fx.shockwave(at, if big then 34 else 22, red, 0.8)
+		Fx.light(at + Vector3.new(0, 8, 0), red, if big then 120 else 70, 1.8)
+		Fx.debris(at + Vector3.new(0, 2, 0), if big then 18 else 10, Color3.fromRGB(60, 44, 30), 30)
+		for i = 1, 3 do
+			task.delay(i * 0.18, function()
+				Fx.ring(at + Vector3.new(0, 0.4, 0), 8 + i * (if big then 16 else 10), red, 0.6)
+			end)
+		end
+		for i = 1, 12 do
+			local a = i / 12 * math.pi * 2
+			Fx.emitWith(
+				"streak",
+				at + Vector3.new(0, 2, 0),
+				3,
+				1.3,
+				red,
+				Vector3.new(math.cos(a), 1.1, math.sin(a)).Unit
+			)
+		end
+	end)
+end
+-- The rig's own frame blended out to a shot of the entrance and back.
+local function revealCamera(rigCf: CFrame, hero: Vector3?): CFrame?
+	if not reveal then
+		return nil
+	end
+	local t = os.clock() - reveal.t0
+	if RunService:IsStudio() and workspace:GetAttribute("SwarmHoldScene") then
+		t = math.min(t, 1.4) -- Studio checks: hold the shot for a screenshot
+	end
+	local dur = Codec.REVEAL_TIME
+	if t >= dur then
+		reveal = nil
+		return nil
+	end
+	reveal.from = reveal.from or hero or rigCf.Position
+	-- follow the one who entered (the biggest body near where it came in), not the hole it came from
+	if not reveal.rec or not EnemyView.records[reveal.rec.id] then
+		local best, bestR = nil, 0
+		for _, rec in EnemyView.records do
+			local d = (Vector3.new(rec.dx, 0, rec.dz) - Vector3.new(reveal.at.X, 0, reveal.at.Z)).Magnitude
+			if d < 30 and rec.radius > bestR then
+				best, bestR = rec, rec.radius
+			end
+		end
+		reveal.rec = best
+	end
+	local at = if reveal.rec then Vector3.new(reveal.rec.dx, 0, reveal.rec.dz) else reveal.at
+	local flat = Vector3.new(at.X - reveal.from.X, 0, at.Z - reveal.from.Z)
+	local dir = if flat.Magnitude > 1 then flat.Unit else Vector3.zAxis
+	local back, up, lookUp = 30, 15, 4
+	if reveal.big then
+		back, up, lookUp = 46, 24, 9
+	end
+	local eye = at - dir * (back - 6 * t / dur) + Vector3.new(0, up, 0)
+	local shot = CFrame.lookAt(eye, at + Vector3.new(0, lookUp, 0))
+	local k = 1
+	if t < 0.55 then
+		k = t / 0.55
+	elseif t > dur - 0.6 then
+		k = (dur - t) / 0.6
+	end
+	return rigCf:Lerp(shot, k * k * (3 - 2 * k))
+end
+
 handlers[E.BOSS] = function(action, x, z)
 	if action == 6 or action == 7 then
 		leaderDown(x or 0, z or 0, action == 7)
+	elseif action == 8 or (action == 1 and x) then
+		bossReveal(x or 0, z or 0, action == 1)
 	elseif action == 5 then
 		Audio.play("roar", 0.7, 0.6)
 		CameraRig.shake(0.5)
@@ -1822,13 +1947,14 @@ local function animateArena(now: number)
 			local cf, size = reactorModel:GetBoundingBox()
 			local top = cf.Position + Vector3.new(0, size.Y * 0.3, -2)
 			-- Freight goes along the west edge (not through the hero's lane under the top-down camera)
-			-- and over the north-west rim: the shelter lies that way, up the same cable (DD-075).
+			-- into the cave in the north-west wall: the tunnel to the shelter (DD-075, DD-082).
 			local side = Cableway.ARENA_SIDE
-			local rim = Cableway.ARENA_RIM
+			local mouth = Cableway.MOUTH_A
+			Cableway.cave(decor, mouth, Cableway.FACING_A)
 			arenaCable = Cableway.new(
 				decor,
-				{ top, side, rim },
-				{ posts = { [2] = Vector3.new(side.X, 0, side.Z), [3] = Vector3.new(rim.X, 0, rim.Z) }, every = 4.5 }
+				{ top, side, mouth + Vector3.new(0, Cableway.CABLE_H, 0) },
+				{ posts = { [2] = Vector3.new(side.X, 0, side.Z) }, every = 4.5 }
 			)
 		end
 		DecorLod.scan(decor)
@@ -2025,7 +2151,9 @@ local function frame(dt: number)
 	local ranging = (mode == "LOBBY" or mode == "HUB") and Base.isActive() and Range.wants(root and root.Position)
 	Controls.enabled = (isPlaying and not choosing) or ranging
 	-- Camera look input first (mouse-look / stick-look in third & first person), then aim.
-	CameraRig.processInput(dt, Controls.device, isPlaying and not choosing and mode == "RUN", Controls.look)
+	if mode == "RUN" then -- at home the Roblox camera owns the mouse (right-drag turns it)
+		CameraRig.processInput(dt, Controls.device, isPlaying and not choosing, Controls.look)
+	end
 	local immersive = CameraRig.immersive() and isPlaying
 	local fx, fz = CameraRig.forward()
 	if root then
@@ -2042,6 +2170,13 @@ local function frame(dt: number)
 		local slow = if me and me.slow then me.slow else 0
 		hum.WalkSpeed = if walkingBase then Defs.Player.Speed elseif frozen then 0 else Defs.Player.Speed * (1 - slow)
 		hum.AutoRotate = walkingBase and not ranging
+		-- at home it is plain Roblox: run, jump, look around; in a fight the feet stay on the ground
+		if walkingBase ~= jumpOn then
+			jumpOn = walkingBase
+			hum.UseJumpPower = true
+			hum.JumpPower = if walkingBase then 46 else 0
+			hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, walkingBase)
+		end
 	end
 	if root and linearVelocity then
 		local dashing = now < dashUntil and isPlaying
@@ -2148,6 +2283,48 @@ local function frame(dt: number)
 		local lead = if Controls.device == "pc" then 1 else 0.6
 		local spectating = not (me and me.alive)
 		CameraRig.update(dt, "play", focus, Controls.aimX, Controls.aimZ, if isPlaying then lead else 0, spectating)
+		local revealCf = revealCamera(cam.CFrame, focus)
+		if revealCf then
+			cam.CFrame = revealCf
+		end
+		if not cameraHinted and run.op == "O01" and run.phase == "ACTIVE" and (run.t or 0) > 18 and isPlaying then
+			local prof = Menus.profile()
+			if prof and ((prof.winsByOp or {}).O01 or 0) == 0 then
+				cameraHinted = true
+				Hud.cameraHint(Controls.device)
+			end
+		end
+		-- the hero's fall: the camera sinks down to the body and slowly circles it
+		local alive = me ~= nil and me.alive
+		if wasAlive and not alive and not fallen then
+			local r0 = myRoot()
+			if r0 then
+				local look = cam.CFrame.LookVector
+				fallen = { t0 = os.clock(), at = r0.Position, yaw = math.atan2(-look.X, -look.Z) }
+				Audio.play("hurt", 1, 0.6)
+				Audio.play("killBig", 0.8, 0.5)
+				Audio.duck(FALL_TIME + 2)
+				CameraRig.shake(0.6)
+				Fx.ring(r0.Position - Vector3.new(0, 2.6, 0), 12, C.red, 0.9)
+				Fx.light(r0.Position, C.red, 30, 1.2)
+			end
+		end
+		wasAlive = alive
+		if alive then
+			fallen = nil -- revived by the squad
+		end
+		if fallen and run.result then
+			local t = os.clock() - fallen.t0
+			if RunService:IsStudio() and workspace:GetAttribute("SwarmHoldScene") then
+				t = math.min(t, 2.6)
+			end
+			local e = math.min(1, t / 1.1)
+			e = e * e * (3 - 2 * e)
+			local a = fallen.yaw + t * 0.28
+			local radius, height = 13 - 6 * e, 9 - 5 * e
+			local eye = fallen.at + Vector3.new(math.sin(a) * radius, height, math.cos(a) * radius)
+			cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(eye, fallen.at + Vector3.new(0, -0.6, 0)), e)
+		end
 		-- First person: fade the own body out as the camera slides into the head (gear stays visible).
 		local fp = CameraRig.firstPersonAmount()
 		-- Re-apply while in first person: accessories can stream in after the switch.
@@ -2171,10 +2348,18 @@ local function frame(dt: number)
 		if Menus.lobbyVisible() or not lroot then
 			CameraRig.update(dt, "lobby", nil, 0, 1, 0, nil, if lroot then lroot.Position else nil)
 		else
-			-- walking the base
-			cam.CameraType = Enum.CameraType.Scriptable
-			cam.FieldOfView = 55
-			cam.CFrame = Base.camera(dt, lroot.Position)
+			-- walking the base: the ordinary Roblox camera (right-drag / swipe turns it, the wheel zooms)
+			local _, lhum = myRoot()
+			if cam.CameraType ~= Enum.CameraType.Custom then
+				cam.CameraType = Enum.CameraType.Custom
+				cam.FieldOfView = 70
+				player.CameraMinZoomDistance = 6
+				player.CameraMaxZoomDistance = 60
+			end
+			if lhum and cam.CameraSubject ~= lhum then
+				cam.CameraSubject = lhum
+			end
+			Base.freeCamera(dt)
 		end
 	end
 	Story.update()
@@ -2200,6 +2385,12 @@ local function frame(dt: number)
 		local low = me and me.alive and me.hp / me.maxHp < 0.3
 		grade.Saturation = if od then 0.45 elseif low then -0.25 else 0.2
 		grade.TintColor = if od then Color3.fromRGB(255, 240, 215) else Color3.fromRGB(255, 238, 250)
+		if fallen and mode == "RUN" then
+			-- the fall drains the colour out of the world
+			local k = math.min(1, (os.clock() - fallen.t0) / 1.4)
+			grade.Saturation = grade.Saturation + (-0.85 - grade.Saturation) * k
+			grade.TintColor = grade.TintColor:Lerp(Color3.fromRGB(255, 196, 190), k)
+		end
 		if victoryGlow > 0 then
 			victoryGlow = math.max(0, victoryGlow - dt)
 			local k = math.min(1, victoryGlow / 1.2)

@@ -45,7 +45,7 @@ local rgb = Color3.fromRGB
 Meta.Structures = {
 	STING = {
 		id = "STING",
-		name = "ЖАЛО",
+		name = "ТУРЕЛЬ",
 		short = "Автотурель",
 		text = "Быстрые выстрелы по ближайшей цели.",
 		icon = "crosshair",
@@ -139,8 +139,8 @@ Meta.Structures = {
 	HARVEST = {
 		id = "HARVEST",
 		name = "СБОРЩИК",
-		short = "Утиль, пока тебя нет",
-		text = "Добывает утиль даже офлайн (до 12 часов).",
+		short = "Ксенит, пока тебя нет",
+		text = "Добывает ксенит даже офлайн (до 12 часов).",
 		icon = "star",
 		color = rgb(255, 86, 198),
 		kind = "harvest",
@@ -248,7 +248,7 @@ Meta.Anomalies = {
 	{ id = "GLASS", name = "СТЕКЛЯННЫЕ ПАНЦИРИ", text = "Враги хрупкие, но их вдвое больше", color = rgb(150, 220, 255), icon = "burst", hp = 0.6, spawn = 1.7, reward = 1.15 },
 	{ id = "ELITE", name = "ЭЛИТНАЯ СТАЯ", text = "Особых тварей больше обычного", color = rgb(255, 80, 120), icon = "elite", specials = 1.8, reward = 1.25 },
 	{ id = "HASTE", name = "ГОЛОДНЫЙ РОЙ", text = "Рой быстрее на 20%", color = rgb(255, 120, 56), icon = "dash", speed = 1.2, reward = 1.2 },
-	{ id = "BLOOD_MOON", name = "КРОВАВАЯ ЛУНА", text = "Больше утиля за всё", color = rgb(255, 86, 198), icon = "star", reward = 1.4 },
+	{ id = "BLOOD_MOON", name = "КРОВАВАЯ ЛУНА", text = "Больше ксенита за всё", color = rgb(255, 86, 198), icon = "star", reward = 1.4 },
 }
 
 function Meta.dayIndex(now: number): number

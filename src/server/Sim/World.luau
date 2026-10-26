@@ -1267,7 +1267,8 @@ function World:spawnBoss()
 	b.stateUntil = self.t + 3.5
 	b.invulnerable = true
 	self.boss = b
-	self:emit(E.BOSS, 1)
+	self:emit(E.BOSS, 1, b.x, b.z)
+	self:revealGrace(Codec.REVEAL_TIME + 0.4)
 	self:banner(
 		b.def.name,
 		if b.kind == "BOSS_DEVOURER"
@@ -1277,6 +1278,14 @@ function World:spawnBoss()
 		4,
 		"@" .. b.def.index
 	)
+end
+
+-- The boss / leader entrance (DD-082) turns every camera to it for Codec.REVEAL_TIME: players can't
+-- be hurt meanwhile (the swarm keeps coming, so the fight resumes where it was).
+function World:revealGrace(seconds: number)
+	for _, pl in self.playerList do
+		pl.iframeUntil = math.max(pl.iframeUntil, self.t + seconds)
+	end
 end
 
 function World:enrageBoss()

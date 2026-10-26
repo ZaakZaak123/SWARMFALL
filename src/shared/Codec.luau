@@ -45,7 +45,7 @@ Codec.E = {
 	HEAL = 19, -- pid, amount
 	SHIELD = 20, -- pid, amount
 	BEAM = 21, -- pid, ox, oz, ex, ez, evolved
-	BOSS = 23, -- action: 1 roar/enter, 2 exposed, 3 enrage, 4 death, 5 burrow, 6 leader down (x, z),
+	BOSS = 23, -- action: 1 roar/enter (x, z), 2 exposed, 3 enrage, 4 death, 5 burrow, 6 leader down (x, z), 8 leader enters (x, z),
 	--          7 pylon song (x, z): the run is won (DD-075/077)
 	SPIT = 24, -- fromX, fromZ, toX, toZ, flightTime
 	REACTOR = 25, -- action: 1 hit (amount, fromX, fromZ), 2 warning (hpPercent), 3 destroyed, 4 relay hit (amount, fromX, fromZ, x, z),
@@ -59,6 +59,9 @@ Codec.E = {
 }
 
 -- Color codes shared by FX.
+-- How long every camera looks at a boss / leader entering (DD-082); players are untouchable meanwhile.
+Codec.REVEAL_TIME = 2.6
+
 Codec.C = { CYAN = 1, ORANGE = 2, VIOLET = 3, RED = 4, LIME = 5, WHITE = 6, GOLD = 7, BLUE = 8, ICE = 9 }
 
 -- Telegraph shapes

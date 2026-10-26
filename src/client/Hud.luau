@@ -462,11 +462,12 @@ function Hud.init(playerGui: PlayerGui)
 		Name = "HowTo",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 0, -16),
-		Size = UDim2.fromOffset(0, 34),
+		Size = UDim2.fromOffset(0, 44),
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundColor3 = C.ink,
-		BackgroundTransparency = 0.3,
+		BackgroundTransparency = 0.15,
 		Corner = UDim.new(1, 0),
+		Stroke = { Color = C.lime, Transparency = 0.4, Thickness = 1.5 },
 		Visible = false,
 		Parent = vit,
 	})
@@ -475,8 +476,30 @@ function Hud.init(playerGui: PlayerGui)
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromScale(0, 1),
 		FontFace = F.bodyBold,
-		TextSize = 14,
+		TextSize = 19,
 		Parent = ui.howTo,
+	})
+	-- The camera's three views (DD-082): a card the first fight shows once, and a short toast on a switch
+	ui.viewToast = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.74),
+		Size = UDim2.fromOffset(0, 58),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.15,
+		Corner = UDim.new(0, 16),
+		Stroke = { Color = C.cyan, Transparency = 0.35, Thickness = 2 },
+		Visible = false,
+		Parent = root,
+	})
+	new("UIPadding", { PaddingLeft = UDim.new(0, 22), PaddingRight = UDim.new(0, 22), Parent = ui.viewToast })
+	ui.viewToastText = label("", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromScale(0, 1),
+		FontFace = F.bodyBold,
+		TextSize = 20,
+		RichText = true,
+		Parent = ui.viewToast,
 	})
 	-- View toggle (kept for the V key / gamepad; hidden in the minimal HUD)
 	ui.view = new("TextButton", {
@@ -499,6 +522,25 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = root,
 	})
 	ui.bannerScale = new("UIScale", { Parent = ui.banner })
+	-- DD-082 (owner playtest: «тексты должно быть хорошо видно»): a dark band behind the words
+	ui.bannerPlate = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.new(1.3, 0, 0, 112),
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Parent = ui.banner,
+	})
+	new("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.22, 0.15),
+			NumberSequenceKeypoint.new(0.78, 0.15),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = ui.bannerPlate,
+	})
 	-- the picture (an icon, or the creature turning) stands left of the title, not above it: above is
 	-- the boss bar, below is the hero
 	ui.bannerVisual = new("Frame", {
@@ -526,9 +568,10 @@ function Hud.init(playerGui: PlayerGui)
 	})
 	ui.bannerSub = label("", {
 		Position = UDim2.fromOffset(0, 72),
-		Size = UDim2.new(1, 0, 0, 24),
+		Size = UDim2.new(1, 0, 0, 34),
 		FontFace = F.bodyBold,
-		TextSize = 18,
+		TextSize = 22,
+		TextWrapped = true,
 		TextStrokeTransparency = 0.5,
 		TextStrokeColor3 = C.ink,
 		Parent = ui.banner,
@@ -716,7 +759,16 @@ local function nextBanner()
 	tween(ui.bannerText, 0.2, { TextTransparency = 0 })
 	tween(ui.bannerSub, 0.45, { TextTransparency = 0 })
 	tween(ui.bannerLine, 0.5, { Size = UDim2.fromOffset(220, 3) })
-	task.delay(math.min(b.duration, if #bannerQueue > 0 then 1.6 else b.duration), function()
+	ui.bannerPlate.BackgroundTransparency = 1
+	tween(ui.bannerPlate, 0.3, { BackgroundTransparency = 0.35 })
+	-- long enough to be read: ~15 letters a second on top of a moment to notice it
+	local read = 1.6 + ((utf8.len(b.text) or 0) + (utf8.len(b.sub) or 0)) / 15
+	local hold = math.max(b.duration, read)
+	if #bannerQueue > 0 then
+		hold = math.min(hold, math.max(2.6, read * 0.8))
+	end
+	task.delay(hold, function()
+		tween(ui.bannerPlate, 0.25, { BackgroundTransparency = 1 })
 		tween(ui.bannerText, 0.25, { TextTransparency = 1 })
 		tween(ui.bannerSub, 0.25, { TextTransparency = 1 })
 		tween(ui.bannerLine, 0.25, { Size = UDim2.fromOffset(0, 3) })
@@ -737,8 +789,63 @@ function Hud.banner(text: string, sub: string, color: Color3, duration: number, 
 	end
 end
 
--- Camera view is switched with V / D-pad up; the minimal HUD shows no button for it.
+local toastToken = 0
+local function toast(text: string, seconds: number)
+	toastToken += 1
+	local token = toastToken
+	ui.viewToastText.Text = text
+	ui.viewToast.Visible = true
+	ui.viewToast.BackgroundTransparency = 1
+	ui.viewToastText.TextTransparency = 1
+	tween(ui.viewToast, 0.25, { BackgroundTransparency = 0.15 })
+	tween(ui.viewToastText, 0.25, { TextTransparency = 0 })
+	task.delay(seconds, function()
+		if token == toastToken then
+			tween(ui.viewToast, 0.3, { BackgroundTransparency = 1 })
+			tween(ui.viewToastText, 0.3, { TextTransparency = 1 })
+			task.delay(0.32, function()
+				if token == toastToken then
+					ui.viewToast.Visible = false
+				end
+			end)
+		end
+	end)
+end
+
+local VIEW_ORDER = { top = 1, third = 2, first = 3 }
+local function viewKey(device: string): string
+	return if device == "touch"
+		then "кнопка вида справа"
+		elseif device == "gamepad" then "крестовина ↑"
+		else "клавиша V"
+end
+
+-- Called every frame; the minimal HUD shows no permanent view indicator.
 function Hud.setView(_mode: string, _iconName: string, _caption: string?, _device: string) end
+
+-- Camera view is switched with V / D-pad up / the view button: a toast names the view it went to.
+function Hud.viewSwitched(mode: string, caption: string?, device: string)
+	toast(
+		string.format(
+			'<font color="#54EEFF">%s</font>  ·  вид %d из 3  ·  %s — дальше',
+			caption or mode,
+			VIEW_ORDER[mode] or 1,
+			viewKey(device)
+		),
+		2.2
+	)
+end
+
+-- The first fight teaches the views once (owner playtest: «подсказка по камере, что есть 3 режима»).
+function Hud.cameraHint(device: string)
+	toast(
+		string.format(
+			'<font color="#54EEFF">КАМЕРА · 3 ВИДА</font>  ·  сверху → из-за плеча → от первого лица  ·  %s',
+			viewKey(device)
+		),
+		7
+	)
+end
 
 -- Reticle bloom: each shot kicks the ticks outward (pixels); they settle back.
 function Hud.recoil(amount: number)
@@ -933,7 +1040,7 @@ function Hud.update(run, me, extra, dt: number)
 		ui.objFill.BackgroundColor3 = if flash then C.white else col
 		-- what the bar stands for, in the fight itself: the drill is the shelter's utility (DD-065)
 		local rname = string.upper(rc.name or "БУР")
-		ui.objName.Text = if rname == "БУР" then "БУР · УТИЛЬ ДЛЯ УБЕЖИЩА" else rname
+		ui.objName.Text = if rname == "БУР" then "БУР · КСЕНИТ ДЛЯ УБЕЖИЩА" else rname
 		ui.objPct.Text = (if (rc.shield or 0) > 0 then "ЩИТ " .. rc.shield .. "  ·  " else "")
 			.. math.ceil(frac * 100)
 			.. "%"
@@ -1069,7 +1176,7 @@ function Hud.update(run, me, extra, dt: number)
 		ui.od.stroke.Transparency = if odReady then 0.1 + math.sin(now * 6) * 0.1 else 0.7
 		ui.od.stroke.Thickness = if me.s01Tutorial then 4 elseif odReady then 2 else 1
 		-- First-run controls hint: only before the first input and in the first seconds of a run.
-		local howTo = run.op == "O01" and (run.waiting or (run.phase == "ACTIVE" and run.t < 10)) and me.alive
+		local howTo = run.op == "O01" and (run.waiting or (run.phase == "ACTIVE" and run.t < 16)) and me.alive
 		ui.howTo.Visible = howTo
 		if howTo then
 			ui.howToText.Text = if touch
@@ -1078,9 +1185,9 @@ function Hud.update(run, me, extra, dt: number)
 					extra.device == "gamepad"
 				then "Левый стик — бег   ·   правый стик — огонь   ·   B — рывок"
 				else "WASD — бег   ·   мышь — огонь   ·   ПРОБЕЛ — рывок"
-			local k = if run.waiting then 0 else math.clamp((run.t - 7) / 3, 0, 1)
+			local k = if run.waiting then 0 else math.clamp((run.t - 13) / 3, 0, 1)
 			ui.howToText.TextTransparency = k
-			ui.howTo.BackgroundTransparency = 0.3 + k * 0.7
+			ui.howTo.BackgroundTransparency = 0.15 + k * 0.85
 		end
 		-- Prompt pill (S01 lesson / legacy evolution)
 		ui.evolve.Visible = (me.canEvolve or me.s01Tutorial) and not touch
