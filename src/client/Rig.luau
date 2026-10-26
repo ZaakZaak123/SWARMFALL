@@ -932,7 +932,21 @@ end
 
 -- At home (DD-083) the body belongs to Roblox's own animations: the joints are let go and the gun is
 -- slung across the back. A fight (or the range) takes the body back.
-local SLUNG = CFrame.new(0.15, -0.35, 0.78) * CFrame.Angles(0, 0, math.rad(-38)) * CFrame.Angles(math.rad(90), 0, 0)
+-- DD-086: the sling hangs on the torso, not on the root, so the rifle rides the walk and turns with the
+-- back; it lies flat against the back (its side to the body), muzzle up over the left shoulder.
+local function slung(st): CFrame
+	local gun = st.gun
+	-- the middle of the rifle in its own space (grip .. muzzle)
+	local mid = (gun.grip + gun.muzzle) * 0.5
+	local up = Vector3.new(-0.5, 0.866, 0) -- along the barrel, toward the muzzle
+	local back = Vector3.new(0, 0, 1)
+	local side = up:Cross(back) -- the rifle's top edge
+	-- gun axes in torso space: X = -back (side to the body), Y = side, Z = -up (the barrel is -Z)
+	local rot = CFrame.fromMatrix(Vector3.zero, -back, side, -up)
+	local at = if st.r15 then Vector3.new(0, 0.3, 0.72) else Vector3.new(0, 0.45, 0.72)
+	return CFrame.new(at) * rot * CFrame.new(-mid)
+end
+
 function Rig.setCalm(character: Model, on: boolean)
 	local st = rigs[character]
 	if not st or st.calm == on then
@@ -946,6 +960,13 @@ function Rig.setCalm(character: Model, on: boolean)
 			end
 		end
 	end
+	if st.gun and st.gun.motor.Parent then
+		local torso = character:FindFirstChild(if st.r15 then "UpperTorso" else "Torso")
+		st.gun.motor.Part0 = if on and torso then torso else st.hrp
+		if on then
+			st.gun.motor.Transform = slung(st)
+		end
+	end
 end
 
 function Rig.update(dt: number)
@@ -953,7 +974,12 @@ function Rig.update(dt: number)
 	for character, st in rigs do
 		if st and st.calm and character.Parent then
 			if st.gun and st.gun.motor.Parent then
-				st.gun.motor.Transform = SLUNG
+				if st.gun.motor.Part0 == st.hrp then
+					-- a weapon built while at home: hang it on the back too
+					st.calm = false
+					Rig.setCalm(character, true)
+				end
+				st.gun.motor.Transform = slung(st)
 			end
 			continue
 		end

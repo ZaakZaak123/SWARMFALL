@@ -35,6 +35,7 @@ local ui = {}
 local scene = nil -- { t, step(dt) -> CFrame, finish() }
 local coverDeadline = 0
 
+local ID_CF = CFrame.new()
 local function smooth(t: number): number
 	t = math.clamp(t, 0, 1)
 	return t * t * (3 - 2 * t)
@@ -700,15 +701,21 @@ local function play(def)
 		if on then
 			ui.nextScale.Scale = 0.6
 			tween(ui.nextScale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
-			Audio.play("uiHover", 0.8, 1.2)
 		end
 	end
+	-- DD-086: a hold does not freeze the frame. The camera carries its last motion on, slowing to a slow
+	-- push-in with a breath of sway; on «Дальше» it eases back onto the scripted path.
+	local camPrev, camVel = nil, Vector3.zero
+	local drift, driftT, driftOff, release = CFrame.identity, 0, Vector3.zero, 0
+	local heldOff, heldRot = Vector3.zero, CFrame.identity
 	function s.advance()
 		if s.waiting then
 			s.waiting = false
 			nextHold += 1
 			showNext(false)
-			Audio.play("ui", 0.6, 1.1)
+			release = 1
+			heldOff, heldRot = driftOff, drift
+			Audio.play("ui", 0.35, 1.1)
 		end
 	end
 	-- Studio checks: jump to t past the holds before it
@@ -743,6 +750,7 @@ local function play(def)
 		end
 	end
 	function s.step(dt: number): CFrame?
+		local realDt = dt
 		if s.frozen or s.waiting then
 			dt = 0
 		end
@@ -751,6 +759,7 @@ local function play(def)
 		if h and s.t >= h and not s.waiting then
 			s.t = h
 			s.waiting = true
+			driftT = 0
 			showNext(true)
 		end
 		if s.waiting and ui.next.Visible then
@@ -779,7 +788,34 @@ local function play(def)
 				break
 			end
 		end
-		return shot.cam(smooth((t - shot.from) / math.max(0.01, shot.to - shot.from)), t)
+		local cam = shot.cam(smooth((t - shot.from) / math.max(0.01, shot.to - shot.from)), t)
+		if s.waiting and not s.frozen then
+			-- the motion carried on, dying away (k = 1.6 /s), plus a slow push-in and a breathing sway
+			driftT += realDt
+			local w = driftT
+			local carry = camVel * (1 - math.exp(-1.6 * w)) / 1.6
+			driftOff = carry + cam.LookVector * (0.35 * w / (1 + w * 0.06))
+			drift = CFrame.Angles(math.sin(w * 0.55) * 0.006, math.sin(w * 0.4) * 0.012, 0)
+		elseif release > 0 then
+			-- back onto the path over ~0.9 s
+			release = math.max(0, release - realDt / 0.9)
+			local k = release * release * (3 - 2 * release)
+			driftOff = heldOff * k
+			drift = ID_CF:Lerp(heldRot, k)
+		else
+			driftOff, drift = Vector3.zero, CFrame.identity
+		end
+		local out = CFrame.new(driftOff) * cam * drift
+		if not s.waiting and release == 0 and realDt > 0 then
+			if camPrev then
+				local v = (cam.Position - camPrev.Position) / realDt
+				camVel = if v.Magnitude > 8 then v.Unit * 8 else v
+			end
+			camPrev = cam
+		elseif s.waiting then
+			camPrev = nil
+		end
+		return out
 	end
 	return s
 end
@@ -826,7 +862,7 @@ function Story.intro(onDone)
 	coverDeadline = 0
 	play({
 		length = 17.0,
-		holds = { 2.6, 7.0, 8.3, 16.0 }, -- the title, the shelter, the way out, the Alpha (DD-083)
+		holds = { 7.0, 8.3, 16.0 }, -- the shelter, the way out, the Alpha (DD-083; DD-086: the title runs on)
 		shots = {
 			{
 				from = 0,
@@ -1277,6 +1313,11 @@ function Story.returnHome(opId: string, onDone)
 			end,
 		},
 	}
+	-- DD-086: the win's music rides home with the hero and dies away in the tunnel; the shelter's sting
+	-- swells in as the pallet comes out at home
+	if not Audio.stingPlaying("triumph") and not Audio.stingPlaying("victory") then
+		Audio.sting("triumph", 12, { fadeIn = 1.2, from = 12 })
+	end
 	local cues = {
 		{
 			0.3,
@@ -1293,6 +1334,12 @@ function Story.returnHome(opId: string, onDone)
 		{
 			4.4,
 			function()
+				Audio.fadeStings(4.0)
+			end,
+		},
+		{
+			4.4,
+			function()
 				caption(cfg.transit[1], cfg.transit[2])
 			end,
 		},
@@ -1300,7 +1347,7 @@ function Story.returnHome(opId: string, onDone)
 			6.6,
 			function()
 				caption("ДОМА", "")
-				Audio.sting("home", 12)
+				Audio.sting("home", 12, { fadeIn = 1.8, keep = true })
 			end,
 		},
 		{

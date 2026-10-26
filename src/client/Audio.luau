@@ -212,20 +212,19 @@ local duckUntil = 0
 -- build, the fanfare when the Alpha falls, the warm sting when the shelter lights up. The beds duck under.
 local STINGS = {
 	intro = { "rbxassetid://9042968300", 0.5 }, -- «Superior Human Sting 1»
-	-- DD-083: a short hit, not a track — 3 s of «Kinetic Victory (Sting)», faded out, so nothing runs into
-	-- the scene and the shelter's music after it
-	victory = { "rbxassetid://133000497392138", 0.65, 3.0 },
+	-- the 5 s hit of «Kinetic Victory (Sting)» the moment a boss falls, then (DD-086) «Quest For Peace» (32 s)
+	-- carries the win through the results and the ride home, and dies away under the shelter's sting
+	victory = { "rbxassetid://133000497392138", 0.65 },
+	triumph = { "rbxassetid://9042799117", 0.42 },
 	home = { "rbxassetid://9047296345", 0.45 }, -- «Welcome Home Sting»
 	reveal = { "rbxassetid://9039981895", 0.6 }, -- «Hellish»: a boss / leader enters (DD-082)
 }
 local stingSounds = {}
-function Audio.sting(name: string, duck: number?)
+local Tweens = game:GetService("TweenService")
+local function stingSound(name: string): Sound?
 	local def = STINGS[name]
 	if not def then
-		return
-	end
-	for _, other in stingSounds do
-		other:Stop()
+		return nil
 	end
 	local s = stingSounds[name]
 	if not s then
@@ -237,38 +236,94 @@ function Audio.sting(name: string, duck: number?)
 		s.Parent = SoundService
 		stingSounds[name] = s
 	end
-	s.Volume = def[2]
-	s.TimePosition = 0
-	s:Play()
-	duckUntil = os.clock() + (duck or 9)
-	local cut = def[3]
-	if cut then
-		local token = {}
-		s:SetAttribute("Token", tostring(token))
-		task.delay(cut - 0.6, function()
-			if s:GetAttribute("Token") == tostring(token) and s.IsPlaying then
-				game:GetService("TweenService"):Create(s, TweenInfo.new(0.6), { Volume = 0 }):Play()
-				task.delay(0.62, function()
-					if s:GetAttribute("Token") == tostring(token) then
-						s:Stop()
-					end
-				end)
+	return s
+end
+local function fadeOut(s: Sound, seconds: number)
+	local token = tostring({})
+	s:SetAttribute("Token", token)
+	Tweens:Create(s, TweenInfo.new(seconds), { Volume = 0 }):Play()
+	task.delay(seconds + 0.05, function()
+		if s:GetAttribute("Token") == token then
+			s:Stop()
+		end
+	end)
+end
+-- opts: fadeIn (seconds), from (TimePosition), keep (the other stings play on: a layered cue).
+-- DD-086: the other stings fade out over a moment instead of stopping dead.
+function Audio.sting(name: string, duck: number?, opts: { fadeIn: number?, from: number?, keep: boolean? }?)
+	local def = STINGS[name]
+	local s = stingSound(name)
+	if not def or not s then
+		return
+	end
+	opts = opts or {}
+	if not opts.keep then
+		for other, o in stingSounds do
+			if other ~= name and o.IsPlaying then
+				fadeOut(o, 1.2)
 			end
+		end
+	end
+	local token = tostring({})
+	s:SetAttribute("Token", token)
+	local function start()
+		if s:GetAttribute("Token") ~= token then
+			return
+		end
+		s.TimePosition = opts.from or 0
+		if opts.fadeIn then
+			s.Volume = 0
+			s:Play()
+			Tweens:Create(s, TweenInfo.new(opts.fadeIn), { Volume = def[2] }):Play()
+		else
+			s.Volume = def[2]
+			s:Play()
+		end
+	end
+	if s.IsLoaded then
+		start()
+	else
+		-- not loaded yet (the very first cue of a session): wait a moment rather than stutter in late
+		task.spawn(function()
+			local t0 = os.clock()
+			while not s.IsLoaded and os.clock() - t0 < 2 do
+				task.wait()
+			end
+			start()
 		end)
 	end
+	duckUntil = math.max(duckUntil, os.clock() + (duck or 9))
+end
+
+function Audio.stingPlaying(name: string): boolean
+	local s = stingSounds[name]
+	return s ~= nil and s.IsPlaying and s.Volume > 0.02
+end
+
+-- A boss down (DD-086): the hit, then the long triumph layered in under its tail.
+function Audio.victory()
+	Audio.sting("victory", 40)
+	local s = stingSounds.victory
+	local token = s and s:GetAttribute("Token")
+	-- the triumph swells in under the hit's last bars, then the hit bows out (a crossfade, not a cut)
+	task.delay(2.6, function()
+		if s and s:GetAttribute("Token") == token then
+			Audio.sting("triumph", 40, { fadeIn = 1.6, keep = true })
+			task.delay(0.6, function()
+				if s:GetAttribute("Token") == token then
+					fadeOut(s, 1.8)
+				end
+			end)
+		end
+	end)
 end
 
 -- Let a sting die away (a scene that ends before its music does).
 function Audio.fadeStings(seconds: number)
+	duckUntil = math.min(duckUntil, os.clock() + seconds)
 	for _, s in stingSounds do
 		if s.IsPlaying then
-			s:SetAttribute("Token", "fade")
-			game:GetService("TweenService"):Create(s, TweenInfo.new(seconds), { Volume = 0 }):Play()
-			task.delay(seconds + 0.05, function()
-				if s:GetAttribute("Token") == "fade" then
-					s:Stop()
-				end
-			end)
+			fadeOut(s, seconds)
 		end
 	end
 end
@@ -284,21 +339,30 @@ function Audio.stopStings()
 	end
 	duckUntil = 0
 end
--- Preload the stings so the first one starts on its beat.
+-- Preload the stings so the first one starts on its beat (the very sounds that will play).
 function Audio.preloadStings()
+	local list = {}
 	for name in STINGS do
-		local s = Instance.new("Sound")
-		s.SoundId = STINGS[name][1]
-		s.Parent = SoundService
-		task.delay(3, function()
-			s:Destroy()
-		end)
+		table.insert(list, stingSound(name))
 	end
+	task.spawn(function()
+		pcall(function()
+			game:GetService("ContentProvider"):PreloadAsync(list)
+		end)
+	end)
 end
 
 -- States: "run", "boss", "lobby" (home), "quiet" (a story scene or the moments after a fight: only its own
 -- music is heard, DD-083 — the beds no longer play under a scene's stings).
+local lastState = nil
 function Audio.setMusic(state: string)
+	if state ~= lastState then
+		-- home again (or a new fight) without a scene to carry it: the win's music bows out under the bed
+		if lastState == "quiet" and (state == "lobby" or state == "run") then
+			Audio.fadeStings(2.5)
+		end
+		lastState = state
+	end
 	local fighting = state == "run" or state == "boss"
 	bedTarget.ambience = if fighting then 1 else 0
 	bedTarget.fight = if state == "run" then 1 else 0

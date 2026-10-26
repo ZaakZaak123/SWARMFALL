@@ -1607,7 +1607,7 @@ local function leaderDown(x: number, z: number, song: boolean?)
 		Audio.play("roar", 1, 1.4)
 	end
 	Audio.play("killBig", 1, 0.7)
-	Audio.sting("victory", 4)
+	Audio.victory()
 	Menus.whiteFlash(0.85)
 	CameraRig.shake(0.45) -- DD-083: no zoom or punch — the camera stays put so the moment can sink in
 	victoryGlow = 3.2
@@ -1730,7 +1730,7 @@ handlers[E.BOSS] = function(action, x, z)
 		CameraRig.shake(1)
 		Menus.whiteFlash(0.6)
 		-- DD-079: a boss down is the run won — the same fanfare and warm glow as the Alpha
-		Audio.sting("victory", 4)
+		Audio.victory()
 		victoryGlow = 3.2
 	end
 end
@@ -2595,6 +2595,8 @@ if RunService:IsStudio() then
 			Story.seek(t)
 		elseif what == "skip" then
 			Story.seek(nil)
+		elseif what == "victory" then
+			Audio.victory()
 		end
 		return Story.active()
 	end
