@@ -116,6 +116,9 @@ for _, id in CHAPTER do
 				check(r.time < 180, "O04 ends within ~3:00 — the second nest down is the win (DD-078)")
 			elseif id == "O06" or id == "CA01" then
 				check(m.destroyed >= 2, id .. " both targets destroyed")
+				if id == "O06" then
+					check(r.time < 180, "O06 ends within ~3:00 — the second node down is the win (DD-080)")
+				end
 			else
 				check(w.boss == nil and w.bossSpawned, id .. " boss killed")
 				if id == "O05" then

@@ -624,7 +624,7 @@ function Profile.like(liker: Player, owner: Player, day: number): boolean
 end
 
 -- One-time onboarding flags the client may set (the victory scene was watched).
-local CLIENT_TUT = { drill = true, intro = true, go_O02 = true, home_O02 = true, go_O03 = true, home_O03 = true, go_O04 = true, home_O04 = true, go_O05 = true, home_O05 = true } -- story scenes watched (DD-075/076)
+local CLIENT_TUT = { drill = true, intro = true, go_O02 = true, home_O02 = true, go_O03 = true, home_O03 = true, go_O04 = true, home_O04 = true, go_O05 = true, home_O05 = true, go_O06 = true, home_O06 = true } -- story scenes watched (DD-075/076)
 function Profile.markTut(player: Player, key: string): boolean
 	local d = Profile.get(player)
 	if not d or not CLIENT_TUT[key] or d.tut[key] then

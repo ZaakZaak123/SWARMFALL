@@ -381,7 +381,9 @@ function Mission:onKill(e, p)
 			elseif e.objective == "node" then
 				self:objectiveDone(
 					"УЗЛЫ РАЗРУШЕНЫ",
-					"Улей теряет питание. Удержи сердцевину!"
+					"Улей теряет питание. Удержи сердцевину!",
+					e.x,
+					e.z
 				)
 			else
 				self:objectiveDone(

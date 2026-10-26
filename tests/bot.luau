@@ -196,6 +196,23 @@ function Bot.run(
 				local mm = w.mission
 				if not opts.anchor and mm.relay and mm.relay.coil and mm.relay.coil.alive and mm.state == "FIGHT" then
 					gx0, gz0, gr = mm.relay.coil.x, mm.relay.coil.z, 16
+				elseif not opts.anchor and mm.state == "FIGHT" and not mm.reactor then
+					-- nothing to guard: go to the nearest objective target (nests, nodes), as the goal line says
+					local best, bd = nil, math.huge
+					for _, e in mm.targets do
+						if e.alive then
+							local d = (e.x - p.x) ^ 2 + (e.z - p.z) ^ 2
+							if d < bd then
+								best, bd = e, d
+							end
+						end
+					end
+					if best then
+						gx0, gz0, gr = best.x, best.z, math.min(18, range * 0.5)
+						if not target or td > (range * 0.9) ^ 2 or not target.alive then
+							target = best
+						end
+					end
 				end
 				local rx, rz = p.x - gx0, p.z - gz0
 				local cr = math.sqrt(rx * rx + rz * rz)

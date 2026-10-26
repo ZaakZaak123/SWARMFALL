@@ -61,6 +61,7 @@ end
 
 local function world(weapon, op)
 	local w = World.new({ seed = 7, op = op or "O01", players = { { id = 1, weapon = weapon or "W_ARC_RIFLE" } } })
+	w.gotInput = true -- story sorties wait for the first move (DD-075…080): this player has moved
 	w:step(5)
 	w.t = 120
 	for _, e in w.enemies do
@@ -296,8 +297,8 @@ do -- Вулкан's heavy frame takes 30% less damage
 	check(math.abs((a.maxHp - a.hp) - (b.maxHp - b.hp) * 0.7) < 1e-6, "Вулкан: −30% incoming damage")
 end
 
-do -- «Барьер» refill also shields the extractor (O06 is the first story sortie with one since DD-078), without stacking
-	local w, p = world(nil, "O06")
+do -- «Барьер» refill also shields the extractor (O05, the boss sortie, guards the drill — DD-079), without stacking
+	local w, p = world(nil, "O05")
 	give(w, p, { UPG_SHIELD = 3 })
 	p.shieldKills = 100
 	local e = w:spawnEnemy("EN_RUNNER", p.x + 30, p.z, 0)

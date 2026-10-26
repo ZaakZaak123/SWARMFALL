@@ -2196,6 +2196,14 @@ function Base.sceneRestore(id: string)
 	if string.sub(id, 1, 7) == "TROPHY_" then
 		sceneTrophy(string.sub(id, 8))
 		return
+	elseif not SPOTS[id] then
+		-- a station (the armory): what came home lands there with a flash
+		local at = Base.point(id)
+		Fx.ring(at + Vector3.new(0, 0.4, 0), 7, C.orange, 0.9)
+		Fx.light(at + Vector3.new(0, 4, 0), C.orange, 26, 1.4)
+		Fx.emitWith("streak", at + Vector3.new(0, 3, 0), 14, 1, C.orange)
+		Audio.play("evolve", 0.6, 1.1)
+		return
 	end
 	if id == "LAB" and ((labResearch or {}).EN_SPITTER or 0) <= 0 then
 		-- DD-077: the sample that rode home is in its tank even before the showcase catches up

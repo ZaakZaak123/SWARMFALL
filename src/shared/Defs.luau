@@ -1047,7 +1047,7 @@ Defs.Components = {
 		id = "CMP_FLAME_HEART",
 		name = "СЕРДЦЕ ПЛАМЕНИ",
 		icon = "core",
-		text = "Сердце Адской мельницы. Первая победа в O05.",
+		text = "Сердце Адской мельницы. Первая победа в «Кровавой ночи» (O06).",
 	},
 	CMP_VOID_HEART = {
 		id = "CMP_VOID_HEART",

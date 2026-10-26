@@ -1032,6 +1032,27 @@ local HOMECOMING = {
 			sub = "«Рельсотрон» пробивает толпу насквозь — он ждёт в оружейной",
 		},
 	},
+	O06 = {
+		cargo = "GEM",
+		glow = rgb(255, 130, 50),
+		title = "УЛЕЙ ОБЕСТОЧЕН",
+		sub = "Сердце пламени из питающего узла едет домой",
+		transit = { "ДОМОЙ", "Ночь над пустошью — без узлов рой голодает" },
+		beats = {
+			{
+				spot = "ARMORY",
+				title = "СЕРДЦЕ ПЛАМЕНИ",
+				sub = "Оно горит в оружейной: «Вулкан» сможет стать «Адской мельницей»",
+				color = C.orange,
+			},
+		},
+		next = {
+			spot = "ARMORY",
+			marker = { "АДСКАЯ МЕЛЬНИЦА", "Форма «Вулкана»" },
+			title = "ДАЛЬШЕ — ПОЖИРАТЕЛЬ",
+			sub = "Последняя вылазка главы: червь, что точит воронку снизу",
+		},
+	},
 }
 
 function Story.hasHomecoming(opId: string?): boolean
@@ -1258,6 +1279,19 @@ local DEPARTURE = {
 		focusRing = 22,
 		focusColor = C.pink,
 		focusEye = { Vector3.new(6, 62, -96), Vector3.new(4, 48, -78) }, -- in front and above: the titan's ribs block the side
+	},
+	O06 = {
+		title = "ВЫЛАЗКА 6 · КРОВАВАЯ НОЧЬ",
+		sub = "Ночью воронка краснеет",
+		transit = { "К БУРУ", "Ночью рой кормится от питающих узлов" },
+		funnel = {
+			"РАЗРУШЬ ОБА УЗЛА",
+			"Новый враг — взрывун: рвётся рядом и задевает узлы. Подводи их к узлу",
+		},
+		focus = Vector3.new(-60, 4, 80), -- the first node (Maps hiveSites[1])
+		focusRing = 12,
+		focusColor = C.violet,
+		preview = { art = "NODE", h = 9, at = { Vector3.new(-60, 0, 80), Vector3.new(72, 0, -70) } },
 	},
 }
 
