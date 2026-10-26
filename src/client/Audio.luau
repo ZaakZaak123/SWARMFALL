@@ -201,6 +201,57 @@ local BEDS = {
 }
 local beds = {}
 local bedTarget = { ambience = 0, fight = 0 }
+local duckUntil = 0
+
+-- One-shot music cues over the beds (DD-075), APM library assets licensed for Roblox: the intro's slow
+-- build, the fanfare when the Alpha falls, the warm sting when the shelter lights up. The beds duck under.
+local STINGS = {
+	intro = { "rbxassetid://9042968300", 0.5 }, -- «Superior Human Sting 1»
+	victory = { "rbxassetid://83315768373322", 0.6 }, -- «Conquering Heroes Link»
+	home = { "rbxassetid://9047296345", 0.45 }, -- «Welcome Home Sting»
+}
+local stingSounds = {}
+function Audio.sting(name: string, duck: number?)
+	local def = STINGS[name]
+	if not def then
+		return
+	end
+	for _, other in stingSounds do
+		other:Stop()
+	end
+	local s = stingSounds[name]
+	if not s then
+		s = Instance.new("Sound")
+		s.Name = "Sting_" .. name
+		s.SoundId = def[1]
+		s.Volume = def[2]
+		s.SoundGroup = group("ui")
+		s.Parent = SoundService
+		stingSounds[name] = s
+	end
+	s.TimePosition = 0
+	s:Play()
+	duckUntil = os.clock() + (duck or 9)
+end
+
+function Audio.stopStings()
+	for _, s in stingSounds do
+		s:Stop()
+	end
+	duckUntil = 0
+end
+-- Preload the stings so the first one starts on its beat.
+function Audio.preloadStings()
+	for name in STINGS do
+		local s = Instance.new("Sound")
+		s.SoundId = STINGS[name][1]
+		s.Parent = SoundService
+		task.delay(3, function()
+			s:Destroy()
+		end)
+	end
+end
+
 function Audio.setMusic(state: string)
 	bedTarget.ambience = if state == "run" then 0.45 else 1
 	bedTarget.fight = if state == "run" then 1 elseif state == "boss" then 1.25 else 0
@@ -218,7 +269,7 @@ function Audio.updateMusic(dt: number)
 			s.Parent = SoundService
 			beds[key] = s
 		end
-		local goal = def[2] * bedTarget[key]
+		local goal = def[2] * bedTarget[key] * (if os.clock() < duckUntil then 0.12 else 1)
 		s.Volume += (goal - s.Volume) * math.min(1, dt * 0.8)
 		if s.Volume > 0.005 and not s.IsPlaying then
 			s:Play()

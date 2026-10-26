@@ -502,13 +502,7 @@ function Mission:elite()
 	e.maxHp = e.hp
 	self.eliteSpawned = true
 	self.goal = self.op.eliteGoal or ("Убей " .. (self.op.eliteName or "элиту"))
-	w:banner(
-		self.op.eliteName or "ЭЛИТА",
-		"Вожак стаи. Убей его!",
-		C.GOLD,
-		4,
-		"@" .. e.def.index
-	)
+	w:banner(self.op.eliteName or "ЭЛИТА", "Вожак стаи. Убей его!", C.GOLD, 4, "@" .. e.def.index)
 end
 
 function Mission:onEliteKilled(e)
@@ -531,7 +525,9 @@ function Mission:onEliteKilled(e)
 			end
 		end
 		w:banner(
-			(self.op.eliteName or "ВОЖАК") .. " ПОВЕРЖЕН" .. (if self.op.eliteName == "АЛЬФА" then "А" else ""),
+			(self.op.eliteName or "ВОЖАК")
+				.. " ПОВЕРЖЕН"
+				.. (if self.op.eliteName == "АЛЬФА" then "А" else ""),
 			"Рой без вожака рассыпался",
 			C.GOLD,
 			3,

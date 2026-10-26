@@ -1924,8 +1924,14 @@ function Menus.showOffer(me, run)
 			math.max(0, math.ceil(Defs.Run.ChoiceTimeoutCoop - run.pauseClock))
 		)
 	if offer.lock then
-		ui.offerSub.Text =
-			"Первое улучшение: пуль станет три — бери «Расщепление». Дальше выбираешь сам"
+		-- DD-075: the first hunt's three guided cards, each with what the player will see at once
+		local guide = {
+			UPG_MULTISHOT = "Пуль станет три — бери «Расщепление»",
+			UPG_DETONATE = "Убитые враги будут взрываться и задевать соседей — бери «Детонатор»",
+			UPG_SHIELD = "За убийства — энергощит: рой не пробьёт тебя сразу — бери «Барьер»",
+		}
+		local id = offer.choices[offer.lock]
+		ui.offerSub.Text = (guide[id] or "Бери отмеченное улучшение") .. ". В следующих боях выбираешь сам"
 	end
 	if offer.id == ui.shownOfferId and ui.offer.Visible then
 		Menus.refreshOfferModes()
@@ -2771,7 +2777,13 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		elseif kind == "s01" then
 			k += 1
 			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
-		elseif (kind == "research" or kind == "specimen") and Defs.Enemies[u[2]] then
+		elseif
+			(kind == "research" or kind == "specimen")
+			and Defs.Enemies[u[2]]
+			-- DD-075: the first win keeps to what matters next (the shelter, the turret); the collection
+			-- shows itself later
+			and not (result.op == "O01" and (((profile and profile.winsByOp) or {}).O01 or 0) <= 1)
+		then
 			k += 1
 			local stages = {
 				"СИЛУЭТ В ПРОБИРКЕ",

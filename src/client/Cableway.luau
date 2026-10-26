@@ -79,6 +79,30 @@ function Cableway.crate(parent: Instance, cf: CFrame)
 	return c.model
 end
 
+-- The route (DD-075): one cable from the drill to the shelter. It leaves the funnel over its north-west
+-- rim, crosses the wasteland northwards and comes into the grove from the south-west to the terminal.
+-- World points; the shelter's two are relative to Meta.HomeOrigin (the courtyard centre).
+Cableway.ARENA_SIDE = Vector3.new(-104, 20, 34) -- post inside the funnel, west of the drill
+Cableway.ARENA_RIM = Vector3.new(-128, 26, 152) -- post on the north-west rim
+Cableway.HOME_FAR = Vector3.new(-120, 34, -190) -- last wasteland mast, outside the grove (relative)
+Cableway.HOME_POST = Vector3.new(-64, 12, -33) -- post in the grove (relative)
+
+-- Sampled cable through the anchors: every span sags a little. The crates' (and a rider's) track.
+function Cableway.track(anchors: { Vector3 }): { Vector3 }
+	local track = {}
+	for i = 1, #anchors - 1 do
+		local a, b = anchors[i], anchors[i + 1]
+		local len = (b - a).Magnitude
+		local sag = math.min(6, len * 0.035)
+		local n = math.max(2, math.floor(len / 4))
+		for k = 0, n - (if i < #anchors - 1 then 1 else 0) do
+			local t = k / n
+			table.insert(track, a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0))
+		end
+	end
+	return track
+end
+
 function Cableway.new(parent: Instance, anchors: { Vector3 }, opts)
 	opts = opts or {}
 	local self = setmetatable({}, Cableway)
@@ -108,17 +132,7 @@ function Cableway.new(parent: Instance, anchors: { Vector3 }, opts)
 		end
 	end
 	-- the cable: each span sags a little; the sampled points are the crates' track
-	local track = {}
-	for i = 1, #anchors - 1 do
-		local a, b = anchors[i], anchors[i + 1]
-		local len = (b - a).Magnitude
-		local sag = math.min(6, len * 0.035)
-		local n = math.max(2, math.floor(len / 4))
-		for k = 0, n - (if i < #anchors - 1 then 1 else 0) do
-			local t = k / n
-			table.insert(track, a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0))
-		end
-	end
+	local track = Cableway.track(anchors)
 	for k = 1, #track - 1 do
 		rod(folder, track[k], track[k + 1], 0.22, CABLE, Enum.Material.Metal)
 	end

@@ -29,6 +29,7 @@ local Preview = require(script.Parent:WaitForChild("Preview"))
 local Menus = require(script.Parent:WaitForChild("Menus"))
 local MetaMenus = require(script.Parent:WaitForChild("MetaMenus"))
 local Base = require(script.Parent:WaitForChild("Base"))
+local Story = require(script.Parent:WaitForChild("Story"))
 local HubMenus = require(script.Parent:WaitForChild("HubMenus"))
 local Range = require(script.Parent:WaitForChild("Range"))
 local Cableway = require(script.Parent:WaitForChild("Cableway"))
@@ -69,8 +70,15 @@ task.spawn(function()
 end)
 
 Audio.init()
+Audio.preloadStings()
 EnemyView.init()
 Fx.init()
+-- DD-075: a black title card from the very first frame; a newcomer's stays up until the intro starts
+Story.init(playerGui, { base = Base })
+Story.cover(true)
+pcall(function()
+	game:GetService("TeleportService"):SetTeleportGui(Story.teleportGui())
+end)
 Hud.init(playerGui)
 Controls.init(playerGui)
 Menus.init(playerGui, send)
@@ -174,9 +182,17 @@ Base.init(playerGui, send, {
 		send("camp")
 	end,
 	play = function()
+		local g = Base.goal()
 		if Base.ready() then
 			send("unready")
 			Audio.play("ui", 0.8, 0.85)
+		elseif g and g.key == "sting" and g.station == "build" then
+			-- DD-075: the first steps lead the big button (the turret, then the first defence)
+			goalAction()
+		elseif g and g.key == "strike" then
+			send("mode", "siege")
+			send("ready", Menus.selectedWeapon())
+			Audio.play("level", 0.7, 1.1)
 		else
 			send("ready", Menus.selectedWeapon())
 			Audio.play("level", 0.7, 1.1)
@@ -323,7 +339,7 @@ end
 
 -- Actions -----------------------------------------------------------------------------------------
 local function playing(): boolean
-	if not (mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.paused == "") then
+	if not (mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.paused == "") or Story.active() then
 		return false
 	end
 	-- A newcomer's first hunt waits for their first move or shot (DD-024): that input must be possible.
@@ -485,8 +501,10 @@ local function beacon(x: number, z: number, color: Color3)
 end
 
 -- Remotes -----------------------------------------------------------------------------------------
+local storyChecked = false -- this run's opening scene (intro / arrival) was decided (DD-075)
 local function enterRun()
 	inRun = true
+	storyChecked = false
 	Hud.reset()
 	Menus.hideLobby()
 	Menus.hideResults()
@@ -630,7 +648,9 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	Base.leaveLobby()
 	sessionShelter = nil
-	if mode ~= "RUN" then Base.setVisitHome(nil) end
+	if mode ~= "RUN" then
+		Base.setVisitHome(nil)
+	end
 	mode = "RUN"
 	if not inRun then
 		enterRun()
@@ -647,6 +667,44 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		showOutpost(nil, "none")
 	end
 	me = findPlayerState(myId)
+	-- DD-075: the newcomer's first sortie opens with the ride out to the drill; the first defence with a
+	-- look at the new turret. Both play while the run waits for the first move.
+	if not storyChecked and run and run.phase == "COUNTDOWN" and not run.result then
+		local prof = Menus.profile()
+		local function back()
+			if inRun and run and not run.result then
+				Hud.setVisible(true)
+				CameraRig.intro()
+			end
+		end
+		if run.op == "O01" and run.solo and prof then
+			storyChecked = true
+			local newcomer = ((prof.winsByOp or {}).O01 or 0) == 0 and not (prof.tut and prof.tut.intro)
+			if newcomer then
+				Hud.setVisible(false)
+				Story.intro(back)
+				send("tut", "intro")
+			else
+				Story.cover(false)
+			end
+		elseif run.op == "STRIKE" and run.solo then
+			storyChecked = true
+			local at = nil
+			for _, row in run.structures or {} do
+				local sock = Meta.Sockets[row[1]]
+				if sock and (not at or row[1] == Meta.FirstSocket) then
+					at = Vector3.new(sock.x, 0, sock.z)
+				end
+			end
+			if at then
+				Hud.setVisible(false)
+				Story.arrival(at, back)
+			end
+		elseif run.op ~= "O01" or not run.solo then
+			storyChecked = true
+			Story.cover(false)
+		end
+	end
 	debugExtra.simMs = info.simMs
 	debugExtra.rejected = info.rejected
 	if typeof(buf) == "buffer" then
@@ -662,7 +720,7 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	if run.result then
 		Hud.setVisible(false)
-		-- DD-052: the first hunt ever won plays the outpost scene before the results.
+		-- DD-075: the first hunt ever won rides home on the cable before the results.
 		local prof = Menus.profile()
 		if
 			run.result.victory
@@ -673,24 +731,23 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		then
 			sceneSeen = true
 			Menus.hideOffer()
-			Base.victoryScene(workspace.CurrentCamera.CFrame, function()
+			EnemyView.clear()
+			Story.returnHome(function()
 				send("tut", "drill")
-			end, function()
-				-- the camera leaves the crater: the swarm that is left stays behind
-				EnemyView.clear()
 			end)
 		end
-		if not Base.sceneActive() then
+		if not Base.sceneActive() and not Story.active() then
 			Menus.showResults(run.result, votes, myId, info.rewards and info.rewards[tostring(myId)], info.camp)
 		end
 	end
-	if run.phase == "COUNTDOWN" and run.waiting then
-		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — РОЙ УЖЕ БЛИЗКО")
-	elseif run.phase == "COUNTDOWN" then
+	local scened = Story.active() or Story.covered() -- a scene or the title card: no prompts over it
+	if not scened and run.phase == "COUNTDOWN" and run.waiting then
+		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И В БОЙ")
+	elseif not scened and run.phase == "COUNTDOWN" then
 		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
-	elseif not me then
+	elseif not scened and run.phase ~= "COUNTDOWN" and not me then
 		Menus.note("НАБЛЮДЕНИЕ  ·  ТЫ ВОЙДЁШЬ В СЛЕДУЮЩУЮ ВЫЛАЗКУ")
-	elseif not me.alive and not run.result and me.downed then
+	elseif not scened and me and not me.alive and not run.result and me.downed then
 		Menus.note(
 			string.format(
 				"ТЫ РАНЕН  ·  НАПАРНИК ПОДНИМЕТ  ·  %d с  ·  %d%%",
@@ -698,11 +755,11 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 				me.revive or 0
 			)
 		)
-	elseif not me.alive and not run.result then
+	elseif not scened and me and not me.alive and not run.result then
 		Menus.note("ТЫ ВЫБЫЛ  ·  СЛЕДИ ЗА ОТРЯДОМ")
-	elseif run.paused == "MENU" then
+	elseif not scened and run.paused == "MENU" then
 		Menus.note("ПАУЗА  ·  P — ПРОДОЛЖИТЬ")
-	elseif run.paused == "CHOOSE" and me and not me.offer then
+	elseif not scened and run.paused == "CHOOSE" and me and not me.offer then
 		Menus.note("ОТРЯД ВЫБИРАЕТ УЛУЧШЕНИЯ…")
 	else
 		Menus.note(nil)
@@ -1418,8 +1475,45 @@ handlers[E.BEAM] = function(pid, ox, oz, ex, ez, evolved)
 		}
 	end
 end
-handlers[E.BOSS] = function(action)
-	if action == 5 then
+-- DD-075: the leader of the first fights falls — the run ends here. A golden blast where it fell, the
+-- leaderless swarm blown apart by the shockwave (the server kills it), a white flash, the camera leaning
+-- in, a warm grade and the fanfare.
+local victoryGlow = 0
+local function leaderDown(x: number, z: number)
+	local at = Vector3.new(x, 0, z)
+	local gold = Color3.fromRGB(255, 204, 70)
+	Audio.play("roar", 1, 1.4)
+	Audio.play("killBig", 1, 0.7)
+	Audio.sting("victory", 12)
+	Menus.whiteFlash(0.85)
+	CameraRig.shake(1)
+	CameraRig.punch(14)
+	CameraRig.closeUp(1.8)
+	victoryGlow = 2.6
+	Fx.boom(at, 12, gold)
+	Fx.light(at + Vector3.new(0, 6, 0), gold, 90, 1.6)
+	Fx.debris(at + Vector3.new(0, 3, 0), 12, Color3.fromRGB(60, 44, 30), 34)
+	for i = 1, 4 do
+		task.delay(i * 0.16, function()
+			Fx.ring(at + Vector3.new(0, 0.4, 0), 14 + i * 22, gold, 0.55 + i * 0.12)
+		end)
+	end
+	for i = 1, 8 do
+		task.delay(0.1 + i * 0.07, function()
+			local a = i / 8 * math.pi * 2
+			Fx.boom(at + Vector3.new(math.cos(a), 0, math.sin(a)) * (6 + i), 4, Color3.fromRGB(255, 226, 140))
+		end)
+	end
+	for i = 1, 14 do
+		local a = i / 14 * math.pi * 2
+		Fx.emitWith("streak", at + Vector3.new(0, 2, 0), 4, 1.4, gold, Vector3.new(math.cos(a), 0.9, math.sin(a)).Unit)
+	end
+end
+
+handlers[E.BOSS] = function(action, x, z)
+	if action == 6 then
+		leaderDown(x or 0, z or 0)
+	elseif action == 5 then
 		Audio.play("roar", 0.7, 0.6)
 		CameraRig.shake(0.5)
 	elseif action == 1 or action == 3 then
@@ -1457,6 +1551,7 @@ profileRemote.OnClientEvent:Connect(function(pub)
 	if type(pub) == "table" then
 		Menus.setProfile(pub)
 		Base.setProfile(pub)
+		Story.profile(pub)
 	end
 end)
 send("profile")
@@ -1697,10 +1792,10 @@ local function animateArena(now: number)
 		if reactorModel then
 			local cf, size = reactorModel:GetBoundingBox()
 			local top = cf.Position + Vector3.new(0, size.Y * 0.3, -2)
-			-- Route freight along the west edge, rather than drawing a black cable through the
-			-- hero and the entire southern fighting lane from the top-down camera.
-			local side = Vector3.new(-94, 20, -64)
-			local rim = Vector3.new(-136, 24, -172)
+			-- Freight goes along the west edge (not through the hero's lane under the top-down camera)
+			-- and over the north-west rim: the shelter lies that way, up the same cable (DD-075).
+			local side = Cableway.ARENA_SIDE
+			local rim = Cableway.ARENA_RIM
 			arenaCable = Cableway.new(
 				decor,
 				{ top, side, rim },
@@ -2053,7 +2148,8 @@ local function frame(dt: number)
 			cam.CFrame = Base.camera(dt, lroot.Position)
 		end
 	end
-	local sceneCf = Base.sceneCamera(dt)
+	Story.update()
+	local sceneCf = Story.camera(dt) or Base.sceneCamera(dt)
 	if sceneCf then
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = sceneCf
@@ -2075,6 +2171,13 @@ local function frame(dt: number)
 		local low = me and me.alive and me.hp / me.maxHp < 0.3
 		grade.Saturation = if od then 0.45 elseif low then -0.25 else 0.2
 		grade.TintColor = if od then Color3.fromRGB(255, 240, 215) else Color3.fromRGB(255, 238, 250)
+		if victoryGlow > 0 then
+			victoryGlow = math.max(0, victoryGlow - dt)
+			local k = math.min(1, victoryGlow / 1.2)
+			grade.TintColor = grade.TintColor:Lerp(Color3.fromRGB(255, 214, 150), k)
+			grade.Saturation = grade.Saturation + 0.25 * k
+			grade.Brightness = 0.02 + 0.08 * k
+		end
 	end
 
 	animateArena(now)
@@ -2162,6 +2265,24 @@ if RunService:IsStudio() then
 		return if ok then "" else tostring(err), EnemyView.count()
 	end
 	hook.Parent = script.Parent
+	-- Story scenes on demand (DD-075): play one, or hold it at a moment to look at the frame.
+	local storyHook = Instance.new("BindableFunction")
+	storyHook.Name = "SwarmStoryHook"
+	storyHook.OnInvoke = function(what, t)
+		if what == "intro" then
+			Story.intro(function() end)
+		elseif what == "home" then
+			Story.returnHome(function() end)
+		elseif what == "arrival" then
+			Story.arrival(Vector3.new(12, 0, -12), function() end)
+		elseif what == "seek" then
+			Story.seek(t)
+		elseif what == "skip" then
+			Story.seek(nil)
+		end
+		return Story.active()
+	end
+	storyHook.Parent = script.Parent
 end
 
 print("[SWARMFALL] client ready", Defs.Version)

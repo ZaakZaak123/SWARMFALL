@@ -546,12 +546,20 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 	p.hp = math.max(0, p.hp - amount)
 	p.combo = 0
 	self:emit(E.HURT, p.id, math.floor(amount + absorbed + 0.5), fromX, fromZ)
-	if p.hp <= 0 and p.newbie and self.op.id == "O01" and not p.secondWind then
+	if p.hp <= 0 and p.newbie and self.op.id == "O01" and (not p.secondWind or p.firstHunt) then
 		-- A newcomer's first run must not end in the first minute while they learn the controls (DD-024).
+		-- DD-075: the very first sortie cannot be lost to the swarm at all — only to the clock.
+		local again = p.secondWind
 		p.secondWind = true
 		p.hp = math.floor(p.maxHp * 0.6)
 		p.iframeUntil = self.t + 2.5
-		self:banner("АВАРИЙНЫЙ ЩИТ", "Спасёт только раз — двигайся и стреляй", C.CYAN, 3, "shield")
+		self:banner(
+			"АВАРИЙНЫЙ ЩИТ",
+			if again then "Держись! Убей Альфу — и рой рассыплется" else "Двигайся и стреляй — рой не даёт стоять",
+			C.CYAN,
+			3,
+			"shield"
+		)
 		return true
 	end
 	if p.hp <= 0 then

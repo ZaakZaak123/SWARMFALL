@@ -553,8 +553,9 @@ local function buildTerminal()
 		3.2
 	)
 	-- from far beyond the grove (towards the funnel) over one post to the frame
-	cable = Cableway.new(folder, { W(t.x - 80, 16, t.z - 50), W(t.x - 27, 12, t.z - 24), W(t.x, 8.4, t.z) }, {
-		posts = { [2] = W(t.x - 27, 0, t.z - 24) },
+	local far, post = Cableway.HOME_FAR, Cableway.HOME_POST
+	cable = Cableway.new(folder, { W(far.X, far.Y, far.Z), W(post.X, post.Y, post.Z), W(t.x, 8.4, t.z) }, {
+		posts = { [1] = W(far.X, 0, far.Z), [2] = W(post.X, 0, post.Z) },
 	})
 end
 
@@ -1541,7 +1542,8 @@ function Base.refresh()
 	for id, sp in spotParts do
 		local def = sp.def
 		local restored = home[id] == true
-		if restoredShown[id] ~= restored then
+		-- a story scene (DD-075) restores spots on its own cues; the profile catches up after it
+		if restoredShown[id] ~= restored and not (scene and scene.story) then
 			local animate = restoredShown[id] == false and restored and not scene and not switched
 			restoredShown[id] = restored
 			showSpot(id, restored, animate)
@@ -1584,8 +1586,10 @@ function Base.refresh()
 		end
 		cable.every = if harvester and not visitHome then 8 else nil
 	end
-	-- the goal: a beam over the place where it happens
-	if goal and goal.station == "home" and goal.spot and spotParts[goal.spot] then
+	-- the goal: a beam over the place where it happens (a story scene places its own)
+	if scene and scene.story then
+		local _ = goalMarker
+	elseif goal and goal.station == "home" and goal.spot and spotParts[goal.spot] then
 		local sd = SPOTS[goal.spot]
 		local def = Meta.Home[goal.spot]
 		showGoalMarker(W(sd.x, 0, sd.z), sd.color, def.name, "Починить · ◆ " .. def.cost, def.icon)
@@ -1710,6 +1714,15 @@ function Base.refresh()
 		else ""
 	ui.playLabel.Text = if amReady then "ОТМЕНА" else "В БОЙ"
 	ui.playSub.Text = if amReady then "ждём отряд" else modeName
+	-- DD-075: until the first defence is done the big button is the next step itself, not another sortie
+	if not amReady and goal and not visitHome then
+		if goal.key == "sting" and goal.station == "build" then
+			ui.playLabel.Text = "СОБРАТЬ"
+			ui.playSub.Text = "«ЖАЛО» ДЛЯ БУРА · ◆ " .. Meta.Structures.STING.cost[1]
+		elseif goal.key == "strike" then
+			ui.playSub.Text = "ЗАЩИТИ БУР · ПЕРВЫЙ НАТИСК"
+		end
+	end
 	ui.play.BackgroundColor3 = if amReady then C.ink else C.lime
 	ui.playLabel.TextColor3 = if amReady then C.text else C.ink
 	ui.playSub.TextColor3 = if amReady then C.dim else C.ink
@@ -2101,182 +2114,69 @@ function Base.resetCamera()
 	orbit.dist, orbit.wantDist = ORBIT_DIST, ORBIT_DIST
 end
 
--- First victory scene ---------------------------------------------------------------------------------------
-local function ease(t: number): number
-	return t * t * (3 - 2 * t)
-end
-
+-- Story scenes (DD-075, client/Story) ---------------------------------------------------------------------
+-- The intro and the first return borrow the shelter: while one plays the shelter keeps the look the scene
+-- gives it (spots are restored on the scene's cues, not when the profile arrives) and is in the world even
+-- during a run.
 function Base.sceneActive(): boolean
 	return scene ~= nil
 end
 
-local function buildSceneGui()
-	local g = new(
-		"ScreenGui",
-		{ Name = "SporeScene", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Parent = gui.Parent }
-	)
-	local top = new("Frame", {
-		Size = UDim2.new(1, 0, 0.11, 0),
-		Position = UDim2.fromScale(0, -0.11),
-		BackgroundColor3 = Color3.new(0, 0, 0),
-		Parent = g,
-	})
-	local bottom = new("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Size = UDim2.new(1, 0, 0.11, 0),
-		Position = UDim2.fromScale(0, 1.11),
-		BackgroundColor3 = Color3.new(0, 0, 0),
-		Parent = g,
-	})
-	local cap = label("", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0.86, 0),
-		Size = UDim2.new(0.9, 0, 0, 44),
-		FontFace = F.display,
-		TextSize = 34,
-		TextTransparency = 1,
-		Parent = g,
-	})
-	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = cap })
-	local sub = label("", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0.86, 4),
-		Size = UDim2.new(0.9, 0, 0, 24),
-		FontFace = F.bodyBold,
-		TextSize = 18,
-		TextColor3 = C.text,
-		TextTransparency = 1,
-		Parent = g,
-	})
-	new("UIStroke", { Color = C.ink, Thickness = 2, Transparency = 0.2, Parent = sub })
-	local skip, skipLabel = Theme.button("ПРОПУСТИТЬ  ›", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -24, 0.945, 0),
-		Size = UDim2.fromOffset(190, 40),
-		TextSize = 13,
-	})
-	skip.Parent = g
-	skipLabel.ZIndex = 3
-	tween(top, 0.5, { Position = UDim2.fromScale(0, 0) })
-	tween(bottom, 0.5, { Position = UDim2.fromScale(0, 1) })
-	return { gui = g, cap = cap, sub = sub, skip = skip, top = top, bottom = bottom }
+function Base.sceneBegin()
+	scene = { story = true }
 end
 
-local function caption(sg, text: string, subText: string?, color: Color3?)
-	sg.cap.Text = text
-	sg.cap.TextColor3 = color or C.text
-	sg.sub.Text = subText or ""
-	sg.cap.TextTransparency = 1
-	sg.sub.TextTransparency = 1
-	tween(sg.cap, 0.35, { TextTransparency = 0 })
-	tween(sg.sub, 0.5, { TextTransparency = 0 })
+function Base.sceneEnd()
+	if not scene then
+		return
+	end
+	scene = nil
+	clearGoalMarker()
+	Base.refresh()
 end
 
--- Plays once after the first hunt is won; onDone runs when it ends or is skipped. Returns false if it
--- cannot play (no camera).
--- The return home after the first sortie: the grove from above, the generator coughs to life, the
--- lights come on, the camera finds the broken workshop the loot will pay for.
-function Base.victoryScene(startCf: CFrame, onDone, onReturn)
-	if scene then
-		return false
+-- Named places of the shelter in world space.
+function Base.point(name: string): Vector3
+	local sd = SPOTS[name]
+	if sd then
+		return W(sd.x, 0, sd.z)
+	elseif name == "TERMINAL" then
+		return W(TERMINAL.x, 8.4, TERMINAL.z)
+	elseif name == "SHELTER" then
+		return W(0, 0, 29)
+	elseif name == "GATE" then
+		return W(0, 0, -30)
 	end
-	local sg = buildSceneGui()
-	local wb = SPOTS.WORKBENCH
-	local gen = SPOTS.GENERATOR
-	local keys = {
-		{ t = 0, cf = startCf },
-		{ t = 0.01, cf = CFrame.lookAt(W(0, 70, -110), W(0, 6, 10)) },
-		-- the cableway: the loot comes home from the drill (DD-065)
-		{ t = 2.2, cf = CFrame.lookAt(W(TERMINAL.x - 13, 22, TERMINAL.z - 15), W(TERMINAL.x + 2, 4, TERMINAL.z + 2)) },
-		{ t = 4.4, cf = CFrame.lookAt(W(gen.x + 8, 9, gen.z - 14), W(gen.x - 2, 3, gen.z + 4)) },
-		{ t = 6.6, cf = CFrame.lookAt(W(wb.x + 4, 9, wb.z - 15), W(wb.x, 2, wb.z)) },
-		{ t = 8.0, cf = CFrame.lookAt(W(wb.x + 3, 8, wb.z - 13), W(wb.x, 2, wb.z)) },
-	}
-	local fired = {}
-	local done = false
-	scene = { t = 0, keys = keys }
-	local function finish()
-		if done then
-			return
-		end
-		done = true
-		scene = nil
-		setLamps(true, true)
-		setBulbs(true)
-		tween(sg.top, 0.35, { Position = UDim2.fromScale(0, -0.11) })
-		tween(sg.bottom, 0.35, { Position = UDim2.fromScale(0, 1.11) })
-		task.delay(0.4, function()
-			sg.gui:Destroy()
-		end)
-		onDone()
+	return W(0, 0, 0)
+end
+
+-- The courtyard dark (the intro: the generator is dead) or lit.
+function Base.sceneLights(on: boolean)
+	setLamps(on, not on)
+	setBulbs(on)
+end
+
+-- A spot comes back to life on cue: its model rises with sparks; the generator also lights the yard.
+function Base.sceneRestore(id: string)
+	restoredShown[id] = true
+	showSpot(id, true, true)
+	if id == "GENERATOR" then
+		Base.sceneLights(true)
 	end
-	sg.skip.Activated:Connect(finish)
-	scene.step = function(dt: number): CFrame
-		scene.t += dt
-		local t = scene.t
-		local function at(time: number, fn)
-			if t >= time and not fired[time] then
-				fired[time] = true
-				fn()
-			end
-		end
-		at(0.05, function()
-			if onReturn then
-				onReturn()
-			end
-			caption(
-				sg,
-				"ГЕНЕРАТОР ДОБЫТ",
-				"Канатка с бура везёт добычу домой, в зелёную рощу"
-			)
-			if cable then
-				cable:send(3, function(i)
-					Fx.ring(W(TERMINAL.x, 0.6, TERMINAL.z), 4, C.lime, 0.5)
-					Audio.play("orb", 0.6, 0.8 + i * 0.05)
-				end, 20)
-			end
-		end)
-		at(3.0, function()
-			-- the generator coughs to life and the shelter wakes up
-			restoredShown.GENERATOR = true
-			showSpot("GENERATOR", true, true)
-			Audio.play("evolve", 0.8, 0.7)
-			caption(
-				sg,
-				"УБЕЖИЩЕ ОЖИВАЕТ",
-				"Свет, тепло и гирлянды над двором",
-				C.gold
-			)
-		end)
-		at(3.6, function()
-			setLamps(true)
-			setBulbs(true)
-		end)
-		at(5.0, function()
-			local def = Meta.Home.WORKBENCH
-			showGoalMarker(W(wb.x, 0, wb.z), wb.color, def.name, "Починить · ◆ " .. def.cost, def.icon)
-			Fx.ring(W(wb.x, 0.4, wb.z), 6, wb.color, 0.8)
-			Audio.play("level", 0.7, 1.5)
-			caption(
-				sg,
-				"УТИЛЯ ХВАТИТ НА МАСТЕРСКУЮ",
-				"На верстаке соберёшь оборону для бура",
-				C.cyan
-			)
-		end)
-		if t >= keys[#keys].t + 0.6 then
-			task.defer(finish)
-		end
-		for k = 1, #keys - 1 do
-			local a, b = keys[k], keys[k + 1]
-			if t <= b.t then
-				local e = ease(math.clamp((t - a.t) / math.max(0.01, b.t - a.t), 0, 1))
-				return a.cf:Lerp(b.cf, e)
-			end
-		end
-		return keys[#keys].cf
+end
+
+-- The beam over a spot with a short title (what to do there next).
+function Base.sceneMarker(id: string, title: string, sub: string)
+	local sd = SPOTS[id]
+	if sd then
+		showGoalMarker(W(sd.x, 0, sd.z), sd.color, title, sub, "gear")
+		Fx.ring(W(sd.x, 0.4, sd.z), 6, sd.color, 0.8)
 	end
-	return true
+end
+
+-- The shelter's end of the cable (crates arrive here).
+function Base.cable()
+	return cable
 end
 
 function Base.sceneCamera(dt: number): CFrame?
