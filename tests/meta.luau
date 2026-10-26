@@ -126,6 +126,9 @@ do
 	check(g11.key == "brood" and g11.station == "swarm", "goal 11 (DD-078): breed the first strain in the lab")
 	pub.brood = { { kind = "EN_RUNNER", muts = {} } }
 	check(step("brood").key ~= "brood", "goal 12: then the story goes on")
+	pub.ops.O05 = 1
+	local g13 = step("boss")
+	check(g13.key == "op_O05" and g13.text:find("Рельсотрон") ~= nil, "goal 13 (DD-079): the boss sortie promises the trophy and the blueprint")
 	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")
 end
 

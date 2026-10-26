@@ -91,6 +91,8 @@ local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 local XP_O01 = { 4, 17, 26 }
 -- O02: four cards, the last before the Alpha (~0:58).
 local XP_O02 = { 6, 20, 34, 50 }
+-- O05: six cards — the boss at ~0:30 needs a build, not a starter rifle.
+local XP_O05 = { 4, 10, 16, 24, 34, 46 }
 
 -- SPOREFALL hunts (DD-032): one new idea per hunt.
 --   O01 ВЫСАДКА       shoot, level up, pick cards; one big enemy at the end. No objective to guard.
@@ -262,39 +264,40 @@ Ops.O04 = {
 	requires = "O03",
 }
 
--- O05 «МАТЬ РОЯ» (was O04, D02 §7). Two elites, the peak swarm, optional nests, then the Broodmother. Her
--- death wins at once. Reactor defended throughout.
-do
-	local yard = Maps.get("MAP_REACTOR_YARD")
-	Ops.O05 = {
-		id = "O05",
-		index = 5,
-		code = "O05",
-		name = "МАТЬ РОЯ",
-		map = "MAP_REACTOR_YARD",
-		brief = "Королева роя выходит из останков гиганта. Переживи элиту и пиковый рой, затем убей Мать роя.",
-		goal = "Защити бур и убей Мать роя",
-		objective = "boss",
-		spawnMult = 0.85,
-		bossHpMult = 0.85,
-		reactor = { hp = 1600, name = "БУР" },
-		runEvolution = false,
-		hardLimit = 540,
-		phases = yard.phases,
-		beats = {
-			{ at = 70, type = "assault", count = 8 },
-			{ at = 150, type = "elite" },
-			{ at = 200, type = "assault", count = 10 },
-			{ at = 270, type = "elite" },
-			{ at = 310, type = "assault", count = 12 },
-			{ at = 330, type = "hive" },
-			{ at = 420, type = "boss" },
-			{ at = 480, type = "enrage" },
-		},
-		unlocks = { "O06" },
-		requires = "O04",
-	}
-end
+-- O05 «МАТЬ РОЯ» (DD-079) — the fifth sortie and the chapter's first boss, ~2:00. One idea: the queen comes
+-- out of the titan's remains at ~0:30 and goes for the drill; her death wins at once (the rest of the swarm
+-- dies with her). A short build-up with every kind met so far, four cards, the drill as the stake. The win
+-- puts her golden statue on the shelter's trophy row and opens the Рельсотрон blueprint.
+Ops.O05 = {
+	id = "O05",
+	index = 5,
+	code = "O05",
+	name = "МАТЬ РОЯ",
+	map = "MAP_REACTOR_YARD",
+	brief = "Королева роя выходит из останков гиганта и идёт на бур. Убей Мать роя.",
+	goal = "Защити бур",
+	objective = "boss",
+	bossHpMult = 0.5,
+	playerDamageMult = 0.6,
+	reactor = { hp = 2600, name = "БУР" },
+	runEvolution = false,
+	deadline = 240,
+	hardLimit = 300,
+	xpTable = XP_O05,
+	homeText = "Вернёшься с трофеем — и в гнезде найдётся чертёж «Рельсотрона».",
+	phases = {
+		{ at = 0, label = "КОНТАКТ", rate = 3.4, cap = 32, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 0.84, EN_STALKER = 0.08, EN_SPITTER = 0.08 }, quiet = true },
+		{ at = 14, label = "НАРАСТАНИЕ", rate = 4.6, cap = 48, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.09, EN_SPITTER = 0.08, EN_BULWARK = 0.03 } },
+		{ at = 28, label = "МАТЬ РОЯ", rate = 2.8, cap = 36, dirs = ALL, w = { EN_RUNNER = 0.9, EN_STALKER = 0.1 }, quiet = true },
+	},
+	beats = {
+		{ at = 18, type = "assault", count = 8 },
+		{ at = 30, type = "boss" },
+		{ at = 110, type = "enrage" },
+	},
+	unlocks = { "O06" },
+	requires = "O04",
+}
 
 -- O06 «КРОВАВАЯ НОЧЬ» (was O05, D02 §8). The crater after dark, the Bomber, two power nodes (shootable by any weapon;
 -- bomber blasts help but are optional). The energy heart is the defended object.

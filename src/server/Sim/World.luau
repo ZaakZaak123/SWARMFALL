@@ -1576,7 +1576,7 @@ function World:step(dt: number)
 		-- reading the controls must not cost them the run.
 		-- DD-075: the first defence waits too (its arrival scene shows the new turret first).
 		local waiting = false
-		if self.countdown <= 0 and self.solo and (self.op.id == "O01" or self.op.id == "STRIKE" or self.op.id == "O02" or self.op.id == "O03" or self.op.id == "O04") and not self.gotInput then
+		if self.countdown <= 0 and self.solo and (self.op.id == "O01" or self.op.id == "STRIKE" or self.op.id == "O02" or self.op.id == "O03" or self.op.id == "O04" or self.op.id == "O05") and not self.gotInput then
 			waiting = true
 			for _, p in self.playerList do
 				if not p.newbie and self.op.id == "O01" then

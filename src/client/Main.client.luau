@@ -1551,6 +1551,9 @@ handlers[E.BOSS] = function(action, x, z)
 		Audio.play("roar", 1, 1.4)
 		CameraRig.shake(1)
 		Menus.whiteFlash(0.6)
+		-- DD-079: a boss down is the run won — the same fanfare and warm glow as the Alpha
+		Audio.sting("victory", 12)
+		victoryGlow = 2.6
 	end
 end
 handlers[E.SPIT] = function(fx, fz, tx, tz, flight)

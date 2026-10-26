@@ -889,6 +889,7 @@ local TROPHIES = {
 local SHOW_Z = -16 -- shelter coordinates
 local showFolder = nil
 local showKey = nil
+local showEntry = nil -- the last showcase entry (a story scene can light a trophy on it, DD-079)
 local spinners = {} -- { model, cf, height }
 
 -- Scale to a height and move the pivot to the bottom centre, so it stands and spins in place.
@@ -990,6 +991,7 @@ end
 
 -- entry: a Showcase entry (or the same fields built from the own profile); nil hides the row.
 function Base.setShowcase(entry)
+	showEntry = entry
 	labResearch = (entry and entry.collection) or (if entry then { EN_SPITTER = entry.sample or 0 } else {})
 	labOwner = entry and entry.name
 	labOwn = entry ~= nil and entry.id == Players.LocalPlayer.UserId
@@ -2154,8 +2156,33 @@ function Base.point(name: string): Vector3
 		return W(0, 0, 29)
 	elseif name == "GATE" then
 		return W(0, 0, -30)
+	elseif name == "ARMORY" then
+		return W(STATIONS[1].x, 0, STATIONS[1].z)
+	elseif string.sub(name, 1, 7) == "TROPHY_" then
+		for i, t in TROPHIES do
+			if "TROPHY_" .. t.op == name then
+				return W(8 + (i - 1) * 9, 0, SHOW_Z)
+			end
+		end
 	end
 	return W(0, 0, 0)
+end
+
+-- A trophy on the showcase row turns gold on cue (the boss the scene's sortie has just beaten).
+local function sceneTrophy(opId: string)
+	if not showEntry then
+		return
+	end
+	local entry = table.clone(showEntry)
+	entry.won = table.clone(entry.won or {})
+	entry.won[opId] = true
+	entry.trophyKey = tostring(entry.trophyKey) .. "+" .. opId
+	Base.setShowcase(entry)
+	local at = Base.point("TROPHY_" .. opId)
+	Fx.ring(at + Vector3.new(0, 0.4, 0), 7, C.gold, 0.9)
+	Fx.light(at + Vector3.new(0, 4, 0), C.gold, 26, 1.4)
+	Fx.emitWith("streak", at + Vector3.new(0, 3, 0), 14, 1, C.gold)
+	Audio.play("evolve", 0.6, 1.2)
 end
 
 -- The courtyard dark (the intro: the generator is dead) or lit.
@@ -2166,6 +2193,10 @@ end
 
 -- A spot comes back to life on cue: its model rises with sparks; the generator also lights the yard.
 function Base.sceneRestore(id: string)
+	if string.sub(id, 1, 7) == "TROPHY_" then
+		sceneTrophy(string.sub(id, 8))
+		return
+	end
 	if id == "LAB" and ((labResearch or {}).EN_SPITTER or 0) <= 0 then
 		-- DD-077: the sample that rode home is in its tank even before the showcase catches up
 		labResearch = table.clone(labResearch or {})
@@ -2181,10 +2212,10 @@ end
 -- The beam over a spot with a short title (what to do there next).
 function Base.sceneMarker(id: string, title: string, sub: string)
 	local sd = SPOTS[id]
-	if sd then
-		showGoalMarker(W(sd.x, 0, sd.z), sd.color, title, sub, "gear")
-		Fx.ring(W(sd.x, 0.4, sd.z), 6, sd.color, 0.8)
-	end
+	local at = Base.point(id)
+	local color = if sd then sd.color else C.gold
+	showGoalMarker(at, color, title, sub, "gear")
+	Fx.ring(at + Vector3.new(0, 0.4, 0), 6, color, 0.8)
 end
 
 -- The shelter's end of the cable (crates arrive here).

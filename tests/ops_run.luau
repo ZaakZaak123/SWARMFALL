@@ -118,9 +118,15 @@ for _, id in CHAPTER do
 				check(m.destroyed >= 2, id .. " both targets destroyed")
 			else
 				check(w.boss == nil and w.bossSpawned, id .. " boss killed")
+				if id == "O05" then
+					check(r.time < 180, "O05 ends within ~3:00 — the boss at ~0:30 (DD-079)")
+				end
 			end
 		else
 			print("  NOTE " .. id .. " defending bot lost: " .. r.reason)
+			if id == "O05" then
+				check(false, "O05 must be won by the defending bot (DD-079)")
+			end
 		end
 	end
 end

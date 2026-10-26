@@ -1011,6 +1011,27 @@ local HOMECOMING = {
 			sub = "Веди свою стаю на чужие буры — утиль с их канатки твой",
 		},
 	},
+	O05 = {
+		cargo = "GEM",
+		glow = rgb(255, 120, 200),
+		title = "МАТЬ РОЯ ПОВЕРЖЕНА",
+		sub = "Её ядро — трофей для убежища",
+		transit = { "ДОМОЙ", "Без королевы рой в воронке надолго притихнет" },
+		beats = {
+			{
+				spot = "TROPHY_O05",
+				title = "ТРОФЕЙ НА ВИТРИНЕ",
+				sub = "Её статуя теперь золотая — гости убежища увидят, кого ты победил",
+				color = C.gold,
+			},
+		},
+		next = {
+			spot = "ARMORY",
+			marker = { "РЕЛЬСОТРОН", "Чертёж в оружейной" },
+			title = "В ГНЕЗДЕ НАШЁЛСЯ ЧЕРТЁЖ",
+			sub = "«Рельсотрон» пробивает толпу насквозь — он ждёт в оружейной",
+		},
+	},
 }
 
 function Story.hasHomecoming(opId: string?): boolean
@@ -1225,6 +1246,19 @@ local DEPARTURE = {
 			at = { Vector3.new(-60, 0, 80), Vector3.new(72, 0, -70), Vector3.new(-70, 0, -30) },
 		},
 	},
+	O05 = {
+		title = "ВЫЛАЗКА 5 · МАТЬ РОЯ",
+		sub = "Королева роя проснулась в останках гиганта",
+		transit = { "К БУРУ", "Она выйдет сама — и пойдёт прямо на бур" },
+		funnel = {
+			"УБЕЙ МАТЬ РОЯ",
+			"Она выйдет из черепа титана. Её смерть — конец боя",
+		},
+		focus = Vector3.new(0, 10, 112), -- where she comes out (Maps bossEntry)
+		focusRing = 22,
+		focusColor = C.pink,
+		focusEye = { Vector3.new(6, 62, -96), Vector3.new(4, 48, -78) }, -- in front and above: the titan's ribs block the side
+	},
 }
 
 function Story.hasDeparture(opId: string?): boolean
@@ -1298,7 +1332,8 @@ function Story.depart(opId: string, onDone)
 					if cfg.focus then
 						-- close on what the sortie is about (the pylon and its circle)
 						local f = cfg.focus
-						local eye = (f + Vector3.new(-24, 30, -46)):Lerp(f + Vector3.new(-16, 22, -36), k)
+						local fe = cfg.focusEye or { Vector3.new(-24, 30, -46), Vector3.new(-16, 22, -36) }
+						local eye = (f + fe[1]):Lerp(f + fe[2], k)
 						return CFrame.lookAt(eye, f)
 					end
 					local eye = Vector3.new(-6, 66, -84):Lerp(Vector3.new(-18, 56, -66), k)
