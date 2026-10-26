@@ -305,6 +305,33 @@ function Audio.setMusic(state: string)
 	bedTarget.boss = if state == "boss" then 1 else 0
 	bedTarget.home = if state == "lobby" then 1 else 0
 end
+-- DD-084: the fight track swells with the crowd on screen (0 calm .. 1 a full funnel).
+local intensity = 0
+function Audio.setIntensity(k: number)
+	intensity += (k - intensity) * 0.02
+end
+
+-- A heartbeat under the music while the hero is nearly down (APM «HEARTBEAT 02 96BPM», looped).
+local heart = nil
+function Audio.heartbeat(on: boolean)
+	if not heart then
+		heart = Instance.new("Sound")
+		heart.Name = "Heartbeat"
+		heart.SoundId = "rbxassetid://9043365842"
+		heart.Looped = true
+		heart.Volume = 0
+		heart.SoundGroup = group("ui")
+		heart.Parent = SoundService
+	end
+	local goal = if on then 0.9 else 0
+	heart.Volume += (goal - heart.Volume) * 0.08
+	if heart.Volume > 0.02 and not heart.IsPlaying then
+		heart:Play()
+	elseif heart.Volume <= 0.02 and not on and heart.IsPlaying then
+		heart:Stop()
+	end
+end
+
 function Audio.updateMusic(dt: number)
 	for key, def in BEDS do
 		local s = beds[key]
@@ -318,7 +345,8 @@ function Audio.updateMusic(dt: number)
 			s.Parent = SoundService
 			beds[key] = s
 		end
-		local goal = def[2] * bedTarget[key] * (if os.clock() < duckUntil then 0.12 else 1)
+		local swell = if key == "fight" or key == "boss" then 0.8 + 0.45 * intensity else 1
+		local goal = def[2] * bedTarget[key] * swell * (if os.clock() < duckUntil then 0.12 else 1)
 		s.Volume += (goal - s.Volume) * math.min(1, dt * (if goal < s.Volume then 2.5 else 0.8)) -- out fast, in slow
 		if s.Volume > 0.005 and not s.IsPlaying then
 			s:Play()

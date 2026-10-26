@@ -2032,7 +2032,7 @@ function Menus.showOffer(me, run)
 			end)
 		end
 	end
-	ui.offerBuild.Position = UDim2.new(0.5, 0, 0, 128 + CARD_H + 22)
+	ui.offerBuild.Position = UDim2.new(0.5, 0, 0, 128 + CARD_H + 60) -- below the guided card's «ВОЗЬМИ ЭТО» ribbon
 	clear(ui.offerBuild)
 	for _, id in Defs.UpgradeOrder do
 		if me.ranks[id] then

@@ -249,6 +249,21 @@ local dashDir = Vector3.zAxis
 local linearVelocity: LinearVelocity? = nil
 local orbCombo, orbComboT = 0, 0
 local burstN, burstT, burstShown = 0, 0, 0 -- own kills inside a rolling 0.5 s window
+-- DD-084 (game feel): a hit-stop freezes the swarm and the effects for a few frames on the heaviest
+-- moments (a leader down, a wave of kills at once, a level up); the hero and the camera keep moving.
+local hitstopUntil = 0
+local function hitstop(seconds: number)
+	hitstopUntil = math.max(hitstopUntil, os.clock() + seconds)
+end
+-- Streak milestones: the word, the colour
+local MILESTONES = {
+	{ 25, "В УДАРЕ", C.gold },
+	{ 50, "МЯСОРУБКА", C.orange },
+	{ 100, "ОПУСТОШЕНИЕ", C.red },
+	{ 200, "АПОКАЛИПСИС", C.violet },
+	{ 400, "ЛЕГЕНДА ПУСТОШИ", C.cyan },
+}
+local milestoneShown = 0
 local fps = 60
 local debugExtra = {}
 local pausedByMenu = false
@@ -1110,8 +1125,13 @@ handlers[E.KILL] = function(id, kind, x, z, killer, cause, fromX, fromZ)
 		if nearMe(pos, 60) then
 			CameraRig.shake(if kind >= 5 then 0.6 else 0.3)
 		end
+		if killer == myId and kind >= 5 then
+			hitstop(0.09)
+		end
 	else
-		Audio.at("kill", pos, 0.8)
+		-- the kill sound climbs with the streak: the meat grinder speeds up under your hands
+		local streak = if me then math.min(me.combo or 0, 80) else 0
+		Audio.at("kill", pos, 0.8, if killer == myId then 1 + streak * 0.007 else 1)
 	end
 	if killer == myId then
 		Hud.hitmarker(true)
@@ -1127,6 +1147,7 @@ handlers[E.KILL] = function(id, kind, x, z, killer, cause, fromX, fromZ)
 			Hud.burst(burstN)
 			Audio.play("killBig", 0.7, 0.75 + math.min(burstN, 30) * 0.01)
 			CameraRig.punch(math.min(0.6, 0.2 + burstN * 0.015))
+			hitstop(0.05)
 		end
 	end
 end
@@ -1510,7 +1531,18 @@ end
 handlers[E.LEVEL] = function()
 	local root = myRoot()
 	if root then
-		Fx.shockwave(root.Position, 10, C.cyan, 0.4)
+		-- DD-084: a level is a moment — a golden blast off the hero, a beat of stillness, then the cards
+		local at = root.Position
+		Fx.shockwave(at, 22, C.gold, 0.5)
+		Fx.ring(Vector3.new(at.X, 0.4, at.Z), 16, C.gold, 0.6)
+		Fx.light(at + Vector3.yAxis * 4, C.gold, 40, 0.6)
+		for i = 1, 10 do
+			local a = i / 10 * math.pi * 2
+			Fx.emitWith("streak", at, 2, 1.2, C.gold, Vector3.new(math.cos(a), 1.3, math.sin(a)).Unit)
+		end
+		Audio.play("level", 0.9, 1)
+		CameraRig.punch(0.45)
+		hitstop(0.12)
 	end
 end
 handlers[E.MAGNET] = function(pid)
@@ -2442,8 +2474,31 @@ local function frame(dt: number)
 			end
 		end
 	end
-	EnemyView.update(dt, cam.CFrame.Position)
-	Fx.update(dt)
+	local worldDt = if now < hitstopUntil then dt * 0.04 else dt
+	EnemyView.update(worldDt, cam.CFrame.Position)
+	Fx.update(worldDt)
+	-- streak milestones (DD-084)
+	local streak = if mode == "RUN" and me then me.combo or 0 else 0
+	if streak < 5 then
+		milestoneShown = 0
+	end
+	for _, m in MILESTONES do
+		if streak >= m[1] and milestoneShown < m[1] then
+			milestoneShown = m[1]
+			Hud.milestone(m[2], m[1], m[3])
+			Audio.play("evolve", 0.55, 1.25 + m[1] / 800)
+			Audio.play("killBig", 0.8, 0.6)
+			CameraRig.punch(0.35)
+			local r0 = myRoot()
+			if r0 then
+				Fx.ring(Vector3.new(r0.Position.X, 0.4, r0.Position.Z), 12 + m[1] / 10, m[3], 0.5)
+				Fx.light(r0.Position + Vector3.yAxis * 3, m[3], 30, 0.4)
+			end
+		end
+	end
+	-- the music swells with the crowd; a heartbeat under it when the hero is nearly down
+	Audio.setIntensity(if mode == "RUN" then math.clamp(EnemyView.count() / 60, 0, 1) else 0)
+	Audio.heartbeat(mode == "RUN" and me ~= nil and me.alive and me.hp / math.max(1, me.maxHp) < 0.3)
 	Menus.update(dt)
 	Audio.setMusic(
 		if Story.active()

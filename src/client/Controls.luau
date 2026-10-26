@@ -290,6 +290,9 @@ function Controls.update(
 	fwdX: number?,
 	fwdZ: number?
 )
+	if workspace:GetAttribute("DevTouch") and game:GetService("RunService"):IsStudio() then
+		Controls.device = "touch" -- Studio checks: the phone layout without the device emulator
+	end
 	local device = Controls.device
 	if device == "touch" then
 		layoutTouch()

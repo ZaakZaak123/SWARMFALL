@@ -544,7 +544,8 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 		Combat.frostNova(self, p)
 	end
 	p.hp = math.max(0, p.hp - amount)
-	p.combo = 0
+	-- DD-084: a hit no longer breaks the streak (in the swarm hits land all the time and it never grew);
+	-- only 2.5 s without a kill does
 	self:emit(E.HURT, p.id, math.floor(amount + absorbed + 0.5), fromX, fromZ)
 	local story = self.op.id == "O01" or self.op.id == "O02" -- DD-076: the second sortie saves once too
 	if p.hp <= 0 and p.newbie and story and (not p.secondWind or (p.firstHunt and self.op.id == "O01")) then

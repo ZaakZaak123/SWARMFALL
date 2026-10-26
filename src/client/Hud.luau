@@ -29,6 +29,7 @@ local hitT, hitKill = 0, false
 local hurtT = 0
 local arrows = {}
 local comboShown = 0
+local comboAt = 0
 local shownBoss = nil
 local lastLevel = 0
 local lastHp = nil
@@ -343,17 +344,35 @@ function Hud.init(playerGui: PlayerGui)
 	ui.combo = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 44),
-		Size = UDim2.fromOffset(160, 50),
+		Size = UDim2.fromOffset(180, 66),
 		Visible = false,
 		Parent = tr,
 	})
 	ui.comboScale = new("UIScale", { Parent = ui.combo })
+	-- DD-084: the streak is a resource — a bar drains while no kill lands; a kill fills it back
+	ui.comboBarBack = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 50),
+		Size = UDim2.fromOffset(120, 5),
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.3,
+		Corner = UDim.new(1, 0),
+		Parent = ui.combo,
+	})
+	ui.comboBar = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C.gold,
+		Corner = UDim.new(1, 0),
+		Parent = ui.comboBarBack,
+	})
 	ui.comboNum = label("", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.fromScale(1, 0),
 		Size = UDim2.new(1, 0, 0, 34),
 		FontFace = F.display,
-		TextSize = 32,
+		TextSize = 38,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextStrokeTransparency = 0.4,
 		TextStrokeColor3 = C.ink,
@@ -578,7 +597,7 @@ function Hud.init(playerGui: PlayerGui)
 	})
 	ui.burst = label("", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.7),
+		Position = UDim2.fromScale(0.5, 0.63), -- above the toasts at 0.74
 		Size = UDim2.fromOffset(600, 50),
 		FontFace = F.display,
 		TextSize = 30,
@@ -878,6 +897,27 @@ function Hud.burst(n: number)
 		Enum.EasingStyle.Quad,
 		Enum.EasingDirection.In
 	)
+end
+
+-- A streak milestone (DD-084): the word big in the middle, under the hero.
+function Hud.milestone(word: string, n: number, color: Color3)
+	ui.burst.Text = string.format('%s  <font size="46">×%d</font>', word, n)
+	ui.burst.TextColor3 = color
+	ui.burst.TextSize = 42
+	ui.burst.TextTransparency = 0
+	ui.burst.TextStrokeTransparency = 0.2
+	ui.burstScale.Scale = 1.9
+	tween(ui.burstScale, 0.28, { Scale = 1 }, Enum.EasingStyle.Back)
+	tween(
+		ui.burst,
+		1.6,
+		{ TextTransparency = 1, TextStrokeTransparency = 1 },
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.In
+	)
+	task.delay(1.7, function()
+		ui.burst.TextSize = 30
+	end)
 end
 
 function Hud.hurt()
@@ -1203,15 +1243,19 @@ function Hud.update(run, me, extra, dt: number)
 		end
 		-- Kill streak
 		local combo = me.combo or 0
-		if combo >= 10 then
+		if combo >= 5 then
 			if combo ~= comboShown then
 				comboShown = combo
-				ui.comboScale.Scale = 1.2
+				comboAt = now
+				ui.comboScale.Scale = 1.25 + math.min(combo, 100) * 0.003
 			end
 			ui.comboNum.Text = "×" .. combo
 			ui.combo.Visible = true
-			ui.comboScale.Scale += (1 - ui.comboScale.Scale) * math.min(1, dt * 12)
-			ui.comboNum.TextColor3 = if combo >= 100 then C.red elseif combo >= 50 then C.orange else C.gold
+			ui.comboScale.Scale += (1 + math.min(combo, 150) / 300 - ui.comboScale.Scale) * math.min(1, dt * 12)
+			local col = if combo >= 100 then C.red elseif combo >= 50 then C.orange else C.gold
+			ui.comboNum.TextColor3 = col
+			ui.comboBar.BackgroundColor3 = col
+			ui.comboBar.Size = UDim2.fromScale(math.clamp(1 - (now - comboAt) / 2.5, 0, 1), 1)
 		else
 			ui.combo.Visible = false
 			comboShown = 0
