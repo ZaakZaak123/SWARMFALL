@@ -94,12 +94,9 @@ do
 		return g
 	end
 	check(step("new").key == "hunt1", "goal 1: the sortie for the generator")
-	pub.winsByOp.O01, pub.ops.O02, pub.scrap, pub.home.GENERATOR = 1, 1, 180, true
+	pub.winsByOp.O01, pub.ops.O02, pub.scrap, pub.home.GENERATOR, pub.home.WORKBENCH = 1, 1, 180, true, true
 	local g = step("won O01")
-	check(g.key == "workbench" and g.station == "home" and g.spot == "WORKBENCH", "goal 2: repair the workshop in the shelter")
-	pub.home.WORKBENCH, pub.scrap = true, 160
-	g = step("workshop")
-	check(g.key == "sting" and g.station == "build", "goal 3: the first turret is made at the workbench")
+	check(g.key == "sting" and g.station == "build", "goal 2 (DD-075): right after the first win the first turret is affordable")
 	pub.outpost.slots[Meta.FirstSocket] = { id = "STING", lvl = 1 }
 	pub.scrap = 30
 	g = step("built")
@@ -156,11 +153,12 @@ do
 	local out = Bot.run("W_ARC_RIFLE", 1, 77, false, nil, 1, nil, { opDef = Ops.makeFirstStrike(), structures = first, orbit = 22, s01 = false })
 	local r = out.result
 	print(string.format("  strike: %s (%s) at %s  kills %d  level %d  bur %s", if r.victory then "VICTORY" else "DEFEAT", r.reason, fmt(r.time), r.kills, r.level, if r.reactor then math.floor(r.reactor * 100) .. "%" else "-"))
-	check(r.victory and r.time >= 25 and r.time <= 60, "«Первый натиск» is a short won defence (25–60 s)")
+	check(r.victory and r.time >= 45 and r.time <= 75, "«Первый натиск» is a won defence of about a minute (45–75 s)")
 	check(r.level == 1, "no cards in «Первый натиск» (it is a scene, not a run)")
 	-- A player who just stands at the base spawn: the turret alone must not lose the lesson.
 	local w = World.new({ seed = 5, players = { { id = 1, name = "IDLE", weapon = "W_ARC_RIFLE", s01 = false } }, opDef = Ops.makeFirstStrike(), structures = first })
 	w:setPlayerPosition(1, 0, -58)
+	w.gotInput = true -- the first defence waits for a first move (DD-075); this player moves once, then stands
 	local t = 0
 	while w.phase ~= "RESULTS" and t < 200 do
 		w:step(1 / 30)

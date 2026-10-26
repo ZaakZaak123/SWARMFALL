@@ -161,7 +161,7 @@ Meta.HomeOrigin = Vector3.new(0, 0, 1500) -- world position of the shelter's cou
 Meta.HomeOrder = { "GENERATOR", "WORKBENCH", "RADIO", "LAB", "GARDEN" }
 Meta.Home = {
 	GENERATOR = { id = "GENERATOR", name = "ГЕНЕРАТОР", text = "Свет в убежище и прожекторы во дворе.", icon = "sun", cost = 0, unlock = "O01", free = true },
-	WORKBENCH = { id = "WORKBENCH", name = "МАСТЕРСКАЯ", text = "Верстак для оборудования бура: турели, ловушки, щиты.", icon = "gear", cost = 120, unlock = "O01" },
+	WORKBENCH = { id = "WORKBENCH", name = "МАСТЕРСКАЯ", text = "Верстак для оборудования бура: турели, ловушки, щиты.", icon = "gear", cost = 0, unlock = "O01", free = true }, -- DD-075: the generator powers it
 	RADIO = { id = "RADIO", name = "РАДИОСТАНЦИЯ", text = "Ловит сигналы роя у бура: открывает оборону бура по уровням.", icon = "coil", cost = 250, unlock = "O02" },
 	LAB = { id = "LAB", name = "ЛАБОРАТОРИЯ", text = "Резервуар с образцами роя: исследования видов и свой рой.", icon = "hive", cost = 400, unlock = "O03" },
 	GARDEN = { id = "GARDEN", name = "ОГОРОД", text = "Грядки, гирлянды и скамья: в убежище становится уютно.", icon = "heart", cost = 300, unlock = "O02" },

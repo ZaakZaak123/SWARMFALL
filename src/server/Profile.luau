@@ -124,6 +124,7 @@ local function reconcile(data)
 	local won = data.wins_by_op or {}
 	if (won.O01 or 0) > 0 then
 		data.home.GENERATOR = true
+		data.home.WORKBENCH = true -- DD-075: the first sortie restores the workshop too
 	end
 	if next(data.outpost.slots) ~= nil or (won.O02 or 0) > 0 then
 		data.home.WORKBENCH = true

@@ -128,25 +128,6 @@ function Goals.next(pub): Goal?
 			op = "O01",
 		}
 	end
-	local bench = Meta.Home.WORKBENCH
-	if not home.WORKBENCH then
-		return {
-			key = "workbench",
-			icon = bench.icon,
-			title = "ПОЧИНИ МАСТЕРСКУЮ",
-			text = if scrap >= bench.cost
-				then string.format(
-					"Утиля хватает: починка стоит %d. На верстаке соберёшь оборону для бура.",
-					bench.cost
-				)
-				else string.format(
-					"Нужно %d утиля — ещё одна вылазка, и хватит.",
-					bench.cost
-				),
-			station = if scrap >= bench.cost then "home" else "launch",
-			spot = "WORKBENCH",
-		}
-	end
 	if builtCount(slots) == 0 then
 		local cost = Meta.Structures.STING.cost[1]
 		return {
@@ -154,7 +135,10 @@ function Goals.next(pub): Goal?
 			icon = "crosshair",
 			title = "ПЕРВАЯ ТУРЕЛЬ ДЛЯ БУРА",
 			text = if scrap >= cost
-				then "Собери «Жало» на верстаке — оно встанет у бура в опасной зоне."
+				then string.format(
+					"Рой вернётся к буру. Собери «Жало» на верстаке (%d утиля) — оно встанет у бура и будет стрелять вместе с тобой.",
+					cost
+				)
 				else string.format(
 					"«Жало» стоит %d утиля — ещё одна вылазка, и хватит.",
 					cost
@@ -169,7 +153,7 @@ function Goals.next(pub): Goal?
 			key = "strike",
 			icon = "shield",
 			title = "ОБОРОНА БУРА",
-			text = "Бур в опасной зоне. Когда будешь готов — выйди и отбей первый натиск вместе с турелью.",
+			text = "«Жало» уже у бура. Рой идёт на шум — выйди и отбей первый натиск вместе с турелью.",
 			station = "launch",
 			mode = "siege",
 			structure = "STING",

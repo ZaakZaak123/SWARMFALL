@@ -98,7 +98,9 @@ function Bot.run(
 					end
 					if p.offer.lock then
 						pickIndex = p.offer.lock
-						milestones.lockedCard = p.offer.choices[pickIndex]
+						milestones.lockedCard = milestones.lockedCard or p.offer.choices[pickIndex]
+						milestones.lockedCards = milestones.lockedCards or {}
+						table.insert(milestones.lockedCards, p.offer.choices[pickIndex])
 					end
 					local ok = w:choose(p.id, p.offer.id, pickIndex)
 					assert(ok, "choose failed")
@@ -232,6 +234,9 @@ function Bot.run(
 			end
 		end
 
+		if w.waiting then
+			w.gotInput = true -- a real player presses a key once the arrival scene is over (DD-075)
+		end
 		local before = w.stats.lastTickMs
 		w:step(dt)
 		if w.stats.lastTickMs ~= before then

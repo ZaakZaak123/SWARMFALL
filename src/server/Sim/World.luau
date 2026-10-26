@@ -1565,11 +1565,12 @@ function World:step(dt: number)
 		self.countdown -= dt
 		-- A solo newcomer's first run waits for their first move or shot (DD-024): still loading or
 		-- reading the controls must not cost them the run.
+		-- DD-075: the first defence waits too (its arrival scene shows the new turret first).
 		local waiting = false
-		if self.countdown <= 0 and self.solo and self.op.id == "O01" and not self.gotInput then
+		if self.countdown <= 0 and self.solo and (self.op.id == "O01" or self.op.id == "STRIKE") and not self.gotInput then
 			waiting = true
 			for _, p in self.playerList do
-				if not p.newbie then
+				if not p.newbie and self.op.id == "O01" then
 					waiting = false
 				end
 			end

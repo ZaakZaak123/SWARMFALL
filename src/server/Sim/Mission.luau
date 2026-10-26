@@ -520,6 +520,28 @@ function Mission:onEliteKilled(e)
 	-- Permanent component: granted for the kill itself, even if the run is lost afterwards (GDD §5).
 	table.insert(self.components, "CMP_STORM_CORE")
 	w:emit(E.COMPONENT, e.x, e.z, "CMP_STORM_CORE")
+	if self.op.winOnElite then
+		-- DD-075: the leader's death is the end. The leaderless swarm scatters in one blast from where it
+		-- fell (no last wave); a short beat for the victory moment, then the results.
+		w:emit(E.BOSS, 6, e.x, e.z)
+		for _, other in w.enemies do
+			if other.alive and other ~= e and not other.def.static then
+				other.dmgFromX, other.dmgFromZ = e.x, e.z
+				w:kill(other, nil, 1, Codec.Cause.BLAST)
+			end
+		end
+		w:banner(
+			(self.op.eliteName or "ВОЖАК") .. " ПОВЕРЖЕН" .. (if self.op.eliteName == "АЛЬФА" then "А" else ""),
+			"Рой без вожака рассыпался",
+			C.GOLD,
+			3,
+			"crown"
+		)
+		self.state = "FINALE"
+		self.finaleUntil = w.t + (self.op.finaleTime or 2.5)
+		self.goal = "Победа"
+		return
+	end
 	w:banner(
 		"АЛЬФА ПОВЕРЖЕНА",
 		"Стая в ярости. Переживи последнюю волну!",

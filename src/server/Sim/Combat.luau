@@ -882,21 +882,26 @@ function Combat.makeOffer(w, p)
 	if #choices < cards then
 		table.insert(choices, "FB_CHARGE")
 	end
-	-- DD-051: the very first card of the very first hunt is «Расщепление», and only it can be taken, so
-	-- the first upgrade is one the player sees at once (two bullets become three). Shown with its rivals.
+	-- DD-051/DD-075: the first offers of the very first hunt are guided, one per style in order
+	-- (op.guidedCards: «Расщепление», «Детонатор», «Барьер»): each is shown with two rivals, only it can
+	-- be taken, and each does something the player sees at once.
 	local lock = nil
-	if p.firstHunt and p.offersMade == 0 and w.op.id == "O01" and rank(p, "UPG_MULTISHOT") == 0 then
-		local at = table.find(choices, "UPG_MULTISHOT")
+	local guided = w.op.guidedCards
+	local want = if p.firstHunt and guided then guided[p.offersMade + 1] else nil
+	if want and Defs.Upgrades[want] and rank(p, want) == 0 then
+		local at = table.find(choices, want)
 		if not at then
 			at = math.min(2, #choices + 1)
 			if at <= #choices then
-				choices[at] = "UPG_MULTISHOT"
+				choices[at] = want
 			else
-				table.insert(choices, "UPG_MULTISHOT")
+				table.insert(choices, want)
 			end
 		end
 		lock = at
-		p.seenMulti = true
+		if want == "UPG_MULTISHOT" then
+			p.seenMulti = true
+		end
 	end
 	p.offerSeq += 1
 	p.offersMade += 1
