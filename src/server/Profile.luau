@@ -132,8 +132,8 @@ local function reconcile(data)
 	if (won.O02 or 0) > 0 then
 		data.home.RADIO = true -- DD-076: the second sortie brings the radio's antenna home
 	end
-	if (won.O03 or 0) > 0 and (next(data.brood) ~= nil or (data.species.EN_STALKER ~= nil)) then
-		data.home.LAB = true
+	if (won.O03 or 0) > 0 then
+		data.home.LAB = true -- DD-077: the third sortie brings the sample home
 	end
 	data.brood = Meta.cleanBrood(data.brood)
 	data.v = VERSION
@@ -624,7 +624,7 @@ function Profile.like(liker: Player, owner: Player, day: number): boolean
 end
 
 -- One-time onboarding flags the client may set (the victory scene was watched).
-local CLIENT_TUT = { drill = true, intro = true, go_O02 = true, home_O02 = true } -- story scenes watched (DD-075/076)
+local CLIENT_TUT = { drill = true, intro = true, go_O02 = true, home_O02 = true, go_O03 = true, home_O03 = true } -- story scenes watched (DD-075/076)
 function Profile.markTut(player: Player, key: string): boolean
 	local d = Profile.get(player)
 	if not d or not CLIENT_TUT[key] or d.tut[key] then

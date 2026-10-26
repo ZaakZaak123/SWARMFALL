@@ -163,7 +163,7 @@ Meta.Home = {
 	GENERATOR = { id = "GENERATOR", name = "ГЕНЕРАТОР", text = "Свет в убежище и прожекторы во дворе.", icon = "sun", cost = 0, unlock = "O01", free = true },
 	WORKBENCH = { id = "WORKBENCH", name = "МАСТЕРСКАЯ", text = "Верстак для оборудования бура: турели, ловушки, щиты.", icon = "gear", cost = 0, unlock = "O01", free = true }, -- DD-075: the generator powers it
 	RADIO = { id = "RADIO", name = "РАДИОСТАНЦИЯ", text = "Ловит сигналы роя у бура: открывает оборону бура по уровням.", icon = "coil", cost = 0, unlock = "O02", free = true }, -- DD-076: the antenna comes home from sortie 2
-	LAB = { id = "LAB", name = "ЛАБОРАТОРИЯ", text = "Резервуар с образцами роя: исследования видов и свой рой.", icon = "hive", cost = 400, unlock = "O03" },
+	LAB = { id = "LAB", name = "ЛАБОРАТОРИЯ", text = "Резервуар с образцами роя: исследования видов и свой рой.", icon = "hive", cost = 0, unlock = "O03", free = true }, -- DD-077: the third sortie brings the sample home
 	GARDEN = { id = "GARDEN", name = "ОГОРОД", text = "Грядки, гирлянды и скамья: в убежище становится уютно.", icon = "heart", cost = 300, unlock = "O02" },
 }
 

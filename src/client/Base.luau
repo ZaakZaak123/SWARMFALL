@@ -2161,6 +2161,11 @@ end
 
 -- A spot comes back to life on cue: its model rises with sparks; the generator also lights the yard.
 function Base.sceneRestore(id: string)
+	if id == "LAB" and ((labResearch or {}).EN_SPITTER or 0) <= 0 then
+		-- DD-077: the sample that rode home is in its tank even before the showcase catches up
+		labResearch = table.clone(labResearch or {})
+		labResearch.EN_SPITTER = math.max(1, labResearch.EN_SPITTER or 0)
+	end
 	restoredShown[id] = true
 	showSpot(id, true, true)
 	if id == "GENERATOR" then

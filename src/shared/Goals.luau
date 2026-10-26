@@ -208,11 +208,20 @@ function Goals.next(pub): Goal?
 				end
 			end
 			if brings and structDef then
+				-- the cheapest of what it opens: the one the homecoming will point at
+				local cheapest = nil
+				for _, sid in Meta.StructureOrder do
+					local d = Meta.Structures[sid]
+					if d.unlock == opId and d.kind ~= "harvest" and (not cheapest or d.cost[1] < cheapest.cost[1]) then
+						cheapest = d
+					end
+				end
+				structure = if cheapest then cheapest.id else structure
 				text = string.format(
-					"%s Вернёшься — заработает %s, и откроется %s.",
+					"%s Вернёшься — заработает %s, и откроется «%s».",
 					op.brief,
 					lowerFirst(Goals.titleCase(brings.name)),
-					names[1]
+					Goals.titleCase((cheapest or structDef).name)
 				)
 			elseif structDef then
 				-- Lead with the headline structure, then the rest in one short tail.

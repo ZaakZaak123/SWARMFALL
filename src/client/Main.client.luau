@@ -1498,10 +1498,11 @@ end
 -- leaderless swarm blown apart by the shockwave (the server kills it), a white flash, the camera leaning
 -- in, a warm grade and the fanfare.
 local victoryGlow = 0
-local function leaderDown(x: number, z: number)
+-- DD-077: the charged pylon's song ends O03 the same way, in the pylon's cyan.
+local function leaderDown(x: number, z: number, song: boolean?)
 	local at = Vector3.new(x, 0, z)
-	local gold = Color3.fromRGB(255, 204, 70)
-	Audio.play("roar", 1, 1.4)
+	local gold = if song then Color3.fromRGB(110, 236, 255) else Color3.fromRGB(255, 204, 70)
+	Audio.play(if song then "evolveStorm" else "roar", 1, if song then 1.1 else 1.4)
 	Audio.play("killBig", 1, 0.7)
 	Audio.sting("victory", 12)
 	Menus.whiteFlash(0.85)
@@ -1520,7 +1521,11 @@ local function leaderDown(x: number, z: number)
 	for i = 1, 8 do
 		task.delay(0.1 + i * 0.07, function()
 			local a = i / 8 * math.pi * 2
-			Fx.boom(at + Vector3.new(math.cos(a), 0, math.sin(a)) * (6 + i), 4, Color3.fromRGB(255, 226, 140))
+			Fx.boom(
+				at + Vector3.new(math.cos(a), 0, math.sin(a)) * (6 + i),
+				4,
+				if song then Color3.fromRGB(190, 250, 255) else Color3.fromRGB(255, 226, 140)
+			)
 		end)
 	end
 	for i = 1, 14 do
@@ -1530,8 +1535,8 @@ local function leaderDown(x: number, z: number)
 end
 
 handlers[E.BOSS] = function(action, x, z)
-	if action == 6 then
-		leaderDown(x or 0, z or 0)
+	if action == 6 or action == 7 then
+		leaderDown(x or 0, z or 0, action == 7)
 	elseif action == 5 then
 		Audio.play("roar", 0.7, 0.6)
 		CameraRig.shake(0.5)

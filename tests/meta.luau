@@ -112,7 +112,11 @@ do
 	pub.home.GARDEN = true
 	pub.outpost.slots[1] = nil
 	pub.scrap = 100
-	check(step("poor").key == "op_O03", "goal 8: otherwise the next sortie")
+	local g8 = step("poor")
+	check(g8.key == "op_O03" and g8.structure == "CRYO", "goal 8: otherwise the next sortie (it promises the Криополе)")
+	pub.winsByOp.O03, pub.home.LAB, pub.scrap = 1, true, 300
+	pub.outpost.slots[1] = { id = "ARC", lvl = 1 }
+	check(step("won O03").key == "build_CRYO", "goal 9 (DD-077): the homecoming's promise — the Криополе")
 	check(Goals.titleCase("РАЗРЯДНИК") == "Разрядник", "Cyrillic title case")
 end
 

@@ -79,6 +79,7 @@ export type OpDef = {
 	anomaly: any?, -- Meta anomaly applied to this run
 	xpTable: { number }?, -- fixed XP per level; past its end the level is capped (O01: three cards)
 	winOnElite: boolean?, -- the elite's death ends the run: the leaderless swarm scatters (O01, first defence)
+	winOnObjective: boolean?, -- the objective done ends the run at once (O03: the charged pylon's song)
 	guidedCards: { string }?, -- first offers in order, only that card can be taken (O01 for a newcomer)
 }
 
@@ -177,44 +178,41 @@ Ops.O02 = {
 	requires = "O01",
 }
 
--- O03 «ПОЮЩИЙ ПИЛОН» (was O02, D02 §5). First hunt with something to guard: the extractor. A spore pylon
--- charges from kills inside its zone; Leaper groups hunt it; if it falls the backup takes over.
+-- O03 «ОБРАЗЕЦ» (was «ПОЮЩИЙ ПИЛОН», DD-077) — the third sortie, ~1:30: the shelter's lab needs a live
+-- sample of the swarm. One idea: the spore pylon on the funnel's diagonal charges from kills inside its
+-- circle; charged, its song stuns the whole swarm and a Spitter is taken alive — that is the win. Spitters
+-- debut (acid from afar), Leaper groups go for the pylon; if it falls, the backup takes the charge over.
+-- Nothing else to guard. The win restores the lab; the loot buys the «Криополе».
 Ops.O03 = {
 	id = "O03",
 	index = 3,
 	code = "O03",
-	name = "ПОЮЩИЙ ПИЛОН",
+	name = "ОБРАЗЕЦ",
 	map = "MAP_REACTOR_YARD",
-	brief = "Рой идёт на наш бур. Убивай врагов у пилона, чтобы зарядить его, и не дай разрушить бур.",
-	goal = "Защити бур",
+	brief = "Лаборатории нужен живой образец роя. Заряди споровый пилон убийствами в его круге — его песня оглушит рой.",
+	goal = "Заряди пилон",
 	objective = "relay",
-	reactor = { hp = 2100, name = "БУР" },
+	playerDamageMult = 0.85,
 	runEvolution = false,
-	relay = { need = 400, radius = 30, hp = 800, primary = 1, backup = 2 }, -- 60 in D02 assumed a far lower kill rate
-	finaleTime = 70,
-	deadline = 480,
-	hardLimit = 580,
-	finale = { at = 0, label = "УДЕРЖАНИЕ", rate = 7.6, cap = 90, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.14, EN_SPITTER = 0.06 } },
+	relay = { need = 190, radius = 30, hp = 900, primary = 1, backup = 2 },
+	winOnObjective = true,
+	finaleTime = 2.5,
+	deadline = 200,
+	hardLimit = 260,
+	xpTable = XP_O02,
+	finale = { at = 0, label = "ПИЛОН ЗАПЕЛ", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
-		{ at = 0, label = "КОНТАКТ", rate = 2.2, cap = 28, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 0.94, EN_STALKER = 0.06 }, quiet = true },
-		{ at = 40, label = "ФЛАНГИ", rate = 3.2, cap = 42, dirs = { "N", "NE", "NW", "E", "W" }, w = { EN_RUNNER = 0.86, EN_STALKER = 0.1, EN_SPITTER = 0.04 } },
-		{ at = 140, label = "СИГНАЛ", rate = 3.4, cap = 50, dirs = ALL, w = { EN_RUNNER = 0.84, EN_STALKER = 0.11, EN_SPITTER = 0.05 }, quiet = true },
-		{ at = 160, label = "ЗАРЯДКА", rate = 4.6, cap = 64, dirs = ALL, w = { EN_RUNNER = 0.82, EN_STALKER = 0.12, EN_SPITTER = 0.06 } },
-		{ at = 270, label = "КЛЕЩИ", rate = 5.6, cap = 76, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.14, EN_SPITTER = 0.06 } },
-		{ at = 380, label = "ДАВЛЕНИЕ", rate = 6.0, cap = 80, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.14, EN_SPITTER = 0.06 } },
+		{ at = 0, label = "КОНТАКТ", rate = 3.4, cap = 30, dirs = { "N", "E", "W" }, w = { EN_RUNNER = 0.94, EN_STALKER = 0.06 }, quiet = true },
+		{ at = 20, label = "ПЛЕВУНЫ", rate = 4.4, cap = 44, dirs = { "N", "NE", "NW", "E", "W" }, w = { EN_RUNNER = 0.84, EN_STALKER = 0.08, EN_SPITTER = 0.08 }, quiet = true },
+		{ at = 45, label = "ДАВЛЕНИЕ", rate = 5.6, cap = 60, dirs = ALL, w = { EN_RUNNER = 0.82, EN_STALKER = 0.1, EN_SPITTER = 0.08 } },
+		{ at = 70, label = "КЛЕЩИ", rate = 6.4, cap = 70, dirs = ALL, w = { EN_RUNNER = 0.8, EN_STALKER = 0.12, EN_SPITTER = 0.08 } },
 	},
 	beats = {
-				{ at = 55, type = "assault", count = 7 },
-		{ at = 70, type = "banner", title = "ПЛЕВУН", sub = "Плюётся кислотой издалека — уходи из луж", kind = "EN_SPITTER" },
-		{ at = 125, type = "assault", count = 9 },
-		{ at = 140, type = "relay" },
-		{ at = 175, type = "assault", count = 5, kind = "EN_STALKER", target = "relay" },
-		{ at = 210, type = "assault", count = 7 },
-		{ at = 245, type = "assault", count = 6, kind = "EN_STALKER", target = "relay" },
-		{ at = 285, type = "assault", count = 8 },
-		{ at = 320, type = "assault", count = 7, kind = "EN_STALKER", target = "relay" },
-		{ at = 360, type = "assault", count = 9 },
-		{ at = 400, type = "assault", count = 8, kind = "EN_STALKER", target = "relay" },
+		{ at = 4, type = "relay" },
+		{ at = 20, type = "banner", title = "ПЛЕВУН", sub = "Плюётся кислотой издалека — уходи из луж", kind = "EN_SPITTER" },
+		{ at = 32, type = "assault", count = 5, kind = "EN_STALKER", target = "relay" },
+		{ at = 55, type = "assault", count = 6, kind = "EN_STALKER", target = "relay" },
+		{ at = 78, type = "assault", count = 7, kind = "EN_STALKER", target = "relay" },
 	},
 	unlocks = { "O04", "CA01" },
 	requires = "O02",

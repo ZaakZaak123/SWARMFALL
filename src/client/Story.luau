@@ -544,6 +544,18 @@ local function buildRider(cargoKey: string?)
 				parts,
 				{ cargo, CFrame.new(1.2, deck + cargo.Size.Y / 2, 0) * CFrame.Angles(0, math.pi / 2, 0) }
 			)
+			if cargoKey == "TANK_FRAME" then
+				-- the stunned sample glowing inside the tank
+				local glow = block(
+					model,
+					Vector3.one * 1.5,
+					CFrame.new(),
+					rgb(170, 255, 70),
+					Enum.Material.Neon,
+					Enum.PartType.Ball
+				)
+				table.insert(parts, { glow, CFrame.new(1.2, deck + cargo.Size.Y * 0.45, 0) })
+			end
 		else
 			add(Vector3.new(2.6, 2.4, 2.6), CFrame.new(1.2, deck + 1.2, 0), rgb(200, 160, 60), Enum.Material.Metal)
 		end
@@ -964,6 +976,25 @@ local HOMECOMING = {
 			sub = "Разряд скачет по толпе — кольцо роя у бура рассыплется",
 		},
 	},
+	O03 = {
+		cargo = "TANK_FRAME",
+		title = "ОБРАЗЕЦ ПОЙМАН",
+		sub = "Оглушённый плевун едет домой в пробирке",
+		transit = { "ДОМОЙ", "Пилон замолчал — рой придёт в себя не скоро" },
+		beats = {
+			{
+				spot = "LAB",
+				title = "ЛАБОРАТОРИЯ ОТКРЫТА",
+				sub = "Первые образцы плевуна в пробирке: изучай рой — а потом выводи свой",
+				color = C.violet,
+			},
+		},
+		next = {
+			structure = "CRYO",
+			title = "ХВАТАЕТ НА «КРИОПОЛЕ»",
+			sub = "Всё, что войдёт в поле у бура, увязнет и замедлится",
+		},
+	},
 }
 
 function Story.hasHomecoming(opId: string?): boolean
@@ -1136,6 +1167,19 @@ local DEPARTURE = {
 			"Когда кольцо сомкнётся — получишь Гравимолот. Новый враг: прыгун",
 		},
 	},
+	O03 = {
+		title = "ВЫЛАЗКА 3 · ОБРАЗЕЦ",
+		sub = "Лаборатории нужен живой образец роя",
+		transit = {
+			"К БУРУ",
+			"В воронке стоят старые споровые пилоны — они ещё работают",
+		},
+		funnel = {
+			"ЗАРЯДИ ПИЛОН",
+			"Убивай рой в его круге — песня пилона оглушит всех. Новый враг: плевун",
+		},
+		focus = Vector3.new(38, 4, 38), -- the pylon on the north-east diagonal (Maps coils[1])
+	},
 }
 
 function Story.hasDeparture(opId: string?): boolean
@@ -1189,6 +1233,12 @@ function Story.depart(opId: string, onDone)
 				to = 9.2,
 				cam = function(k)
 					local pos = path.at(s)
+					if cfg.focus then
+						-- close on what the sortie is about (the pylon and its circle)
+						local f = cfg.focus
+						local eye = (f + Vector3.new(-24, 30, -46)):Lerp(f + Vector3.new(-16, 22, -36), k)
+						return CFrame.lookAt(eye, f)
+					end
 					local eye = Vector3.new(-6, 66, -84):Lerp(Vector3.new(-18, 56, -66), k)
 					return CFrame.lookAt(eye, drill:Lerp(pos, 0.4))
 				end,
@@ -1233,6 +1283,15 @@ function Story.depart(opId: string, onDone)
 				function()
 					caption(cfg.funnel[1], cfg.funnel[2], C.gold)
 					Audio.play("roar", 0.45, 0.7)
+					if cfg.focus then
+						local ground = Vector3.new(cfg.focus.X, 0.4, cfg.focus.Z)
+						for i = 0, 2 do
+							task.delay(i * 0.5, function()
+								Fx.ring(ground, 30, C.cyan, 0.9)
+							end)
+						end
+						Fx.light(cfg.focus + Vector3.new(0, 6, 0), C.cyan, 40, 1.8)
+					end
 				end,
 			},
 			{

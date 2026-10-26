@@ -222,9 +222,31 @@ function Mission:hazardTick(h, inShape)
 end
 
 -- Objective completion --------------------------------------------------------------------------------
-function Mission:objectiveDone(title: string, sub: string)
+function Mission:objectiveDone(title: string, sub: string, x: number?, z: number?)
 	local w = self.w
 	if self.state ~= "FIGHT" then
+		return
+	end
+	if self.op.winOnObjective then
+		-- DD-077: the objective is the end. One blast from where it was done stuns the swarm for good.
+		local cx, cz = x or 0, z or 0
+		w:emit(E.BOSS, 7, cx, cz)
+		for _, other in w.enemies do
+			if other.alive and not other.def.static and not other.objective then
+				other.dmgFromX, other.dmgFromZ = cx, cz
+				w:kill(other, nil, 1, Codec.Cause.BLAST)
+			end
+		end
+		w:banner(
+			"ПИЛОН ЗАПЕЛ",
+			"Рой оглушён — образец пойман живым",
+			C.CYAN,
+			3,
+			"crown"
+		)
+		self.state = "FINALE"
+		self.finaleUntil = w.t + (self.op.finaleTime or 2.5)
+		self.goal = "Победа"
 		return
 	end
 	self.state = "FINALE"
@@ -340,7 +362,9 @@ function Mission:onKill(e, p)
 				w:emit(E.OBJECTIVE, 3, c.x, c.z, 0, self.relay.charge, self.relay.need)
 				self:objectiveDone(
 					"ПИЛОН ЗАРЯЖЕН",
-					"Периметр закрыт. Вернись к буру и удержи его!"
+					"Периметр закрыт. Вернись к буру и удержи его!",
+					c.x,
+					c.z
 				)
 			end
 		end

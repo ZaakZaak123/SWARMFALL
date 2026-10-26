@@ -45,7 +45,8 @@ Codec.E = {
 	HEAL = 19, -- pid, amount
 	SHIELD = 20, -- pid, amount
 	BEAM = 21, -- pid, ox, oz, ex, ez, evolved
-	BOSS = 23, -- action: 1 roar/enter, 2 exposed, 3 enrage, 4 death, 5 burrow
+	BOSS = 23, -- action: 1 roar/enter, 2 exposed, 3 enrage, 4 death, 5 burrow, 6 leader down (x, z),
+	--          7 pylon song (x, z): the run is won (DD-075/077)
 	SPIT = 24, -- fromX, fromZ, toX, toZ, flightTime
 	REACTOR = 25, -- action: 1 hit (amount, fromX, fromZ), 2 warning (hpPercent), 3 destroyed, 4 relay hit (amount, fromX, fromZ, x, z),
 	--             5 emergency capacitor, 6 barrier shield (amount, x, z)
