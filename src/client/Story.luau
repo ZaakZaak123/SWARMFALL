@@ -46,6 +46,7 @@ local function buildGui(playerGui: PlayerGui)
 		Name = "SporeStory",
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
+		ScreenInsets = Enum.ScreenInsets.None, -- the film bars run edge to edge, past a phone's notch
 		DisplayOrder = 60,
 		Parent = playerGui,
 	})
@@ -205,7 +206,21 @@ local function buildGui(playerGui: PlayerGui)
 	end)
 end
 
+-- DD-085: on a phone the words sit a little higher and smaller, clear of the bottom bar.
+local function captionLayout()
+	local phone = Theme.phone()
+	ui.cap.TextSize = if phone then 28 else 40
+	ui.cap.Size = UDim2.new(0.9, 0, 0, if phone then 34 else 48)
+	ui.cap.Position = UDim2.new(0.5, 0, if phone then 0.76 else 0.84, 0)
+	ui.sub.TextSize = if phone then 16 else 23
+	ui.sub.Size = UDim2.new(if phone then 0.86 else 0.8, 0, 0, if phone then 40 else 54)
+	ui.sub.Position = UDim2.new(0.5, 0, if phone then 0.76 else 0.84, if phone then 4 else 6)
+	ui.plate.Position = UDim2.new(0.5, 0, if phone then 0.775 else 0.845, 0)
+	ui.plate.Size = UDim2.new(1, 0, 0, if phone then 96 else 130)
+end
+
 local function caption(text: string, subText: string?, color: Color3?)
+	captionLayout()
 	ui.cap.Text = text
 	ui.cap.TextColor3 = color or C.text
 	ui.sub.Text = subText or ""

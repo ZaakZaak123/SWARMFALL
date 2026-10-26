@@ -77,6 +77,15 @@ local function viewportScale(base: Vector2): number
 	return math.clamp(math.min(vs.X / base.X, vs.Y / base.Y), 0.3, 1.25)
 end
 
+-- The results body: on a phone only the centre column is laid out, so it fits a narrower base.
+local function resultsScale(): number
+	if Theme.phone() then
+		-- the centre column is 740 wide from x = 230: scale so that it fills the width, then shift it
+		return viewportScale(Vector2.new(780, 730))
+	end
+	return viewportScale(Vector2.new(1240, 780))
+end
+
 local function setBlur(size: number)
 	if not blur then
 		blur = Instance.new("BlurEffect")
@@ -1957,7 +1966,18 @@ function Menus.showOffer(me, run)
 	banishMode = false
 	ui.offer.Visible = true
 	setBlur(16)
-	ui.offerScale.Scale = viewportScale(Vector2.new(1200, 660))
+	ui.offerScale.Scale = viewportScale(if Theme.phone() then Vector2.new(880, 610) else Vector2.new(1200, 660))
+	ui.offerSub.TextSize = if Theme.phone() then 21 else 16
+	-- DD-085: on a phone the card words grow back to a readable size
+	for _, c in ui.offerCards do
+		local phone = Theme.phone()
+		c.desc.TextSize = if phone then 20 else 15
+		c.stat.TextSize = if phone then 21 else 17
+		local cap = c.stat:FindFirstChildOfClass("UITextSizeConstraint")
+		if cap then
+			cap.MaxTextSize = c.stat.TextSize
+		end
+	end
 	ui.offerTitle.Text = "УРОВЕНЬ "
 		.. run.level
 		.. (
@@ -2620,7 +2640,9 @@ local function defeatTip(result): (string, string, string)
 	end
 	return "burst",
 		"НЕ СТОЙ НА МЕСТЕ",
-		"Рой окружает того, кто стоит. Рывок (ПРОБЕЛ) — сквозь толпу; бери карты урона по площади."
+		if Theme.phone()
+			then "Рой окружает того, кто стоит. Рывок (кнопка » справа) — сквозь толпу; бери карты урона по площади."
+			else "Рой окружает того, кто стоит. Рывок (ПРОБЕЛ) — сквозь толпу; бери карты урона по площади."
 end
 
 -- Count a label up from 0 for the "earned" feeling.
@@ -2658,7 +2680,16 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	Menus.hideOffer()
 	ui.results.Visible = true
 	setBlur(18)
-	ui.resScale.Scale = viewportScale(Vector2.new(1240, 780))
+	ui.resScale.Scale = resultsScale()
+	-- DD-085: a phone keeps the centre column only (the numbers would be too small to read)
+	local phone = Theme.phone()
+	ui.resSide.Visible = not phone
+	ui.resGoalText.TextSize = if phone then 18 else 13
+	ui.resGoalTitle.TextSize = if phone then 21 else 17
+	ui.resGoalText.Size = UDim2.new(1, -84, 0, if phone then 44 else 34)
+	ui.resRewardLines.TextSize = if phone then 17 else 13
+	ui.resReason.TextSize = if phone then 21 else 17
+	ui.resGoal.Size = UDim2.fromOffset(if phone then 680 else 560, if phone then 104 else 84)
 	local op = Ops.get(result.op)
 	if first then
 		ui.resClicked = false
@@ -3029,8 +3060,8 @@ function Menus.update(dt: number)
 				m.scale.Scale = viewportScale(m.baseSize)
 			end
 		end
-		ui.offerScale.Scale = viewportScale(Vector2.new(1200, 660))
-		ui.resScale.Scale = viewportScale(Vector2.new(940, 780))
+		ui.offerScale.Scale = viewportScale(if Theme.phone() then Vector2.new(880, 610) else Vector2.new(1200, 660))
+		ui.resScale.Scale = resultsScale()
 	end
 	if ui.lobby.Visible then
 		ui.playGlow.Transparency = 0.45 + math.sin(now * 3) * 0.25

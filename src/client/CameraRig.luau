@@ -12,7 +12,8 @@ local Spring = require(script.Parent.Spring)
 local CameraRig = {}
 
 CameraRig.Modes = { "top", "third", "first" }
-CameraRig.ModeNames = { top = "ВИД СВЕРХУ", third = "ОТ ТРЕТЬЕГО ЛИЦА", first = "ОТ ПЕРВОГО ЛИЦА" }
+CameraRig.ModeNames =
+	{ top = "ВИД СВЕРХУ", third = "ОТ ТРЕТЬЕГО ЛИЦА", first = "ОТ ПЕРВОГО ЛИЦА" }
 CameraRig.ModeIcons = { top = "topdown", third = "person", first = "eye" }
 
 local transitionTime = 1.15
@@ -39,18 +40,51 @@ rayParams.FilterType = Enum.RaycastFilterType.Include
 
 local function distanceFor(size: Vector2): number
 	local aspect = size.X / math.max(1, size.Y)
-	return math.clamp(BASE_DIST + (1.78 - aspect) * 18, 48, 78)
+	local dist = math.clamp(BASE_DIST + (1.78 - aspect) * 18, 48, 78)
+	-- DD-085: a phone's small screen comes a little closer, or the hero and the swarm are specks
+	local phone = game:GetService("UserInputService").TouchEnabled and size.Y < 560
+	return if phone then dist * 0.86 else dist
 end
 
 -- Parameter targets per view. yawMix: 0 = fixed north (top), 1 = player yaw.
 local function target(m: string)
 	local cam = workspace.CurrentCamera
 	if m == "third" then
-		return { dist = 16, pitch = math.rad(21), height = 6, shoulder = 2.2, fov = 70, lead = 0, stiff = 16, yawMix = 1, look = 1 }
+		return {
+			dist = 16,
+			pitch = math.rad(21),
+			height = 6,
+			shoulder = 2.2,
+			fov = 70,
+			lead = 0,
+			stiff = 16,
+			yawMix = 1,
+			look = 1,
+		}
 	elseif m == "first" then
-		return { dist = 0.8, pitch = math.rad(4), height = 1.9, shoulder = 0, fov = 78, lead = 0, stiff = 40, yawMix = 1, look = 1 }
+		return {
+			dist = 0.8,
+			pitch = math.rad(4),
+			height = 1.9,
+			shoulder = 0,
+			fov = 78,
+			lead = 0,
+			stiff = 40,
+			yawMix = 1,
+			look = 1,
+		}
 	end
-	return { dist = distanceFor(cam.ViewportSize), pitch = math.rad(56), height = 0, shoulder = 0, fov = 60, lead = 1, stiff = 9, yawMix = 0, look = 0 }
+	return {
+		dist = distanceFor(cam.ViewportSize),
+		pitch = math.rad(56),
+		height = 0,
+		shoulder = 0,
+		fov = 60,
+		lead = 1,
+		stiff = 9,
+		yawMix = 0,
+		look = 0,
+	}
 end
 
 local KEYS = { "dist", "pitch", "height", "shoulder", "fov", "lead", "stiff", "yawMix", "look" }
@@ -155,7 +189,16 @@ function CameraRig.setCollision(folder: Instance?)
 end
 
 -- view: "play" | "lobby". focus = character root position (nil -> lobby orbit).
-function CameraRig.update(dt: number, view: string, focus: Vector3?, aimX: number, aimZ: number, leadScale: number, forceTop: boolean?, hero: Vector3?)
+function CameraRig.update(
+	dt: number,
+	view: string,
+	focus: Vector3?,
+	aimX: number,
+	aimZ: number,
+	leadScale: number,
+	forceTop: boolean?,
+	hero: Vector3?
+)
 	local cam = workspace.CurrentCamera
 	cam.CameraType = Enum.CameraType.Scriptable
 	local now = os.clock()

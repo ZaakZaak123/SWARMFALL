@@ -2190,6 +2190,17 @@ function Base.update(dt: number, _root: Vector3?)
 			1.2
 		)
 		ui.safe.Size = UDim2.fromScale(1 / ui.scale.Scale, 1 / ui.scale.Scale)
+		-- DD-085: on a phone Roblox's own thumbstick (bottom left) and jump button (bottom right) own
+		-- the corners: the station buttons go up under the goal card, the big button steps left of jump
+		local phone = Theme.phone()
+		if phone ~= ui.phoneLayout then
+			ui.phoneLayout = phone
+			ui.stations.AnchorPoint = if phone then Vector2.new(0, 0) else Vector2.new(0, 1)
+			ui.stations.Position = if phone then UDim2.fromOffset(0, 246) else UDim2.fromScale(0, 1)
+			ui.play.Position = if phone then UDim2.new(1, -190, 1, -18) else UDim2.new(1, 0, 1, -24)
+			ui.goalText.TextSize = if phone then 17 else 13
+			ui.goal.Size = UDim2.fromOffset(440, if phone then 178 else 168)
+		end
 		if ui.strike.Visible then
 			ui.strikeTitle.TextTransparency = math.abs(math.sin(now * 5)) * 0.35
 		end
@@ -2315,7 +2326,7 @@ end
 local hintT = 0
 function Base.freeCamera(dt: number)
 	hintT += dt
-	if ui.camHint and ui.camHint.Visible and hintT > 14 then
+	if ui.camHint and ui.camHint.Visible and (hintT > 14 or Theme.phone()) then -- a phone knows how to swipe
 		ui.camHint.Visible = false
 	end
 end

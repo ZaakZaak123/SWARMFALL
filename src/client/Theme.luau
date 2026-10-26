@@ -280,4 +280,11 @@ function Theme.commas(n: number): string
 	return out
 end
 
+-- A phone in landscape (DD-085): a touch screen under ~560 points high. Screens built for 720+ get a
+-- phone layout (bigger text, less beside the essentials) instead of being shrunk until unreadable.
+function Theme.phone(): boolean
+	local cam = workspace.CurrentCamera
+	return game:GetService("UserInputService").TouchEnabled and cam ~= nil and cam.ViewportSize.Y < 560
+end
+
 return Theme
