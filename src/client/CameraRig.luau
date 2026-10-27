@@ -50,7 +50,21 @@ end
 -- Parameter targets per view. yawMix: 0 = fixed north (top), 1 = player yaw.
 local function target(m: string)
 	local cam = workspace.CurrentCamera
-	if m == "third" then
+	if m == "third" and Settings.touch then
+		-- DD-098: a phone's third person stands higher and further back with the hero in the middle: the
+		-- auto-aim picks targets all round him, and the thumb that runs has to see the swarm coming
+		return {
+			dist = 23,
+			pitch = math.rad(30),
+			height = 6.5,
+			shoulder = 0,
+			fov = 72,
+			lead = 0,
+			stiff = 14,
+			yawMix = 1,
+			look = 1,
+		}
+	elseif m == "third" then
 		return {
 			dist = 16,
 			pitch = math.rad(21),

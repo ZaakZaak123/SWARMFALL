@@ -1444,19 +1444,28 @@ local function coachPanel()
 		return coachGui
 	end
 	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-	local g = new(
-		"ScreenGui",
-		{ Name = "GroveCoach", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 12, Parent = pg }
-	)
+	-- DD-098: below Roblox's top bar, and on a phone scaled down and shifted right of its buttons (it
+	-- covered them and the shelter's title)
+	local g = new("ScreenGui", {
+		Name = "GroveCoach",
+		ResetOnSpawn = false,
+		ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
+		DisplayOrder = 12,
+		Parent = pg,
+	})
+	local phone = Theme.phone()
 	local panel = Theme.panel({
 		Name = "Panel",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 14),
+		Position = if phone then UDim2.new(0.5, 90, 0, 4) else UDim2.new(0.5, 0, 0, 14),
 		Size = UDim2.fromOffset(560, 74),
 		CornerRadius = 22,
 		Visible = false,
 		Parent = g,
 	}, C.lime)
+	if phone then
+		new("UIScale", { Scale = 0.72, Parent = panel })
+	end
 	local d = Icons.disc("pin", 46, C.lime, 2)
 	d.Name = "Disc"
 	d.AnchorPoint = Vector2.new(0, 0.5)

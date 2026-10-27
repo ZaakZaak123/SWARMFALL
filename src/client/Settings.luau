@@ -43,4 +43,8 @@ if Settings.touch then
 	Settings.quality = 2
 end
 
+-- DD-098: on a phone the gun aims and fires by itself at the nearest enemy (the thumbs only run and,
+-- if they want, point the gun); the settings turn it back into the manual aim pad.
+Settings.autoAim = Settings.touch
+
 return Settings

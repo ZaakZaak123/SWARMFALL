@@ -527,6 +527,33 @@ function EnemyView.nearestInCone(ox: number, oz: number, dx: number, dz: number,
 	return bx, bz
 end
 
+-- DD-098: the touch auto-aim's target. The nearest enemy in range, the ones ahead of (fx, fz) counting
+-- as closer; `keepId` (the current target) holds until a rival is clearly nearer (no flicking between
+-- two runners at the same distance). Returns id, x, z of the target or nil.
+function EnemyView.autoTarget(ox: number, oz: number, range: number, fx: number, fz: number, keepId: number?)
+	local best, bestId, bx, bz = math.huge, nil, nil, nil
+	local keepScore = math.huge
+	for id, rec in records do
+		local cx, cz = rec.dx - ox, rec.dz - oz
+		local d = math.sqrt(cx * cx + cz * cz)
+		if d < range then
+			local ahead = if d > 0.1 then (cx * fx + cz * fz) / d else 1
+			local score = d * (1.25 - 0.25 * ahead)
+			if id == keepId then
+				keepScore = score
+			end
+			if score < best then
+				best, bestId, bx, bz = score, id, rec.dx, rec.dz
+			end
+		end
+	end
+	if keepId and keepScore < math.huge and best > keepScore * 0.65 then
+		local rec = records[keepId]
+		return keepId, rec.dx, rec.dz
+	end
+	return bestId, bx, bz
+end
+
 -- Gait radians per stud travelled, per enemy kind (small skitterers step fast, giants slow).
 STRIDE = {
 	[1] = 1.35,

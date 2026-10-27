@@ -1319,14 +1319,20 @@ local function buildSettings()
 				Settings.set("numbers", not Settings.numbers)
 			end,
 		},
+		-- DD-098: on a phone the row is the auto-aim (aim and fire at the nearest enemy by itself)
 		{
-			"Помощь в прицеливании",
+			if Settings.touch then "Автоприцел и огонь" else "Помощь в прицеливании",
 			"crosshair",
 			function()
-				return if Settings.aimAssist then "ВКЛ" else "ВЫКЛ"
+				local on = if Settings.touch then Settings.autoAim else Settings.aimAssist
+				return if on then "ВКЛ" else "ВЫКЛ"
 			end,
 			function()
-				Settings.set("aimAssist", not Settings.aimAssist)
+				if Settings.touch then
+					Settings.set("autoAim", not Settings.autoAim)
+				else
+					Settings.set("aimAssist", not Settings.aimAssist)
+				end
 			end,
 		},
 		{
@@ -2976,8 +2982,7 @@ function Menus.init(playerGui: PlayerGui, sender)
 	gui = new("ScreenGui", {
 		Name = "SporeMenus",
 		ResetOnSpawn = false,
-		IgnoreGuiInset = true,
-		ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets,
+		ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets, -- (alone: IgnoreGuiInset beside it could undo it)
 		DisplayOrder = 10,
 		Parent = playerGui,
 	})

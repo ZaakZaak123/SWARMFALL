@@ -32,6 +32,7 @@ local Chronicle = require(Shared:WaitForChild("Chronicle"))
 local PlotDecor = require(script.Parent.PlotDecor)
 local Cabin = require(script.Parent.Cabin)
 local Xenite = require(script.Parent.Xenite)
+local Declutter = require(script.Parent.Declutter)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -1237,7 +1238,8 @@ local function buildHud(playerGui: PlayerGui)
 	gui = new("ScreenGui", {
 		Name = "SporeBase",
 		ResetOnSpawn = false,
-		IgnoreGuiInset = true,
+		-- DD-098: no IgnoreGuiInset next to ScreenInsets: the table sets them in no fixed order and the
+		-- old flag could undo the inset, putting the title under Roblox's buttons on a phone
 		ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 		DisplayOrder = 8,
 		Enabled = false,
@@ -1942,6 +1944,7 @@ local artReady = false
 function Base.init(playerGui: PlayerGui, sender, acts)
 	send = sender
 	actions = acts
+	Declutter.start() -- DD-098: world labels on a phone shrink and stay off the HUD and each other
 	buildWorld()
 	buildSpots()
 	buildTerminal()
@@ -2248,6 +2251,7 @@ function Base.update(dt: number, _root: Vector3?)
 			ui.stations.Position = if phone then UDim2.fromOffset(0, 246) else UDim2.fromScale(0, 1)
 			ui.play.Position = if phone then UDim2.new(1, -190, 1, -18) else UDim2.new(1, 0, 1, -24)
 			ui.goalText.TextSize = if phone then 17 else 13
+			ui.ownerNote.Visible = not phone -- DD-098: under the card it ran into the station row
 			ui.goal.Size = UDim2.fromOffset(440, if phone then 178 else 168)
 		end
 		if ui.strike.Visible then

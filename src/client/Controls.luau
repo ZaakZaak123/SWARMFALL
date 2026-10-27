@@ -1,6 +1,10 @@
 --!nonstrict
 -- Unified input: mouse/keyboard, touch (left = Roblox thumbstick, right = aim pad that fires while
 -- dragged, big action buttons) and gamepad (right stick aim, R2 fire). Produces aim + fire intents.
+-- DD-098 (owner on a phone: «еле попадаю в любом виде»): touch auto-aims by default. The gun turns to
+-- the nearest enemy (the ones ahead count as nearer, the held target sticks) and fires by itself; a
+-- ring under the target shows whom. The right pad still points the gun by hand (top view) or turns the
+-- camera (third/first person); in third person the camera also swings in behind the run by itself.
 
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
@@ -10,6 +14,7 @@ local Theme = require(script.Parent.Theme)
 local Settings = require(script.Parent.Settings)
 local EnemyView = require(script.Parent.EnemyView)
 local Icons = require(script.Parent.Icons)
+local CameraRig = require(script.Parent.CameraRig)
 
 local new = Theme.new
 local C = Theme.C
@@ -33,6 +38,67 @@ local touchAim: InputObject? = nil
 local touchVec = Vector2.zero
 local gui, pad, knob, buttons
 local touchLayoutSize = Vector2.zero
+local autoId = nil -- the enemy the touch auto-aim holds
+local marker = nil -- the ring under it
+local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
+local TURN = 16 -- radians per second the auto-aim swings the gun (quick, but a visible turn, not a snap)
+
+local function turnToward(ax: number, az: number, tx: number, tz: number, dt: number): (number, number)
+	local a, b = math.atan2(ax, az), math.atan2(tx, tz)
+	local d = (b - a + math.pi) % (2 * math.pi) - math.pi
+	local step = math.clamp(d, -TURN * dt, TURN * dt)
+	return math.sin(a + step), math.cos(a + step)
+end
+
+local function showMarker(at: Vector3?)
+	if not at then
+		if marker then
+			marker.Parent = nil
+		end
+		return
+	end
+	if not marker then
+		marker = Instance.new("Part")
+		marker.Name = "AutoAimMark"
+		marker.Shape = Enum.PartType.Cylinder
+		marker.Size = Vector3.new(0.12, 5, 5)
+		marker.Anchored = true
+		marker.CanCollide = false
+		marker.CanQuery = false
+		marker.CanTouch = false
+		marker.CastShadow = false
+		marker.Material = Enum.Material.Neon
+		marker.Color = C.lime
+		marker.Transparency = 0.45
+	end
+	marker.CFrame = CFrame.new(at.X, at.Y, at.Z) * CFrame.Angles(0, os.clock() * 2, math.pi / 2)
+	marker.Parent = workspace
+end
+
+-- The touch auto-aim: a target in range (in third person only one in front or close by), the gun
+-- turned toward it. Returns the new aim and whether there is something to shoot.
+local function autoAim(rootPos: Vector3, ax: number, az: number, range: number, front: boolean, dt: number)
+	local id, tx, tz = EnemyView.autoTarget(rootPos.X, rootPos.Z, range, ax, az, autoId)
+	if id and front then
+		local cx, cz = tx - rootPos.X, tz - rootPos.Z
+		local d = math.sqrt(cx * cx + cz * cz)
+		local fx, fz = CameraRig.forward()
+		if d > 14 and (cx * fx + cz * fz) / math.max(d, 0.1) < -0.2 then
+			id = nil -- far behind the camera: not ours to turn round for
+		end
+	end
+	autoId = id
+	if not id then
+		showMarker(nil)
+		return ax, az, false
+	end
+	local cx, cz = tx - rootPos.X, tz - rootPos.Z
+	local d = math.max(0.1, math.sqrt(cx * cx + cz * cz))
+	local p = EnemyView.position(id)
+	showMarker(Vector3.new(tx, (if p then p.Y else rootPos.Y) - 2.4, tz))
+	local nx, nz = turnToward(ax, az, cx / d, cz / d, dt)
+	return nx, nz, true
+end
 
 -- Keep the aim pad and abilities in the right thumb's corner on short landscape screens.
 -- The original fixed offsets put Dash over the vitals/tutorial and Reload near the top edge.
@@ -260,6 +326,8 @@ function Controls.release()
 	touchAim = nil
 	touchVec = Vector2.zero
 	Controls.firing = false
+	autoId = nil
+	showMarker(nil)
 end
 
 -- Converts a screen-space direction (dx right, dy down) to a world XZ direction for our camera.
@@ -290,6 +358,9 @@ function Controls.update(
 	fwdX: number?,
 	fwdZ: number?
 )
+	local now = os.clock()
+	local dt = math.min(0.1, now - (Controls.lastUpdate or now))
+	Controls.lastUpdate = now
 	if workspace:GetAttribute("DevTouch") and game:GetService("RunService"):IsStudio() then
 		Controls.device = "touch" -- Studio checks: the phone layout without the device emulator
 	end
@@ -303,8 +374,15 @@ function Controls.update(
 		UserInputService.MouseIconEnabled = false
 	end
 	Controls.look = nil
+	local auto = device == "touch" and Settings.autoAim
+	if not Controls.enabled or not auto then
+		showMarker(nil)
+	end
+	local moved = if lastRoot then rootPos - lastRoot else Vector3.zero
+	lastRoot = rootPos
 	if not Controls.enabled then
 		Controls.firing = false
+		lastRoot = nil
 		return
 	end
 	if immersive then
@@ -324,6 +402,21 @@ function Controls.update(
 				Controls.look = Vector2.new(clamped.X / radius, -clamped.Y / radius)
 			end
 			firing = active
+			if auto then
+				-- the camera swings in behind the run while the right thumb leaves it alone
+				local run = Vector2.new(moved.X, moved.Z)
+				if not active and run.Magnitude > 0.05 and dt > 0 then
+					local d = (math.atan2(run.X, run.Y) - math.atan2(fwdX or 0, fwdZ or 1) + math.pi) % (2 * math.pi)
+						- math.pi
+					if math.abs(d) < math.rad(150) then
+						CameraRig.look(-d * math.min(1, dt * 0.9), 0)
+					end
+				end
+				local hit
+				Controls.aimX, Controls.aimZ, hit = autoAim(rootPos, Controls.aimX, Controls.aimZ, range, true, dt)
+				Controls.firing = hit and canFire
+				return
+			end
 		else
 			Controls.look = Controls.padAim
 			firing = padFire or Controls.padAim ~= nil
@@ -360,6 +453,14 @@ function Controls.update(
 		local clamped = if v.Magnitude > radius then v.Unit * radius else v
 		knob.Position = UDim2.new(0.5, clamped.X, 0.5, clamped.Y)
 		local active = touchAim ~= nil and v.Magnitude > radius * 0.2
+		if auto and not active then
+			local hit
+			Controls.aimX, Controls.aimZ, hit = autoAim(rootPos, Controls.aimX, Controls.aimZ, range, false, dt)
+			Controls.firing = hit and canFire
+			return
+		end
+		showMarker(nil)
+		autoId = nil
 		if active then
 			local ax, az = screenToWorld(v)
 			if Settings.aimAssist then

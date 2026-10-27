@@ -14,6 +14,7 @@ local Theme = require(script.Parent.Theme)
 local Audio = require(script.Parent.Audio)
 local Icons = require(script.Parent.Icons)
 local Preview = require(script.Parent.Preview)
+local Settings = require(script.Parent.Settings)
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
 local C, F = Theme.C, Theme.F
@@ -129,7 +130,7 @@ function Hud.init(playerGui: PlayerGui)
 	gui = new("ScreenGui", {
 		Name = "SporeHUD",
 		ResetOnSpawn = false,
-		IgnoreGuiInset = true,
+		-- (no IgnoreGuiInset beside ScreenInsets: set in no fixed order, it could undo the inset, DD-098)
 		ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 		DisplayOrder = 2,
 		Enabled = false,
@@ -1220,7 +1221,9 @@ function Hud.update(run, me, extra, dt: number)
 		ui.howTo.Visible = howTo
 		if howTo then
 			ui.howToText.Text = if touch
-				then "Левый палец — бег   ·   правый — огонь"
+				then (if Settings.autoAim
+					then "Левый палец — бег   ·   оружие стреляет само"
+					else "Левый палец — бег   ·   правый — огонь")
 				elseif
 					extra.device == "gamepad"
 				then "Левый стик — бег   ·   правый стик — огонь   ·   B — рывок"
@@ -1271,7 +1274,8 @@ function Hud.update(run, me, extra, dt: number)
 		end
 	end
 	-- Reticle
-	ui.reticle.Visible = extra.showReticle
+	-- DD-098: with the phone's auto-aim the ring under the target shows where the gun points, not a cross
+	ui.reticle.Visible = extra.showReticle and not (extra.device == "touch" and Settings.autoAim)
 	if extra.cursor then
 		ui.reticle.Position = UDim2.fromOffset(extra.cursor.X, extra.cursor.Y)
 	end
