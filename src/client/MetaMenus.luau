@@ -11,6 +11,7 @@ local Meta = require(Shared:WaitForChild("Meta"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local Theme = require(script.Parent.Theme)
 local Icons = require(script.Parent.Icons)
+local Xenite = require(script.Parent.Xenite)
 local Audio = require(script.Parent.Audio)
 local Preview = require(script.Parent.Preview)
 local Defs = require(Shared:WaitForChild("Defs"))
@@ -204,7 +205,7 @@ function MetaMenus.refreshOutpost()
 	end
 	local slots = profile.outpost.slots or {}
 	ui.opSub.Text = string.format(
-		"Собранное здесь стоит у бура в опасной зоне  ·  мощь %d  ·  ДНК %d  ·  ксенит ◆ %s  ·  оборона: ур. %d",
+		"Собранное здесь стоит у бура в опасной зоне  ·  мощь %d  ·  ДНК %d  ·  ксенит %s  ·  оборона: ур. %d",
 		Meta.outpostPower(slots),
 		profile.dna and profile.dna.EN_RUNNER or 0,
 		Theme.commas(profile.scrap),
@@ -261,6 +262,7 @@ function MetaMenus.refreshOutpost()
 			local up, upl = Theme.button("УЛУЧШИТЬ  " .. costText(def, nextLvl), { Position = UDim2.fromOffset(16, 160), Size = UDim2.new(0.62, -20, 0, 50), TextSize = 14, ZIndex = 44 }, if can then "primary" else "ghost")
 			up.Parent = card
 			upl.ZIndex = 45
+			Xenite.inline(upl)
 			if not can then
 				upl.TextColor3 = C.dim
 			end
@@ -298,6 +300,7 @@ function MetaMenus.refreshOutpost()
 				local b, bl = Theme.button("◆ " .. def.cost[1], { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(130, 44), TextSize = 15, ZIndex = 44 }, if can then "primary" else "ghost")
 				b.Parent = r
 				bl.ZIndex = 45
+				Xenite.inline(bl)
 				if not can then
 					bl.TextColor3 = C.dim
 				end

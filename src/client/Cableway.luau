@@ -14,6 +14,7 @@
 -- line:destroy()
 
 local Layout = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("ShelterLayout"))
+local Xenite = require(script.Parent.Xenite)
 
 local Cableway = {}
 Cableway.__index = Cableway
@@ -52,7 +53,8 @@ local function rod(parent, a: Vector3, b: Vector3, width: number, color: Color3,
 	}, parent)
 end
 
--- One crate on its hook: a wooden box with the lime band, the hook rod above it.
+-- One crate on its hook: a wooden box with the lime band, the hook rod above it. The band carries the
+-- xenite emblem on every side (DD-095): what rides the cable is the currency.
 local function crateModel(parent)
 	local m = Instance.new("Model")
 	m.Name = "Crate"
@@ -62,6 +64,7 @@ local function crateModel(parent)
 		{ Name = "Band", Size = Vector3.new(2.36, 0.42, 2.36), Color = BAND, Material = Enum.Material.SmoothPlastic },
 		m
 	)
+	Xenite.stamp(band, { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }, 2.6)
 	local hook = part(
 		{ Name = "Hook", Size = Vector3.new(0.12, HANG - 0.7, 0.12), Color = CABLE, Material = Enum.Material.Metal },
 		m

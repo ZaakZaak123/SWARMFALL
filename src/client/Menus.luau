@@ -16,6 +16,7 @@ local Theme = require(script.Parent.Theme)
 local Settings = require(script.Parent.Settings)
 local Audio = require(script.Parent.Audio)
 local Icons = require(script.Parent.Icons)
+local Xenite = require(script.Parent.Xenite)
 local Preview = require(script.Parent.Preview)
 local MetaMenus = require(script.Parent.MetaMenus)
 local Meta = require(Shared:WaitForChild("Meta"))
@@ -96,7 +97,7 @@ local function setBlur(size: number)
 	tween(blur, 0.3, { Size = size })
 end
 
--- Xenite amount pill (pink crystal + number).
+-- Xenite amount pill (the emblem + number, DD-095).
 local function xenitePill(parent, props)
 	local p = new("Frame", {
 		Size = UDim2.fromOffset(0, 40),
@@ -110,7 +111,7 @@ local function xenitePill(parent, props)
 	for k, v in props or {} do
 		p[k] = v
 	end
-	new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 16), Parent = p })
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 16), Parent = p })
 	new("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -118,23 +119,7 @@ local function xenitePill(parent, props)
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = p,
 	})
-	local gem = new("Frame", {
-		Size = UDim2.fromOffset(16, 16),
-		Rotation = 45,
-		BackgroundColor3 = C.pink,
-		Corner = 3,
-		LayoutOrder = 1,
-		Parent = p,
-	})
-	new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(6, 6),
-		BackgroundColor3 = C.white,
-		BackgroundTransparency = 0.2,
-		Corner = 2,
-		Parent = gem,
-	})
+	Xenite.icon(34, { LayoutOrder = 1, Parent = p })
 	local amount = label("0", {
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromOffset(0, 40),
@@ -910,7 +895,7 @@ function Menus.refreshLobby()
 		ui.huntName.Text = if t then t.name else "Ищем аванпосты…"
 		ui.huntBrief.Text = if t
 			then string.format(
-				"Чужой бур: пробей оборону и разрушь его за 4 минуты — ксенит с его канатки твой (мощь обороны %d, до ◆ %d). Хозяин ничего не теряет: это копия.",
+				"Чужой бур: пробей оборону и разрушь его за 4 минуты — ксенит с его канатки твой (мощь обороны %d, до %d ксенита). Хозяин ничего не теряет: это копия.",
 				t.power or 0,
 				Meta.raidRewardFor(t.power or 0, true)
 			)
@@ -919,7 +904,7 @@ function Menus.refreshLobby()
 			for i, c in info.candidates do
 				local on = t and c.uid == t.uid
 				local b, bl = Theme.button(
-					"◆" .. tostring(c.power or 0),
+					"мощь " .. tostring(c.power or 0),
 					{ Size = UDim2.fromOffset(84, 40), TextSize = 13 },
 					if on then "primary" else "ghost"
 				)
@@ -1278,6 +1263,7 @@ function Menus.refreshUpgrades()
 		}, if can then "primary" else "ghost")
 		b.Parent = tile
 		bl.ZIndex = 44
+		Xenite.inline(bl)
 		if not can then
 			bl.TextColor3 = if maxed then C.lime else C.dim
 		end
@@ -2264,6 +2250,15 @@ local function buildResults()
 		{ LayoutOrder = 6, Size = UDim2.fromOffset(560, 92), CornerRadius = 20, ZIndex = 22, Parent = ui.resList },
 		C.pink
 	)
+	-- the emblem either side of the amount: the reward is the currency, at a glance
+	for _, side in { 0, 1 } do
+		Xenite.icon(64, {
+			AnchorPoint = Vector2.new(side, 0.5),
+			Position = UDim2.new(side, if side == 0 then 18 else -18, 0.5, 0),
+			ZIndex = 23,
+			Parent = ui.resReward,
+		})
+	end
 	ui.resRewardAmount = label("", {
 		Position = UDim2.fromOffset(0, 10),
 		Size = UDim2.new(1, 0, 0, 46),
@@ -2562,7 +2557,7 @@ local function defeatTip(result): (string, string, string)
 		return "heart",
 			"В ОРУЖЕЙНОЙ: «" .. best.def.name .. "»",
 			string.format(
-				"Хватает ксенита (◆ %d): %s — навсегда, в каждой вылазке.",
+				"Хватает ксенита (%d): %s — навсегда, в каждой вылазке.",
 				best.cost,
 				best.def.stat(best.rank + 1)
 			)

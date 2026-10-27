@@ -31,6 +31,7 @@ local Grove = require(Shared:WaitForChild("Grove"))
 local Chronicle = require(Shared:WaitForChild("Chronicle"))
 local PlotDecor = require(script.Parent.PlotDecor)
 local Cabin = require(script.Parent.Cabin)
+local Xenite = require(script.Parent.Xenite)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -233,6 +234,7 @@ local function board(
 		Parent = b,
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 2, Transparency = 0.2, Parent = s })
+	Xenite.inline(s) -- «Починить · ◆ 40»: the price carries the emblem
 	return b
 end
 
@@ -549,9 +551,14 @@ local function setPile(scrap: number)
 			Cableway.crate(pileFolder, base * CFrame.new(0, k * 1.95, 0) * CFrame.Angles(0, k * 0.35, 0))
 		end
 	end
+	-- the xenite itself crowns the first stack, bigger as the hoard grows (DD-095)
+	if n > 0 then
+		local top = frame * Layout.terminalFrame() * CFrame.new(3.6, 0.5 + 2 * 1.95, 2.6) * CFrame.Angles(0, 0.3, 0)
+		Xenite.cluster(pileFolder, top, 1.1 + n * 0.25)
+	end
 end
 
--- A floating "+N КСЕНИТ" over the terminal as the last crate of a delivery lands.
+-- A floating "◆ +N КСЕНИТ" over the terminal as the last crate of a delivery lands.
 local function deliveryPop(amount: number)
 	local at = new("Attachment", { Parent = workspace.Terrain })
 	at.WorldPosition = W(TERMINAL.x, 11, TERMINAL.z)
@@ -560,10 +567,11 @@ local function deliveryPop(amount: number)
 		{ Size = UDim2.fromOffset(240, 44), AlwaysOnTop = true, LightInfluence = 0, Adornee = at, Parent = at }
 	)
 	local l = label(
-		"+" .. Theme.commas(amount) .. " КСЕНИТ",
+		"◆ +" .. Theme.commas(amount) .. " КСЕНИТ",
 		{ Size = UDim2.fromScale(1, 1), FontFace = F.display, TextSize = 28, TextColor3 = C.pink, Parent = b }
 	)
 	new("UIStroke", { Color = C.ink, Thickness = 2.5, Parent = l })
+	Xenite.inline(l)
 	tween(b, 1.6, { StudsOffsetWorldSpace = Vector3.new(0, 4, 0) })
 	task.delay(0.9, function()
 		tween(l, 0.7, { TextTransparency = 1 })
@@ -1398,15 +1406,8 @@ local function buildHud(playerGui: PlayerGui)
 			Padding = UDim.new(0, 8),
 		},
 	})
-	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 16), Parent = ui.xenite })
-	new("Frame", {
-		Size = UDim2.fromOffset(15, 15),
-		Rotation = 45,
-		BackgroundColor3 = C.pink,
-		Corner = 3,
-		LayoutOrder = 1,
-		Parent = ui.xenite,
-	})
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 16), Parent = ui.xenite })
+	Xenite.icon(34, { LayoutOrder = 1, Parent = ui.xenite })
 	ui.xeniteAmount = label("0", {
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromOffset(0, 40),
@@ -1516,6 +1517,7 @@ local function buildHud(playerGui: PlayerGui)
 		ZIndex = 3,
 		Parent = ui.play,
 	})
+	Xenite.inline(ui.playSub)
 	ui.playGlow = new("UIStroke", {
 		Color = C.lime,
 		Thickness = 5,
@@ -2166,7 +2168,7 @@ function Base.update(dt: number, _root: Vector3?)
 		sp.prompt.Enabled = usable == true
 		sp.prompt.ActionText = if sp.isStation
 			then (sp.sd.stationName or sp.def.name)
-			else "Починить · ◆ " .. sp.def.cost
+			else "Починить · ксенит " .. sp.def.cost
 		sp.board.Enabled = calm and (id == goalSpot or nearEnough(sp.board, sp.ring.Position, _root))
 		local glow = if sp.canRestore
 			then 0.25 + math.sin(now * 3 + sp.sd.x) * 0.15

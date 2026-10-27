@@ -24,6 +24,7 @@ local Ops = require(Shared:WaitForChild("Ops"))
 local Settings = require(script.Parent.Settings)
 local Audio = require(script.Parent.Audio)
 local Fx = require(script.Parent.Fx)
+local Xenite = require(script.Parent.Xenite)
 
 local Cabin = {}
 Cabin.__index = Cabin
@@ -1530,25 +1531,15 @@ function Cabin:setEntry(entry)
 		local at = cf * CFrame.new(m.x, m.y, m.z + 1.2)
 		mk(
 			keep,
-			Vector3.new(0.8, 0.8, 0.8),
-			at * CFrame.new(0, 0.45, 0) * CFrame.Angles(0, 0, math.pi / 2),
+			Vector3.new(0.9, 0.9, 0.9),
+			at * CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, math.pi / 2),
 			rgb(200, 220, 230),
 			M.Glass,
 			{ Shape = CYL, Transparency = 0.6 }
 		)
-		local shard = mk(
-			keep,
-			Vector3.new(0.25, 0.55, 0.25),
-			at * CFrame.new(0, 0.4, 0) * CFrame.Angles(0.3, 0.6, 0.2),
-			rgb(255, 110, 190),
-			M.Neon,
-			{ CastShadow = false }
-		)
-		local l = Instance.new("PointLight")
-		l.Color = rgb(255, 120, 200)
-		l.Range = 5
-		l.Brightness = 0.6
-		l.Parent = shard
+		-- the same three shards as on every price (DD-095), small enough for the jar
+		local crystal = Xenite.cluster(keep, at * CFrame.new(0, 0.08, 0) * CFrame.Angles(0, math.pi / 2, 0), 0.3)
+		crystal:FindFirstChildWhichIsA("PointLight", true).Brightness = 0.7
 	end
 	keep.Parent = self.folder
 end
