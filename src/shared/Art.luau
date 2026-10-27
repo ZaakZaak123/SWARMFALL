@@ -8,21 +8,8 @@
 local Art = {}
 
 Art.Meshes = {
-	MUSHROOM = {
-		mesh = "rbxassetid://127176737419976",
-		tex = "rbxassetid://115346285824557",
-		size = Vector3.new(19.45, 26.00, 19.56),
-	},
-	BLOOM = {
-		mesh = "rbxassetid://89615528547561",
-		tex = "rbxassetid://76787471648665",
-		size = Vector3.new(26.00, 38.60, 25.91),
-	},
-	RIB = {
-		mesh = "rbxassetid://76552285360656",
-		tex = "rbxassetid://92198972359951",
-		size = Vector3.new(17.89, 34.00, 5.45),
-	},
+	-- DD-091 retired the alien crater's set (skull, ribs, vertebrae, the plane wreck, giant mushrooms and
+	-- blooms, spires, coral): the funnel is ruins, earth and trees now (server/ArenaScene).
 	BOULDER = {
 		mesh = "rbxassetid://107685891222586",
 		tex = "rbxassetid://134921464973189",
@@ -33,41 +20,10 @@ Art.Meshes = {
 		tex = "rbxassetid://128477091016348",
 		size = Vector3.new(11.13, 24.00, 13.42),
 	},
-	-- DD-062: a mossy cargo plane wreck instead of the sci-fi dropship
-	DROPSHIP = {
-		mesh = "rbxassetid://80290448750003",
-		tex = "rbxassetid://116574695486126",
-		size = Vector3.new(10.11, 3.76, 10.00),
-	},
 	CRYSTALS = {
 		mesh = "rbxassetid://112145949782550",
 		tex = "rbxassetid://136220619906967",
 		size = Vector3.new(14.00, 16.33, 13.87),
-	},
-	SKULL = {
-		mesh = "rbxassetid://82192057619826",
-		tex = "rbxassetid://81798771343243",
-		size = Vector3.new(33.47, 32.00, 34.13),
-	},
-	SPIRE = {
-		mesh = "rbxassetid://94986255398164",
-		tex = "rbxassetid://126474191942050",
-		size = Vector3.new(13.82, 29.45, 14.00),
-	},
-	CORAL = {
-		mesh = "rbxassetid://92825752917091",
-		tex = "rbxassetid://127925072991301",
-		size = Vector3.new(5.00, 4.21, 4.85),
-	},
-	SHROOMS = {
-		mesh = "rbxassetid://130822987044504",
-		tex = "rbxassetid://128593386257525",
-		size = Vector3.new(2.52, 3.00, 3.02),
-	},
-	VERTEBRA = {
-		mesh = "rbxassetid://134075089674530",
-		tex = "rbxassetid://114885826516165",
-		size = Vector3.new(4.31, 4.00, 4.31),
 	},
 	NEST = {
 		mesh = "rbxassetid://117090663428529",

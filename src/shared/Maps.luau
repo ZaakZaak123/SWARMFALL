@@ -74,15 +74,16 @@ local function mirror(def: MapDef)
 	def.playerStart.x = -def.playerStart.x
 end
 
--- THE BLOOM CRATER --------------------------------------------------------------------------------------
--- A rounded crater ~270 studs across. North: the bones of a fallen titan — its skull sits in the rim and
--- the swarm pours out of its jaws, ribs arch over the northern approach. South: our dropship, where every
--- hunt starts. East: a grove of pink xenite crystals. West: a forest of glowing mushrooms. Centre: the
--- extractor drilling the mother crystal. Corners: cliff masses with spore wounds the swarm crawls out of.
+-- THE FUNNEL (ex-Bloom Crater) ---------------------------------------------------------------------------
+-- A rounded crater ~270 studs across that the drill opened in a buried city (art: DD-091, ArenaScene).
+-- North: the metro breach the swarm pours out of, broken overpass pillars on the old rib feet. South: the
+-- drill station's containers (the old dropship box), where every sortie starts. East: xenite in the
+-- rubble. West: an overgrown square, trees on the old mushroom feet. Centre: the drill. Corners: cliff
+-- masses; the swarm crawls out of storm drains between them. Style names below are data keys: kept.
 local function crater(): ({ Obstacle }, { { x: number, z: number } })
 	local list, box, round = builder()
 	round("ReactorCore", 0, 0, 12, 16, "reactor")
-	-- titan ribs: pairs of feet; the arches above are decor (Arena)
+	-- the overpass: pairs of pillar feet; what stands on them is decor (ArenaScene.breach)
 	for i, z in { 70, 88, 106 } do
 		round("RibW" .. i, -22, z, 5, 5, "ribfoot")
 		round("RibE" .. i, 22, z, 5, 5, "ribfoot")
@@ -134,7 +135,7 @@ do
 		id = "MAP_REACTOR_YARD",
 		index = 1,
 		name = "ВОРОНКА У СТАНЦИИ",
-		subtitle = "Воронка у старой буровой станции. Рой гнездится в останках гиганта.",
+		subtitle = "Воронка у старой буровой станции. Рой лезет из тоннелей погребённого города.",
 		theme = "dusk",
 		unlock = "",
 		halfX = 140,

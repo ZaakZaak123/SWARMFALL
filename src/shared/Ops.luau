@@ -398,7 +398,7 @@ Ops.O04 = {
 }
 
 -- O05 «МАТЬ РОЯ» (DD-079) — the fifth sortie and the chapter's first boss, ~2:00. One idea: the queen comes
--- out of the titan's remains at ~0:30 and goes for the drill; her death wins at once (the rest of the swarm
+-- out of the metro breach at ~0:30 and goes for the drill; her death wins at once (the rest of the swarm
 -- dies with her). A short build-up with every kind met so far, four cards, the drill as the stake. The win
 -- puts her golden statue on the shelter's trophy row and opens the Рельсотрон blueprint.
 Ops.O05 = {
@@ -407,7 +407,7 @@ Ops.O05 = {
 	code = "O05",
 	name = "МАТЬ РОЯ",
 	map = "MAP_REACTOR_YARD",
-	brief = "Королева роя выходит из останков гиганта и идёт на бур. Убей Мать роя.",
+	brief = "Королева роя выходит из провала метро и идёт на бур. Убей Мать роя.",
 	goal = "Защити бур",
 	objective = "boss",
 	bossHpMult = 0.5,

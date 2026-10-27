@@ -1496,16 +1496,16 @@ local DEPARTURE = {
 	},
 	O05 = {
 		title = "ВЫЛАЗКА 5 · МАТЬ РОЯ",
-		sub = "Королева роя проснулась в останках гиганта",
+		sub = "Королева роя проснулась в тоннелях под воронкой",
 		transit = { "К БУРУ", "Она выйдет сама — и пойдёт прямо на бур" },
 		funnel = {
 			"УБЕЙ МАТЬ РОЯ",
-			"Она выйдет из черепа титана. Её смерть — конец боя",
+			"Она выйдет из провала метро на севере. Её смерть — конец боя",
 		},
 		focus = Vector3.new(0, 10, 112), -- where she comes out (Maps bossEntry)
 		focusRing = 22,
 		focusColor = C.pink,
-		focusEye = { Vector3.new(6, 62, -96), Vector3.new(4, 48, -78) }, -- in front and above: the titan's ribs block the side
+		focusEye = { Vector3.new(6, 62, -96), Vector3.new(4, 48, -78) }, -- in front and above: the overpass blocks the side
 	},
 	O06 = {
 		title = "ВЫЛАЗКА 6 · КРОВАВАЯ НОЧЬ",

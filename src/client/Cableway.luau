@@ -139,44 +139,53 @@ function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
 	end
 	-- the darkness: what you see into the hill (and what a crate rides into)
 	part({ Name = "Dark", Size = Vector3.new(16, 16, 1), CFrame = at3(0, 8, -1.6), Color = rgb(5, 5, 7) }, folder)
-	-- the timbering
-	for _, x in { -7.6, 7.6 } do
+	-- DD-091: an old metro service portal, not a heap of round rocks: concrete pilasters and a lintel,
+	-- a headwall of broken height round them, the timber props the diggers left inside
+	local concrete, dark = rgb(150, 144, 134), rgb(106, 101, 96)
+	for _, x in { -8.6, 8.6 } do
 		part({
-			Size = Vector3.new(1.3, 16.6, 1.3),
-			CFrame = at3(x, 8.3, 0),
+			Size = Vector3.new(2.4, 17.6, 2.4),
+			CFrame = at3(x, 8.8, 0.2),
+			Color = dark,
+			Material = Enum.Material.Concrete,
+		}, folder).CastShadow =
+			true
+		part({
+			Size = Vector3.new(1.1, 15.6, 1.1),
+			CFrame = at3(x * 0.84, 7.8, -1.2),
 			Color = timber,
 			Material = Enum.Material.WoodPlanks,
 		}, folder)
 	end
 	part({
-		Size = Vector3.new(17.6, 1.5, 1.5),
-		CFrame = at3(0, 16.6, 0),
-		Color = timber,
-		Material = Enum.Material.WoodPlanks,
-	}, folder)
-	-- the rock heaped round it
+		Size = Vector3.new(20.6, 2.6, 2.8),
+		CFrame = at3(0, 18.4, 0.2),
+		Color = dark,
+		Material = Enum.Material.Concrete,
+	}, folder).CastShadow =
+		true
 	local rng = Random.new(math.floor(at.X * 7 + at.Z * 3))
-	local rocks = {
-		{ -11, 3, 7 },
-		{ -12, 9, 8 },
-		{ -11, 15, 7 },
-		{ 11, 3, 7 },
-		{ 12, 9, 8 },
-		{ 11, 15, 7 },
-		{ -7, 20, 8 },
-		{ 0, 21, 9 },
-		{ 7, 20, 8 },
-		{ -15, 1, 6 },
-		{ 15, 1, 6 },
-		{ 0, 25, 7 },
-	}
-	for _, r in rocks do
-		local d = r[3] * rng:NextNumber(1.1, 1.6)
+	local cols = 8
+	local width = 40
+	for k = 0, cols - 1 do
+		local cx = -width / 2 + (k + 0.5) * width / cols
+		local top = rng:NextNumber(20, 27)
+		local from = if math.abs(cx) < 9.8 then 19.7 else 0
+		local p = part({
+			Size = Vector3.new(width / cols + 0.05, top - from, 3),
+			CFrame = at3(cx, (from + top) / 2, -1.2),
+			Color = concrete:Lerp(dark, rng:NextNumber(0, 0.6)),
+			Material = Enum.Material.Concrete,
+		}, folder)
+		p.CastShadow = true
+	end
+	-- earth heaped against the headwall's ends
+	for _, s in { -1, 1 } do
 		local p = part({
 			Shape = Enum.PartType.Ball,
-			Size = Vector3.one * d,
-			CFrame = at3(r[1] + rng:NextNumber(-1, 1), r[2], rng:NextNumber(-3, -0.5)),
-			Color = rock:Lerp(rgb(104, 96, 88), rng:NextNumber()),
+			Size = Vector3.one * rng:NextNumber(9, 12),
+			CFrame = at3(s * (width / 2 + 1), 2, -2),
+			Color = rock,
 			Material = Enum.Material.Rock,
 		}, folder)
 		p.CastShadow = true
