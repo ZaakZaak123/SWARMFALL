@@ -360,8 +360,8 @@ local function dressStations()
 	for _, sp in stationParts do
 		local def = sp.def
 		if def.art and not sp.model then
-			local yaw = math.clamp(-def.x / 60, -0.35, 0.35)
-			local m = artModel(def.art, def.h, WC(def.x, 0.25, def.z + 1.6) * CFrame.Angles(0, yaw, 0), sp.holder)
+			local mx, mz, yaw = Layout.place(def, 1.6)
+			local m = artModel(def.art, def.h, WC(mx, 0.25, mz) * CFrame.Angles(0, yaw, 0), sp.holder)
 			if m then
 				sp.model = m
 				sp.beam.Transparency = 1
@@ -474,21 +474,22 @@ local lastScrap = nil
 
 local function buildTerminal()
 	local t = TERMINAL
+	local TF = frame * Layout.terminalFrame() -- across the cable (DD-093)
 	local holder = new("Model", { Name = "Terminal", Parent = folder })
 	local metal = Color3.fromRGB(84, 78, 70)
 	part({
 		Name = "Slab",
 		Size = Vector3.new(7, 0.5, 10),
-		CFrame = WC(t.x, 0.25, t.z),
+		CFrame = TF * CFrame.new(0, 0.25, 0),
 		Color = Color3.fromRGB(122, 118, 110),
 		Material = Enum.Material.Concrete,
 		Parent = holder,
 	})
-	-- the frame stands across the cable, which comes in from the east beyond the trees
+	-- the frame stands across the cable, which comes in from the cave behind the yard
 	for _, s in { -1, 1 } do
 		part({
 			Size = Vector3.new(0.6, 8.8, 0.6),
-			CFrame = WC(t.x, 4.4, t.z + s * 2.8),
+			CFrame = TF * CFrame.new(0, 4.4, s * 2.8),
 			Color = metal,
 			Material = Enum.Material.Metal,
 			Parent = holder,
@@ -497,7 +498,7 @@ local function buildTerminal()
 	local beam = part({
 		Name = "Beam",
 		Size = Vector3.new(0.8, 0.6, 6.8),
-		CFrame = WC(t.x, 8.9, t.z),
+		CFrame = TF * CFrame.new(0, 8.9, 0),
 		Color = metal,
 		Material = Enum.Material.Metal,
 		Parent = holder,
@@ -505,7 +506,7 @@ local function buildTerminal()
 	-- the shelter's lime: the same mark as on every crate that leaves the drill
 	part({
 		Size = Vector3.new(0.85, 0.25, 6.9),
-		CFrame = WC(t.x, 8.5, t.z),
+		CFrame = TF * CFrame.new(0, 8.5, 0),
 		Color = Color3.fromRGB(176, 236, 60),
 		Material = Enum.Material.SmoothPlastic,
 		Parent = holder,
@@ -538,13 +539,12 @@ local function setPile(scrap: number)
 		pileFolder:Destroy()
 	end
 	pileFolder = new("Folder", { Name = "Pile", Parent = folder })
-	local t = TERMINAL
 	-- stacks of the very crates the cable brings (wood, the lime band), two or three high
 	for i, o in { { 3.6, 2.6, 0.3, 2 }, { 3.4, -2.4, -0.4, 3 }, { 6.4, 0.4, 1.1, 2 }, { 6.6, 4.2, 2.2, 1 } } do
 		if i > n then
 			break
 		end
-		local base = WC(t.x + o[1], 0.5, t.z + o[2]) * CFrame.Angles(0, o[3], 0)
+		local base = frame * Layout.terminalFrame() * CFrame.new(o[1], 0.5, o[2]) * CFrame.Angles(0, o[3], 0)
 		for k = 0, o[4] - 1 do
 			Cableway.crate(pileFolder, base * CFrame.new(0, k * 1.95, 0) * CFrame.Angles(0, k * 0.35, 0))
 		end
@@ -600,7 +600,8 @@ local function showSpot(id: string, restored: boolean, animate: boolean)
 		return
 	end
 	local sd = sp.sd
-	local base = WC(sd.x, 0.25, sd.z + 0.8) * CFrame.Angles(0, sd.yaw, 0)
+	local mx, mz, yaw = Layout.place(sd, 0.8)
+	local base = WC(mx, 0.25, mz) * CFrame.Angles(0, yaw, 0)
 	if restored then
 		if sp.rubble then
 			sp.rubble:Destroy()

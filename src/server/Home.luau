@@ -125,7 +125,7 @@ function Home.furnish()
 			prompt.KeyboardKeyCode = Enum.KeyCode.E
 			prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
 			prompt.HoldDuration = 0
-			prompt.MaxActivationDistance = 5.5
+			prompt.MaxActivationDistance = 4.5
 			prompt.RequiresLineOfSight = false
 			prompt.UIOffset = Vector2.new(0, 30)
 			prompt.Parent = seat
@@ -146,6 +146,42 @@ function Home.furnish()
 			end)
 			seat.Parent = folder
 		end
+		-- the cabin's door: open or shut for everyone, either side of it (clients swing the leaf)
+		local c, d = Layout.Cabin, Layout.Cabin.door
+		local door = Instance.new("Part")
+		door.Name = "Door" .. i
+		door.Size = Vector3.new(4.6, 8.6, 0.6)
+		door.CFrame = f * CFrame.new(c.x + d.x, d.y, c.z + d.z)
+		door.Anchored = true
+		door.CanCollide = false
+		door.CanTouch = false
+		door.CanQuery = false
+		door.Transparency = 1
+		door:SetAttribute("Open", true)
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Закрыть дверь"
+		prompt.ObjectText = "Дверь"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 7
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = door
+		local last = 0
+		prompt.Triggered:Connect(function(player: Player)
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if not root or (root.Position - door.Position).Magnitude > 12 or os.clock() - last < 0.4 then
+				return
+			end
+			last = os.clock()
+			door:SetAttribute("Open", not door:GetAttribute("Open"))
+		end)
+		door:GetAttributeChangedSignal("Open"):Connect(function()
+			prompt.ActionText = if door:GetAttribute("Open")
+				then "Закрыть дверь"
+				else "Открыть дверь"
+		end)
+		door.Parent = folder
 	end
 	folder.Parent = workspace
 end

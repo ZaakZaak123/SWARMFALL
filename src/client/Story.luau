@@ -20,6 +20,7 @@ local Theme = require(script.Parent.Theme)
 local Audio = require(script.Parent.Audio)
 local Fx = require(script.Parent.Fx)
 local Cableway = require(script.Parent.Cableway)
+local CameraRig = require(script.Parent.CameraRig)
 local Meta = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Meta"))
 
 local new, C, F = Theme.new, Theme.C, Theme.F
@@ -270,11 +271,6 @@ local function tunnelDip(cues, tIn: number)
 	return cues
 end
 
-local function flash(amount: number, time: number?)
-	ui.flash.BackgroundTransparency = 1 - amount
-	tween(ui.flash, time or 0.5, { BackgroundTransparency = 1 })
-end
-
 -- Movement off while a scene plays: the run waits for the first move, and a move would start it.
 local function setControls(on: boolean)
 	local ok, module = pcall(function()
@@ -290,7 +286,9 @@ local function setControls(on: boolean)
 	end
 end
 
+local heroHidden = false
 local function heroVisible(on: boolean)
+	heroHidden = not on
 	local char = player.Character
 	if not char then
 		return
@@ -638,6 +636,7 @@ local function buildRider(cargoKey: string?, glowColor: Color3?)
 	end
 	-- the hero: a still copy of the own avatar standing on the pallet
 	local hero, heroOffset = nil, nil
+	local leapFrom = nil
 	local char = player.Character
 	if char then
 		local okClone, clone = pcall(function()
@@ -686,9 +685,23 @@ local function buildRider(cargoKey: string?, glowColor: Color3?)
 		for _, row in parts do
 			row[1].CFrame = frame * row[2]
 		end
-		if hero then
+		if hero and not leapFrom then
 			hero:PivotTo(frame * heroOffset)
 		end
+	end
+	-- DD-093: the hero hops off the pallet onto `to` (k 0..1 along a little arc)
+	function rider.leap(to: CFrame, k: number)
+		if not hero then
+			return
+		end
+		leapFrom = leapFrom or hero:GetPivot()
+		local a, b = leapFrom.Position, to.Position
+		local e = k * k * (3 - 2 * k)
+		local lift = math.sin(k * math.pi) * 3.2 -- the arc over the drop
+		hero:PivotTo(
+			CFrame.new(a:Lerp(b, e) + Vector3.new(0, lift, 0))
+				* leapFrom.Rotation:Lerp(to.Rotation, math.min(1, k * 1.6))
+		)
 	end
 	function rider.deckPosition(): Vector3
 		return parts[1][1].Position + Vector3.new(0, deck, 0)
@@ -849,6 +862,54 @@ local function chase(riderPos: Vector3, dir: Vector3, back: number, up: number, 
 	return CFrame.lookAt(eye, riderPos + flat * 26 - Vector3.yAxis * 4)
 end
 
+-- DD-093: the end of a ride into the funnel. The pallet stops at the post beside the spawn, the hero hops
+-- off it and lands on the spot the fight starts from; meanwhile the camera swings round behind the hero
+-- to the fight's own view (CameraRig.restPose), which then takes over without a cut (CameraRig.handoff).
+local LEAP = 0.75
+local SPAWN = Vector3.new(0, 3, -26) -- Maps playerStart (every crater map), the root's height
+local function landing(rider, _sp: Vector3?, at: number, length: number)
+	local spot, to, rest = nil, nil, nil
+	-- the spot is read when the leap starts: the run has put the (hidden) character on its spawn by then
+	local function settle()
+		if spot then
+			return
+		end
+		local char = player.Character
+		local p = char and char:GetPivot().Position
+		spot = if p and (Vector3.new(p.X, 0, p.Z) - Vector3.new(SPAWN.X, 0, SPAWN.Z)).Magnitude < 40 then p else SPAWN
+		to = CFrame.lookAt(spot, spot + Vector3.zAxis) -- facing the drill, as the fight's camera looks
+		rest = CameraRig.restPose(spot)
+	end
+	local shot = {
+		from = at,
+		to = length,
+		cam = function(_, t)
+			settle()
+			local side = Cableway.ARENA_SIDE
+			local start = CFrame.lookAt(side + Vector3.new(14, 11, -20), side + Vector3.new(0, -4, 0))
+			local u = math.clamp((t - at) / (length - at), 0, 1)
+			u = u * u * (3 - 2 * u)
+			return start:Lerp(rest, u)
+		end,
+	}
+	local function update(t)
+		if t >= at then
+			settle()
+			rider.leap(to, math.clamp((t - at) / LEAP, 0, 1))
+		end
+	end
+	local cue = {
+		at + LEAP,
+		function()
+			settle()
+			Fx.ring(Vector3.new(spot.X, 0.4, spot.Z), 6, C.lime, 0.6)
+			Fx.emitWith("dust", Vector3.new(spot.X, 0.5, spot.Z), 12, 1.4)
+			Audio.play("boom", 0.4, 1.3)
+		end,
+	}
+	return shot, update, cue
+end
+
 -- The newcomer's intro, ~21 s: title → the dead shelter → the hero rides the cable out over the
 -- wasteland → the funnel, the swarm, the Alpha → the hero at the spawn.
 function Story.intro(onDone)
@@ -880,9 +941,10 @@ function Story.intro(onDone)
 	ui.coverLine.TextTransparency = 1
 	tween(ui.coverLine, 1.2, { TextTransparency = 0 })
 	coverDeadline = 0
+	local landShot, landUpdate, landCue = landing(rider, sp, 15.5, 17.2)
 	play({
-		length = 17.0,
-		holds = { 7.0, 8.3, 16.0 }, -- the shelter, the way out, the Alpha (DD-083; DD-086: the title runs on)
+		length = 17.2,
+		holds = { 7.0, 8.3, 15.2 }, -- the shelter, the way out, the Alpha (DD-083; DD-086: the title runs on)
 		shots = {
 			{
 				from = 0,
@@ -931,7 +993,7 @@ function Story.intro(onDone)
 			},
 			{
 				from = 14.6,
-				to = 17.0,
+				to = 15.5,
 				cam = function(k)
 					-- close: the hero slides down to the post inside the funnel
 					local pos = path.at(s)
@@ -940,11 +1002,13 @@ function Story.intro(onDone)
 					return CFrame.lookAt(eye, pos + Vector3.new(0, -4, 0))
 				end,
 			},
+			landShot,
 		},
 		update = function(t)
 			s = ride(t)
 			local pos, dir = path.at(s)
 			rider.place(pos, dir, math.sin(t * 1.7) * 0.04)
+			landUpdate(t)
 		end,
 		cues = tunnelDip({
 			{
@@ -1021,12 +1085,7 @@ function Story.intro(onDone)
 					end
 				end,
 			},
-			{
-				16.5,
-				function()
-					flash(0.7, 0.6)
-				end,
-			},
+			landCue,
 		}, 10.2),
 		cleanup = function()
 			Audio.fadeStings(1)
@@ -1036,9 +1095,6 @@ function Story.intro(onDone)
 			ui.cover.Visible = false
 			heroVisible(true)
 			base.sceneEnd()
-			Fx.ring(Vector3.new(sp.X, 0.4, sp.Z), 6, C.lime, 0.6)
-			Fx.emitWith("dust", Vector3.new(sp.X, 0.5, sp.Z), 10, 1.4)
-			Audio.play("boom", 0.4, 1.3)
 			caption("", "")
 		end,
 		onDone = onDone,
@@ -1591,8 +1647,9 @@ function Story.depart(opId: string, onDone)
 		end
 	end
 	preview.Parent = workspace
+	local landShot, landUpdate, landCue = landing(rider, sp, 8.4, 10.1)
 	play({
-		length = 9.6,
+		length = 10.1,
 		holds = { 7.3 }, -- what this sortie is about (DD-083)
 		shots = {
 			{
@@ -1632,7 +1689,7 @@ function Story.depart(opId: string, onDone)
 			},
 			{
 				from = 7.6,
-				to = 9.6,
+				to = 8.4,
 				cam = function(k)
 					local pos = path.at(s)
 					local side = Cableway.ARENA_SIDE
@@ -1640,11 +1697,13 @@ function Story.depart(opId: string, onDone)
 					return CFrame.lookAt(eye, pos + Vector3.new(0, -4, 0))
 				end,
 			},
+			landShot,
 		},
 		update = function(t)
 			s = ride(t)
 			local pos, dir = path.at(s)
 			rider.place(pos, dir, math.sin(t * 1.7) * 0.04)
+			landUpdate(t)
 		end,
 		cues = tunnelDip({
 			{
@@ -1700,12 +1759,7 @@ function Story.depart(opId: string, onDone)
 					end
 				end,
 			},
-			{
-				9.2,
-				function()
-					flash(0.6, 0.5)
-				end,
-			},
+			landCue,
 		}, 3.0),
 		cleanup = function()
 			rider.destroy()
@@ -1713,19 +1767,28 @@ function Story.depart(opId: string, onDone)
 			preview:Destroy()
 			heroVisible(true)
 			base.sceneEnd()
-			Fx.ring(Vector3.new(sp.X, 0.4, sp.Z), 6, C.lime, 0.6)
-			Fx.emitWith("dust", Vector3.new(sp.X, 0.5, sp.Z), 10, 1.4)
-			Audio.play("boom", 0.4, 1.3)
 		end,
 		onDone = onDone,
 	})
 end
 
+local lastCam = nil
 function Story.camera(dt: number): CFrame?
 	if scene then
-		return scene.step(dt)
+		if heroHidden then
+			-- DD-093: the run loads a fresh character (and the first-person fade rewrites the body's
+			-- transparency) while a ride in still plays: keep it hidden until the hero lands
+			heroVisible(false)
+		end
+		lastCam = scene.step(dt)
+		return lastCam
 	end
 	return nil
+end
+
+-- The frame a scene ended on (DD-093: the fight's camera eases on from it).
+function Story.lastCamera(): CFrame?
+	return lastCam
 end
 
 -- Studio checks: hold the scene at time t (nil = let it run and finish).

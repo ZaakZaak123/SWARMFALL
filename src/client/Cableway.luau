@@ -87,8 +87,11 @@ end
 -- looked crooked and the ride was long; underground nothing breaks the picture and the way is short.)
 -- World points on the arena's side; the shelter's end goes through the plot's frame (DD-087: every plot
 -- has its own cave, in the hill between it and the next plot, shared/ShelterLayout.Cave).
-Cableway.ARENA_SIDE = Vector3.new(-104, 14, 34) -- post inside the funnel, west of the drill (DD-091: the span to
--- the cave runs almost level, at 20 the ride climbed into the post and braked on the slope)
+-- The post inside the funnel (DD-093): right beside the hero's spawn (Maps playerStart 0, -26), so a ride in
+-- ends with the hero hopping off the pallet onto the spot the fight starts from. The span from the cave
+-- stays level (DD-091: a climbing span braked on its slope) and keeps clear of the crystals and the
+-- tesla towers; from here the freight goes on to the drill's top.
+Cableway.ARENA_SIDE = Vector3.new(-10, 14, -22)
 Cableway.MOUTH_A = Vector3.new(Layout.ArenaCave.x, 0, Layout.ArenaCave.z) -- the cave in the funnel wall (floor centre)
 Cableway.FACING_A = Vector3.new(Layout.ArenaCave.fx, 0, Layout.ArenaCave.fz).Unit -- out of the cave, into the funnel
 Cableway.CABLE_H = 13 -- the cable's height over a cave's / the tunnel's floor
@@ -167,16 +170,13 @@ function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
 	end
 	-- the darkness further in (and what a crate rides into)
 	-- (solid: you may walk in to the dark, not through it)
-	part(
-		{
-			Name = "Dark",
-			Size = Vector3.new(19, 19, 1),
-			CFrame = at3(0, 9, -BORE_D),
-			Color = rgb(5, 5, 7),
-			CanCollide = true,
-		},
-		folder
-	)
+	part({
+		Name = "Dark",
+		Size = Vector3.new(19, 19, 1),
+		CFrame = at3(0, 9, -BORE_D),
+		Color = rgb(5, 5, 7),
+		CanCollide = true,
+	}, folder)
 	-- the lining: walls, roof and floor, a steel rib every four studs, one dim lamp
 	local mid = -BORE_D / 2
 	for _, x in { -9.6, 9.6 } do

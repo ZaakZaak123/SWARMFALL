@@ -440,27 +440,29 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	do
 		add("front", mk(folder, Vector3.new(t[1], t[2], 1.0), S("front", t[3], t[4], 0), P.trim, M.Wood))
 	end
+	-- the door leaf swings on its hinge (open into the room, or shut): the server keeps it open or shut for
+	-- everyone (server/Home.furnish, a Door part with a prompt), step() follows it
 	do
-		local hinge = C(DOOR - 0.1, F + 4.3, -HZ + 0.55)
-		local leaf = hinge * CFrame.Angles(0, -math.rad(78), 0) * CFrame.new(DOOR - 0.2, 0, 0)
-		add("front", mk(folder, Vector3.new(DOOR * 2 - 0.4, 8.6, 0.25), leaf, P.wood, M.WoodPlanks))
+		local hinge = C(DOOR - 0.1, F + 4.3, -HZ + 0.4)
+		local w = DOOR * 2 - 0.3
+		local pieces = {}
+		local function piece(p: BasePart, off: CFrame)
+			table.insert(pieces, { p, off })
+			return add("front", p)
+		end
+		local leaf = piece(mk(folder, Vector3.new(w, 8.6, 0.25), hinge, P.wood, M.WoodPlanks), CFrame.new(-w / 2, 0, 0))
 		for _, y in { -2.8, 2.8 } do
-			add(
-				"front",
-				mk(small, Vector3.new(DOOR * 2 - 0.6, 0.35, 0.1), leaf * CFrame.new(0, y, -0.15), P.dark, M.Wood)
+			piece(mk(small, Vector3.new(w - 0.2, 0.35, 0.1), hinge, P.dark, M.Wood), CFrame.new(-w / 2, y, 0.15))
+			piece(mk(small, Vector3.new(w - 0.2, 0.35, 0.1), hinge, P.dark, M.Wood), CFrame.new(-w / 2, y, -0.15))
+		end
+		for _, z in { -0.25, 0.25 } do
+			piece(
+				mk(small, Vector3.new(0.3, 0.3, 0.3), hinge, P.brass, M.Metal, { Shape = BALL }),
+				CFrame.new(-w + 0.5, -0.2, z)
 			)
 		end
-		add(
-			"front",
-			mk(
-				small,
-				Vector3.new(0.3, 0.3, 0.3),
-				leaf * CFrame.new(DOOR - 0.7, -0.2, -0.25),
-				P.brass,
-				M.Metal,
-				{ Shape = BALL }
-			)
-		)
+		self.door =
+			{ hinge = hinge, pieces = pieces, leaf = leaf, angle = -1, open = true, at = C(0, F + 4.3, -HZ).Position }
 	end
 	local sign = add("front", mk(folder, Vector3.new(6.4, 1.0, 0.2), S("front", 0, F + 10.2, 0.6), P.dark, M.Wood))
 	do
@@ -1602,6 +1604,7 @@ function Cabin:step(dt: number, root: Vector3?)
 	local ma = (t.min + t.sec / 60) / 60 * math.pi * 2
 	c.h.CFrame = c.at * CFrame.Angles(ha, 0, 0) * CFrame.new(0, 0.22, 0)
 	c.m.CFrame = c.at * CFrame.Angles(ma, 0, 0) * CFrame.new(0, 0.34, 0)
+	self:stepDoor(dt)
 	-- the cutaway
 	local inside = false
 	if root then
@@ -1639,6 +1642,43 @@ function Cabin:step(dt: number, root: Vector3?)
 		for _, g in self.guis.front do
 			g.Enabled = not (walls.front and k > 0.4)
 		end
+	end
+end
+
+-- The door follows the server's Door part of this plot (found by place: the one in the doorway).
+local DOOR_OPEN = math.rad(100)
+function Cabin:stepDoor(dt: number)
+	local d = self.door
+	local srv = d.server
+	if not (srv and srv.Parent) then
+		d.server = nil
+		local now = os.clock()
+		if now >= (d.lookAt or 0) then
+			d.lookAt = now + 1
+			local seats = workspace:FindFirstChild("GroveSeats")
+			for _, c in if seats then seats:GetChildren() else {} do
+				if c:IsA("BasePart") and c.Name:sub(1, 4) == "Door" and (c.Position - d.at).Magnitude < 3 then
+					d.server = c
+				end
+			end
+		end
+		srv = d.server
+	end
+	if srv then
+		d.open = srv:GetAttribute("Open") ~= false
+	end
+	local goal = if d.open then DOOR_OPEN else 0
+	local a = if d.angle < 0 then goal else d.angle + (goal - d.angle) * math.min(1, dt * 7)
+	if math.abs(a - goal) < 0.002 then
+		a = goal
+	end
+	if a ~= d.angle then
+		d.angle = a
+		local turn = d.hinge * CFrame.Angles(0, a, 0)
+		for _, pc in d.pieces do
+			pc[1].CFrame = turn * pc[2]
+		end
+		d.leaf.CanCollide = a < 0.15 -- shut, it keeps the room; open, it never snags anyone
 	end
 end
 

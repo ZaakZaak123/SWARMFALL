@@ -1,6 +1,6 @@
 --!nonstrict
--- Combat camera with three views: "top" (elevated tactical, default), "third" (over-the-shoulder) and
--- "first". Views are parameter sets (distance, pitch, pivot height, shoulder, FOV, aim lead, follow
+-- Combat camera with three views: "top" (elevated tactical), "third" (over-the-shoulder, the default since
+-- DD-093: the owner wants the fight seen from behind the hero) and "first". Views are parameter sets (distance, pitch, pivot height, shoulder, FOV, aim lead, follow
 -- stiffness, yaw source). Switching blends the *parameters* with an ease-in-out curve, so the camera
 -- flies along a natural arc — swooping down behind the player, sliding into the head, or rising back
 -- into the sky — instead of cutting or lerping between two fixed CFrames.
@@ -19,7 +19,8 @@ CameraRig.ModeIcons = { top = "topdown", third = "person", first = "eye" }
 local transitionTime = 1.15
 local BASE_DIST = 64
 
-local mode = "top"
+local mode = "third"
+local preferred = "third" -- the view the player chose (a spectator's forced top view gives it back)
 local fromP = nil -- parameter snapshot at transition start
 local transT = 1 -- 0..1 progress
 local current = nil -- live (blended) parameters
@@ -113,8 +114,15 @@ function CameraRig.immersive(): boolean
 end
 
 -- Switch to a view; aimX/aimZ seeds the yaw so the camera swings in behind where you face.
+local forcing = false
 function CameraRig.setMode(m: string, aimX: number?, aimZ: number?)
-	if m == mode or not table.find(CameraRig.Modes, m) then
+	if not table.find(CameraRig.Modes, m) then
+		return
+	end
+	if not forcing then
+		preferred = m
+	end
+	if m == mode then
 		return
 	end
 	if mode == "top" and aimX then
@@ -175,8 +183,30 @@ end
 
 local INTRO_TIME = 3.2
 local introT = 1
+local handoff = nil -- DD-093: { from = CFrame, fov, t, dur } a story scene's last frame easing into the view
 function CameraRig.intro()
 	introT = 0
+	handoff = nil
+end
+
+-- DD-093: a story scene hands the camera over without a cut: from its last frame the view eases into
+-- the fight's own camera (the scene ends on a frame close to CameraRig.restPose, so the move is short).
+function CameraRig.handoff(from: CFrame, fov: number, dur: number?)
+	handoff = { from = from, fov = fov, t = 0, dur = dur or 1.2 }
+	introT = 1
+	follow = nil
+end
+
+-- Where the current view settles behind a still hero at `focus` (a scene's last shot aims for it).
+function CameraRig.restPose(focus: Vector3): (CFrame, number)
+	local p = target(mode)
+	local yaw = if p.yawMix > 0 then camYaw else 0
+	local pivot = Vector3.new(focus.X, focus.Y + p.height - focus.Y * (1 - p.look), focus.Z - 3 * p.lead)
+	local forward =
+		Vector3.new(math.sin(yaw) * math.cos(p.pitch), -math.sin(p.pitch), math.cos(yaw) * math.cos(p.pitch))
+	local right = -Vector3.new(math.cos(yaw), 0, -math.sin(yaw))
+	local pos = pivot - forward * p.dist + right * p.shoulder
+	return CFrame.lookAt(pos, pos + forward), p.fov
 end
 
 -- DD-092: a cinematic beat over the regular camera (the Громобой's strike): low and wide, from the
@@ -243,7 +273,11 @@ function CameraRig.update(
 
 	-- Spectating / dead: fall back to the tactical view (smoothly).
 	if forceTop and mode ~= "top" then
+		forcing = true
 		CameraRig.setMode("top")
+		forcing = false
+	elseif not forceTop and mode ~= preferred then
+		CameraRig.setMode(preferred) -- back up (or down) to the player's own view once alive again
 	end
 
 	-- Blend parameters.
@@ -324,6 +358,15 @@ function CameraRig.update(
 			local shot = CFrame.lookAt(eye, look) * CFrame.new(sx, sy, 0) * CFrame.Angles(0, 0, roll)
 			cam.CFrame = cam.CFrame:Lerp(shot, w)
 			cam.FieldOfView = cam.FieldOfView + (66 - cam.FieldOfView) * w
+		end
+	end
+	if handoff then
+		handoff.t += dt
+		local k = ease(math.clamp(handoff.t / handoff.dur, 0, 1))
+		cam.CFrame = handoff.from:Lerp(cam.CFrame, k)
+		cam.FieldOfView = handoff.fov + (cam.FieldOfView - handoff.fov) * k
+		if handoff.t >= handoff.dur then
+			handoff = nil
 		end
 	end
 	-- Landing shot (DD-036): a hunt opens high over the crater and swoops down onto the hero.

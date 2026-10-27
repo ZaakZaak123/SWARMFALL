@@ -1005,8 +1005,8 @@ local function buildHome(i: number, e)
 		end
 	end
 	for _, s in Layout.Stations do
-		local yaw = math.clamp(-s.x / 60, -0.35, 0.35)
-		artModel(s.art, s.h, WC(s.x, 0.25, s.z + 1.6, yaw), home)
+		local mx, mz, yaw = Layout.place(s, 1.6)
+		artModel(s.art, s.h, WC(mx, 0.25, mz, yaw), home)
 	end
 	for _, xz in Layout.Lamps do
 		local toward = -Vector3.new(xz[1], 0, xz[2])
@@ -1034,7 +1034,8 @@ local function buildHome(i: number, e)
 	local gallery = nil
 	for _, id in Meta.HomeOrder do
 		local sd = Layout.Spots[id]
-		local base = WC(sd.x, 0.25, sd.z + 0.8, sd.yaw)
+		local mx, mz, yaw = Layout.place(sd, 0.8)
+		local base = WC(mx, 0.25, mz, yaw)
 		if e.home and e.home[id] then
 			if id ~= "LAB" then
 				local m = artModel(sd.art, sd.h, base, home)
@@ -1067,7 +1068,7 @@ local function buildHome(i: number, e)
 	for _, sz in { -1, 1 } do
 		part({
 			Size = Vector3.new(0.6, 8.8, 0.6),
-			CFrame = WC(t.x, 4.4, t.z + sz * 2.8),
+			CFrame = f * Layout.terminalFrame() * CFrame.new(0, 4.4, sz * 2.8),
 			Color = metal,
 			Material = Enum.Material.Metal,
 			Parent = home,
@@ -1075,7 +1076,7 @@ local function buildHome(i: number, e)
 	end
 	part({
 		Size = Vector3.new(0.8, 0.6, 6.8),
-		CFrame = WC(t.x, 8.9, t.z),
+		CFrame = f * Layout.terminalFrame() * CFrame.new(0, 8.9, 0),
 		Color = metal,
 		Material = Enum.Material.Metal,
 		Parent = home,
@@ -1204,7 +1205,7 @@ local function buildHome(i: number, e)
 		if k > n then
 			break
 		end
-		local base = WC(t.x + o[1], 0.5, t.z + o[2], o[3])
+		local base = f * Layout.terminalFrame() * CFrame.new(o[1], 0.5, o[2]) * CFrame.Angles(0, o[3], 0)
 		for h = 0, o[4] - 1 do
 			Cableway.crate(near, base * CFrame.new(0, h * 1.95, 0) * CFrame.Angles(0, h * 0.35, 0))
 		end

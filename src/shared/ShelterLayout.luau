@@ -8,20 +8,36 @@
 local Layout = {}
 
 -- Stations you walk up to (the HUD buttons do the same). DD-091: the models are about 1.6 times what they
--- were (the hero looked too big beside them); their places stayed.
+-- were (the hero looked too big beside them); their places stayed. DD-093: the armory, the radio and the
+-- workbench to one scale (their desks at the hero's waist, as the workbench's), and every model turns its
+-- front to the yard's centre (Layout.place).
 Layout.Stations = {
-	armory = { art = "ARMORY", h = 10.4, x = -26, z = 12 },
+	armory = { art = "ARMORY", h = 7.2, x = -26, z = 12 },
 	launch = { art = "BEACON", h = 14, x = 0, z = -30 },
 }
 
 -- Prepared spots (Meta.Home): rubble until restored, then the thing itself.
 Layout.Spots = {
-	GENERATOR = { art = "GENERATOR", h = 6.7, x = -11, z = 19, yaw = 0.3 },
-	WORKBENCH = { art = "WORKBENCH", h = 8, x = 13, z = 13, yaw = -0.25 },
-	RADIO = { art = "RADIO", h = 10.4, x = -24, z = -3, yaw = 0.35 },
+	GENERATOR = { art = "GENERATOR", h = 6.7, x = -11, z = 19 },
+	WORKBENCH = { art = "WORKBENCH", h = 7.2, x = 13, z = 13 },
+	RADIO = { art = "RADIO", h = 7.2, x = -24, z = -3 },
+	-- the lab keeps its own turn: its specimen gallery grows from it into the clearing behind (GalleryDeck)
 	LAB = { art = "TANK_FRAME", h = 10.5, x = 27, z = 9, yaw = -0.3 },
-	GARDEN = { art = "GARDEN", h = 6.4, x = -14, z = -14, yaw = 0.2 },
+	GARDEN = { art = "GARDEN", h = 6.4, x = -14, z = -14 },
 }
+
+-- Where a station's or a spot's model stands: `back` studs behind its pad, away from the yard's centre,
+-- its front (-Z) to the centre (a spot with its own `yaw` keeps it, and stands back along +Z).
+function Layout.place(d, back: number): (number, number, number)
+	if d.yaw then
+		return d.x, d.z + back, d.yaw
+	end
+	local len = math.sqrt(d.x * d.x + d.z * d.z)
+	if len < 0.01 then
+		return d.x, d.z + back, 0
+	end
+	return d.x + d.x / len * back, d.z + d.z / len * back, math.atan2(d.x, d.z)
+end
 
 Layout.Lamps = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
 
@@ -29,12 +45,12 @@ Layout.Lamps = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
 -- DD-087: only what stands inside the plot (the settlement plants the woods between the plots).
 Layout.Decor = {
 	{ "OAK", 20, -42, 34, 0.4 },
-	{ "OAK", 18, -50, -4, 1.2 },
+	{ "OAK", 18, -54, -20, 1.2 },
 	{ "OAK", 22, 6, 64, 1.7 },
 	{ "OAK", 19, 46, 40, 2.1 },
 	{ "BIRCH", 15, -26, 44, 0.3 },
 	{ "BIRCH", 14, 28, 46, 1.1 },
-	{ "BIRCH", 16, -48, 20, 2.2 },
+	{ "BIRCH", 16, -31, 30, 2.2 },
 	{ "BIRCH", 17, -18, 58, 0.8 },
 	{ "BUSH", 3.2, -22, 25, 0 },
 	{ "BUSH", 2.8, 22, 27, 1 },
@@ -45,7 +61,7 @@ Layout.Decor = {
 	{ "BUSH", 2.8, 14, 54, 1.2 },
 	{ "RUIN_WALL", 6.5, -11, -36, 0 },
 	{ "RUIN_WALL", 6.5, 11, -36, math.pi },
-	{ "RUIN_WALL", 6, -46, 8, 1.57 },
+	{ "RUIN_WALL", 6, -54, 0, 1.57 },
 	{ "RUIN_WALL", 5.5, 26, 52, -0.15 },
 	{ "RUIN_WALL", 6, -24, 50, 0.1 },
 	{ "CAR_WRECK", 4.5, 18, -46, 0.5 },
@@ -61,6 +77,7 @@ Layout.Cabin = {
 	x = 0,
 	z = 36,
 	floor = 1.6,
+	door = { x = 0, y = 5.9, z = -11.6 }, -- the doorway's centre (the server's Door part, client/Cabin's leaf)
 	seats = {
 		{ 5.2, 6.1, 0, 3.5, "Стул" }, -- the table's six chairs: two at the back facing the room,
 		{ 8.8, 6.1, 0, 3.5, "Стул" },
@@ -88,6 +105,13 @@ end
 -- lamp and trophy); fx, fz point out of it.
 Layout.Terminal = { x = -37, z = -9 }
 Layout.Cave = { x = -62, z = 44, fx = 0.5, fz = -0.866 }
+-- The terminal's frame stands across the cable (DD-093: it stood along it since the cave moved, DD-091): local
+-- +X runs with the cable, from the cave to the frame; the posts stand either side of it, at local ±Z.
+function Layout.terminalFrame(): CFrame
+	local t, c = Layout.Terminal, Layout.Cave
+	local dx, dz = t.x - c.x, t.z - c.z
+	return CFrame.new(t.x, 0, t.z) * CFrame.Angles(0, math.atan2(-dz, dx), 0)
+end
 -- The cableway's other mouth, in the funnel's north-west wall (world space, not shelter coordinates): the
 -- server digs both (server/Portal), the client builds the portal and rides the cable (client/Cableway).
 Layout.ArenaCave = { x = -120, z = 84, fx = 0.42, fz = -0.91 }

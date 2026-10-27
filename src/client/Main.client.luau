@@ -701,7 +701,13 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		local function back()
 			if inRun and run and not run.result then
 				Hud.setVisible(true)
-				CameraRig.intro()
+				-- DD-093: no swoop from the sky after a ride in: the scene's last frame eases into the view
+				local from = Story.lastCamera()
+				if from then
+					CameraRig.handoff(from, workspace.CurrentCamera.FieldOfView, 1.1)
+				else
+					CameraRig.intro()
+				end
 			end
 		end
 		if run.op == "O01" and run.solo and prof then
