@@ -2,8 +2,8 @@
 -- The grove's ground and daylight (DD-057 → DD-087). The settlement is a green grove far from the crater
 -- (Meta.HomeOrigin = the old Tree): leafy grass, old concrete paths, low wooded hills closing the view.
 -- Everything you walk past (the shelters, trees, ruins, the square's posts) is drawn by the clients
--- (client/Base for the own home, client/Settlement for the rest); the server only owns the terrain and
--- the light.
+-- (client/Base for the own home, client/Settlement for the rest); the server only owns the terrain, the
+-- light and the seats in the cabins (DD-093).
 -- Lighting is per server: the home light while the squad is between runs, the arena's during a run.
 
 local Lighting = game:GetService("Lighting")
@@ -95,6 +95,59 @@ function Home.build()
 			)
 		end
 	end
+end
+
+-- DD-093: the seats in every plot's cabin. Real Seats on the server, so a survivor sitting at the table
+-- is seen sitting by everyone (a client's own Seat would sit nobody); invisible, under the chairs the
+-- clients draw (client/Cabin). Touch is off — walking past a chair must not sit you down — a prompt sits.
+function Home.furnish()
+	if workspace:FindFirstChild("GroveSeats") then
+		return
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "GroveSeats"
+	for i = 1, Grove.Plots do
+		local f = Grove.frame(i)
+		for k, s in Layout.Cabin.seats do
+			local seat = Instance.new("Seat")
+			seat.Name = "Seat" .. i .. "_" .. k
+			seat.Size = Vector3.new(1.8, 0.4, 1.8)
+			seat.CFrame = f * Layout.cabinSeat(s)
+			seat.Anchored = true
+			seat.CanCollide = false
+			seat.CanTouch = false
+			seat.CanQuery = false
+			seat.Transparency = 1
+			seat.CastShadow = false
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Сесть"
+			prompt.ObjectText = s[5]
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+			prompt.HoldDuration = 0
+			prompt.MaxActivationDistance = 5.5
+			prompt.RequiresLineOfSight = false
+			prompt.UIOffset = Vector2.new(0, 30)
+			prompt.Parent = seat
+			prompt.Triggered:Connect(function(player: Player)
+				local char = player.Character
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				if not hum or not root or hum.Health <= 0 or seat.Occupant or hum.SeatPart then
+					return
+				end
+				if (root.Position - seat.Position).Magnitude > 9 then
+					return
+				end
+				seat:Sit(hum)
+			end)
+			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+				prompt.Enabled = seat.Occupant == nil
+			end)
+			seat.Parent = folder
+		end
+	end
+	folder.Parent = workspace
 end
 
 -- Clouds live under Terrain; the arena's lighting pass does not know about them.

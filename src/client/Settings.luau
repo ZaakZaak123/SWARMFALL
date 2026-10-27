@@ -10,6 +10,7 @@ local Settings = {
 	touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
 	aimAssist = true,
 	autoQuality = true, -- drop/raise quality from the measured frame rate during runs
+	homeMusic = true, -- DD-093: the shelter's music (the cabin's gramophone or the settings turn it off)
 }
 
 -- Per-quality presentation budgets (index = quality 1..3).

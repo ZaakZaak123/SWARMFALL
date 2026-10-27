@@ -30,6 +30,7 @@ local Layout = require(Shared:WaitForChild("ShelterLayout"))
 local Grove = require(Shared:WaitForChild("Grove"))
 local Chronicle = require(Shared:WaitForChild("Chronicle"))
 local PlotDecor = require(script.Parent.PlotDecor)
+local Cabin = require(script.Parent.Cabin)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -252,8 +253,10 @@ local function prompt(parent: BasePart, actionText: string, objectText: string, 
 end
 
 -- World ---------------------------------------------------------------------------------------------------
+local cabin = nil -- the house you walk into (DD-093, client/Cabin)
 local function buildWorld()
 	folder = new("Folder", { Name = "BaseView", Parent = workspace })
+	cabin = Cabin.build(WC(Layout.Cabin.x, 0, Layout.Cabin.z), folder, { own = true })
 	for _, def in STATIONS do
 		local holder = new("Model", { Name = "Station_" .. def.key, Parent = folder })
 		local pad = part({
@@ -786,6 +789,9 @@ local function setShelf(slots, workshop: boolean)
 end
 
 local function setBulbs(on: boolean)
+	if cabin then
+		cabin:setPower(on)
+	end
 	for i, b in bulbs do
 		b.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
 		b.Color = if on
@@ -1108,6 +1114,9 @@ end
 local decorFolder, decorKey = nil, nil -- DD-090: the seasonal decoration up in the yard
 function Base.setShowcase(entry)
 	showEntry = entry
+	if cabin then
+		cabin:setEntry(entry)
+	end
 	local want = entry and entry.decor or nil
 	if want ~= decorKey or (decorFolder and not decorFolder.Parent) then
 		decorKey = want
@@ -1905,7 +1914,7 @@ end
 local function applyQuality()
 	local q = Settings.quality
 	for _, d in folder:GetDescendants() do
-		if d:IsA("Light") then
+		if d:IsA("Light") and not d:FindFirstAncestor("Cabin") then -- the cabin's own lights follow its power
 			local isLamp = d:IsA("SpotLight")
 			local isPad = d.Parent and d.Parent.Name == "Pad"
 			d.Enabled = if q <= 1 then false elseif q == 2 then not isPad else true
@@ -2133,6 +2142,9 @@ function Base.update(dt: number, _root: Vector3?)
 	local now = os.clock()
 	if cable and folder.Parent then
 		cable:update(dt)
+	end
+	if cabin and folder.Parent then
+		cabin:step(dt, _root)
 	end
 	local calm = active and scene == nil
 	local goalSpot = if goal and (goal.station == "home" or goal.station == "swarm")

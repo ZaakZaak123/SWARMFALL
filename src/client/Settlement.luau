@@ -28,6 +28,7 @@ local Fx = require(script.Parent.Fx)
 local Models = require(script.Parent.Models)
 local Cableway = require(script.Parent.Cableway)
 local SpecimenGallery = require(script.Parent.SpecimenGallery)
+local Cabin = require(script.Parent.Cabin)
 local PlotDecor = require(script.Parent.PlotDecor)
 local Settings = require(script.Parent.Settings)
 
@@ -1086,6 +1087,10 @@ local function buildHome(i: number, e)
 	local _ = cave
 	-- up close: the showcase, the lab's tanks, the crates
 	local near = new("Folder", { Name = "Near" })
+	-- DD-093: the neighbour's cabin, its small things only near (you can walk in and sit down)
+	local cabin = Cabin.build(WC(Layout.Cabin.x, 0, Layout.Cabin.z), home, { detail = near })
+	cabin:setPower(powered)
+	cabin:setEntry(e)
 	local function pedestal(x: number, lit: boolean, color: Color3)
 		local p = artModel("PLINTH", 1.3, WC(x, 0, Layout.ShowZ), near)
 		if p then
@@ -1204,7 +1209,7 @@ local function buildHome(i: number, e)
 			Cableway.crate(near, base * CFrame.new(0, h * 1.95, 0) * CFrame.Angles(0, h * 0.35, 0))
 		end
 	end
-	return home, near, gallery
+	return home, near, gallery, cabin
 end
 
 local function clearHome(pl)
@@ -1214,7 +1219,7 @@ local function clearHome(pl)
 	if pl.near then
 		pl.near:Destroy()
 	end
-	pl.home, pl.near, pl.gallery, pl.homeKey = nil, nil, nil, nil
+	pl.home, pl.near, pl.gallery, pl.homeKey, pl.cabin = nil, nil, nil, nil, nil
 end
 
 -- State --------------------------------------------------------------------------------------------------
@@ -1327,7 +1332,7 @@ function Settlement.setHub(info, id: number)
 		if key ~= pl.homeKey then
 			clearHome(pl)
 			if key then
-				pl.home, pl.near, pl.gallery = buildHome(i, w.entry)
+				pl.home, pl.near, pl.gallery, pl.cabin = buildHome(i, w.entry)
 				pl.homeKey = key
 				pl.home.Parent = folder
 				if Settings.quality <= 1 then
@@ -1676,6 +1681,9 @@ function Settlement.update(dt: number, active: boolean)
 			end
 			if close and pl.gallery then
 				pl.gallery:step(dt, false, pos)
+			end
+			if close and pl.cabin then
+				pl.cabin:step(dt, pos)
 			end
 		end
 	end

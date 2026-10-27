@@ -11,6 +11,7 @@ local R15 = {
 	run = "rbxassetid://507767714",
 	jump = "rbxassetid://507765000",
 	fall = "rbxassetid://507767968",
+	sit = "rbxassetid://2506281703",
 }
 local R6 = {
 	idle = "rbxassetid://180435571",
@@ -18,6 +19,7 @@ local R6 = {
 	run = "rbxassetid://180426354",
 	jump = "rbxassetid://125750702",
 	fall = "rbxassetid://180436148",
+	sit = "rbxassetid://178130996",
 }
 
 local state = nil -- { character, tracks = { name = AnimationTrack }, current }
@@ -85,7 +87,9 @@ function Calm.update(character: Model?, on: boolean)
 	local st = hum:GetState()
 	local v = hum.RootPart and hum.RootPart.AssemblyLinearVelocity or Vector3.zero
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	if st == Enum.HumanoidStateType.Jumping then
+	if hum.Sit or st == Enum.HumanoidStateType.Seated then
+		play("sit") -- DD-093: a chair in the cabin
+	elseif st == Enum.HumanoidStateType.Jumping then
 		play("jump")
 	elseif st == Enum.HumanoidStateType.Freefall then
 		play("fall")

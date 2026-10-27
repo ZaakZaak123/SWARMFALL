@@ -120,6 +120,7 @@ local seedCounter = os.time() % 100000
 local builtMap = nil
 
 Arena.onClear = Home.build
+Home.furnish()
 local function buildArena(mapId: string)
 	if builtMap ~= mapId then
 		builtMap = mapId

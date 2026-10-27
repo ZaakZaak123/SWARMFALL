@@ -28,7 +28,6 @@ Layout.Lamps = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
 -- The shelter's own grove: the bunker, trees, old ruins, a wreck by the gate. { art, height, x, z, yaw }.
 -- DD-087: only what stands inside the plot (the settlement plants the woods between the plots).
 Layout.Decor = {
-	{ "SHELTER", 21, 0, 32, 0 },
 	{ "OAK", 20, -42, 34, 0.4 },
 	{ "OAK", 18, -50, -4, 1.2 },
 	{ "OAK", 22, 6, 54, 1.7 },
@@ -42,8 +41,8 @@ Layout.Decor = {
 	{ "BUSH", 3.4, -36, 8, 2 },
 	{ "BUSH", 3.0, 38, -6, 0.5 },
 	{ "BUSH", 3.0, 30, -36, 2.5 },
-	{ "BUSH", 3.6, -8, 40, 0.2 },
-	{ "BUSH", 2.8, 12, 42, 1.2 },
+	{ "BUSH", 3.6, -8, 45, 0.2 },
+	{ "BUSH", 2.8, 12, 46, 1.2 },
 	{ "RUIN_WALL", 6.5, -11, -36, 0 },
 	{ "RUIN_WALL", 6.5, 11, -36, math.pi },
 	{ "RUIN_WALL", 6, -46, 8, 1.57 },
@@ -53,6 +52,32 @@ Layout.Decor = {
 	{ "CRATES", 4.8, -18, 24, 0.4 },
 	{ "CRATES", 4.2, 19, 21, -0.6 },
 }
+
+-- The house (DD-093, ex-the SHELTER mesh): a timber cabin you walk into (client/Cabin). Its floor centre in
+-- shelter coordinates, the door to the gate (-Z). `floor` is the boards' top. Seats are the server's (real
+-- Seats, so sitting replicates: server/Home.furnish) under the client's chairs: { x, z (cabin space), yaw (0 =
+-- facing the door side, -Z), top (the seat's top over the ground), what }.
+Layout.Cabin = {
+	x = 0,
+	z = 32,
+	floor = 1.6,
+	seats = {
+		{ 3.4, 5.4, 0, 3.5, "Стул" }, -- the table's two chairs at the back, facing the room
+		{ 6.6, 5.4, 0, 3.5, "Стул" },
+		{ 0.6, 2.2, -math.pi / 2, 3.5, "Стул" }, -- and one at each end
+		{ 9.4, 2.2, math.pi / 2, 3.5, "Стул" },
+		{ -7.7, 6.4, 0, 3.3, "Диван" },
+		{ -5.5, 6.4, 0, 3.3, "Диван" },
+		{ -3.3, 6.4, 0, 3.3, "Диван" },
+		{ -6.4, -1.5, math.pi / 2, 3.3, "Кресло у печки" },
+		{ 3.5, -10.1, 0, 3.2, "Скамья на крыльце" },
+		{ 5.0, -10.1, 0, 3.2, "Скамья на крыльце" },
+	},
+}
+function Layout.cabinSeat(s): CFrame
+	local c = Layout.Cabin
+	return CFrame.new(c.x + s[1], s[4] - 0.2, c.z + s[2]) * CFrame.Angles(0, s[3], 0)
+end
 
 -- The cableway terminal (DD-065): the cable comes out of the hill cave to here. The cave (DD-082) is
 -- behind the yard's north-west corner, its mouth to the terminal and the gate side the camera looks from

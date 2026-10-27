@@ -1299,7 +1299,7 @@ end
 
 -- Settings -----------------------------------------------------------------------------------------------
 local function buildSettings()
-	local m = modal("Settings", 520, 400, "НАСТРОЙКИ", nil)
+	local m = modal("Settings", 520, 466, "НАСТРОЙКИ", nil)
 	ui.settings = m
 	local names = { "НИЗКО", "СРЕДНЕ", "ВЫСОКО" }
 	local rows = {
@@ -1343,6 +1343,16 @@ local function buildSettings()
 				Settings.set("aimAssist", not Settings.aimAssist)
 			end,
 		},
+		{
+			"Музыка на базе",
+			"note",
+			function()
+				return if Settings.homeMusic then "ВКЛ" else "ВЫКЛ"
+			end,
+			function()
+				Settings.set("homeMusic", not Settings.homeMusic)
+			end,
+		},
 	}
 	for i, r in rows do
 		local y = 84 + (i - 1) * 66
@@ -1384,6 +1394,9 @@ local function buildSettings()
 			r[4]()
 			bl.Text = r[3]()
 			Audio.play("ui")
+		end)
+		Settings.onChanged(function()
+			bl.Text = r[3]() -- the cabin's gramophone turns the music too
 		end)
 	end
 end

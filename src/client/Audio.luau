@@ -3,6 +3,7 @@
 -- Effects library assets (free for use in Roblox experiences); cues can play a trimmed region of a file.
 
 local SoundService = game:GetService("SoundService")
+local Settings = require(script.Parent.Settings)
 
 local Audio = {}
 
@@ -367,7 +368,7 @@ function Audio.setMusic(state: string)
 	bedTarget.ambience = if fighting then 1 else 0
 	bedTarget.fight = if state == "run" then 1 else 0
 	bedTarget.boss = if state == "boss" then 1 else 0
-	bedTarget.home = if state == "lobby" then 1 else 0
+	bedTarget.home = if state == "lobby" and Settings.homeMusic then 1 else 0
 end
 -- DD-084: the fight track swells with the crowd on screen (0 calm .. 1 a full funnel).
 local intensity = 0
