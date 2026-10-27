@@ -81,8 +81,9 @@ end
 -- The results body: on a phone only the centre column is laid out, so it fits a narrower base.
 local function resultsScale(): number
 	if Theme.phone() then
-		-- the centre column is 740 wide from x = 230: scale so that it fills the width, then shift it
-		return viewportScale(Vector2.new(780, 730))
+		-- DD-102: the column with the buttons beside it (1220 × 500), under Roblox's top bar (~60 points)
+		local vs = if gui and gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
+		return math.clamp(math.min(vs.X / 1220, (vs.Y - 62) / 500), 0.3, 1.25)
 	end
 	return viewportScale(Vector2.new(1240, 780))
 end
@@ -133,6 +134,34 @@ end
 
 local modalWindows = {}
 local lastMenuSize = Vector2.zero
+local lobbyPhoneLayout
+
+-- DD-102: on a phone a window fills the screen's width at a readable size and scrolls down, instead of
+-- shrinking whole into the screen's height (the owner's phone got 8-point words)
+local function fitModal(m)
+	local phone = Theme.phone()
+	if phone then
+		local vs = if gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
+		local k = math.clamp((vs.X - 16) / m.w, 0.5, 1)
+		-- below Roblox's own buttons (top left), which this gui does not step around
+		local ok, inset = pcall(function()
+			return game:GetService("GuiService").TopbarInset.Max.Y
+		end)
+		local top = (if ok and inset then inset else 0) + 4
+		m.panel.Parent = m.scroller
+		m.panel.AnchorPoint = Vector2.new(0.5, 0)
+		m.panel.Position = UDim2.new(0.5, 0, 0, top)
+		m.scale.Scale = k
+		m.scroller.CanvasSize = UDim2.fromOffset(0, math.ceil(m.h * k) + top + 8)
+	else
+		m.panel.Parent = m.shade
+		m.panel.AnchorPoint = Vector2.new(0.5, 0.5)
+		m.panel.Position = UDim2.fromScale(0.5, 0.5)
+		m.scale.Scale = viewportScale(m.baseSize)
+	end
+	m.scroller.Visible = phone
+	return phone
+end
 local function modal(name: string, w: number, h: number, title: string, accent: Color3)
 	local shade = new("TextButton", {
 		Name = name,
@@ -183,13 +212,27 @@ local function modal(name: string, w: number, h: number, title: string, accent: 
 		Audio.play("ui", 0.8, 0.9)
 	end
 	close.Activated:Connect(hide)
-	local m = { shade = shade, panel = panel, scale = scale, hide = hide }
+	local scroller = new("ScrollingFrame", {
+		Name = "PhoneScroll",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 4,
+		ScrollBarImageColor3 = C.dim,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		CanvasSize = UDim2.new(),
+		Visible = false,
+		ZIndex = 40,
+		Parent = shade,
+	})
+	local m = { shade = shade, panel = panel, scale = scale, hide = hide, scroller = scroller, w = w, h = h }
 	m.baseSize = Vector2.new(w + 40, h + 40)
 	table.insert(modalWindows, m)
 	function m.show()
 		shade.Visible = true
 		if m.resize then
 			m.resize(gui.AbsoluteSize)
+		elseif fitModal(m) then
+			scroller.CanvasPosition = Vector2.zero
 		else
 			scale.Scale = viewportScale(m.baseSize) * 0.9
 			tween(scale, 0.3, { Scale = viewportScale(m.baseSize) }, Enum.EasingStyle.Back)
@@ -227,7 +270,7 @@ local function buildLobby()
 	local safe = new("Frame", { Name = "Safe", Size = UDim2.fromScale(1, 1), Parent = l })
 	ui.lobbySafe = safe
 	ui.lobbyScale = new("UIScale", { Parent = safe })
-	new("UIPadding", {
+	ui.lobbyPad = new("UIPadding", {
 		PaddingLeft = UDim.new(0, 48),
 		PaddingRight = UDim.new(0, 40),
 		PaddingTop = UDim.new(0, 70),
@@ -236,6 +279,7 @@ local function buildLobby()
 	})
 	-- Logo
 	local logo = label("THE LAST GROVE", {
+		Name = "Logo",
 		Size = UDim2.fromOffset(640, 84),
 		FontFace = F.display,
 		TextSize = 60,
@@ -253,7 +297,8 @@ local function buildLobby()
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = logo })
 	ui.logoScale = new("UIScale", { Parent = logo })
-	label("ВЕРНИ ЖИЗНЬ СВОЕМУ УГЛУ МИРА.", {
+	ui.logo = logo
+	ui.tagline = label("ВЕРНИ ЖИЗНЬ СВОЕМУ УГЛУ МИРА.", {
 		Position = UDim2.fromOffset(4, 86),
 		Size = UDim2.fromOffset(640, 22),
 		FontFace = F.head,
@@ -833,7 +878,8 @@ function Menus.refreshLobby()
 		stroke.Transparency = 0.2
 		stroke.Thickness = 2.5
 	end
-	ui.hunt.Position = UDim2.fromOffset(0, if ui.tabs.Visible then 176 else 134)
+	-- (DD-102: a phone has no logo above the tabs)
+	ui.hunt.Position = UDim2.fromOffset(0, (if ui.tabs.Visible then 176 else 134) - (if ui.lobbyPhone then 128 else 0))
 	-- anomaly of the day (hunts from the third one on, sieges)
 	local anomaly = nil
 	for _, a in Meta.Anomalies do
@@ -925,7 +971,11 @@ function Menus.refreshLobby()
 	ui.huntNext.Visible = mode == "hunt" and #list > 1 and isHost
 	local maxT = prof and prof.ops[info.op] or 1
 	ui.threat.Visible = mode == "hunt" and maxT >= 2
-	ui.threat.Position = UDim2.fromOffset(if #list > 1 and isHost then 132 else 24, 156)
+	-- DD-102: the hunt's «why» (three lines from y 148) ran under the arrows: the row goes below it
+	local rowY = if ui.huntWhy.Visible and ui.huntWhy.Text ~= "" then 204 else 156
+	ui.threat.Position = UDim2.fromOffset(if #list > 1 and isHost then 132 else 24, rowY)
+	ui.huntPrev.Position = UDim2.fromOffset(24, rowY)
+	ui.huntNext.Position = UDim2.fromOffset(72, rowY)
 	for i, d in ui.threatDots do
 		d.button.Visible = i <= maxT
 		local on = i == info.threat
@@ -934,7 +984,7 @@ function Menus.refreshLobby()
 		d.text.TextColor3 = if on then C.ink else C.text
 	end
 	ui.hunt.Size =
-		UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then 214 else 160)
+		UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then rowY + 58 else 160)
 	-- Xenite + upgrades: after the first hunt
 	ui.xenite.Visible = runs > 0 or (prof and prof.scrap > 0)
 	ui.xeniteAmount.Text = Theme.commas(prof and prof.scrap or 0)
@@ -1003,8 +1053,17 @@ function Menus.refreshLobby()
 		selectedWeapon = "W_ARC_RIFLE"
 	end
 	local y = ui.hunt.Position.Y.Offset + ui.hunt.Size.Y.Offset + 18
-	ui.weaponsTitle.Position = UDim2.fromOffset(4, y)
-	ui.weapons.Position = UDim2.fromOffset(0, y + 22)
+	if ui.lobbyPhone then -- DD-102: on the right, above В БОЙ; the upgrades under the card (the corner is the thumbstick's)
+		ui.weaponsTitle.Position = UDim2.new(1, -4, 1, -286)
+		ui.weapons.Position = UDim2.new(1, 0, 1, -132)
+		ui.metaRow.AnchorPoint = Vector2.zero
+		ui.metaRow.Position = UDim2.fromOffset(0, y - 6)
+	else
+		ui.metaRow.AnchorPoint = Vector2.new(0, 1)
+		ui.metaRow.Position = UDim2.fromScale(0, 1)
+		ui.weaponsTitle.Position = UDim2.fromOffset(4, y)
+		ui.weapons.Position = UDim2.fromOffset(0, y + 22)
+	end
 	if showWeapons then
 		local key = selectedWeapon .. "|" .. (prof and prof.scrap or 0) .. "|" .. table.concat(shown, ",")
 		for _, id in shown do
@@ -1087,11 +1146,35 @@ function Menus.showLobby(info, id: number, dev: string)
 	end
 	MetaMenus.setLobby(info)
 	if ui.lobby.Visible then
-		local k = math.max(if Theme.phone() then 0.52 else 0.72, viewportScale(Vector2.new(1280, 760)))
+		local phone = Theme.phone()
+		lobbyPhoneLayout(phone)
+		local k = math.max(if phone then 0.62 else 0.72, viewportScale(Vector2.new(1280, 760)))
 		ui.lobbyScale.Scale = k
 		ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
 		Menus.refreshLobby()
 	end
+end
+
+-- DD-102: a phone drops the logo and moves the weapons to the right above В БОЙ, so the launch pad
+-- can be drawn at 0.62 instead of 0.52 (its words were 7 points on the owner's phone); the top stays
+-- clear of Roblox's own buttons.
+function lobbyPhoneLayout(phone: boolean)
+	if ui.lobbyPhone == phone then
+		return
+	end
+	ui.lobbyPhone = phone
+	ui.logo.Visible = not phone
+	ui.tagline.Visible = not phone
+	ui.lobbyPad.PaddingTop = UDim.new(0, if phone then 96 else 70)
+	ui.lobbyPad.PaddingBottom = UDim.new(0, if phone then 30 else 36)
+	ui.tabs.Position = UDim2.fromOffset(0, if phone then 0 else 124)
+	-- (the hunt card and the weapons are placed by refreshLobby, which reads ui.lobbyPhone)
+	ui.weaponsTitle.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.zero
+	ui.weaponsTitle.TextXAlignment = if phone then Enum.TextXAlignment.Right else Enum.TextXAlignment.Left
+	ui.weapons.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.zero
+	ui.weapons:FindFirstChildOfClass("UIListLayout").HorizontalAlignment = if phone
+		then Enum.HorizontalAlignment.Right
+		else Enum.HorizontalAlignment.Left
 end
 
 -- The launch pad (hunt choice, weapons, В БОЙ): opened from the base station or button (DD-052).
@@ -2176,6 +2259,7 @@ local function buildResults()
 		ZIndex = 21,
 		Parent = r,
 	})
+	ui.resBody = body
 	ui.resScale = new("UIScale", { Parent = body })
 	-- DD-082 (owner playtest: «много всего, непонятно куда смотреть»): the centre column keeps what
 	-- matters — the verdict, the loot, what opened, what to do next; the numbers sit in a side column.
@@ -2617,14 +2701,31 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	setBlur(18)
 	ui.resScale.Scale = resultsScale()
 	-- DD-085: a phone keeps the centre column only (the numbers would be too small to read)
+	-- DD-102: and puts the buttons beside it instead of under it, so the column is drawn bigger
 	local phone = Theme.phone()
 	ui.resSide.Visible = not phone
-	ui.resGoalText.TextSize = if phone then 18 else 13
-	ui.resGoalTitle.TextSize = if phone then 21 else 17
-	ui.resGoalText.Size = UDim2.new(1, -84, 0, if phone then 44 else 34)
-	ui.resRewardLines.TextSize = if phone then 17 else 13
-	ui.resReason.TextSize = if phone then 21 else 17
-	ui.resGoal.Size = UDim2.fromOffset(if phone then 680 else 560, if phone then 104 else 84)
+	ui.resTag.Visible = not phone
+	ui.resGoalText.TextSize = if phone then 20 else 13
+	ui.resGoalTitle.TextSize = if phone then 22 else 17
+	ui.resGoalText.Size = UDim2.new(1, -84, 0, if phone then 46 else 34)
+	ui.resRewardLines.TextSize = if phone then 19 else 13
+	ui.resReason.TextSize = if phone then 22 else 17
+	ui.resGoal.Size = UDim2.fromOffset(if phone then 720 else 560, if phone then 106 else 84)
+	ui.resTitle.TextSize = if phone then 54 else 70
+	ui.resTitle.Size = UDim2.new(1, 0, 0, if phone then 60 else 80)
+	ui.resBody.Size = UDim2.fromOffset(if phone then 1220 else 1200, if phone then 500 else 740)
+	ui.resBody.AnchorPoint = if phone then Vector2.new(0.5, 1) else Vector2.new(0.5, 0.5)
+	ui.resBody.Position = if phone then UDim2.new(0.5, 0, 1, -4) else UDim2.fromScale(0.5, 0.5)
+	ui.resList.Position = UDim2.fromOffset(if phone then 0 else 230, 0)
+	ui.resList.Size = UDim2.new(0, if phone then 760 else 740, 1, if phone then 0 else -110)
+	ui.resButton.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0.5, 1)
+	ui.resButton.Position = if phone then UDim2.new(1, 0, 1, -40) else UDim2.new(0.5, 0, 1, -24)
+	ui.resButton.Size = UDim2.fromOffset(if phone then 420 else 320, 76)
+	ui.resCamp.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0, 1)
+	ui.resCamp.Position = if phone then UDim2.new(1, 0, 1, -132) else UDim2.new(0.5, 176, 1, -32)
+	ui.resCamp.Size = UDim2.fromOffset(if phone then 260 else 170, if phone then 64 else 60)
+	ui.resVotes.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0.5, 1)
+	ui.resVotes.Position = if phone then UDim2.new(1, 0, 1, -8) else UDim2.new(0.5, 0, 1, 0)
 	local op = Ops.get(result.op)
 	if first then
 		ui.resClicked = false
@@ -3004,7 +3105,7 @@ function Menus.update(dt: number)
 			if m.resize then
 				m.resize(lastMenuSize)
 			else
-				m.scale.Scale = viewportScale(m.baseSize)
+				fitModal(m)
 			end
 		end
 		ui.offerScale.Scale = viewportScale(if Theme.phone() then Vector2.new(880, 610) else Vector2.new(1200, 660))

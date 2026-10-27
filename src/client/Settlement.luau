@@ -1439,6 +1439,11 @@ function Settlement.setProfile(pub)
 	profile = pub
 end
 
+-- DD-102: on a phone the shelter's goal and xenite own the top row: the coach sits under it
+local function coachY(): number
+	return if Theme.phone() then 60 else 14
+end
+
 local function coachPanel()
 	if coachGui then
 		return coachGui
@@ -1457,7 +1462,7 @@ local function coachPanel()
 	local panel = Theme.panel({
 		Name = "Panel",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = if phone then UDim2.new(0.5, 90, 0, 4) else UDim2.new(0.5, 0, 0, 14),
+		Position = UDim2.new(0.5, 0, 0, coachY()),
 		Size = UDim2.fromOffset(560, 74),
 		CornerRadius = 22,
 		Visible = false,
@@ -1511,8 +1516,8 @@ local function showCoach(c)
 	d.Position = UDim2.new(0, 14, 0.5, 0)
 	d.Parent = panel
 	panel.Visible = true
-	panel.Position = UDim2.new(0.5, 0, 0, -6)
-	tween(panel, 0.35, { Position = UDim2.new(0.5, 0, 0, 14) }, Enum.EasingStyle.Back)
+	panel.Position = UDim2.new(0.5, 0, 0, coachY() - 20)
+	tween(panel, 0.35, { Position = UDim2.new(0.5, 0, 0, coachY()) }, Enum.EasingStyle.Back)
 	Audio.play("ui", 0.5, 1.3)
 	coachOn = { key = c.key, untilT = os.clock() + 9 }
 	coachDone[c.key] = true
@@ -1788,17 +1793,24 @@ function tell(e)
 			"ScreenGui",
 			{ Name = "GroveChronicle", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 9, Parent = pg }
 		)
+		-- DD-102: on a phone the goal owns the top left: the lines go right, under the xenite
+		local phone = Theme.phone()
 		ticker = new("Frame", {
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 24, 1, -200),
-			Size = UDim2.fromOffset(420, 200),
+			AnchorPoint = if phone then Vector2.new(1, 0) else Vector2.new(0, 1),
+			Position = if phone then UDim2.new(1, -84, 0, 140) else UDim2.new(0, 24, 1, -200),
+			Size = UDim2.fromOffset(420, if phone then 120 else 200),
 			BackgroundTransparency = 1,
 			Parent = g,
-			List = { VerticalAlignment = Enum.VerticalAlignment.Bottom, Padding = UDim.new(0, 6) },
+			List = {
+				VerticalAlignment = if phone then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom,
+				HorizontalAlignment = if phone then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left,
+				Padding = UDim.new(0, if phone then 4 else 6),
+			},
 		})
 	end
+	local rowH = if Theme.phone() then 30 else 40
 	local row = Theme.panel(
-		{ Size = UDim2.fromOffset(0, 40), AutomaticSize = Enum.AutomaticSize.X, CornerRadius = 20, Parent = ticker },
+		{ Size = UDim2.fromOffset(0, rowH), AutomaticSize = Enum.AutomaticSize.X, CornerRadius = 20, Parent = ticker },
 		if e.big then C.gold else C.line
 	)
 	new("UIListLayout", {
@@ -1808,13 +1820,13 @@ function tell(e)
 		Parent = row,
 	})
 	new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 14), Parent = row })
-	local ic = Icons.new(e.icon or "star", 22, if e.big then C.gold else C.dim)
+	local ic = Icons.new(e.icon or "star", if rowH < 40 then 18 else 22, if e.big then C.gold else C.dim)
 	ic.Parent = row
 	label(e.text, {
-		Size = UDim2.fromOffset(0, 40),
+		Size = UDim2.fromOffset(0, rowH),
 		AutomaticSize = Enum.AutomaticSize.X,
 		FontFace = F.bodyBold,
-		TextSize = 14,
+		TextSize = if rowH < 40 then 13 else 14,
 		TextColor3 = if e.big then C.text else C.dim,
 		Parent = row,
 	})
@@ -1894,15 +1906,18 @@ local function buildSignals()
 		Parent = btn,
 	})
 	stroke(keyLabel, 1.5)
+	-- DD-102: eight rows of 40 do not fit a phone's height: shorter rows, beside the menu button
+	local phone = Theme.phone()
+	local rowH = if phone then 31 else 40
 	local list = new("Frame", {
 		Name = "List",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -96, 0.52, 0),
+		Position = if phone then UDim2.new(1, -80, 0.5, 8) else UDim2.new(1, -96, 0.52, 0),
 		Size = UDim2.fromOffset(250, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Visible = false,
 		Parent = g,
-		List = { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right },
+		List = { Padding = UDim.new(0, if phone then 4 else 6), HorizontalAlignment = Enum.HorizontalAlignment.Right },
 	})
 	local function say(i: number)
 		list.Visible = false
@@ -1912,7 +1927,7 @@ local function buildSignals()
 	end
 	for i, sgn in Chronicle.Signals do
 		local row = new("TextButton", {
-			Size = UDim2.fromOffset(250, 40),
+			Size = UDim2.fromOffset(250, rowH),
 			BackgroundColor3 = rgb(250, 246, 236),
 			BackgroundTransparency = 0.05,
 			Text = "",
@@ -1921,7 +1936,7 @@ local function buildSignals()
 			Parent = list,
 		})
 		local k = label(tostring(i), {
-			Position = UDim2.fromOffset(8, 6),
+			Position = UDim2.new(0, 8, 0.5, -14),
 			Size = UDim2.fromOffset(28, 28),
 			FontFace = F.display,
 			TextSize = 16,
@@ -1930,7 +1945,8 @@ local function buildSignals()
 		})
 		local _ = k
 		local ri = Icons.new(sgn.icon, 20, C.ink)
-		ri.Position = UDim2.fromOffset(38, 10)
+		ri.AnchorPoint = Vector2.new(0, 0.5)
+		ri.Position = UDim2.new(0, 38, 0.5, 0)
 		ri.Parent = row
 		label(sgn.text, {
 			Position = UDim2.fromOffset(66, 0),
@@ -1963,7 +1979,14 @@ local function buildSignals()
 			end
 		end
 	end)
-	sig = { gui = g, list = list }
+	sig = { gui = g, list = list, btn = btn }
+end
+
+-- DD-102: the phone shelter opens the phrases from its menu; its own button is hidden there
+function Settlement.toggleSignals()
+	if sig and sig.gui.Enabled then
+		sig.list.Visible = not sig.list.Visible
+	end
 end
 
 function Settlement.setSignalsVisible(on: boolean)
@@ -1973,6 +1996,7 @@ function Settlement.setSignalsVisible(on: boolean)
 		end
 		buildSignals()
 	end
+	sig.btn.Visible = not Theme.phone()
 	if sig.gui.Enabled ~= on then
 		sig.gui.Enabled = on
 		if not on then

@@ -68,7 +68,10 @@ function Theme.new(class: string, props, children)
 	if inst:IsA("GuiObject") then
 		inst.BorderSizePixel = 0
 		-- Containers are invisible unless they are given a fill colour.
-		if (class == "Frame" or class == "TextLabel" or class == "ImageLabel") and not (props and props.BackgroundColor3) then
+		if
+			(class == "Frame" or class == "TextLabel" or class == "ImageLabel")
+			and not (props and props.BackgroundColor3)
+		then
 			inst.BackgroundTransparency = 1
 		end
 	end
@@ -197,7 +200,11 @@ function Theme.button(text: string, props, kind: string?)
 		BackgroundColor3 = fill,
 		BackgroundTransparency = if kind == "ghost" then 0.2 else 0,
 		Corner = UDim.new(1, 0),
-		Stroke = { Color = if kind == "ghost" then Theme.C.white else fill, Transparency = if kind == "ghost" then 0.8 else 0.4, Thickness = if kind == "ghost" then 1 else 2 },
+		Stroke = {
+			Color = if kind == "ghost" then Theme.C.white else fill,
+			Transparency = if kind == "ghost" then 0.8 else 0.4,
+			Thickness = if kind == "ghost" then 1 else 2,
+		},
 	})
 	for k, v in props do
 		if k ~= "TextSize" and k ~= "Icon" then
@@ -282,9 +289,13 @@ end
 
 -- A phone in landscape (DD-085): a touch screen under ~560 points high. Screens built for 720+ get a
 -- phone layout (bigger text, less beside the essentials) instead of being shrunk until unreadable.
+-- Studio: the workspace attribute DevTouch counts as touch, so a Studio window sized like a phone shows
+-- the phone layouts (DD-102).
+local devTouch = game:GetService("RunService"):IsStudio() and workspace:GetAttribute("DevTouch") == true
 function Theme.phone(): boolean
 	local cam = workspace.CurrentCamera
-	return game:GetService("UserInputService").TouchEnabled and cam ~= nil and cam.ViewportSize.Y < 560
+	local touch = devTouch or game:GetService("UserInputService").TouchEnabled
+	return touch and cam ~= nil and cam.ViewportSize.Y < 560
 end
 
 return Theme

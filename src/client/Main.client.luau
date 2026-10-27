@@ -194,6 +194,9 @@ Base.init(playerGui, send, {
 	camp = function()
 		send("camp")
 	end,
+	signals = function()
+		Settlement.toggleSignals()
+	end,
 	play = function()
 		local g = Base.goal()
 		if Base.ready() then

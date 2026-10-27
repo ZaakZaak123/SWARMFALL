@@ -33,6 +33,7 @@ local PlotDecor = require(script.Parent.PlotDecor)
 local Cabin = require(script.Parent.Cabin)
 local Xenite = require(script.Parent.Xenite)
 local Declutter = require(script.Parent.Declutter)
+local BasePhone = require(script.Parent.BasePhone)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -1597,6 +1598,20 @@ local function buildHud(playerGui: PlayerGui)
 		Parent = ui.strike,
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.strikeSub })
+	-- DD-102: a phone gets its own layout (BasePhone); the one above is the monitor's
+	BasePhone.build(gui, function(key: string)
+		if key == "harvest" then
+			send("harvest")
+			Audio.play("orb", 1, 0.9)
+			Audio.play("level", 0.6, 1.4)
+		elseif key == "invite" then
+			Base.invite()
+		elseif key == "hold" then
+			send("hold", not (lobby and lobby.hold))
+		elseif actions and actions[key] then
+			actions[key]()
+		end
+	end)
 end
 
 local function squadRow(p, isHost: boolean)
@@ -1810,6 +1825,7 @@ function Base.refresh()
 	ui.toCamp.Visible = lobby ~= nil and lobby.camp == true
 	ui.stBoard.Visible = camp ~= nil
 	ui.stOutposts.Visible = camp ~= nil
+	local phoneGoal = nil
 	if goal then
 		ui.goal.Visible = true
 		ui.goalTitle.Text = goal.title
@@ -1842,6 +1858,14 @@ function Base.refresh()
 		end
 		ui.goalBtn.Visible = btn ~= nil and (goal.station ~= "build" or ownsBase)
 		ui.goalBtnLabel.Text = btn or ""
+		phoneGoal = {
+			key = goal.key,
+			title = goal.title,
+			text = goal.text,
+			icon = goal.icon,
+			color = col,
+			btn = if ui.goalBtn.Visible then btn else nil,
+		}
 	else
 		ui.goal.Visible = false
 	end
@@ -1912,6 +1936,30 @@ function Base.refresh()
 	if lobby and lobby.strike then
 		ui.strikeSub.Text = string.format("К ТУРЕЛИ!  ·  %d", math.ceil(lobby.strike))
 	end
+	BasePhone.set({
+		tag = ui.tag.Text,
+		title = ui.owner.Text,
+		goal = phoneGoal,
+		xenite = profile.scrap or 0,
+		showXenite = ui.xenite.Visible,
+		harvest = harvest,
+		play = { label = ui.playLabel.Text, sub = ui.playSub.Text, ready = amReady },
+		status = ui.status.Text,
+		statusColor = ui.status.TextColor3,
+		hold = { visible = ui.hold.Visible, label = ui.holdLabel.Text },
+		tiles = {
+			armory = ui.stArmory.Visible,
+			build = ui.stBuild.Visible,
+			launch = ui.stLaunch.Visible,
+			swarm = ui.stSwarm.Visible,
+			board = ui.stBoard.Visible,
+			outposts = ui.stOutposts.Visible,
+			invite = true,
+			signals = camp ~= nil,
+			card = camp ~= nil,
+			camp = ui.toCamp.Visible,
+		},
+	})
 end
 
 -- Quality (DD-057): the shelter is calm, but it is not free on a phone. Low: no decorative lights and
@@ -2055,6 +2103,7 @@ function Base.setActive(on: boolean)
 	if gui then
 		gui.Enabled = on
 	end
+	BasePhone.closeSheet()
 	if on then
 		Base.refresh()
 		if pendingDelivery > 0 and not visitHome then
@@ -2244,16 +2293,17 @@ function Base.update(dt: number, _root: Vector3?)
 		ui.safe.Size = UDim2.fromScale(1 / ui.scale.Scale, 1 / ui.scale.Scale)
 		-- DD-085: on a phone Roblox's own thumbstick (bottom left) and jump button (bottom right) own
 		-- the corners: the station buttons go up under the goal card, the big button steps left of jump
+		-- DD-102: a phone shows its own layout (BasePhone) instead of this one shrunk
 		local phone = Theme.phone()
 		if phone ~= ui.phoneLayout then
 			ui.phoneLayout = phone
-			ui.stations.AnchorPoint = if phone then Vector2.new(0, 0) else Vector2.new(0, 1)
-			ui.stations.Position = if phone then UDim2.fromOffset(0, 246) else UDim2.fromScale(0, 1)
-			ui.play.Position = if phone then UDim2.new(1, -190, 1, -18) else UDim2.new(1, 0, 1, -24)
-			ui.goalText.TextSize = if phone then 17 else 13
-			ui.ownerNote.Visible = not phone -- DD-098: under the card it ran into the station row
-			ui.goal.Size = UDim2.fromOffset(440, if phone then 178 else 168)
+			ui.safe.Visible = not phone
+			BasePhone.setVisible(phone)
+			ui.strikeTitle.TextSize = if phone then 34 else 54
+			ui.strikeSub.TextSize = if phone then 15 else 20
+			ui.strike.Position = UDim2.new(0.5, 0, 0, if phone then 64 else 120)
 		end
+		BasePhone.step(now)
 		if ui.strike.Visible then
 			ui.strikeTitle.TextTransparency = math.abs(math.sin(now * 5)) * 0.35
 		end
