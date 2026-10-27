@@ -57,6 +57,9 @@ Layout.Decor = {
 -- the foot of the hill between this plot and the next (DD-087); fx, fz point out of it.
 Layout.Terminal = { x = -37, z = -9 }
 Layout.Cave = { x = -60, z = -40, fx = 0.6, fz = 0.8 }
+-- The cableway's other mouth, in the funnel's north-west wall (world space, not shelter coordinates): the
+-- server digs both (server/Portal), the client builds the portal and rides the cable (client/Cableway).
+Layout.ArenaCave = { x = -120, z = 84, fx = 0.42, fz = -0.91 }
 
 -- The showcase row in front of the bunker (DD-054): the gun at x = -2, the boss trophies from x = 8.
 Layout.ShowZ = -16

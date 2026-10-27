@@ -11,6 +11,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Meta = require(Shared:WaitForChild("Meta"))
 local Grove = require(Shared:WaitForChild("Grove"))
 local Layout = require(Shared:WaitForChild("ShelterLayout"))
+local Portal = require(script.Parent.Portal)
 
 local Home = {}
 
@@ -67,17 +68,17 @@ function Home.build()
 		pave(f, -2, -16, 8, 12, M.Pavement)
 		local toSquare = Grove.Radius - Grove.PlazaRadius - 66
 		pave(f, 0, -68 - toSquare / 2, 10, toSquare + 6, M.Pavement)
-		-- the hill with the metro's mouth: behind the cave, between this plot and the next
+		-- the hill with the metro's mouth (DD-091): the hill rises behind the portal, the shoulders
+		-- flank a cutting in front of it, the bore runs in (server/Portal); the client stands the portal
+		-- on it (client/Cableway.cave)
 		local c = Layout.Cave
-		-- (it grows outward, away from the square: the roads on either side stay clear)
-		local mouth = f:PointToWorldSpace(Vector3.new(c.x, 0, c.z))
-		local back = f:VectorToWorldSpace(Vector3.new(-c.fx, 0, -c.fz))
-		local out = Vector3.new(mouth.X - O.X, 0, mouth.Z - O.Z).Unit
-		for _, h in { { out * 20, 24 }, { out * 38 + back * 6, 22 }, { out * 6 + back * 9, 15 } } do
-			local at = mouth + h[1]
-			terrain:FillBall(Vector3.new(at.X, -h[2] * 0.42, at.Z), h[2], M.LeafyGrass)
-		end
-		terrain:FillBall(mouth + out * 30 + Vector3.new(0, -8, 0), 13, M.Rock)
+		Portal.dig(
+			f:PointToWorldSpace(Vector3.new(c.x, 0, c.z)),
+			f:VectorToWorldSpace(Vector3.new(c.fx, 0, c.fz)),
+			true,
+			M.LeafyGrass,
+			M.LeafyGrass
+		)
 	end
 	-- wooded hills close the grove on every side
 	local rng = Random.new(31)

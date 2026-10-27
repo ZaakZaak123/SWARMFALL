@@ -15,6 +15,8 @@
 -- is unchanged, and every piece stands on or inside a footprint the fight already had.
 
 local ArtLoader = require(script.Parent.ArtLoader)
+local Portal = require(script.Parent.Portal)
+local Layout = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("ShelterLayout"))
 
 local Scene = {}
 
@@ -706,7 +708,7 @@ local function blocked(deg: number, pad: number): boolean
 	if deg > 68 and deg < 112 then
 		return true
 	end
-	local cave = math.deg(math.atan2(84, -120)) % 360
+	local cave = math.deg(math.atan2(Layout.ArenaCave.z, Layout.ArenaCave.x)) % 360
 	if math.abs((deg - cave + 180) % 360 - 180) < 12 + pad then
 		return true
 	end
@@ -721,6 +723,9 @@ end
 function Scene.rim(map, decor, H)
 	local m = model(decor, "Rim")
 	local terrain = workspace.Terrain
+	-- the cableway's mouth: a cutting and a bore in the wall for the portal the clients build (DD-091)
+	local ac = Layout.ArenaCave
+	Portal.dig(Vector3.new(ac.x, 0, ac.z), Vector3.new(ac.fx, 0, ac.fz), false)
 	-- stumps of houses in the wall
 	for _, deg in { 22, 58, 120, 162, 198, 243, 258, 292, 334, 352 } do
 		local a = math.rad(deg + H.rnd(-3, 3))

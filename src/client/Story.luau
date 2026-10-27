@@ -561,9 +561,16 @@ local function buildTunnel(): Folder
 		)
 	end
 	-- the hill is hollow now: the caves' painted darkness steps aside so the way out shows daylight
+	-- (DD-091: and so does the mouth's own lining, which would flicker against this tunnel's walls)
 	local darks = {}
 	for _, d in workspace:GetDescendants() do
-		if d.Name == "Dark" and d.Parent and d.Parent.Name == "CaveMouth" and d:IsA("BasePart") then
+		local mouth = d.Parent and (if d.Parent.Name == "Inner" then d.Parent.Parent else d.Parent)
+		if
+			d:IsA("BasePart")
+			and mouth
+			and mouth.Name == "CaveMouth"
+			and (d.Name == "Dark" or d.Parent.Name == "Inner")
+		then
 			d.Transparency = 1
 			table.insert(darks, d)
 		end

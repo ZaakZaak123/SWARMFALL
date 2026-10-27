@@ -88,8 +88,8 @@ end
 -- World points on the arena's side; the shelter's end goes through the plot's frame (DD-087: every plot
 -- has its own cave, in the hill between it and the next plot, shared/ShelterLayout.Cave).
 Cableway.ARENA_SIDE = Vector3.new(-104, 20, 34) -- post inside the funnel, west of the drill
-Cableway.MOUTH_A = Vector3.new(-120, 0, 84) -- the cave in the funnel wall (floor centre)
-Cableway.FACING_A = Vector3.new(0.42, 0, -0.91).Unit -- out of the cave, into the funnel
+Cableway.MOUTH_A = Vector3.new(Layout.ArenaCave.x, 0, Layout.ArenaCave.z) -- the cave in the funnel wall (floor centre)
+Cableway.FACING_A = Vector3.new(Layout.ArenaCave.fx, 0, Layout.ArenaCave.fz).Unit -- out of the cave, into the funnel
 Cableway.CABLE_H = 13 -- the cable's height over a cave's / the tunnel's floor
 -- DD-087: the long run goes under the whole grove, so it keeps below the ground's floor (-12) entirely:
 -- nothing has to be dug out along it, only at the two ends.
@@ -127,81 +127,144 @@ function Cableway.tunnelAnchors(home: CFrame): { Vector3 }
 	return out
 end
 
--- A cave mouth (DD-082): a timbered opening into darkness in a heap of rock, the rails running out of it
--- and a lamp over it. `at` is the floor centre, `facing` points out of the cave.
+-- A tunnel mouth (DD-082 → DD-091): an old metro portal set into the ground the server dug for it
+-- (server/Portal: the hill behind, a cutting in front, the bore). Owner: "make it a real way under the
+-- ground". So: a concrete face whose top follows the earth over it, wing walls lining the cutting and
+-- stepping down with the slope, a lined tunnel with steel ribs running in to the dark, rails out of it, a
+-- lamp over the opening. `at` is the floor centre of the face, `facing` points out of the tunnel. The
+-- lining sits in folder "Inner" (a story ride hides it with "Dark": it rides its own tunnel through here).
+local CUT_W, CUT_L = 24, 16 -- server/Portal: the cutting
+local BORE_D = 26 -- how deep the lining runs (the bore is dug deeper)
+local terrainRay = RaycastParams.new()
+terrainRay.FilterType = Enum.RaycastFilterType.Include
+terrainRay.FilterDescendantsInstances = { workspace.Terrain }
+
 function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = "CaveMouth"
+	local inner = Instance.new("Folder")
+	inner.Name = "Inner"
+	inner.Parent = folder
 	local frame = CFrame.lookAt(at, at + Vector3.new(facing.X, 0, facing.Z)) -- -Z = out of the cave
-	local rock, timber = rgb(138, 128, 116), rgb(110, 80, 52)
+	local concrete, dark, deep = rgb(146, 140, 130), rgb(104, 99, 94), rgb(58, 55, 52)
+	local steel = rgb(78, 66, 56)
 	local function at3(x, y, z)
 		return frame * CFrame.new(x, y, -z)
 	end
-	-- the darkness: what you see into the hill (and what a crate rides into)
-	part({ Name = "Dark", Size = Vector3.new(16, 16, 1), CFrame = at3(0, 8, -1.6), Color = rgb(5, 5, 7) }, folder)
-	-- DD-091: an old metro service portal, not a heap of round rocks: concrete pilasters and a lintel,
-	-- a headwall of broken height round them, the timber props the diggers left inside
-	local concrete, dark = rgb(150, 144, 134), rgb(106, 101, 96)
-	for _, x in { -8.6, 8.6 } do
-		part({
-			Size = Vector3.new(2.4, 17.6, 2.4),
-			CFrame = at3(x, 8.8, 0.2),
-			Color = dark,
-			Material = Enum.Material.Concrete,
-		}, folder).CastShadow =
-			true
-		part({
-			Size = Vector3.new(1.1, 15.6, 1.1),
-			CFrame = at3(x * 0.84, 7.8, -1.2),
-			Color = timber,
-			Material = Enum.Material.WoodPlanks,
-		}, folder)
+	-- the earth's top over a point (local x, z): what the face and the wings follow (nil off the map)
+	local function earth(x: number, z: number): number?
+		local p = at3(x, 0, z).Position
+		local hit = workspace:Raycast(p + Vector3.new(0, 140, 0), Vector3.new(0, -170, 0), terrainRay)
+		return if hit then hit.Position.Y - at.Y else nil
 	end
-	part({
-		Size = Vector3.new(20.6, 2.6, 2.8),
-		CFrame = at3(0, 18.4, 0.2),
-		Color = dark,
-		Material = Enum.Material.Concrete,
-	}, folder).CastShadow =
-		true
-	local rng = Random.new(math.floor(at.X * 7 + at.Z * 3))
-	local cols = 8
-	local width = 40
+	local function slab(size: Vector3, cf: CFrame, color: Color3, mat, shadow: boolean?, into: Instance?)
+		local p =
+			part({ Size = size, CFrame = cf, Color = color, Material = mat or Enum.Material.Concrete }, into or folder)
+		p.CastShadow = shadow == true
+		return p
+	end
+	-- the darkness further in (and what a crate rides into)
+	part({ Name = "Dark", Size = Vector3.new(19, 19, 1), CFrame = at3(0, 9, -BORE_D), Color = rgb(5, 5, 7) }, folder)
+	-- the lining: walls, roof and floor, a steel rib every four studs, one dim lamp
+	local mid = -BORE_D / 2
+	for _, x in { -9.6, 9.6 } do
+		slab(Vector3.new(1, 18.6, BORE_D), at3(x, 9.3, mid), deep, nil, true, inner)
+	end
+	slab(Vector3.new(20.2, 1, BORE_D), at3(0, 18.6, mid), deep, nil, true, inner)
+	slab(
+		Vector3.new(20.2, 1.2, BORE_D + 2),
+		at3(0, -0.1, mid), -- (its top a little over the ground: the earth's last voxel must not show)
+		rgb(52, 48, 44),
+		Enum.Material.Ground,
+		false,
+		inner
+	)
+	for d = 3, BORE_D - 2, 4 do
+		for _, x in { -8.7, 8.7 } do
+			slab(Vector3.new(0.7, 17.4, 0.7), at3(x, 8.7, -d), steel, Enum.Material.Metal, false, inner)
+		end
+		slab(Vector3.new(18.1, 0.7, 0.7), at3(0, 17.7, -d), steel, Enum.Material.Metal, false, inner)
+	end
+	local inLamp =
+		slab(Vector3.new(0.6, 0.6, 1), at3(8.9, 12, -9), rgb(255, 196, 120), Enum.Material.Neon, false, inner)
+	local inLight = Instance.new("PointLight")
+	inLight.Color = rgb(255, 186, 120)
+	inLight.Range = 14
+	inLight.Brightness = 0.8
+	inLight.Parent = inLamp
+	-- the portal: pilasters and a lintel, proud of the face
+	for _, x in { -9.6, 9.6 } do
+		slab(Vector3.new(2.4, 18.6, 2.4), at3(x, 9.3, 0.2), dark, nil, true)
+	end
+	slab(Vector3.new(21.6, 2.6, 2.8), at3(0, 19.2, 0.2), dark, nil, true)
+	-- the face: columns whose tops follow the earth behind them (the hill goes on up over the tunnel)
+	local cols, width = 6, 30
+	local faceTop = {}
 	for k = 0, cols - 1 do
 		local cx = -width / 2 + (k + 0.5) * width / cols
-		local top = rng:NextNumber(20, 27)
-		local from = if math.abs(cx) < 9.8 then 19.7 else 0
-		local p = part({
-			Size = Vector3.new(width / cols + 0.05, top - from, 3),
-			CFrame = at3(cx, (from + top) / 2, -1.2),
-			Color = concrete:Lerp(dark, rng:NextNumber(0, 0.6)),
-			Material = Enum.Material.Concrete,
-		}, folder)
-		p.CastShadow = true
+		local over = math.abs(cx) < 11
+		local e = earth(cx, -4) or 22
+		local top = math.clamp(e + 0.6, if over then 21.4 else 2, 30)
+		local from = if over then 20.4 else 0
+		faceTop[k + 1] = top
+		if top > from + 0.3 then
+			slab(
+				Vector3.new(width / cols + 0.05, top - from, 3),
+				at3(cx, (from + top) / 2, -1.3),
+				concrete:Lerp(dark, (k % 2) * 0.25),
+				nil,
+				true
+			)
+			slab(Vector3.new(width / cols + 0.3, 0.5, 3.4), at3(cx, top + 0.25, -1.2), dark, nil, false)
+		end
 	end
-	-- earth heaped against the headwall's ends
+	-- the metro's red «М» on a plate over the lintel (the arena's breach wears the same)
+	local plate = slab(Vector3.new(3.4, 3.4, 0.3), at3(0, 22.6, 0.3), rgb(128, 70, 46), Enum.Material.Metal, false)
+	if math.min(faceTop[3], faceTop[4]) < 24.6 then
+		plate.CFrame = at3(-5.2, 17.2, 1.75) -- a low face: on the pilaster's side instead
+		plate.Size = Vector3.new(2.6, 2.6, 0.3)
+	end
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front -- the frame looks out of the tunnel
+	gui.CanvasSize = Vector2.new(200, 200)
+	gui.LightInfluence = 1
+	gui.Parent = plate
+	local letter = Instance.new("TextLabel")
+	letter.BackgroundTransparency = 1
+	letter.Size = UDim2.fromScale(1, 1)
+	letter.Font = Enum.Font.GothamBlack
+	letter.Text = "М"
+	letter.TextScaled = true
+	letter.TextColor3 = rgb(200, 58, 46)
+	letter.Parent = gui
+	-- wing walls lining the cutting's earth sides, stepping down with the slope
 	for _, s in { -1, 1 } do
-		local p = part({
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.one * rng:NextNumber(9, 12),
-			CFrame = at3(s * (width / 2 + 1), 2, -2),
-			Color = rock,
-			Material = Enum.Material.Rock,
-		}, folder)
-		p.CastShadow = true
+		for k = 0, 3 do
+			local z = 2 + k * 4
+			local e = earth(s * (CUT_W / 2 + 2.5), z) or 4
+			local h = math.clamp(e + 0.4, 1.4, faceTop[if s < 0 then 1 else cols])
+			slab(Vector3.new(1.4, h, 4.05), at3(s * (CUT_W / 2 - 0.7), h / 2, z), concrete, nil, true)
+			slab(Vector3.new(1.8, 0.4, 4.1), at3(s * (CUT_W / 2 - 0.7), h + 0.2, z), dark, nil, false)
+		end
 	end
-	-- the rails out of the tunnel and a lamp over the opening
+	-- the approach: a worn slab in the cutting, the rails running out of the dark across it
+	slab(Vector3.new(CUT_W - 2.8, 0.3, CUT_L - 1), at3(0, 0.35, CUT_L / 2), rgb(118, 112, 104), nil, false)
 	for _, x in { -2.4, 2.4 } do
-		part({
-			Size = Vector3.new(0.35, 0.3, 10),
-			CFrame = at3(x, 0.15, 4.5),
-			Color = rgb(70, 62, 56),
-			Material = Enum.Material.Metal,
-		}, folder)
+		slab(
+			Vector3.new(0.35, 0.3, BORE_D + CUT_L - 2),
+			at3(x, 0.8, (CUT_L - BORE_D) / 2 - 1),
+			rgb(70, 62, 56),
+			Enum.Material.Metal,
+			false
+		)
 	end
+	for z = -BORE_D + 2, CUT_L - 2, 3 do
+		slab(Vector3.new(6.4, 0.2, 0.9), at3(0, 0.6, z), rgb(70, 52, 38), Enum.Material.Wood, false)
+	end
+	-- a caged lamp under the lintel
 	local lamp = part({
 		Size = Vector3.new(0.9, 0.7, 0.9),
-		CFrame = at3(0, 15, 1.2),
+		CFrame = at3(0, 16.9, 0.9),
 		Color = rgb(255, 196, 120),
 		Material = Enum.Material.Neon,
 	}, folder)

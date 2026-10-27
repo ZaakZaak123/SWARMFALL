@@ -171,6 +171,24 @@ local function setRing(r: BasePart, transparency: number, radius: number?)
 	end
 end
 
+-- DD-091: the shelter's labels show only near the hero, plus the current goal's (always), and never in a
+-- story scene. All of them on at once (twelve always-on-top cards up to 160 studs off) buried the first
+-- walk through the yard and the intro's shots under text. { gui, at = world point }.
+local NEAR_SHOW, NEAR_HIDE = 24, 30
+local nearBoards = {}
+local function nearOnly(gui: BillboardGui, at: Vector3)
+	table.insert(nearBoards, { gui = gui, at = at })
+	gui.Enabled = false
+	return gui
+end
+local function nearEnough(gui: BillboardGui, at: Vector3, root: Vector3?): boolean
+	if not root then
+		return false
+	end
+	local d = Vector3.new(at.X - root.X, 0, at.Z - root.Z).Magnitude
+	return d < (if gui.Enabled then NEAR_HIDE else NEAR_SHOW)
+end
+
 local function board(
 	parent: BasePart,
 	iconName: string,
@@ -488,13 +506,16 @@ local function buildTerminal()
 		Material = Enum.Material.SmoothPlastic,
 		Parent = holder,
 	})
-	board(
-		beam,
-		"reactor",
-		"КАНАТКА С БУРА",
-		"Ксенит из воронки — в убежище",
-		C.lime,
-		3.2
+	nearOnly(
+		board(
+			beam,
+			"reactor",
+			"КАНАТКА С БУРА",
+			"Ксенит из воронки — в убежище",
+			C.lime,
+			3.2
+		),
+		beam.Position
 	)
 	-- out of the cave at the foot of the hill (the tunnel from the funnel, DD-082) to the frame
 	local mouth = Layout.Cave
@@ -731,14 +752,17 @@ local function setShelf(slots, workshop: boolean)
 	-- the label sits at the shelf's foot, on the camera side: above it the workshop's own sign covers it
 	local at = new("Attachment", { Name = "Label", Parent = holder })
 	at.WorldCFrame = WC(sd.x + 7.5, 0.6, sd.z - 0.6)
-	local b = new("BillboardGui", {
-		Size = UDim2.fromOffset(190, 36),
-		LightInfluence = 0,
-		AlwaysOnTop = true,
-		MaxDistance = 100,
-		Adornee = at,
-		Parent = holder,
-	})
+	local b = nearOnly(
+		new("BillboardGui", {
+			Size = UDim2.fromOffset(190, 36),
+			LightInfluence = 0,
+			AlwaysOnTop = true,
+			MaxDistance = 100,
+			Adornee = at,
+			Parent = holder,
+		}),
+		at.WorldPosition
+	)
 	local t = label(
 		string.format("ДЛЯ БУРА · %d/%d", #list, Meta.SocketCount),
 		{ Size = UDim2.new(1, 0, 0, 20), FontFace = F.display, TextSize = 16, TextColor3 = C.cyan, Parent = b }
@@ -1030,14 +1054,17 @@ local function plaque(base: BasePart, title: string, sub: string, color: Color3)
 	-- plaque from a point above it instead
 	local at = new("Attachment", { Name = "Plaque", Parent = base })
 	at.WorldCFrame = CFrame.new(base.Position + Vector3.new(0, 7.5, 0))
-	local b = new("BillboardGui", {
-		Size = UDim2.fromOffset(190, 42),
-		LightInfluence = 0,
-		AlwaysOnTop = true, -- the statues stand in front of it from the camp camera
-		MaxDistance = 90,
-		Adornee = at,
-		Parent = base,
-	})
+	local b = nearOnly(
+		new("BillboardGui", {
+			Size = UDim2.fromOffset(190, 42),
+			LightInfluence = 0,
+			AlwaysOnTop = true, -- the statues stand in front of it from the camp camera
+			MaxDistance = 90,
+			Adornee = at,
+			Parent = base,
+		}),
+		at.WorldPosition
+	)
 	local t = label(
 		title,
 		{ Size = UDim2.new(1, 0, 0, 22), FontFace = F.display, TextSize = 17, TextColor3 = color, Parent = b }
@@ -2115,10 +2142,15 @@ function Base.update(dt: number, _root: Vector3?)
 	if cable and folder.Parent then
 		cable:update(dt)
 	end
+	local calm = active and scene == nil
+	local goalSpot = if goal and (goal.station == "home" or goal.station == "swarm")
+		then goal.spot
+		elseif goal and goal.station == "build" then "WORKBENCH"
+		else nil
 	for _, s in stationParts do
 		s.prompt.Enabled = active
-		s.board.Enabled = active
 		local hot = goal and goal.station == s.def.key and active
+		s.board.Enabled = calm and (hot or nearEnough(s.board, s.pad.Position, _root))
 		local pulse = if hot then math.sin(now * 4) else 0
 		setRing(s.ring, (if active then 0.15 else 0.7) + math.sin(now * 2 + s.def.x) * 0.1, 4.8 + pulse * 0.4)
 		s.beam.Transparency = if active then 0.62 + math.sin(now * 1.6 + s.def.z) * 0.08 else 0.85
@@ -2130,13 +2162,20 @@ function Base.update(dt: number, _root: Vector3?)
 		sp.prompt.ActionText = if sp.isStation
 			then (sp.sd.stationName or sp.def.name)
 			else "Починить · ◆ " .. sp.def.cost
-		sp.board.Enabled = active or scene ~= nil
+		sp.board.Enabled = calm and (id == goalSpot or nearEnough(sp.board, sp.ring.Position, _root))
 		local glow = if sp.canRestore
 			then 0.25 + math.sin(now * 3 + sp.sd.x) * 0.15
 			elseif sp.isStation then 0.45
 			else 0.85
 		setRing(sp.ring, glow)
-		local _ = id
+	end
+	for i = #nearBoards, 1, -1 do
+		local nb = nearBoards[i]
+		if not nb.gui.Parent then
+			table.remove(nearBoards, i)
+		else
+			nb.gui.Enabled = calm and nearEnough(nb.gui, nb.at, _root)
+		end
 	end
 	if gallery then
 		gallery:step(dt, active, _root)

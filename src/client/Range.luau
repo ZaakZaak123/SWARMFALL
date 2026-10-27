@@ -212,6 +212,9 @@ function Range.update(
 	firing: boolean
 ): boolean
 	local now = os.clock()
+	-- DD-091: the range's sign only near it (from across the yard it was one more label over the intro)
+	local away = if root then Vector3.new(root.X - MARK.X, 0, root.Z - MARK.Z).Magnitude else math.huge
+	hint.Enabled = away < (if hint.Enabled then 32 else 26)
 	local want = Range.wants(root)
 	if want ~= active then
 		active = want
