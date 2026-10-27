@@ -524,7 +524,7 @@ Defs.Fallbacks = {
 		name = "ГРАВИЗАРЯД",
 		icon = "battery",
 		color = rgb(84, 238, 255),
-		text = "Гравимолот готов сразу",
+		text = "Громобой готов сразу",
 	},
 }
 
@@ -928,10 +928,11 @@ function Defs.xpToNext(level: number): number
 	return math.floor(7 + level * 5 + level ^ 1.75)
 end
 
--- S01 «ГРАВИМОЛОТ» (DD-006): the one active skill. 360° gravity strike around the player, separate from
+-- S01 «ГРОМОБОЙ» (ex-«Гравимолот», DD-006, renamed DD-092): the one active skill. 360° gravity strike around the player, separate from
 -- weapons and cards. The first cast in O01 is the reactor-fed Emergency Overload (bigger, two waves).
 Defs.S01 = {
 	Windup = 0.3, -- stable window before impact (brief i-frames cover it)
+	Cinematic = 1.5, -- DD-092: the first (tutorial) strike holds the world this long while the hammer rears
 	IFrames = 0.4,
 	Cooldown = 32,
 	Radius = 9.5,
@@ -1001,7 +1002,7 @@ Defs.S01Branches = {
 		name = "СИНГУЛЯРНОСТЬ",
 		color = rgb(190, 120, 255),
 		tiers = {
-			"Гравитационный след: замедление 40% вокруг",
+			"Грозовой след: замедление 40% вокруг",
 			"Сжатие: враги стягиваются к тебе, а не разлетаются",
 			"Коллапс: через 0.6 с повторный удар 60%",
 		},
@@ -1294,7 +1295,7 @@ Defs.Perks = {
 		max = 3,
 		costs = { 70, 130, 200 },
 		stat = function(r: number): string
-			return `−{r * 6}% перезарядка Гравимолота`
+			return `−{r * 6}% перезарядка Громобоя`
 		end,
 	},
 	PK_INSIGHT = {

@@ -2802,7 +2802,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			)
 		elseif kind == "s01" then
 			k += 1
-			unlockCard("hammer", "НАВСЕГДА", "Гравимолот", C.cyan, k)
+			unlockCard("hammer", "НАВСЕГДА", "Громобой", C.cyan, k)
 		elseif
 			(kind == "research" or kind == "specimen")
 			and Defs.Enemies[u[2]]

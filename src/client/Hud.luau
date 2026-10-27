@@ -1233,7 +1233,7 @@ function Hud.update(run, me, extra, dt: number)
 		ui.evolve.Visible = (me.canEvolve or me.s01Tutorial) and not touch
 		if me.s01Tutorial then
 			ui.evolveScale.Scale = 1 + math.sin(now * 8) * 0.06
-			ui.evolveText.Text = "ГРАВИМОЛОТ — УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")
+			ui.evolveText.Text = "ГРОМОБОЙ — УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")
 		elseif me.canEvolve then
 			ui.evolveScale.Scale = 1 + math.sin(now * 6) * 0.04
 			ui.evolveText.Text = "ЭВОЛЮЦИЯ — "

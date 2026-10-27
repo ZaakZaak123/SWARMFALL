@@ -21,6 +21,7 @@ local Audio = require(script.Parent:WaitForChild("Audio"))
 local EnemyView = require(script.Parent:WaitForChild("EnemyView"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local Gear = require(script.Parent:WaitForChild("Gear"))
+local Hammer = require(script.Parent:WaitForChild("Hammer"))
 local CameraRig = require(script.Parent:WaitForChild("CameraRig"))
 local DecorLod = require(script.Parent:WaitForChild("DecorLod"))
 local Controls = require(script.Parent:WaitForChild("Controls"))
@@ -1340,6 +1341,7 @@ handlers[E.DASH] = function(pid, x, z, dx, dz)
 		end
 	end
 end
+local hammerSwings = {} -- pid -> the hammer in the air (client/Hammer)
 handlers[E.HAMMER] = function(pid, x, z, radius, phase, emergency, hits)
 	local pos = Vector3.new(x, 1, z)
 	local big = emergency == 1
@@ -1354,9 +1356,34 @@ handlers[E.HAMMER] = function(pid, x, z, radius, phase, emergency, hits)
 		if char then
 			Rig.flinch(char, 0, 1, 0.6)
 		end
-		Fx.telegraph(Codec.Shape.CIRCLE, x, z, 0, 1, radius, 0, Defs.S01.Windup, C.cyan, 0)
-		Fx.light(pos + Vector3.yAxis * 10, C.violet, 30, Defs.S01.Windup + 0.2)
-		Audio.at("railCharge", pos, 1, if big then 0.7 else 0.9)
+		-- DD-092: the Громобой — a giant lightning hammer the size of the circle rears up and slams down.
+		-- The first strike (the emergency overload) is a cinematic beat: the world holds while it rears.
+		local windup = if big then Defs.S01.Cinematic else Defs.S01.Windup
+		local ground = Vector3.new(x, 0, z)
+		local swing = Hammer.swing(ground, radius, windup, { slow = big })
+		hammerSwings[pid] = swing
+		Fx.telegraph(Codec.Shape.CIRCLE, x, z, 0, 1, radius, 0, windup, C.cyan, 0)
+		Fx.light(pos + Vector3.yAxis * 10, C.violet, 30, windup + 0.2)
+		Audio.at("railCharge", pos, 1, if big then 0.6 else 0.9)
+		if pid == myId and (big or CameraRig.mode() ~= "top") then
+			CameraRig.cinematic(ground, radius, windup + (if big then 1.5 else 0.9))
+		end
+		if big then
+			-- lightning gathers on the hammer's head as it rears
+			task.spawn(function()
+				local t0 = os.clock()
+				while os.clock() - t0 < windup - 0.2 do
+					local head = swing.head()
+					local a = math.random() * math.pi * 2
+					local from = head + Vector3.new(math.cos(a) * 30, 26 + math.random() * 16, math.sin(a) * 30)
+					Fx.lightning(from, head, C.cyan, 0.35, 0.18)
+					if math.random() < 0.4 then
+						Audio.at("coil", head, 0.35, 1.2 + math.random() * 0.3)
+					end
+					task.wait(0.09 + math.random() * 0.08)
+				end
+			end)
+		end
 		return
 	end
 	if phase == 3 then
@@ -1366,6 +1393,25 @@ handlers[E.HAMMER] = function(pid, x, z, radius, phase, emergency, hits)
 		Audio.at("overdrive", pos, 0.6, 1.2)
 		return
 	end
+	local swing = hammerSwings[pid]
+	hammerSwings[pid] = nil
+	if swing then
+		swing.impact()
+	end
+	-- the thunder of it: bolts from the sky round the circle, a white ring at the rim
+	for k = 0, (if big then 9 else 5) do
+		local a = k / (if big then 10 else 6) * math.pi * 2 + math.random() * 0.3
+		local at = pos + Vector3.new(math.cos(a) * radius * 0.9, -1, math.sin(a) * radius * 0.9)
+		Fx.lightning(
+			at + Vector3.new(math.random(-6, 6), 46, math.random(-6, 6)),
+			at,
+			C.cyan,
+			if big then 0.6 else 0.4,
+			0.3
+		)
+	end
+	Fx.ring(Vector3.new(x, 0.3, z), radius, Color3.new(1, 1, 1), 0.35)
+	Fx.emitWith("dust", pos, if big then 40 else 22, radius / 6)
 	Fx.boom(pos, radius, C.cyan)
 	Fx.shockwave(pos, radius * 1.15, C.cyan, 0.45)
 	Fx.shockwave(pos, radius * (if big then 1.45 else 1.25), C.violet, 0.75)
@@ -2708,6 +2754,23 @@ if RunService:IsStudio() then
 		return Story.active()
 	end
 	storyHook.Parent = script.Parent
+	-- The Громобой's strike on demand at the hero (DD-092: tuning the hammer without replaying the ring).
+	local hammerHook = Instance.new("BindableFunction")
+	hammerHook.Name = "SwarmHammerHook"
+	hammerHook.OnInvoke = function(big)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if not root then
+			return false
+		end
+		local r = if big then Defs.S01.Emergency.Radius else Defs.S01.Radius
+		local x, z = root.Position.X, root.Position.Z
+		handlers[E.HAMMER](myId, x, z, r, 1, if big then 1 else 0, 0)
+		task.delay(if big then Defs.S01.Cinematic else Defs.S01.Windup, function()
+			handlers[E.HAMMER](myId, x, z, r, 2, if big then 1 else 0, 0)
+		end)
+		return true
+	end
+	hammerHook.Parent = script.Parent
 	-- The grove's windows and panels on demand (DD-089): a prompt cannot be pressed from a script.
 	local groveHook = Instance.new("BindableFunction")
 	groveHook.Name = "SwarmGroveHook"

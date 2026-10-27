@@ -179,6 +179,18 @@ function CameraRig.intro()
 	introT = 0
 end
 
+-- DD-092: a cinematic beat over the regular camera (the Громобой's strike): low and wide, from the
+-- hero's front-left and a little below the giant hammer, a slow push in. `size` scales the framing (the
+-- strike's radius); `dur` seconds in all, blended in over 0.45 s and back over 0.7 s.
+local cine = nil
+function CameraRig.cinematic(center: Vector3, size: number, dur: number)
+	cine = { center = center, size = size, t0 = os.clock(), dur = dur }
+end
+
+function CameraRig.cinematicActive(): boolean
+	return cine ~= nil
+end
+
 function CameraRig.reset()
 	follow = nil
 	trauma = 0
@@ -299,6 +311,21 @@ function CameraRig.update(
 
 	cam.CFrame = CFrame.lookAt(camPos, camPos + forward) * CFrame.new(sx, sy, 0) * CFrame.Angles(0, 0, roll)
 	cam.FieldOfView = p.fov + fovKick - 8 * z
+	if cine then
+		local age = now - cine.t0
+		if age >= cine.dur then
+			cine = nil
+		else
+			local w = ease(math.clamp(age / 0.45, 0, 1)) * ease(math.clamp((cine.dur - age) / 0.7, 0, 1))
+			local k = age / cine.dur
+			local c, r = cine.center, cine.size / 14
+			local eye = c + Vector3.new(-22 + 5 * k, 9 - 2 * k, -52 + 9 * k) * r
+			local look = c + Vector3.new(0, 24, 10) * r
+			local shot = CFrame.lookAt(eye, look) * CFrame.new(sx, sy, 0) * CFrame.Angles(0, 0, roll)
+			cam.CFrame = cam.CFrame:Lerp(shot, w)
+			cam.FieldOfView = cam.FieldOfView + (66 - cam.FieldOfView) * w
+		end
+	end
 	-- Landing shot (DD-036): a hunt opens high over the crater and swoops down onto the hero.
 	if introT < 1 then
 		introT = math.min(1, introT + dt / INTRO_TIME)

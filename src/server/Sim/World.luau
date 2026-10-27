@@ -363,12 +363,15 @@ function World:gravihammer(id: number): boolean
 		return false
 	end
 	if tutorial then
-		-- The world resumes exactly as the player's own strike begins (GDD §5, S01 §3).
-		self.paused = nil
+		-- The world stays still while the Громобой rears up (DD-092: the first strike is a cinematic beat)
+		-- and resumes with the impact itself (GDD §5, S01 §3).
+		self.paused = "HAMMER"
+		self.pauseUntil = Defs.S01.Cinematic
+		self.pauseClock = 0
 		self.s01Tutee = nil
 		p.hammerEmergency = true
 	end
-	p.hammerAt = self.t + Defs.S01.Windup
+	p.hammerAt = self.t + (if tutorial then 0 else Defs.S01.Windup)
 	p.iframeUntil = math.max(p.iframeUntil, self.t + Defs.S01.IFrames)
 	p.s01Ready = self.t + p.s01Cd
 	p.s01Stats.casts += 1
@@ -491,7 +494,7 @@ function World:hammerImpact(p)
 	if emergency then
 		self:banner(
 			"АВАРИЙНАЯ ПЕРЕГРУЗКА",
-			"Гравимолот S01 открыт навсегда · поражено " .. hits,
+			"Громобой открыт навсегда · поражено " .. hits,
 			C.CYAN,
 			3.5,
 			"hammer"
@@ -513,8 +516,8 @@ function World:s01Event()
 			end
 			self:emit(E.HAMMER, p.id, p.x, p.z, Defs.S01.Emergency.Radius, 0, 1, 0)
 			self:banner(
-				"ГРАВИМОЛОТ",
-				"Враги окружили — нанеси гравитационный удар",
+				"ГРОМОБОЙ",
+				"Враги окружили — обрушь на них Громобой",
 				C.CYAN,
 				4,
 				"hammer"
@@ -1687,7 +1690,9 @@ function World:step(dt: number)
 	end
 	if self.paused then
 		self.pauseClock += dt
-		if (self.paused == "EVOLVE" or self.paused == "REVEAL") and self.pauseClock >= self.pauseUntil then
+		if self.paused == "HAMMER" and self.pauseClock >= self.pauseUntil then
+			self.paused = nil -- the next step lands the strike (hammerAt is now)
+		elseif (self.paused == "EVOLVE" or self.paused == "REVEAL") and self.pauseClock >= self.pauseUntil then
 			self.paused = nil
 			self:openOffers()
 		elseif self.paused == "CHOOSE" and not self.solo and self.pauseClock >= Defs.Run.ChoiceTimeoutCoop then
