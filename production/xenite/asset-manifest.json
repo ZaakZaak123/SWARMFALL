@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "image": 113891813640404,
+  "meshes": {
+    "ShardBody": { "id": "rbxassetid://108494798486343", "texture": "rbxassetid://109021951684433", "triangles": 116 },
+    "ShardVein": { "id": "rbxassetid://86113486564267", "texture": "", "triangles": 24 },
+    "ClusterBody": { "id": "rbxassetid://125365651977759", "texture": "rbxassetid://117011078236274", "triangles": 448 },
+    "ClusterVein": { "id": "rbxassetid://120176364694282", "texture": "", "triangles": 72 }
+  }
+}

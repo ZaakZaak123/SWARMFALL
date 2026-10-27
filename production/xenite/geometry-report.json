@@ -1,0 +1,20 @@
+{
+  "ShardBody": {
+    "triangles": 116,
+    "vertices": 238
+  },
+  "ShardVein": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "ClusterBody": {
+    "triangles": 448,
+    "vertices": 1014
+  },
+  "ClusterVein": {
+    "triangles": 72,
+    "vertices": 144
+  },
+  "shardTriangles": 140,
+  "clusterTriangles": 520
+}

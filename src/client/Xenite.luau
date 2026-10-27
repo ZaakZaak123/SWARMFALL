@@ -1,24 +1,17 @@
 --!nonstrict
--- Xenite (DD-095): the currency has one look everywhere. The emblem (tools/icons/xenite.js: three shards
--- out of one cleft, a tall hexagonal spire between two leaning ones, a white four-point heart glowing in
--- the spire) stands in every price, pill and reward; the same three shards are the crystal in the world
--- (the crates the cable brings are stamped with it, a cluster crowns the pile at the terminal, the first
--- xenite glows in its jar).
---
--- Xenite.icon(size, props?) -> ImageLabel           the emblem
--- Xenite.inline(label)                             «◆» in the label's text is drawn as the emblem (single
---                                                  line labels; follows later text changes and fades)
--- Xenite.cluster(parent, cf, scale?) -> Model      the crystal standing on `cf` (about 2.6 × scale tall)
--- Xenite.stamp(part, faces, k?)                    the emblem on a part's faces (k of the face height)
+-- Xenite (DD-096): one fractured mineral in the HUD and world.
+-- Authored in Blender: 140 triangles per shard, 520 per ore cluster. Each
+-- template has two MeshParts; only the narrow fracture is emissive.
+-- icon / inline / stamp keep DD-095's UI integration; shard is the keepsake,
+-- cluster is the raw ore at the terminal. The model pivot is its ground contact.
 
 local TextService = game:GetService("TextService")
+local templates = game:GetService("ReplicatedStorage"):WaitForChild("XeniteAssets")
 
 local Xenite = {}
 
-Xenite.IMAGE = "rbxassetid://129211612455080"
-Xenite.COLOR = Color3.fromRGB(255, 86, 198)
-local LIGHT = Color3.fromRGB(255, 170, 228)
-local HEART = Color3.fromRGB(255, 236, 248)
+Xenite.IMAGE = "rbxassetid://113891813640404"
+Xenite.COLOR = Color3.fromRGB(235, 54, 158)
 local GLYPH = "◆"
 local GAP = utf8.char(0x2002, 0x2002) -- two en spaces: one em, the emblem sits in it
 
@@ -113,74 +106,29 @@ function Xenite.inline(label: TextLabel)
 	refresh()
 end
 
-local function part(parent: Instance, cls: string, size: Vector3, cf: CFrame, color: Color3, mat, alpha: number?)
-	local p = Instance.new(cls)
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = false
-	p.Size = size
-	p.CFrame = cf
-	p.Color = color
-	p.Material = mat
-	p.Transparency = alpha or 0
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Parent = parent
-	return p
+-- Clone baked assets; no EditableMesh, import, or geometry generation at runtime.
+local function mineral(name: string, parent: Instance, cf: CFrame, scale: number?)
+	local k = scale or 1
+	assert(k > 0, "Xenite scale must be positive")
+	local m = templates:WaitForChild(name):Clone()
+	m.Name = "Xenite"
+	m:SetAttribute("XeniteForm", name)
+	m:ScaleTo(k)
+	m:PivotTo(cf)
+	local light = m:FindFirstChildWhichIsA("PointLight", true)
+	if light then
+		light.Range = math.clamp(2 + 2 * k, 2, 5)
+	end
+	m.Parent = parent
+	return m
 end
 
--- One shard on `base` (its foot): a square prism turned 45° (four facets to the eye), a roof tip, and a
--- glowing core inside the glass.
-local function shard(m: Model, base: CFrame, w: number, h: number, t: number)
-	local GLASS, NEON = Enum.Material.Glass, Enum.Material.Neon
-	local body = base * CFrame.Angles(0, math.pi / 4, 0)
-	part(m, "Part", Vector3.new(w, h, w), body * CFrame.new(0, h / 2, 0), Xenite.COLOR, GLASS, 0.1)
-	part(m, "Part", Vector3.new(w * 0.55, h * 0.92, w * 0.55), body * CFrame.new(0, h / 2, 0), LIGHT, NEON, 0)
-	-- the tip: two wedges back to back make a ridge over the prism
-	for _, s in { 1, -1 } do
-		part(
-			m,
-			"WedgePart",
-			Vector3.new(w, t, w / 2),
-			body * CFrame.new(0, h + t / 2, s * w / 4) * CFrame.Angles(0, if s > 0 then 0 else math.pi, 0),
-			LIGHT,
-			GLASS,
-			0.1
-		)
-	end
+function Xenite.shard(parent: Instance, cf: CFrame, scale: number?)
+	return mineral("Shard", parent, cf, scale)
 end
 
 function Xenite.cluster(parent: Instance, cf: CFrame, scale: number?)
-	local k = scale or 1
-	local m = Instance.new("Model")
-	m.Name = "Xenite"
-	-- the spire, then the two leaning shards either side (as on the emblem)
-	shard(m, cf, 0.62 * k, 1.9 * k, 0.6 * k)
-	shard(m, cf * CFrame.new(-0.45 * k, 0, 0) * CFrame.Angles(0, 0, math.rad(27)), 0.46 * k, 1.05 * k, 0.4 * k)
-	shard(m, cf * CFrame.new(0.45 * k, 0, 0.1 * k) * CFrame.Angles(0.1, 0, math.rad(-27)), 0.46 * k, 1.05 * k, 0.4 * k)
-	-- the cleft they grow from, and the heart glowing in the spire
-	part(
-		m,
-		"Part",
-		Vector3.new(0.5 * k, 1.5 * k, 1.5 * k),
-		cf * CFrame.new(0, 0.05 * k, 0) * CFrame.Angles(0, 0, math.pi / 2),
-		Color3.fromRGB(86, 74, 80),
-		Enum.Material.Slate
-	).Shape =
-		Enum.PartType.Cylinder
-	local heart = part(m, "Part", Vector3.one * 0.3 * k, cf * CFrame.new(0, 1.05 * k, 0), HEART, Enum.Material.Neon)
-	heart.Shape = Enum.PartType.Ball
-	local light = Instance.new("PointLight")
-	light.Color = Xenite.COLOR
-	light.Range = 4 + 4 * k
-	light.Brightness = 1.2
-	light.Shadows = false
-	light.Parent = heart
-	m.PrimaryPart = heart
-	m.Parent = parent
-	return m
+	return mineral("Cluster", parent, cf, scale)
 end
 
 -- A square emblem `k` of the face's height, centred on each face (not stretched as a Decal would be).

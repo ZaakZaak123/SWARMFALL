@@ -1537,9 +1537,9 @@ function Cabin:setEntry(entry)
 			M.Glass,
 			{ Shape = CYL, Transparency = 0.6 }
 		)
-		-- the same three shards as on every price (DD-095), small enough for the jar
-		local crystal = Xenite.cluster(keep, at * CFrame.new(0, 0.08, 0) * CFrame.Angles(0, math.pi / 2, 0), 0.3)
-		crystal:FindFirstChildWhichIsA("PointLight", true).Brightness = 0.7
+		-- One keepsake shard; only its fracture glows, so the mineral stays visible through glass.
+		local crystal = Xenite.shard(keep, at * CFrame.new(0, 0.08, 0) * CFrame.Angles(0, math.pi / 2, 0), 0.25)
+		crystal:FindFirstChildWhichIsA("PointLight", true).Brightness = 0.2
 	end
 	keep.Parent = self.folder
 end

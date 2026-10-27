@@ -551,10 +551,10 @@ local function setPile(scrap: number)
 			Cableway.crate(pileFolder, base * CFrame.new(0, k * 1.95, 0) * CFrame.Angles(0, k * 0.35, 0))
 		end
 	end
-	-- the xenite itself crowns the first stack, bigger as the hoard grows (DD-095)
+	-- A compact sample of fractured ore on the first stack, growing with the hoard (DD-096).
 	if n > 0 then
 		local top = frame * Layout.terminalFrame() * CFrame.new(3.6, 0.5 + 2 * 1.95, 2.6) * CFrame.Angles(0, 0.3, 0)
-		Xenite.cluster(pileFolder, top, 1.1 + n * 0.25)
+		Xenite.cluster(pileFolder, top, 0.72 + n * 0.06)
 	end
 end
 

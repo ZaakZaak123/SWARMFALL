@@ -5,7 +5,8 @@
     "ReplicatedStorage": {
       "Shared": { "$path": "src/shared" },
       "WeaponAssets": { "$path": "assets/weapon_models" },
-      "EnemyAssets": { "$path": "assets/enemy_models" }
+      "EnemyAssets": { "$path": "assets/enemy_models" },
+      "XeniteAssets": { "$path": "assets/xenite" }
     },
     "ServerScriptService": {
       "Server": { "$path": "src/server" }

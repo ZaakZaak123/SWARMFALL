@@ -12,6 +12,9 @@
       "EnemyAssets": {
         "$path": "assets/enemy_models"
       },
+      "XeniteAssets": {
+        "$path": "assets/xenite"
+      },
       "$attributes": {
         "TestPlace": true
       }
