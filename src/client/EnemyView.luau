@@ -17,6 +17,12 @@ local rgb = Color3.fromRGB
 local M = Enum.Material
 local HIDDEN = CFrame.new(0, -500, 0)
 local SNAP_DT = 1 / 15
+-- DD-099: the glide between two snapshots lasts as long as snapshots actually take to come (a phone's
+-- network brings them unevenly); a late one does not freeze the swarm: it keeps moving along its last
+-- step for up to half a step more, and the next snapshot glides on from wherever it got to.
+local snapDt = SNAP_DT
+local lastSnap = nil
+local OVERSHOOT = 1.5
 
 local EnemyView = {}
 
@@ -283,6 +289,11 @@ end
 -- rows: decoded records, count: number
 function EnemyView.snapshot(rows, count: number)
 	local now = os.clock()
+	if lastSnap then
+		local gap = math.clamp(now - lastSnap, 1 / 30, 0.25)
+		snapDt += (gap - snapDt) * 0.1
+	end
+	lastSnap = now
 	local seen = {}
 	for i = 1, count do
 		local r = rows[i]
@@ -348,8 +359,8 @@ function EnemyView.snapshot(rows, count: number)
 				EnemyView.onSpawn(r.x, r.z, r.kind)
 			end
 		else
-			rec.vx = (r.x - rec.cx) / SNAP_DT
-			rec.vz = (r.z - rec.cz) / SNAP_DT
+			rec.vx = (r.x - rec.cx) / snapDt
+			rec.vz = (r.z - rec.cz) / snapDt
 			rec.px, rec.pz = rec.dx, rec.dz
 			rec.pf = rec.face
 			rec.cx, rec.cz = r.x, r.z
@@ -583,10 +594,10 @@ function EnemyView.update(dt: number, camPos: Vector3)
 	local animate = Settings.quality >= 2
 	local farDist = Settings.Budget.animDistance[Settings.quality]
 	for id, rec in records do
-		local alpha = math.clamp((now - rec.t0) / SNAP_DT, 0, 1)
+		local alpha = math.clamp((now - rec.t0) / snapDt, 0, OVERSHOOT)
 		rec.dx = rec.px + (rec.cx - rec.px) * alpha
 		rec.dz = rec.pz + (rec.cz - rec.pz) * alpha
-		rec.face = lerpAngle(rec.pf, rec.cfAngle, alpha)
+		rec.face = lerpAngle(rec.pf, rec.cfAngle, math.min(alpha, 1))
 		local m = rec.model
 		local state = rec.state
 		local y = 0

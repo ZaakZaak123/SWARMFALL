@@ -43,8 +43,8 @@ if Settings.touch then
 	Settings.quality = 2
 end
 
--- DD-098: on a phone the gun aims and fires by itself at the nearest enemy (the thumbs only run and,
--- if they want, point the gun); the settings turn it back into the manual aim pad.
-Settings.autoAim = Settings.touch
+-- DD-098: on a phone the gun can aim and fire by itself at the nearest enemy. DD-099 (owner: «атака
+-- стала ещё хуже»): off by default, the manual aim pad is back; the settings still turn it on.
+Settings.autoAim = false
 
 return Settings

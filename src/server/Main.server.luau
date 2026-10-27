@@ -2315,7 +2315,8 @@ RunService.Heartbeat:Connect(function(dt)
 	snapshotClock += dt
 	local interval = if mode == "RUN" then 1 / SNAPSHOT_RATE else 0.25
 	if snapshotClock >= interval then
-		snapshotClock = 0
+		-- keep the remainder (DD-099): zeroing it made 15 Hz come out as 12 (every fifth 60 Hz frame)
+		snapshotClock = math.min(snapshotClock - interval, interval)
 		publish()
 	end
 end)

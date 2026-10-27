@@ -39,6 +39,7 @@ local touchVec = Vector2.zero
 local gui, pad, knob, buttons
 local touchLayoutSize = Vector2.zero
 local autoId = nil -- the enemy the touch auto-aim holds
+local dragRef = nil -- third person, touch: the camera's ground axes when the aiming thumb came down
 local marker = nil -- the ring under it
 local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
 local TURN = 16 -- radians per second the auto-aim swings the gun (quick, but a visible turn, not a snap)
@@ -327,6 +328,7 @@ function Controls.release()
 	touchVec = Vector2.zero
 	Controls.firing = false
 	autoId = nil
+	dragRef = nil
 	showMarker(nil)
 end
 
@@ -398,10 +400,31 @@ function Controls.update(
 			local clamped = if v.Magnitude > radius then v.Unit * radius else v
 			knob.Position = UDim2.new(0.5, clamped.X, 0.5, clamped.Y)
 			local active = touchAim ~= nil and v.Magnitude > radius * 0.2
-			if active then
-				Controls.look = Vector2.new(clamped.X / radius, -clamped.Y / radius)
-			end
 			firing = active
+			if not auto then
+				-- DD-099: the thumb points the gun, the camera follows. The direction is read on the ground
+				-- as the camera stood when the thumb came down (so the camera swinging in behind does not
+				-- spin it further), and the camera eases round behind it.
+				if active then
+					local cam = workspace.CurrentCamera.CFrame
+					if not dragRef then
+						local f = Vector3.new(cam.LookVector.X, 0, cam.LookVector.Z)
+						f = if f.Magnitude > 1e-3 then f.Unit else Vector3.zAxis
+						local r = Vector3.new(cam.RightVector.X, 0, cam.RightVector.Z)
+						r = if r.Magnitude > 1e-3 then r.Unit else Vector3.xAxis
+						dragRef = { f = f, r = r }
+					end
+					local w = dragRef.r * clamped.X - dragRef.f * clamped.Y
+					if w.Magnitude > 1e-3 then
+						ax, az = w.X / w.Magnitude, w.Z / w.Magnitude
+						local d = (math.atan2(ax, az) - math.atan2(fwdX or 0, fwdZ or 1) + math.pi) % (2 * math.pi)
+							- math.pi
+						CameraRig.look(-d * math.min(1, dt * 3), 0)
+					end
+				else
+					dragRef = nil
+				end
+			end
 			if auto then
 				-- the camera swings in behind the run while the right thumb leaves it alone
 				local run = Vector2.new(moved.X, moved.Z)
