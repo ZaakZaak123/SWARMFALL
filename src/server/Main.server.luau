@@ -28,6 +28,7 @@ local Neighbors = require(script.Parent.Neighbors)
 local Weekly = require(script.Parent.Weekly)
 local Guestbook = require(script.Parent.Guestbook)
 local TreeLight = require(script.Parent.TreeLight)
+local Directory = require(script.Parent.Directory)
 local Grove = require(Shared:WaitForChild("Grove"))
 local Layout = require(Shared:WaitForChild("ShelterLayout"))
 local Chronicle = require(Shared:WaitForChild("Chronicle"))
@@ -487,10 +488,29 @@ end
 local regroup, groveLook, toCamp, nextOpFor -- the grove and the camp (defined below)
 local sessionSquad = nil -- session: { host, members, open } — the squad flies home as one (DD-087)
 local homeBound: { [Player]: boolean } = {} -- session: on the way home (a failed hop retries any grove)
+-- DD-090: where the squad flies home — its own grove while it has seats for all of them; else the
+-- liveliest grove with room for the whole squad (all to the same one); else any.
+local sessionDest: string? = nil
+local sessionDestPicked = false
+local function homeGrove(): string?
+	if sessionDestPicked then
+		return sessionDest
+	end
+	sessionDestPicked = true
+	local need = if sessionSquad then #sessionSquad.members else #Players:GetPlayers()
+	local seats = if sessionFrom then Directory.seats(sessionFrom, need) else false
+	if sessionFrom and seats ~= false then
+		sessionDest = sessionFrom -- known to have room, or nothing is known: try it
+	else
+		sessionDest = Directory.find(math.max(1, need), { sessionFrom or "" })
+	end
+	return sessionDest
+end
 local function flyHome(player: Player, anyGrove: boolean)
 	local options = Instance.new("TeleportOptions")
-	if sessionFrom and not anyGrove then
-		options.ServerInstanceId = sessionFrom
+	local dest = if anyGrove then nil else homeGrove()
+	if dest then
+		options.ServerInstanceId = dest
 	end
 	options:SetTeleportData({ v = 1, back = true, squad = sessionSquad })
 	return pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, { player }, options)
@@ -724,7 +744,7 @@ end
 TeleportService.TeleportInitFailed:Connect(function(player: Player, _result, message)
 	warn("[SWARMFALL] teleport failed", player.Name, message)
 	leavingFor[player] = nil
-	if homeBound[player] and sessionFrom then
+	if homeBound[player] then
 		-- the grove closed or filled up meanwhile: any grove (the home travels with the profile)
 		homeBound[player] = nil
 		task.spawn(flyHome, player, true)
@@ -748,7 +768,7 @@ function toCamp(player: Player): boolean
 			-- DD-087: back to the grove the squad flew from (its plots are waiting), else any grove
 			homeBound[player] = true
 			local ok = flyHome(player, false)
-			if not ok and sessionFrom then
+			if not ok then
 				ok = flyHome(player, true)
 			end
 			if not ok then
@@ -982,6 +1002,20 @@ local function regroupFrom(player: Player)
 		return
 	end
 	local members = if type(data.squad.members) == "table" then data.squad.members else {}
+	if data.moved == true and player.UserId == tonumber(data.squad.host) then
+		-- DD-090: a squad moved in from another grove: the grove hears of its new neighbours
+		local e = Neighbors.note(
+			"users",
+			if #members > 1
+				then string.format("В рощу переехал отряд %s (%d)", player.DisplayName, #members)
+				else "В рощу переехал житель: " .. player.DisplayName,
+			player.UserId,
+			true
+		)
+		for _, p in Players:GetPlayers() do
+			social(p, "chronicle", e)
+		end
+	end
 	regroup(
 		tonumber(data.squad.host),
 		members,
@@ -1027,6 +1061,8 @@ Players.PlayerAdded:Connect(function(player)
 			end
 			groveLook(player)
 			if mode == "HUB" then
+				-- DD-090: the Tree may have grown bright after their win this week
+				Profile.earnDecor(player, TreeLight.state().tier)
 				-- DD-089: what came while they were away (♥ and visits from other groves)
 				local book = Guestbook.claim(player.UserId)
 				if book and player.Parent then
@@ -1510,6 +1546,19 @@ if RunService:IsStudio() then
 		world:hurtPlayer(p, p.hp + p.maxHp * 10, p.x + 4, p.z, nil)
 		return true
 	end
+	-- every seasonal decoration at once, one put up (DD-090: a look at them without a bright week)
+	function handlers.devDecor(player: Player, id)
+		local d = Profile.get(player)
+		if not d then
+			return false
+		end
+		for _, def in Meta.Decor do
+			d.decor[def.id] = Meta.weekIndex(os.time())
+		end
+		d.decorOn = if type(id) == "string" and Meta.decorById(id) then id else "LANTERNS"
+		pushProfile(player)
+		return true
+	end
 	-- the end of a sortie without fighting it (the way home, the chronicle, DD-087)
 	function handlers.devWin(player: Player)
 		if not world or world.result or not participant(player) then
@@ -1638,6 +1687,48 @@ function handlers.like(player: Player, uid)
 	Guestbook.like(uid, player.DisplayName)
 	social(player, "likeSent", "")
 	return true
+end
+
+-- DD-090: the whole squad moves to another grove together (the host asks; homes travel with their
+-- owners, plots here are freed). The directory picks a grove with room for all of them.
+function handlers.moveSquad(player: Player)
+	local sq = squads:squadOf(player)
+	if not campOnly() or not sq or sq.host ~= player or sq.launching then
+		return false
+	end
+	if not TELEPORTS then
+		social(player, "error", "В Studio переезда между рощами нет")
+		return false
+	end
+	local members = table.clone(sq.members)
+	sq.launching = true
+	local data = { v = 1, back = true, moved = true, squad = { host = player.UserId, members = {}, open = sq.open } }
+	for _, m in members do
+		table.insert(data.squad.members, m.UserId)
+		social(m, "launch", "в другую рощу")
+	end
+	task.spawn(function()
+		local options = Instance.new("TeleportOptions")
+		local dest = Directory.find(#members, { game.JobId })
+		if dest then
+			options.ServerInstanceId = dest
+		end
+		options:SetTeleportData(data)
+		local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, members, options)
+		if not ok then
+			warn("[SWARMFALL] squad move failed", err)
+			sq.launching = false
+			for _, m in members do
+				social(m, "error", "Переезд не удался — попробуй ещё раз")
+			end
+		end
+	end)
+	return true
+end
+
+-- DD-090: the seasonal decoration up on the plot (an id kept in the profile, or false for none).
+function handlers.decor(player: Player, id)
+	return (id == false or type(id) == "string") and Profile.setDecor(player, id)
 end
 
 -- DD-089: the plot's flag (colour and an earned emblem).
@@ -1948,6 +2039,7 @@ function groveInfo()
 			feed = Neighbors.feed(),
 			weekly = Weekly.boards(), -- DD-088
 			light = TreeLight.state(), -- DD-089
+			capacity = Players.MaxPlayers, -- DD-090
 		}
 	end
 	return groveCache
@@ -2078,6 +2170,7 @@ end
 
 local fallClock = 0
 local lastTier = nil -- the Tree's light tier last seen (DD-089)
+local directoryClock = 29 -- DD-090: this grove in the directory every 30 s (the first at once)
 RunService.Heartbeat:Connect(function(dt)
 	-- safety net at home: anyone who drops under the shelter ground is put back in the yard
 	fallClock += dt
@@ -2107,6 +2200,17 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 		if mode == "HUB" then
 			Neighbors.tick()
+			directoryClock += 1
+			if directoryClock >= 30 then
+				directoryClock = 0
+				local free = 0
+				for _, pl in Neighbors.plots() do
+					if not pl.uid then
+						free += 1
+					end
+				end
+				Directory.publish(free)
+			end
 			-- DD-089: the Tree grew brighter (somewhere in the world a grove won): the grove hears of it
 			local tier = TreeLight.state().tier
 			if lastTier and tier > lastTier then
@@ -2123,6 +2227,7 @@ RunService.Heartbeat:Connect(function(dt)
 				)
 				for _, p in Players:GetPlayers() do
 					social(p, "chronicle", e)
+					Profile.earnDecor(p, tier) -- DD-090: a win this week + the Tree bright enough
 				end
 			end
 			lastTier = tier

@@ -31,6 +31,7 @@ export type Summary = {
 	siege: number,
 	home: { [string]: boolean },
 	mentor: number,
+	decor: { [string]: boolean },
 }
 
 function Chronicle.summary(d): Summary
@@ -50,6 +51,13 @@ function Chronicle.summary(d): Summary
 		siege = (d.outpost and d.outpost.best) or 0,
 		home = table.clone(d.home or {}),
 		mentor = d.mentor or 0,
+		decor = (function()
+			local out = {}
+			for id in d.decor or {} do
+				out[id] = true
+			end
+			return out
+		end)(),
 	}
 end
 
@@ -98,6 +106,12 @@ function Chronicle.diff(before: Summary, after: Summary, name: string): { { icon
 			add("star", string.format("%s — эталон в коллекции: %s", name, species), true)
 		elseif now >= 3 and was < 3 then
 			add("hive", string.format("%s — полный образец: %s", name, species), false)
+		end
+	end
+	-- DD-090: the week's decoration came home
+	for _, def in Meta.Decor do
+		if (after.decor or {})[def.id] and not (before.decor or {})[def.id] then
+			add(def.icon, string.format("%s — сезонное украшение: %s", name, def.name), false)
 		end
 	end
 	-- DD-088: a veteran won beside a newcomer

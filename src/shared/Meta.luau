@@ -411,6 +411,27 @@ function Meta.treeTier(wins: number): number
 	return tier
 end
 
+-- DD-090: seasonal decorations. Each week has its own; a survivor who wins a fight that week while the
+-- Tree burns at DecorTier or brighter keeps it for good and may put it up on the plot.
+Meta.DecorTier = 2
+Meta.Decor = {
+	{ id = "LANTERNS", name = "Бумажные фонарики", icon = "sun" },
+	{ id = "BUNTING", name = "Флажки", icon = "pin" },
+	{ id = "FLOWERS", name = "Клумбы", icon = "heart" },
+	{ id = "FIREFLIES", name = "Светлячки", icon = "star" },
+}
+function Meta.decorOfWeek(week: number)
+	return Meta.Decor[week % #Meta.Decor + 1]
+end
+function Meta.decorById(id: string?)
+	for _, d in Meta.Decor do
+		if d.id == id then
+			return d
+		end
+	end
+	return nil
+end
+
 -- DD-089: the plot's flag. Eight cloth colours; the emblems are earned (Showcase.emblems).
 Meta.BannerColors = {
 	{ 198, 255, 66 },

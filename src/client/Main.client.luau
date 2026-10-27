@@ -1058,6 +1058,8 @@ ownShowcase = function()
 		trophyLog = prof.trophyLog,
 		mentor = prof.mentor,
 		laurels = prof.laurels,
+		decor = prof.decor,
+		decorOn = prof.decorOn,
 	}
 	local weapon = Menus.selectedWeapon()
 	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])

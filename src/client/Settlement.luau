@@ -28,6 +28,7 @@ local Fx = require(script.Parent.Fx)
 local Models = require(script.Parent.Models)
 local Cableway = require(script.Parent.Cableway)
 local SpecimenGallery = require(script.Parent.SpecimenGallery)
+local PlotDecor = require(script.Parent.PlotDecor)
 local Settings = require(script.Parent.Settings)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
@@ -66,6 +67,7 @@ local feedKey = nil
 local visible = true
 local treeLamps = {} -- { part, light } — lit by the Light of the Tree (DD-089)
 local treeLine: TextLabel? = nil
+local treeDecor: TextLabel? = nil -- DD-090: this week's decoration and how it is earned
 local pending = {} -- chronicle lines waiting for a calm moment
 local calm = false
 local tell -- shows a chronicle line (defined with the chronicle below)
@@ -285,7 +287,16 @@ local function buildTree(parent: Instance)
 		Parent = b,
 	})
 	stroke(treeLine)
-	b.Size = UDim2.fromOffset(420, 56)
+	treeDecor = label("", {
+		Position = UDim2.fromOffset(0, 52),
+		Size = UDim2.new(1, 0, 0, 18),
+		FontFace = F.bodyBold,
+		TextSize = 13,
+		TextColor3 = C.gold,
+		Parent = b,
+	})
+	stroke(treeDecor)
+	b.Size = UDim2.fromOffset(460, 74)
 end
 
 -- The Light of the Tree (DD-089): the settlers' lanterns light up with every grove's wins this week.
@@ -325,6 +336,19 @@ local function setTreeLight(light)
 				math.floor(light.bonus * 100 + 0.5)
 			)
 		treeLine.TextColor3 = if light.tier > 0 then rgb(255, 214, 140) else C.dim
+	end
+	if treeDecor then
+		local def = Meta.decorOfWeek(light.week or Meta.weekIndex(os.time()))
+		treeDecor.Text = if light.tier >= Meta.DecorTier
+			then string.format(
+				"Украшение недели «%s» — за любую победу до понедельника",
+				def.name
+			)
+			else string.format(
+				"Украшение недели «%s» — когда Древо загорится на %d/5",
+				def.name,
+				Meta.DecorTier
+			)
 	end
 end
 
@@ -952,7 +976,8 @@ end
 
 -- Neighbours' homes --------------------------------------------------------------------------------------
 local function homeKey(e): string
-	local parts = { e.id, e.weapon or "", tostring(e.form), e.mastery or 0, e.siege or 0, e.stock or 0 }
+	local parts =
+		{ e.id, e.weapon or "", tostring(e.form), e.mastery or 0, e.siege or 0, e.stock or 0, tostring(e.decor) }
 	for _, id in Meta.HomeOrder do
 		table.insert(parts, if e.home and e.home[id] then "1" else "0")
 	end
@@ -1033,6 +1058,8 @@ local function buildHome(i: number, e)
 			artModel("RUBBLE", 1.9, base, home)
 		end
 	end
+	-- DD-090: the seasonal decoration they put up
+	PlotDecor.build(e.decor, f, home)
 	-- the cableway terminal and the cave its cable comes out of
 	local t = Layout.Terminal
 	local metal = rgb(84, 78, 70)
@@ -1429,33 +1456,27 @@ local function coachPanel()
 	d.AnchorPoint = Vector2.new(0, 0.5)
 	d.Position = UDim2.new(0, 14, 0.5, 0)
 	d.Parent = panel
-	label(
-		"",
-		{
-			Name = "Title",
-			Position = UDim2.fromOffset(72, 10),
-			Size = UDim2.new(1, -86, 0, 22),
-			FontFace = F.display,
-			TextSize = 19,
-			TextColor3 = C.lime,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = panel,
-		}
-	)
-	label(
-		"",
-		{
-			Name = "Text",
-			Position = UDim2.fromOffset(72, 32),
-			Size = UDim2.new(1, -86, 0, 36),
-			FontFace = F.bodyBold,
-			TextSize = 14,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			Parent = panel,
-		}
-	)
+	label("", {
+		Name = "Title",
+		Position = UDim2.fromOffset(72, 10),
+		Size = UDim2.new(1, -86, 0, 22),
+		FontFace = F.display,
+		TextSize = 19,
+		TextColor3 = C.lime,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = panel,
+	})
+	label("", {
+		Name = "Text",
+		Position = UDim2.fromOffset(72, 32),
+		Size = UDim2.new(1, -86, 0, 36),
+		FontFace = F.bodyBold,
+		TextSize = 14,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Parent = panel,
+	})
 	coachGui = g
 	return g
 end
@@ -1553,16 +1574,13 @@ local function showBook(data)
 		Parent = g,
 	}, C.pink)
 	new("UIScale", { Scale = 0.6, Parent = panel })
-	label(
-		"ПОКА ТЕБЯ НЕ БЫЛО",
-		{
-			Position = UDim2.fromOffset(0, 20),
-			Size = UDim2.new(1, 0, 0, 32),
-			FontFace = F.display,
-			TextSize = 28,
-			Parent = panel,
-		}
-	)
+	label("ПОКА ТЕБЯ НЕ БЫЛО", {
+		Position = UDim2.fromOffset(0, 20),
+		Size = UDim2.new(1, 0, 0, 32),
+		FontFace = F.display,
+		TextSize = 28,
+		Parent = panel,
+	})
 	local lines = {}
 	if (data.likes or 0) > 0 then
 		table.insert(
@@ -1584,16 +1602,12 @@ local function showBook(data)
 		TextWrapped = true,
 		Parent = panel,
 	})
-	local ok, okLabel = Theme.button(
-		"ОТЛИЧНО",
-		{
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -20),
-			Size = UDim2.fromOffset(200, 50),
-			TextSize = 16,
-		},
-		"primary"
-	)
+	local ok, okLabel = Theme.button("ОТЛИЧНО", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -20),
+		Size = UDim2.fromOffset(200, 50),
+		TextSize = 16,
+	}, "primary")
 	ok.Parent = panel
 	local _ = okLabel
 	ok.Activated:Connect(function()

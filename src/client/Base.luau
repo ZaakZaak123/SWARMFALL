@@ -29,6 +29,7 @@ local SpecimenGallery = require(script.Parent.SpecimenGallery)
 local Layout = require(Shared:WaitForChild("ShelterLayout"))
 local Grove = require(Shared:WaitForChild("Grove"))
 local Chronicle = require(Shared:WaitForChild("Chronicle"))
+local PlotDecor = require(script.Parent.PlotDecor)
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -1085,8 +1086,17 @@ local function statue(model: Model, gold: boolean)
 end
 
 -- entry: a Showcase entry (or the same fields built from the own profile); nil hides the row.
+local decorFolder, decorKey = nil, nil -- DD-090: the seasonal decoration up in the yard
 function Base.setShowcase(entry)
 	showEntry = entry
+	local want = entry and entry.decor or nil
+	if want ~= decorKey or (decorFolder and not decorFolder.Parent) then
+		decorKey = want
+		if decorFolder then
+			decorFolder:Destroy()
+		end
+		decorFolder = PlotDecor.build(want, frame, folder)
+	end
 	labResearch = (entry and entry.collection) or (if entry then { EN_SPITTER = entry.sample or 0 } else {})
 	labOwner = entry and entry.name
 	labOwn = entry ~= nil and entry.id == Players.LocalPlayer.UserId
@@ -1742,9 +1752,11 @@ function Base.refresh()
 				plot, open = h.plot, h.statusKey == "open"
 			end
 		end
+		local cap = camp.grove and camp.grove.capacity
 		ui.tag.Text = string.format(
-			"ПОСЛЕДНЯЯ РОЩА  ·  ЖИТЕЛЕЙ: %d%s",
+			"ПОСЛЕДНЯЯ РОЩА  ·  ЖИТЕЛЕЙ: %d%s%s",
 			#(camp.hunters or {}),
+			if cap and cap > 0 then "/" .. cap else "",
 			if plot then "  ·  УЧАСТОК " .. plot else ""
 		)
 		ui.owner.Text = if #players > 1
@@ -1940,6 +1952,7 @@ function Base.setFrame(cf: CFrame)
 	pileShown, pileFolder = -1, nil
 	shelfKey, shelfFolder = nil, nil
 	showFolder, showKey = nil, nil
+	decorFolder, decorKey = nil, nil
 	lampsOn = false
 	buildWorld()
 	buildSpots()

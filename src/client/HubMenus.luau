@@ -294,6 +294,35 @@ local function buildOutposts()
 		}
 	)
 	ui.outpostList = scrollList(m.panel, 96)
+	-- DD-090: move to another grove — the host takes the whole squad, homes travel with their owners
+	ui.move, ui.moveLabel = Theme.button("СМЕНИТЬ РОЩУ", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -86, 0, 16),
+		Size = UDim2.fromOffset(200, 40),
+		TextSize = 12,
+		ZIndex = 43,
+	})
+	ui.move.Parent = m.panel
+	ui.moveLabel.ZIndex = 44
+	ui.move.Activated:Connect(function()
+		local sq = mySquad()
+		local n = if sq then #sq.players else 1
+		Audio.play("ui")
+		HubMenus.toast(
+			if n > 1
+				then string.format(
+					"Переехать всем отрядом (%d) в другую рощу? Дома переедут с вами.",
+					n
+				)
+				else "Переехать в другую рощу? Твой дом переедет с тобой.",
+			C.cyan,
+			"ПЕРЕЕХАТЬ",
+			function()
+				ui.outposts.hide()
+				H.send("moveSquad")
+			end
+		)
+	end)
 end
 
 function HubMenus.refreshOutposts()
@@ -375,6 +404,8 @@ function HubMenus.refreshOutposts()
 end
 
 function HubMenus.showOutposts()
+	local sq = mySquad()
+	ui.move.Visible = sq == nil or sq.host == myId -- only the host moves a squad
 	ui.outKey = nil
 	ui.outposts.show()
 	HubMenus.refreshOutposts()
@@ -528,7 +559,7 @@ end
 
 -- The plot's flag (DD-089) -------------------------------------------------------------------------------------
 local function buildBanner2()
-	local m = H.modal("PlotFlag", 720, 520, "ФЛАГ УЧАСТКА", C.lime)
+	local m = H.modal("PlotFlag", 720, 630, "ФЛАГ УЧАСТКА", C.lime)
 	ui.flag = m
 	label(
 		"Флаг стоит у твоей таблички: цвет — любой, эмблема — за то, что ты сделал.",
@@ -560,19 +591,16 @@ local function buildBanner2()
 	})
 	ui.flagEmblems = new("Frame", {
 		Position = UDim2.fromOffset(28, 240),
-		Size = UDim2.new(1, -56, 1, -264),
+		Size = UDim2.new(1, -56, 0, 222),
 		ZIndex = 43,
 		Parent = m.panel,
 	})
-	new(
-		"UIGridLayout",
-		{
-			CellSize = UDim2.fromOffset(212, 64),
-			CellPadding = UDim2.fromOffset(10, 10),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Parent = ui.flagEmblems,
-		}
-	)
+	new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(212, 64),
+		CellPadding = UDim2.fromOffset(10, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = ui.flagEmblems,
+	})
 end
 
 local flagState = nil -- { color, emblem, emblems }
@@ -630,34 +658,28 @@ local function drawFlag()
 		ic.Position = UDim2.fromOffset(12, 17)
 		ic.ZIndex = 45
 		ic.Parent = cell
-		label(
-			e.name,
-			{
-				Position = UDim2.fromOffset(54, 8),
-				Size = UDim2.new(1, -60, 0, 22),
-				FontFace = F.bodyHeavy,
-				TextSize = 15,
-				TextColor3 = if e.ok then C.text else C.dim,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 45,
-				Parent = cell,
-			}
-		)
-		label(
-			if e.ok then "Открыто" else e.why,
-			{
-				Position = UDim2.fromOffset(54, 30),
-				Size = UDim2.new(1, -60, 0, 28),
-				FontFace = F.body,
-				TextSize = 11,
-				TextColor3 = if e.ok then C.lime else C.dim,
-				TextWrapped = true,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextYAlignment = Enum.TextYAlignment.Top,
-				ZIndex = 45,
-				Parent = cell,
-			}
-		)
+		label(e.name, {
+			Position = UDim2.fromOffset(54, 8),
+			Size = UDim2.new(1, -60, 0, 22),
+			FontFace = F.bodyHeavy,
+			TextSize = 15,
+			TextColor3 = if e.ok then C.text else C.dim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 45,
+			Parent = cell,
+		})
+		label(if e.ok then "Открыто" else e.why, {
+			Position = UDim2.fromOffset(54, 30),
+			Size = UDim2.new(1, -60, 0, 28),
+			FontFace = F.body,
+			TextSize = 11,
+			TextColor3 = if e.ok then C.lime else C.dim,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			ZIndex = 45,
+			Parent = cell,
+		})
 		cell.Activated:Connect(function()
 			if not e.ok then
 				Audio.play("warn", 0.3)
@@ -672,13 +694,123 @@ local function drawFlag()
 end
 
 -- pub: the own public profile (banner + emblems)
+-- DD-090: the seasonal decorations row under the emblems: what was brought home, and how this week's
+-- one is earned.
+local function drawDecor()
+	local st = flagState
+	if not ui.flagDecor then
+		label("УКРАШЕНИЕ УЧАСТКА", {
+			Position = UDim2.fromOffset(28, 474),
+			Size = UDim2.new(1, -56, 0, 18),
+			FontFace = F.head,
+			TextSize = 12,
+			TextColor3 = C.gold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = ui.flag.panel,
+		})
+		ui.flagDecor = new("Frame", {
+			Position = UDim2.fromOffset(28, 498),
+			Size = UDim2.new(1, -56, 0, 70),
+			ZIndex = 43,
+			Parent = ui.flag.panel,
+			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
+		})
+	end
+	H.clear(ui.flagDecor)
+	local thisWeek = Meta.decorOfWeek(Meta.weekIndex(os.time()))
+	local function cell(order: number, id, name: string, sub: string, icon: string, ok: boolean)
+		local on = st.decorOn == id or (id == false and st.decorOn == nil)
+		local c = new("TextButton", {
+			Size = UDim2.fromOffset(126, 70),
+			BackgroundColor3 = C.ink,
+			BackgroundTransparency = if ok then 0.15 else 0.55,
+			Text = "",
+			Corner = 14,
+			Stroke = {
+				Color = if on then C.gold else C.white,
+				Transparency = if on then 0 else 0.85,
+				Thickness = if on then 2 else 1,
+			},
+			LayoutOrder = order,
+			ZIndex = 44,
+			Parent = ui.flagDecor,
+		})
+		local ic = Icons.new(icon, 22, if ok then C.gold else C.dim)
+		ic.Position = UDim2.fromOffset(8, 8)
+		ic.ZIndex = 45
+		ic.Parent = c
+		label(
+			name,
+			{
+				Position = UDim2.fromOffset(36, 6),
+				Size = UDim2.new(1, -40, 0, 26),
+				FontFace = F.bodyHeavy,
+				TextSize = 12,
+				TextWrapped = true,
+				TextColor3 = if ok then C.text else C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 45,
+				Parent = c,
+			}
+		)
+		label(
+			sub,
+			{
+				Position = UDim2.fromOffset(8, 34),
+				Size = UDim2.new(1, -14, 0, 32),
+				FontFace = F.body,
+				TextSize = 10,
+				TextWrapped = true,
+				TextColor3 = if ok then C.lime else C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				ZIndex = 45,
+				Parent = c,
+			}
+		)
+		c.Activated:Connect(function()
+			if not ok then
+				Audio.play("warn", 0.3)
+				return
+			end
+			st.decorOn = if id == false then nil else id
+			H.send("decor", id)
+			Audio.play("ui", 0.6, 1.25)
+			drawDecor()
+		end)
+	end
+	cell(0, false, "Без украшения", "Чистый двор", "check", true)
+	for i, def in Meta.Decor do
+		local ok = st.decor[def.id] ~= nil
+		local sub = if ok
+			then "Висит у тебя"
+			elseif def.id == thisWeek.id then string.format(
+				"Эта неделя: победа при Свете Древа %d/5",
+				Meta.DecorTier
+			)
+			else "Придёт в свою неделю"
+		if ok and st.decorOn ~= def.id then
+			sub = "Повесить"
+		end
+		cell(i, def.id, def.name, sub, def.icon, ok)
+	end
+end
+
 function HubMenus.showFlag(pub)
 	if not pub or not pub.emblems then
 		return
 	end
 	local b = pub.banner or { color = 1, emblem = "pin" }
-	flagState = { color = b.color or 1, emblem = b.emblem or "pin", emblems = pub.emblems }
+	flagState = {
+		color = b.color or 1,
+		emblem = b.emblem or "pin",
+		emblems = pub.emblems,
+		decor = pub.decor or {},
+		decorOn = pub.decorOn,
+	}
 	drawFlag()
+	drawDecor()
 	ui.flag.show()
 end
 

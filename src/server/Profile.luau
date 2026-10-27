@@ -88,6 +88,8 @@ local function defaults()
 		week = { n = 0, defense = 0, research = 0, help = 0 }, -- DD-088: this week's board values
 		laurels = {}, -- DD-088: board -> { n = times in the week's top three, last = week index }
 		banner = { color = 1, emblem = "pin" }, -- DD-089: the plot's flag
+		decor = {}, -- DD-090: seasonal decorations kept (id -> week earned)
+		decorOn = nil, -- DD-090: the one up on the plot (nil = none)
 	}
 end
 
@@ -302,6 +304,8 @@ function Profile.public(player: Player)
 		laurels = d.laurels,
 		banner = Showcase.banner(d),
 		emblems = Showcase.emblems(d),
+		decor = d.decor,
+		decorOn = d.decorOn,
 	}
 end
 
@@ -681,6 +685,38 @@ function Profile.addLikes(player: Player, n: number)
 	end
 end
 
+-- DD-090: the week's decoration, kept for good: a win this week and the Tree at DecorTier or brighter.
+function Profile.earnDecor(player: Player, tier: number): boolean
+	local d = Profile.get(player)
+	if not d or tier < Meta.DecorTier then
+		return false
+	end
+	local week = Profile.thisWeek(d)
+	if (week.wins or 0) < 1 then
+		return false
+	end
+	local def = Meta.decorOfWeek(week.n)
+	if d.decor[def.id] then
+		return false
+	end
+	d.decor[def.id] = week.n
+	if d.decorOn == nil then
+		d.decorOn = def.id -- the first one goes up at once
+	end
+	mark(player)
+	return true
+end
+
+function Profile.setDecor(player: Player, id): boolean
+	local d = Profile.get(player)
+	if not d or (id ~= false and (type(id) ~= "string" or not d.decor[id])) then
+		return false
+	end
+	d.decorOn = if id == false then nil else id
+	mark(player)
+	return true
+end
+
 -- DD-089: the plot's flag: any of the eight colours, an earned emblem.
 function Profile.setBanner(player: Player, color: number, emblem: string): boolean
 	local d = Profile.get(player)
@@ -878,7 +914,7 @@ end
 local function thisWeek(d)
 	local n = Meta.weekIndex(os.time())
 	if type(d.week) ~= "table" or d.week.n ~= n then
-		d.week = { n = n, defense = 0, research = 0, help = 0 }
+		d.week = { n = n, defense = 0, research = 0, help = 0, wins = 0 }
 	end
 	return d.week
 end
@@ -973,6 +1009,13 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	end
 	if mode == "siege" and result.victory then
 		week.defense = math.max(week.defense, result.siege or 1)
+	end
+	if result.victory then
+		week.wins = (week.wins or 0) + 1
+		-- DD-090: a win while the Tree burns bright enough brings the week's decoration home
+		if light >= Meta.DecorTier and Profile.earnDecor(player, light) then
+			reward.decor = Meta.decorOfWeek(week.n).id
+		end
 	end
 	if result.anomaly then
 		for _, a in Meta.Anomalies do

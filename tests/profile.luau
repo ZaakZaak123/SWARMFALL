@@ -240,6 +240,21 @@ do
 	check(not Profile.setBanner(v, 99, "pin"), "no colour outside the eight")
 	local day = Meta.dayIndex(os.time())
 	check(Profile.likeAway(v, 777, day) and not Profile.likeAway(v, 777, day), "♥ for an absent home: once a day")
+	-- DD-090: the week's decoration
+	dv.decor, dv.decorOn = {}, nil
+	local dim = Profile.grantRun(v, "d-1", result(true, { id = 501 }), "O01", 1, { light = 1 })
+	check(dim.decor == nil and next(dv.decor) == nil, "a dim Tree brings no decoration")
+	local bright = Profile.grantRun(v, "d-2", result(true, { id = 501 }), "O01", 1, { light = Meta.DecorTier })
+	local wk = Meta.decorOfWeek(Meta.weekIndex(os.time())).id
+	check(bright.decor == wk and dv.decorOn == wk, "a win under a bright Tree brings the week's decoration, up at once")
+	check(not Profile.earnDecor(v, 5), "each decoration once")
+	check(
+		Profile.setDecor(v, false) and dv.decorOn == nil and not Profile.setDecor(v, "FLOWERS_X"),
+		"take it down; no unknown ones"
+	)
+	dv.week.wins = 0
+	dv.decor = {}
+	check(not Profile.earnDecor(v, 5), "no win this week, no decoration")
 end
 
 if failures > 0 then

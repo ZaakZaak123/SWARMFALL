@@ -234,6 +234,15 @@ check(b1.color == 4 and b1.emblem == "pin", "an unearned emblem falls back to th
 veteran.banner = { color = 99, emblem = "crown" }
 local b2 = Showcase.banner(veteran)
 check(b2.color == #Meta.BannerColors and b2.emblem == "crown", "colour clamped, earned emblem kept")
+local seen = {}
+for w = 100, 100 + #Meta.Decor - 1 do
+	seen[Meta.decorOfWeek(w).id] = true
+end
+local kinds = 0
+for _ in seen do
+	kinds += 1
+end
+check(kinds == #Meta.Decor, "the weeks go through every decoration (DD-090)")
 check(
 	Meta.treeTier(0) == 0 and Meta.treeTier(30) == 1 and Meta.treeTier(99999) == #Meta.TreeTiers,
 	"tree tiers by the week's wins"

@@ -2782,6 +2782,12 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	-- unlocks
 	clear(ui.resUnlocks)
 	local k = 0
+	local decor = reward and Meta.decorById(reward.decor)
+	if decor then
+		-- DD-090: the week's decoration came home with this win
+		k += 1
+		unlockCard(decor.icon, "СЕЗОННОЕ УКРАШЕНИЕ", decor.name, C.gold, k)
+	end
 	for _, u in reward and reward.unlocked or {} do
 		local kind = u[1]
 		if kind == "op" then

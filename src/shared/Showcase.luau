@@ -312,6 +312,7 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 			return out
 		end)(),
 		banner = Showcase.banner(d), -- DD-089: the plot's flag
+		decor = if d.decorOn and (d.decor or {})[d.decorOn] then d.decorOn else nil, -- DD-090: up on the plot
 		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07")
 			then "c"
 			else ""),
