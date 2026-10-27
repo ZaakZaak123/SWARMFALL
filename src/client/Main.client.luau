@@ -2372,7 +2372,9 @@ local function frame(dt: number)
 	local choosing = Menus.offerVisible()
 	-- the shooting range on the base drives the gun while the hunter stands on its mark (DD-055)
 	local ranging = (mode == "LOBBY" or mode == "HUB") and Base.isActive() and Range.wants(root and root.Position)
-	Controls.enabled = (isPlaying and not choosing) or ranging
+	-- DD-101: the S01 lesson pauses the run and waits for the hammer button; on a phone that button is
+	-- part of the touch controls, so they stay up during that pause (the paused world ignores the rest)
+	Controls.enabled = (isPlaying and not choosing) or ranging or (me ~= nil and me.s01Tutorial == true)
 	-- Camera look input first (mouse-look / stick-look in third & first person), then aim.
 	if mode == "RUN" then -- at home the Roblox camera owns the mouse (right-drag turns it)
 		CameraRig.processInput(dt, Controls.device, isPlaying and not choosing, Controls.look)

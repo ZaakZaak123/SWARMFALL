@@ -117,7 +117,7 @@ local function step()
 	end
 	local active = Settings.touch
 	local vp = cam.ViewportSize
-	local k = if active then math.clamp(vp.Y / 700, 0.6, 1) else 1
+	local k = if active then math.clamp(vp.Y / 800, 0.45, 1) else 1 -- (DD-101: was /700, ≥ 0.6)
 	local char = Players.LocalPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local from = if root then root.Position else cam.CFrame.Position

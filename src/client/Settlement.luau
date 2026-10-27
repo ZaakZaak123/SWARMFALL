@@ -1881,7 +1881,11 @@ local function buildSignals()
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.new(0.5, 0, 0.42, 0)
 	ic.Parent = btn
-	local keyLabel = label("СИГНАЛ · G", {
+	-- DD-101: a phone has no G key, and the button may be smaller there
+	if Settings.touch then
+		new("UIScale", { Scale = 0.8, Parent = btn })
+	end
+	local keyLabel = label(if Settings.touch then "СИГНАЛ" else "СИГНАЛ · G", {
 		Position = UDim2.new(0, -18, 1, 2),
 		Size = UDim2.new(1, 36, 0, 16),
 		FontFace = F.head,

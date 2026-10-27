@@ -1235,7 +1235,8 @@ function Hud.update(run, me, extra, dt: number)
 			ui.howTo.BackgroundTransparency = 0.15 + k * 0.85
 		end
 		-- Prompt pill (S01 lesson / legacy evolution)
-		ui.evolve.Visible = (me.canEvolve or me.s01Tutorial) and not touch
+		-- (on a phone the S01 lesson's pill shows too: one more thing to tap besides the hammer button)
+		ui.evolve.Visible = (me.canEvolve and not touch) or me.s01Tutorial
 		if me.s01Tutorial then
 			ui.evolveScale.Scale = 1 + math.sin(now * 8) * 0.06
 			ui.evolveText.Text = "ГРОМОБОЙ — УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")
