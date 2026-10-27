@@ -545,6 +545,8 @@ end
 
 -- Remotes -----------------------------------------------------------------------------------------
 local storyChecked = false -- this run's opening scene (intro / arrival) was decided (DD-075)
+local joinAsked = false -- DD-088: this spectator asked to join the defence at the next breather
+local joinOfferedAt = -1e9
 local function enterRun()
 	inRun = true
 	storyChecked = false
@@ -572,6 +574,7 @@ local function enterRun()
 end
 
 local function leaveRun()
+	joinAsked = false
 	inRun = false
 	run, me = nil, nil
 	Hud.setVisible(false)
@@ -788,6 +791,25 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И В БОЙ")
 	elseif not scened and run.phase == "COUNTDOWN" then
 		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
+	elseif not scened and run.phase ~= "COUNTDOWN" and not me and run.mode == "siege" then
+		-- DD-088: a drill defence takes a spectator at the next breather between waves
+		Menus.note(
+			if joinAsked
+				then "НАБЛЮДЕНИЕ  ·  ТЫ ВСТУПИШЬ В ОБОРОНУ В ПЕРЕДЫШКУ"
+				else "НАБЛЮДЕНИЕ  ·  В ПЕРЕДЫШКУ МОЖНО ВСТУПИТЬ В ОБОРОНУ"
+		)
+		if run.joinable and not joinAsked and not run.result and os.clock() - joinOfferedAt > 20 then
+			joinOfferedAt = os.clock()
+			HubMenus.toast(
+				"Передышка — бур ждёт подмоги",
+				C.lime,
+				"ВСТУПИТЬ",
+				function()
+					joinAsked = true
+					send("joinRun", Menus.selectedWeapon())
+				end
+			)
+		end
 	elseif not scened and run.phase ~= "COUNTDOWN" and not me then
 		Menus.note("НАБЛЮДЕНИЕ  ·  ТЫ ВОЙДЁШЬ В СЛЕДУЮЩУЮ ВЫЛАЗКУ")
 	elseif not scened and me and not me.alive and not run.result and me.downed then
@@ -907,6 +929,14 @@ Settlement.init({
 	say = function(i: number)
 		send("say", i)
 	end,
+	weekly = function()
+		local prof = Menus.profile()
+		HubMenus.showWeekly(Settlement.weekly(), prof and prof.week)
+	end,
+	joinFight = function(hostUid: number)
+		send("joinFight", hostUid)
+		Audio.play("level", 0.6, 1.2)
+	end,
 })
 remotes:WaitForChild(Codec.Remotes.Social).OnClientEvent:Connect(function(kind, data)
 	if type(kind) ~= "string" then
@@ -1015,6 +1045,8 @@ ownShowcase = function()
 		saves = prof.saves,
 		title = prof.title,
 		trophyLog = prof.trophyLog,
+		mentor = prof.mentor,
+		laurels = prof.laurels,
 	}
 	local weapon = Menus.selectedWeapon()
 	return Showcase.build(myId, player.DisplayName, d, weapon, prof.equip and prof.equip[weapon])

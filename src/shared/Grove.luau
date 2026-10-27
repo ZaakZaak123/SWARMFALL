@@ -24,6 +24,7 @@ local function onSquare(angle: number, r: number): Vector3
 end
 Grove.Fire = onSquare(math.rad(22.5), 24)
 Grove.Board = onSquare(math.rad(-22.5), 25)
+Grove.WeekBoard = onSquare(math.rad(-67.5), 25) -- DD-088: the week's best, beside the chronicle
 
 -- The shelter frame of plot i: the courtyard centre, local -Z towards the Tree (the gate side).
 function Grove.frame(i: number): CFrame

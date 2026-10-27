@@ -1186,7 +1186,8 @@ Defs.Coop = { ReviveRadius = 6.5, ReviveTime = 3, ReviveHp = 0.4, ReviveIFrames 
 
 -- Squad rules (DD-012): a player at 0 HP is downed, not dead. A teammate standing close fills the revive
 -- ring; nobody close = it slowly drains. Bleed-out ends the operation for that player (spectate).
-Defs.Coop = { ReviveRadius = 6.5, ReviveTime = 3, ReviveHp = 0.4, ReviveIFrames = 2, BleedOut = 30, Drain = 0.5 }
+Defs.Coop =
+	{ ReviveRadius = 6.5, ReviveTime = 3, ReviveHp = 0.4, ReviveIFrames = 2, BleedOut = 30, Drain = 0.5, JoinMax = 4 } -- JoinMax (DD-088): catch-up cards for a hunter joining a drill defence
 
 -- Reactor (DD-004): a defendable objective. HP per operation (Ops), scaled for squads.
 Defs.Reactor = {

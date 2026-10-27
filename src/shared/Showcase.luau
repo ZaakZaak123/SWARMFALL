@@ -103,6 +103,32 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 			"Отбил оборону бура уровня " .. best
 		)
 	end
+	-- DD-088: the grove's mentors and the week's best
+	if (d.mentor or 0) >= Meta.MentorTitle then
+		add(
+			"MENTOR",
+			"Наставник рощи",
+			"users",
+			"Выиграл бои вместе с новичками: " .. (d.mentor or 0)
+		)
+	end
+	local laurelTitles = {
+		defense = { "WEEK_DEFENSE", "Лучший защитник недели", "shield" },
+		research = { "WEEK_RESEARCH", "Лучший исследователь недели", "hive" },
+		help = { "WEEK_HELP", "Лучший помощник недели", "heart" },
+	}
+	for _, board in Meta.WeeklyBoards do
+		local l = (d.laurels or {})[board]
+		if type(l) == "table" and (l.n or 0) > 0 then
+			local t = laurelTitles[board]
+			add(
+				t[1],
+				t[2],
+				t[3],
+				"В тройке недели рощи: " .. Meta.WeeklyWords[board] .. " · " .. l.n .. " раз"
+			)
+		end
+	end
 	if won(d, "O05") then
 		add("BROOD", "Победил Мать роя", "skull", "Убил королеву роя в вылазке 5")
 	end
@@ -155,6 +181,9 @@ function Showcase.trophies(d, weapon: string, mastery: number): { { string } }
 			out,
 			{ "star", (Defs.Weapons[weapon] and Defs.Weapons[weapon].name or "Оружие") .. " M" .. mastery }
 		)
+	end
+	if (d.mentor or 0) > 0 then
+		table.insert(out, { "users", "Наставник · " .. d.mentor })
 	end
 	local raid = d.raid and (d.raid.attack or d.raid.rating) or 0
 	if (d.raid and d.raid.wins or 0) > 0 then

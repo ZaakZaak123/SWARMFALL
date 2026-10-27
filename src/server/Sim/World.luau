@@ -557,7 +557,9 @@ function World:hurtPlayer(p, amount: number, fromX: number, fromZ: number, src):
 		p.iframeUntil = self.t + 2.5
 		self:banner(
 			"АВАРИЙНЫЙ ЩИТ",
-			if again then "Держись! Убей Альфу — и рой рассыплется" else "Двигайся и стреляй — рой не даёт стоять",
+			if again
+				then "Держись! Убей Альфу — и рой рассыплется"
+				else "Двигайся и стреляй — рой не даёт стоять",
 			C.CYAN,
 			3,
 			"shield"
@@ -697,6 +699,54 @@ function World:heal(p, amount: number)
 	if p.hp > before then
 		self:emit(E.HEAL, p.id, math.floor(p.hp - before + 0.5))
 	end
+end
+
+-- DD-088: a neighbour joins a running drill defence in a breather between waves (never mid-wave, never
+-- into a story sortie). They come in beside a living teammate with the squad's level in cards to catch
+-- up (dealt one by one, the fight waits for the picks as for any level-up).
+function World:canJoin(): boolean
+	if self.phase ~= "ACTIVE" or self.result or #self.playerList >= 4 or (self.op.mode or "hunt") ~= "siege" then
+		return false
+	end
+	local _, ph = self:currentPhaseDef()
+	return ph ~= nil and ph.joinable == true
+end
+
+function World:addPlayer(info)
+	if self.players[info.id] or not self:canJoin() then
+		return nil
+	end
+	local p = newPlayer(self.map, info, 1, 1)
+	for _, mate in self.playerList do
+		if mate.alive then
+			p.x, p.z = mate.x + 4, mate.z + 3
+			break
+		end
+	end
+	p.pending = math.min(self.level - 1, Defs.Coop.JoinMax)
+	p.iframeUntil = self.t + 3
+	p.graceUntil = self.t + 3
+	p.joinedAt = self.t
+	self.players[p.id] = p
+	table.insert(self.playerList, p)
+	self.solo = false
+	self:banner(string.upper(p.name), "вступает в оборону бура", C.LIME, 3)
+	self:openOffers()
+	return p
+end
+
+-- What the grove sees of this fight on the host's sign (DD-088): the phase, the wave, the drill.
+function World:progress()
+	local _, ph = self:currentPhaseDef()
+	local drill = self.mission and self.mission.reactor
+	return {
+		label = self.phaseLabel,
+		wave = ph and ph.wave,
+		t = math.floor(self.t),
+		drill = if drill then math.floor(drill.hp / drill.maxHp * 100) else nil,
+		joinable = self:canJoin(),
+		squad = #self.playerList,
+	}
 end
 
 function World:removePlayer(id: number)
@@ -1210,7 +1260,12 @@ function World:director(dt: number)
 	end
 	local limit = self.op.hardLimit or Defs.Run.HardLimit
 	if self.t >= limit and self.phase == "ACTIVE" then
-		self:finish(false, if self.op.mode == "raid" then "ОБОРОНА ВЫСТОЯЛА" else "ВРЕМЯ ВЫШЛО — РОЙ ПОБЕДИЛ")
+		self:finish(
+			false,
+			if self.op.mode == "raid"
+				then "ОБОРОНА ВЫСТОЯЛА"
+				else "ВРЕМЯ ВЫШЛО — РОЙ ПОБЕДИЛ"
+		)
 	end
 	if self.op.objective == "boss" and self.t >= 385 and not self.breatherHeal then
 		self.breatherHeal = true
@@ -1576,7 +1631,16 @@ function World:finish(victory: boolean, reason: string)
 				self:emit(E.KILL, e.id, e.def.index, e.x, e.z, 0, 8)
 			end
 		end
-		self:banner(if self.op.mode == "raid" then "ВТОРЖЕНИЕ УСПЕШНО" elseif self.op.mode == "siege" then "БУР ВЫСТОЯЛ" else "ВЫЛАЗКА УДАЛАСЬ", reason, C.GOLD, 5, "crown")
+		self:banner(
+			if self.op.mode == "raid"
+				then "ВТОРЖЕНИЕ УСПЕШНО"
+				elseif self.op.mode == "siege" then "БУР ВЫСТОЯЛ"
+				else "ВЫЛАЗКА УДАЛАСЬ",
+			reason,
+			C.GOLD,
+			5,
+			"crown"
+		)
 	else
 		self:banner("ПОРАЖЕНИЕ", reason, C.RED, 5, "skull")
 	end
@@ -1592,7 +1656,12 @@ function World:step(dt: number)
 		-- reading the controls must not cost them the run.
 		-- DD-075: the first defence waits too (its arrival scene shows the new turret first).
 		local waiting = false
-		if self.countdown <= 0 and self.solo and (self.op.id == "O01" or self.op.id == "STRIKE" or self.op.id == "O02" or self.op.id == "O03" or self.op.id == "O04" or self.op.id == "O05" or self.op.id == "O06" or self.op.id == "O07") and not self.gotInput then
+		if
+			self.countdown <= 0
+			and self.solo
+			and (self.op.id == "O01" or self.op.id == "STRIKE" or self.op.id == "O02" or self.op.id == "O03" or self.op.id == "O04" or self.op.id == "O05" or self.op.id == "O06" or self.op.id == "O07")
+			and not self.gotInput
+		then
 			waiting = true
 			for _, p in self.playerList do
 				if not p.newbie and self.op.id == "O01" then
@@ -1605,7 +1674,13 @@ function World:step(dt: number)
 			self.phase = "ACTIVE"
 			self:banner(self.op.name, self.op.goal, C.LIME, 3, "")
 			if self.anomaly then
-				self:banner("АНОМАЛИЯ: " .. self.anomaly.name, self.anomaly.text, C.GOLD, 3.5, self.anomaly.icon)
+				self:banner(
+					"АНОМАЛИЯ: " .. self.anomaly.name,
+					self.anomaly.text,
+					C.GOLD,
+					3.5,
+					self.anomaly.icon
+				)
 			end
 		end
 		return
@@ -1837,12 +1912,15 @@ function World:publicState()
 		mission = self.mission:publicState(),
 		mode = self.op.mode or "hunt",
 		structures = self:structureState(),
-		core = if self.core and self.core.alive then { hp = self.core.hp / self.core.maxHp, name = self.op.name } else nil,
+		core = if self.core and self.core.alive
+			then { hp = self.core.hp / self.core.maxHp, name = self.op.name }
+			else nil,
 		anomaly = if self.anomaly then self.anomaly.id else nil,
 		threat = self.threat,
 		result = self.result,
 		kills = self.teamKills,
 		enemyCount = #self.enemies,
+		joinable = self:canJoin(), -- DD-088: a breather in a drill defence: spectators may step in
 	}
 end
 

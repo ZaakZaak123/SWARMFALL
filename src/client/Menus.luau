@@ -2768,7 +2768,11 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			table.insert(parts, "+" .. reward.grant .. " бонус первой победы")
 		end
 		if reward.bonus and reward.bonus > 1.001 then
-			table.insert(parts, string.format("отряд и аномалия ×%.2f", reward.bonus))
+			table.insert(parts, string.format("бонусы ×%.2f", reward.bonus))
+		end
+		if type(reward.mentor) == "table" and #reward.mentor > 0 then
+			-- DD-088: a veteran who won beside a newcomer
+			table.insert(parts, "наставник для " .. table.concat(reward.mentor, ", "))
 		end
 		ui.resRewardLines.Text = table.concat(parts, "   ·   ")
 	end

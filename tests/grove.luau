@@ -183,6 +183,15 @@ check(
 	"a bought spot is news, a free one is not"
 )
 check(#Chronicle.diff(after, after, "Аня") == 0, "nothing new, nothing written")
+local m4 = table.clone(after)
+m4.mentor = 4
+local m5 = table.clone(after)
+m5.mentor = 5
+local ml = Chronicle.diff(m4, m5, "Аня")
+check(
+	#ml == 1 and ml[1].text:find("Наставник рощи") ~= nil and ml[1].big,
+	"the fifth fight with a newcomer makes a mentor (DD-088)"
+)
 local k1 = Chronicle.status({ away = "«Мать роя»", open = true })
 local k2 = Chronicle.status({ open = true, squadWith = "Костя" })
 local k3, t3 = Chronicle.status({})
@@ -194,7 +203,8 @@ check(
 	"provenance: today, alone"
 )
 check(
-	Chronicle.provenance({ t = now - 3 * 86400, team = 2, with = { "Костя" } }, now):find("в отряде: Костя") ~= nil,
+	Chronicle.provenance({ t = now - 3 * 86400, team = 2, with = { "Костя" } }, now)
+		:find("в отряде: Костя") ~= nil,
 	"provenance names the squad"
 )
 check(Chronicle.provenance(nil, now) == "Трофей добыт", "an old trophy without a log still reads")

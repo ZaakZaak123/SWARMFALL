@@ -84,6 +84,9 @@ local function defaults()
 		title = nil, -- chosen earned title id (Showcase.titles)
 		tut = {}, -- one-time onboarding beats (DD-052): drill = victory scene seen, strike = first defence done
 		trophyLog = {}, -- DD-087: how each boss trophy was won: op -> { t, threat, team, with = { names } }
+		mentor = 0, -- DD-088: fights won as a veteran with a newcomer in the squad
+		week = { n = 0, defense = 0, research = 0, help = 0 }, -- DD-088: this week's board values
+		laurels = {}, -- DD-088: board -> { n = times in the week's top three, last = week index }
 	}
 end
 
@@ -293,6 +296,9 @@ function Profile.public(player: Player)
 		saves = d.saves,
 		title = d.title,
 		trophyLog = d.trophyLog,
+		mentor = d.mentor,
+		week = Profile.thisWeek(d),
+		laurels = d.laurels,
 	}
 end
 
@@ -810,7 +816,33 @@ function Profile.setRaidLog(player: Player, log)
 	end
 end
 
-function Profile.grantRun(player: Player, runId: string, result, opId: string, threat: number)
+-- The week's board values, started afresh on a new week (DD-088).
+local function thisWeek(d)
+	local n = Meta.weekIndex(os.time())
+	if type(d.week) ~= "table" or d.week.n ~= n then
+		d.week = { n = n, defense = 0, research = 0, help = 0 }
+	end
+	return d.week
+end
+Profile.thisWeek = thisWeek
+
+-- A place in last week's top three (DD-088): once per board and week.
+function Profile.addLaurel(player: Player, board: string, week: number): boolean
+	local d = Profile.get(player)
+	if not d or not table.find(Meta.WeeklyBoards, board) then
+		return false
+	end
+	local l = d.laurels[board] or { n = 0, last = -1 }
+	if l.last >= week then
+		return false
+	end
+	d.laurels[board] = { n = l.n + 1, last = week }
+	mark(player)
+	return true
+end
+
+-- extra (DD-088): { mentor = { newcomer names } } — this veteran won the fight with newcomers.
+function Profile.grantRun(player: Player, runId: string, result, opId: string, threat: number, extra)
 	local d = Profile.get(player)
 	if not d then
 		return nil
@@ -867,6 +899,17 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		reward.rating = { delta = s.delta, now = d.raid.attack, unrated = s.unrated }
 	end
 	local bonus = Meta.squadMult(result.squad or 1)
+	local week = thisWeek(d)
+	local mentored = result.victory and extra and type(extra.mentor) == "table" and #extra.mentor > 0
+	if mentored then
+		bonus *= Meta.MentorBonus
+		d.mentor = (d.mentor or 0) + 1
+		week.help += 3
+		reward.mentor = extra.mentor
+	end
+	if mode == "siege" and result.victory then
+		week.defense = math.max(week.defense, result.siege or 1)
+	end
 	if result.anomaly then
 		for _, a in Meta.Anomalies do
 			if a.id == result.anomaly then
@@ -893,6 +936,7 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	end
 	if mine then
 		d.saves = (d.saves or 0) + (mine.revives or 0)
+		week.help += mine.revives or 0
 		local wid = mine.weapon
 		local before = Defs.masteryRank(wid, d.mastery[wid] or 0)
 		d.mastery[wid] = (d.mastery[wid] or 0) + (mine.weaponKills or 0)
@@ -913,6 +957,7 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 			d.research[kind] = (d.research[kind] or 0) + n
 			local now = Defs.researchStage(kind, d.research[kind])
 			if now > was then
+				week.research += now - was
 				table.insert(unlocked, { "research", kind, now })
 			elseif discovered then
 				table.insert(unlocked, { "specimen", kind })

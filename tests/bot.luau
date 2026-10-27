@@ -30,7 +30,17 @@ function Bot.run(
 	opts = opts or {}
 	local infos = {}
 	for i = 1, players do
-		table.insert(infos, { id = i, name = "BOT" .. i, weapon = weapon, perks = perks, s01 = (opts or {}).s01, firstHunt = (opts or {}).firstHunt })
+		table.insert(
+			infos,
+			{
+				id = i,
+				name = "BOT" .. i,
+				weapon = weapon,
+				perks = perks,
+				s01 = (opts or {}).s01,
+				firstHunt = (opts or {}).firstHunt,
+			}
+		)
 	end
 	local w = World.new({
 		seed = runSeed,
@@ -68,6 +78,9 @@ function Bot.run(
 
 	while w.phase ~= "RESULTS" and clock < (opts.stopAt or 700) do
 		clock += dt
+		if opts.onTick then
+			opts.onTick(w)
+		end
 		-- Bot brains
 		for _, p in w.playerList do
 			if p.alive then

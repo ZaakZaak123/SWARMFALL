@@ -160,11 +160,50 @@ Meta.SellRefund = 0.5
 Meta.HomeOrigin = Vector3.new(0, 0, 1500) -- world position of the shelter's courtyard centre
 Meta.HomeOrder = { "GENERATOR", "WORKBENCH", "RADIO", "LAB", "GARDEN" }
 Meta.Home = {
-	GENERATOR = { id = "GENERATOR", name = "ГЕНЕРАТОР", text = "Свет в убежище и прожекторы во дворе.", icon = "sun", cost = 0, unlock = "O01", free = true },
-	WORKBENCH = { id = "WORKBENCH", name = "МАСТЕРСКАЯ", text = "Верстак для оборудования бура: турели, ловушки, щиты.", icon = "gear", cost = 0, unlock = "O01", free = true }, -- DD-075: the generator powers it
-	RADIO = { id = "RADIO", name = "РАДИОСТАНЦИЯ", text = "Ловит сигналы роя у бура: открывает оборону бура по уровням.", icon = "coil", cost = 0, unlock = "O02", free = true }, -- DD-076: the antenna comes home from sortie 2
-	LAB = { id = "LAB", name = "ЛАБОРАТОРИЯ", text = "Резервуар с образцами роя: исследования видов и свой рой.", icon = "hive", cost = 0, unlock = "O03", free = true }, -- DD-077: the third sortie brings the sample home
-	GARDEN = { id = "GARDEN", name = "ОГОРОД", text = "Грядки, гирлянды и скамья: в убежище становится уютно.", icon = "heart", cost = 300, unlock = "O02" },
+	GENERATOR = {
+		id = "GENERATOR",
+		name = "ГЕНЕРАТОР",
+		text = "Свет в убежище и прожекторы во дворе.",
+		icon = "sun",
+		cost = 0,
+		unlock = "O01",
+		free = true,
+	},
+	WORKBENCH = {
+		id = "WORKBENCH",
+		name = "МАСТЕРСКАЯ",
+		text = "Верстак для оборудования бура: турели, ловушки, щиты.",
+		icon = "gear",
+		cost = 0,
+		unlock = "O01",
+		free = true,
+	}, -- DD-075: the generator powers it
+	RADIO = {
+		id = "RADIO",
+		name = "РАДИОСТАНЦИЯ",
+		text = "Ловит сигналы роя у бура: открывает оборону бура по уровням.",
+		icon = "coil",
+		cost = 0,
+		unlock = "O02",
+		free = true,
+	}, -- DD-076: the antenna comes home from sortie 2
+	LAB = {
+		id = "LAB",
+		name = "ЛАБОРАТОРИЯ",
+		text = "Резервуар с образцами роя: исследования видов и свой рой.",
+		icon = "hive",
+		cost = 0,
+		unlock = "O03",
+		free = true,
+	}, -- DD-077: the third sortie brings the sample home
+	GARDEN = {
+		id = "GARDEN",
+		name = "ОГОРОД",
+		text = "Грядки, гирлянды и скамья: в убежище становится уютно.",
+		icon = "heart",
+		cost = 300,
+		unlock = "O02",
+	},
 }
 
 -- Onboarding (DD-052): the socket the first turret goes to (inner ring, south-east: in view from the base
@@ -187,11 +226,41 @@ Meta.Species = {
 Meta.SpeciesOrder = { "EN_RUNNER", "EN_STALKER", "EN_SPITTER", "EN_BOMBER", "EN_BULWARK" }
 
 Meta.Mutations = {
-	CARAPACE = { name = "ПАНЦИРЬ", text = "+60% здоровья, чуть медленнее", icon = "shield", color = rgb(255, 176, 60), dna = 6 },
-	FRENZY = { name = "БЕШЕНСТВО", text = "+35% скорости", icon = "dash", color = rgb(255, 80, 120), dna = 6 },
-	ACID_BLOOD = { name = "КИСЛОТНАЯ КРОВЬ", text = "Оставляет лужу кислоты при гибели", icon = "drop", color = rgb(170, 255, 70), dna = 8 },
-	VOLATILE = { name = "НЕСТАБИЛЬНОСТЬ", text = "Взрывается при гибели", icon = "boom", color = rgb(255, 140, 50), dna = 8 },
-	REGEN = { name = "РЕГЕНЕРАЦИЯ", text = "Затягивает раны: 3% здоровья в секунду", icon = "plus", color = rgb(110, 255, 140), dna = 10 },
+	CARAPACE = {
+		name = "ПАНЦИРЬ",
+		text = "+60% здоровья, чуть медленнее",
+		icon = "shield",
+		color = rgb(255, 176, 60),
+		dna = 6,
+	},
+	FRENZY = {
+		name = "БЕШЕНСТВО",
+		text = "+35% скорости",
+		icon = "dash",
+		color = rgb(255, 80, 120),
+		dna = 6,
+	},
+	ACID_BLOOD = {
+		name = "КИСЛОТНАЯ КРОВЬ",
+		text = "Оставляет лужу кислоты при гибели",
+		icon = "drop",
+		color = rgb(170, 255, 70),
+		dna = 8,
+	},
+	VOLATILE = {
+		name = "НЕСТАБИЛЬНОСТЬ",
+		text = "Взрывается при гибели",
+		icon = "boom",
+		color = rgb(255, 140, 50),
+		dna = 8,
+	},
+	REGEN = {
+		name = "РЕГЕНЕРАЦИЯ",
+		text = "Затягивает раны: 3% здоровья в секунду",
+		icon = "plus",
+		color = rgb(110, 255, 140),
+		dna = 10,
+	},
 }
 Meta.MutationOrder = { "CARAPACE", "FRENZY", "ACID_BLOOD", "VOLATILE", "REGEN" }
 Meta.MaxStrains = 3
@@ -243,17 +312,90 @@ end
 
 -- Anomalies (one per UTC day) ----------------------------------------------------------------------
 Meta.Anomalies = {
-	{ id = "ACID_RAIN", name = "КИСЛОТНЫЙ ДОЖДЬ", text = "С неба капает кислота — не стой на месте", color = rgb(170, 255, 70), icon = "drop", acidRain = true, reward = 1.2 },
-	{ id = "FERTILE", name = "ПЛОДОВИТЫЙ РОЙ", text = "Врагов на треть больше, опыта тоже", color = rgb(255, 196, 70), icon = "users", spawn = 1.3, xp = 1.3, reward = 1.15 },
-	{ id = "GLASS", name = "СТЕКЛЯННЫЕ ПАНЦИРИ", text = "Враги хрупкие, но их вдвое больше", color = rgb(150, 220, 255), icon = "burst", hp = 0.6, spawn = 1.7, reward = 1.15 },
-	{ id = "ELITE", name = "ЭЛИТНАЯ СТАЯ", text = "Особых тварей больше обычного", color = rgb(255, 80, 120), icon = "elite", specials = 1.8, reward = 1.25 },
-	{ id = "HASTE", name = "ГОЛОДНЫЙ РОЙ", text = "Рой быстрее на 20%", color = rgb(255, 120, 56), icon = "dash", speed = 1.2, reward = 1.2 },
-	{ id = "BLOOD_MOON", name = "КРОВАВАЯ ЛУНА", text = "Больше ксенита за всё", color = rgb(255, 86, 198), icon = "star", reward = 1.4 },
+	{
+		id = "ACID_RAIN",
+		name = "КИСЛОТНЫЙ ДОЖДЬ",
+		text = "С неба капает кислота — не стой на месте",
+		color = rgb(170, 255, 70),
+		icon = "drop",
+		acidRain = true,
+		reward = 1.2,
+	},
+	{
+		id = "FERTILE",
+		name = "ПЛОДОВИТЫЙ РОЙ",
+		text = "Врагов на треть больше, опыта тоже",
+		color = rgb(255, 196, 70),
+		icon = "users",
+		spawn = 1.3,
+		xp = 1.3,
+		reward = 1.15,
+	},
+	{
+		id = "GLASS",
+		name = "СТЕКЛЯННЫЕ ПАНЦИРИ",
+		text = "Враги хрупкие, но их вдвое больше",
+		color = rgb(150, 220, 255),
+		icon = "burst",
+		hp = 0.6,
+		spawn = 1.7,
+		reward = 1.15,
+	},
+	{
+		id = "ELITE",
+		name = "ЭЛИТНАЯ СТАЯ",
+		text = "Особых тварей больше обычного",
+		color = rgb(255, 80, 120),
+		icon = "elite",
+		specials = 1.8,
+		reward = 1.25,
+	},
+	{
+		id = "HASTE",
+		name = "ГОЛОДНЫЙ РОЙ",
+		text = "Рой быстрее на 20%",
+		color = rgb(255, 120, 56),
+		icon = "dash",
+		speed = 1.2,
+		reward = 1.2,
+	},
+	{
+		id = "BLOOD_MOON",
+		name = "КРОВАВАЯ ЛУНА",
+		text = "Больше ксенита за всё",
+		color = rgb(255, 86, 198),
+		icon = "star",
+		reward = 1.4,
+	},
 }
 
 function Meta.dayIndex(now: number): number
 	return math.floor(now / 86400)
 end
+
+-- DD-088: the grove's week runs Monday 00:00 UTC to Monday (1970-01-05 was a Monday).
+function Meta.weekIndex(now: number): number
+	return math.floor((now - 345600) / 604800)
+end
+function Meta.weekEndsIn(now: number): number
+	return (Meta.weekIndex(now) + 1) * 604800 + 345600 - now
+end
+
+-- DD-088: the grove's mentors. A newcomer has fewer than five wins; a veteran has the third sortie
+-- behind them and eight wins. A veteran who wins a fight with a newcomer in the squad helps them.
+Meta.MentorBonus = 1.2 -- ксенит for the veteran in that fight
+Meta.MentorTitle = 5 -- fights won with newcomers for «Наставник рощи»
+function Meta.isNewcomer(d): boolean
+	return (d.wins or 0) < 5
+end
+function Meta.isVeteran(d): boolean
+	return ((d.wins_by_op or {}).O03 or 0) > 0 and (d.wins or 0) >= 8
+end
+-- The weekly boards: the best drill defence held, research stages raised, help (allies raised, and
+-- three for every fight won together with a newcomer).
+Meta.WeeklyBoards = { "defense", "research", "help" }
+Meta.WeeklyNames = { defense = "ОБОРОНА БУРА", research = "ИССЛЕДОВАНИЯ", help = "ПОМОЩЬ" }
+Meta.WeeklyWords = { defense = "оборона бура", research = "исследования", help = "помощь" }
 
 function Meta.anomalyFor(day: number)
 	local n = #Meta.Anomalies
@@ -277,7 +419,6 @@ end
 
 -- Raids ------------------------------------------------------------------------------------------------
 Meta.StartRating = 1000
-
 
 -- Rating change for attacker (win/lose) and defender (inverse), Elo-like with K = 32.
 function Meta.ratingDelta(attacker: number, defender: number, attackerWon: boolean): number
@@ -418,7 +559,16 @@ end
 -- Rivals ------------------------------------------------------------------------------------------------
 -- When the shared pool is empty (new game, Studio, DataStore outage) raids still have targets: rival
 -- outposts generated deterministically around the attacker's rating.
-local RIVAL_NAMES = { "Гнилой Зуб", "Северный Шрам", "Ржавая Корона", "Тихий Улей", "Последний Рубеж", "Чёрная Жила", "Кислый Ветер", "Костяной Пост" }
+local RIVAL_NAMES = {
+	"Гнилой Зуб",
+	"Северный Шрам",
+	"Ржавая Корона",
+	"Тихий Улей",
+	"Последний Рубеж",
+	"Чёрная Жила",
+	"Кислый Ветер",
+	"Костяной Пост",
+}
 
 function Meta.rival(seed: number, rating: number)
 	local function r(n: number): number

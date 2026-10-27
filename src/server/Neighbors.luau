@@ -342,13 +342,97 @@ function Neighbors.ghosts(): { [number]: any }
 	return out
 end
 
--- What the held plots show: the owner's last showcase and where they are.
+-- Fights out of the grove (DD-088) ----------------------------------------------------------------------
+-- A squad's server reports its fight now and then (MessagingService, server/Main); the grove keeps the
+-- latest word per hunter and the way in (the reserved server's access code, from the launch).
+local FIGHT_STALE = 45
+local fights: { [number]: any } = {} -- user id -> { host, mode, name, p, result, at }
+local ways: { [number]: { code: string, at: number } } = {} -- host user id -> the fight's access code
+
+function Neighbors.launched(hostUid: number, code: string?)
+	if code then
+		ways[hostUid] = { code = code, at = os.clock() }
+	end
+end
+
+function Neighbors.progress(data)
+	if type(data) ~= "table" or not tonumber(data.host) or type(data.members) ~= "table" then
+		return
+	end
+	local word = {
+		host = tonumber(data.host),
+		mode = if type(data.mode) == "string" then data.mode else "hunt",
+		name = if type(data.name) == "string" then string.sub(data.name, 1, 40) else "бой",
+		p = if type(data.p) == "table" then data.p else {},
+		result = if data.result == "win" or data.result == "loss" then data.result else nil,
+		at = os.clock(),
+	}
+	for _, uid in data.members do
+		if tonumber(uid) then
+			fights[tonumber(uid) :: number] = word
+		end
+	end
+end
+
+-- The fight a hunter is in, if the word is fresh.
+function Neighbors.fight(uid: number)
+	local f = fights[uid]
+	if f and os.clock() - f.at > FIGHT_STALE then
+		fights[uid] = nil
+		return nil
+	end
+	return f
+end
+
+-- The way into a host's defence: the access code, if it can still take a hunter (DD-088).
+function Neighbors.wayIn(hostUid: number): string?
+	local f = Neighbors.fight(hostUid)
+	local w = ways[hostUid]
+	if not f or not w or f.mode ~= "siege" or f.result then
+		return nil
+	end
+	local p = f.p or {}
+	if (p.squad or 4) >= 4 or ((p.wave or 5) >= 5 and not p.joinable) then
+		return nil
+	end
+	return w.code
+end
+
+-- The line a fight puts on the sign: «Оборона бура · ВОЛНА 3/5 · 2:14 · бур 80%».
+function Neighbors.fightLine(f): string
+	if f.result == "win" then
+		return "Возвращается с победой"
+	elseif f.result == "loss" then
+		return "Бой окончен · возвращается"
+	end
+	local p = f.p or {}
+	local parts = { f.name }
+	if type(p.label) == "string" and #p.label > 0 then
+		table.insert(parts, p.label)
+	end
+	if tonumber(p.t) then
+		table.insert(parts, string.format("%d:%02d", p.t // 60, p.t % 60))
+	end
+	if tonumber(p.drill) then
+		table.insert(parts, "бур " .. p.drill .. "%")
+	end
+	return table.concat(parts, " · ")
+end
+
+-- What the held plots show: the owner's last showcase and where they are (and how it goes there).
 function Neighbors.held(): { [number]: any }
 	local out = {}
 	for i, pl in plots do
 		if pl.uid and pl.away and shown[pl.uid] then
 			local e = table.clone(shown[pl.uid])
 			e.away = away[pl.uid] and away[pl.uid].op or "бой"
+			local f = Neighbors.fight(pl.uid)
+			if f then
+				e.fightLine = Neighbors.fightLine(f)
+				e.fightHost = f.host
+				e.canJoin = Neighbors.wayIn(f.host) ~= nil and (f.p or {}).joinable == true
+				e.canQueue = Neighbors.wayIn(f.host) ~= nil
+			end
 			out[i] = e
 		end
 	end

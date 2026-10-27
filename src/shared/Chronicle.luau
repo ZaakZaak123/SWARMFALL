@@ -30,6 +30,7 @@ export type Summary = {
 	stages: { [string]: number }, -- specimen stage per kind (Collection.progress)
 	siege: number,
 	home: { [string]: boolean },
+	mentor: number,
 }
 
 function Chronicle.summary(d): Summary
@@ -48,6 +49,7 @@ function Chronicle.summary(d): Summary
 		stages = stages,
 		siege = (d.outpost and d.outpost.best) or 0,
 		home = table.clone(d.home or {}),
+		mentor = d.mentor or 0,
 	}
 end
 
@@ -97,6 +99,13 @@ function Chronicle.diff(before: Summary, after: Summary, name: string): { { icon
 		elseif now >= 3 and was < 3 then
 			add("hive", string.format("%s — полный образец: %s", name, species), false)
 		end
+	end
+	-- DD-088: a veteran won beside a newcomer
+	local was, now = before.mentor or 0, after.mentor or 0
+	if now >= Meta.MentorTitle and was < Meta.MentorTitle then
+		add("users", name .. " — теперь Наставник рощи", true)
+	elseif now > was then
+		add("users", name .. " — победа вместе с новичком", false)
 	end
 	for _, id in Meta.HomeOrder do
 		if after.home[id] and not before.home[id] and not Meta.Home[id].free then

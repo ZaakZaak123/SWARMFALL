@@ -25,6 +25,7 @@ local Meta = require(Shared:WaitForChild("Meta"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 local Squads = require(script.Parent.Squads)
 local Neighbors = require(script.Parent.Neighbors)
+local Weekly = require(script.Parent.Weekly)
 local Grove = require(Shared:WaitForChild("Grove"))
 local Layout = require(Shared:WaitForChild("ShelterLayout"))
 local Chronicle = require(Shared:WaitForChild("Chronicle"))
@@ -105,6 +106,7 @@ local runId = ""
 local participants: { [number]: Player } = {}
 local tracking: { [Player]: { x: number, z: number, y: number } } = {}
 local continueVotes: { [Player]: boolean } = {}
+local joinQueue: { [Player]: string } = {} -- DD-088: hunters waiting for the next breather (their gun)
 local rewards: { [number]: any } = {}
 local settled = false
 local resultsClock = 0
@@ -258,34 +260,38 @@ local function funnelStep(player: Player, step: number)
 end
 
 -- Run lifecycle ---------------------------------------------------------------------------------------
+-- A hunter as the simulation sees them (the gun they own, perks, technologies, form, modules).
+local function runInfo(player: Player, weapon: string)
+	if not Profile.ownsWeapon(player, weapon) then
+		weapon = "W_ARC_RIFLE"
+	end
+	local perks = {}
+	local data = Profile.get(player)
+	if data then
+		for id, r in data.perks do
+			perks[id] = r
+		end
+	end
+	return {
+		id = player.UserId,
+		name = player.DisplayName,
+		weapon = weapon,
+		perks = perks,
+		s01 = data ~= nil and data.s01 == true,
+		firstHunt = data ~= nil and ((data.wins_by_op or {}).O01 or 0) == 0,
+		form = Profile.equippedForm(player, weapon),
+		tech = if data then table.clone(data.tech) else {},
+		loadout = Profile.loadoutFor(player, weapon),
+		s01Spec = Profile.s01Spec(player),
+	}
+end
+
 local function startRun()
 	local infos = {}
 	table.clear(participants)
 	for _, player in Players:GetPlayers() do
 		if lobby.ready[player] then
-			local weapon = lobby.weapon[player] or "W_ARC_RIFLE"
-			if not Profile.ownsWeapon(player, weapon) then
-				weapon = "W_ARC_RIFLE"
-			end
-			local perks = {}
-			local data = Profile.get(player)
-			if data then
-				for id, r in data.perks do
-					perks[id] = r
-				end
-			end
-			table.insert(infos, {
-				id = player.UserId,
-				name = player.DisplayName,
-				weapon = weapon,
-				perks = perks,
-				s01 = data ~= nil and data.s01 == true,
-				firstHunt = data ~= nil and ((data.wins_by_op or {}).O01 or 0) == 0,
-				form = Profile.equippedForm(player, weapon),
-				tech = if data then table.clone(data.tech) else {},
-				loadout = Profile.loadoutFor(player, weapon),
-				s01Spec = Profile.s01Spec(player),
-			})
+			table.insert(infos, runInfo(player, lobby.weapon[player] or "W_ARC_RIFLE"))
 			participants[player.UserId] = player
 			if lobby.mode == "hunt" and lobby.op == "O01" then
 				funnelStep(player, 2)
@@ -374,9 +380,33 @@ local function settle()
 			r.kills
 		)
 	)
+	-- DD-088: newcomers in a won fight; every veteran beside them is their mentor in it
+	local newcomers = {}
+	if r.victory then
+		for uid, player in participants do
+			local d = Profile.get(player)
+			if player.Parent and d and Meta.isNewcomer(d) then
+				newcomers[uid] = player.DisplayName
+			end
+		end
+	end
 	for userId, player in participants do
 		if player.Parent then
-			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat)
+			local d = Profile.get(player)
+			local extra = nil
+			if d and r.victory and Meta.isVeteran(d) then
+				local names = {}
+				for uid, name in newcomers do
+					if uid ~= userId then
+						table.insert(names, name)
+					end
+				end
+				if #names > 0 then
+					extra = { mentor = names }
+				end
+			end
+			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat, extra)
+			Weekly.push(player)
 			if r.victory and world.op.id == "O01" then
 				funnelStep(player, 4)
 			elseif world.op.id == "STRIKE" then
@@ -455,6 +485,7 @@ end
 local fromCamp = nil -- Studio: the squad the camp turned into a session in place; it comes home to the grove
 local function backToLobby()
 	settle()
+	table.clear(joinQueue)
 	if IS_SESSION and TELEPORTS then
 		-- DD-087: a session has no home of its own; everyone still here flies back to the grove (the
 		-- squad base below is only the fallback while a hop fails)
@@ -513,6 +544,27 @@ end
 local function social(player: Player, kind: string, data)
 	if player.Parent then
 		socialRemote:FireClient(player, kind, data)
+	end
+end
+
+-- DD-088: whoever waits to join the drill defence comes in at the breather.
+local function admitJoiners()
+	if not world or not world:canJoin() then
+		return
+	end
+	for player, weapon in joinQueue do
+		joinQueue[player] = nil
+		if player.Parent and not participants[player.UserId] then
+			local p = world:addPlayer(runInfo(player, weapon))
+			if p then
+				participants[player.UserId] = player
+				task.spawn(prepareCharacter, player, p.x, p.z)
+				print(string.format("[SWARMFALL] %s joins the defence at %.0f s", player.Name, world.t))
+			end
+		end
+		if not world:canJoin() then
+			break
+		end
 	end
 end
 
@@ -638,6 +690,10 @@ local function launch(sq)
 		options.ShouldReserveServer = true
 		options:SetTeleportData(teleportData(sq))
 		local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, members, options)
+		if ok and typeof(err) == "Instance" and err:IsA("TeleportAsyncResult") then
+			-- DD-088: the way in for a neighbour who wants to join this defence later
+			Neighbors.launched(sq.host.UserId, err.ReservedServerAccessCode)
+		end
 		if not ok then
 			warn("[SWARMFALL] launch failed", err)
 			for _, m in members do
@@ -710,13 +766,33 @@ end
 -- Session: the squad arrives with a plan (teleport data). Only ids and choices travel; everything is
 -- checked against the host's profile here (teleport data passes through clients).
 local function sessionJoin(player: Player)
-	if not IS_SESSION or sessionPlan then
+	if not IS_SESSION then
 		return
 	end
 	local ok, jd = pcall(player.GetJoinData, player)
 	local data = ok and jd and jd.TeleportData
 	if type(data) ~= "table" or not tonumber(data.host) then
 		return
+	end
+	if data.join == true then
+		-- DD-088: a neighbour from the same grove comes to join the defence at the next breather
+		if sessionFrom and data.from ~= sessionFrom then
+			return
+		end
+		local plot = tonumber(data.plot)
+		if plot and plot >= 1 and plot <= Grove.Plots then
+			sessionPlots[player.UserId] = math.floor(plot)
+		end
+		if sessionSquad and not table.find(sessionSquad.members, player.UserId) then
+			table.insert(sessionSquad.members, player.UserId)
+		end
+		joinQueue[player] = if type(data.weapon) == "string" and Defs.Weapons[data.weapon]
+			then data.weapon
+			else "W_ARC_RIFLE"
+		return
+	end
+	if sessionHostId then
+		return -- the plan came with the first of the squad
 	end
 	sessionHostId = tonumber(data.host)
 	sessionPlan = { members = {}, since = os.clock(), data = data }
@@ -937,6 +1013,22 @@ Players.PlayerAdded:Connect(function(player)
 				sq.op = nextOpFor(player)
 			end
 			groveLook(player)
+			if mode == "HUB" then
+				-- DD-088: last week's top three get their laurel (and the grove hears of it)
+				for _, board in Weekly.laurels(player) do
+					local e = Neighbors.note(
+						"crown",
+						player.DisplayName
+							.. " — в тройке прошлой недели: "
+							.. Meta.WeeklyWords[board],
+						player.UserId,
+						true
+					)
+					for _, p in Players:GetPlayers() do
+						social(p, "chronicle", e)
+					end
+				end
+			end
 		end
 	end)
 	if mode == "HUB" then
@@ -1290,6 +1382,20 @@ function handlers.pause(player: Player, paused)
 	return true
 end
 
+-- A hunter watching a drill defence (they came to join it, or were here when it started) steps in at
+-- the next breather.
+function handlers.joinRun(player: Player, weapon)
+	if mode ~= "RUN" or not world or world.result or participants[player.UserId] then
+		return false
+	end
+	if (world.op.mode or "hunt") ~= "siege" or not Profile.get(player) then
+		return false
+	end
+	joinQueue[player] = if type(weapon) == "string" and Defs.Weapons[weapon] then weapon else "W_ARC_RIFLE"
+	admitJoiners()
+	return true
+end
+
 function handlers.continue(player: Player)
 	if mode ~= "RUN" or not world or world.phase ~= "RESULTS" then
 		return false
@@ -1566,6 +1672,42 @@ function handlers.ask(player: Player, uid)
 	return true
 end
 
+-- DD-088: «Вступить в оборону» at the sign of a neighbour out defending their drill: fly into that
+-- fight (the reserved server takes them at the next breather); the plot waits as for any fight.
+function handlers.joinFight(player: Player, hostUid)
+	if not campOnly() or not TELEPORTS or not Codec.isUserId(hostUid, RunService:IsStudio()) then
+		return false
+	end
+	local code = Neighbors.wayIn(hostUid)
+	local sq = squads:squadOf(player)
+	if not code or leavingFor[player] or (sq and sq.launching) then
+		social(player, "error", "В этот бой уже не войти")
+		return false
+	end
+	local weapon = (sq and sq.weapon[player]) or "W_ARC_RIFLE"
+	leavingFor[player] = "оборона бура"
+	social(player, "launch", "оборона бура")
+	task.spawn(function()
+		local options = Instance.new("TeleportOptions")
+		options.ReservedServerAccessCode = code
+		options:SetTeleportData({
+			v = 1,
+			join = true,
+			host = hostUid,
+			from = game.JobId,
+			plot = Neighbors.plotOf(player.UserId),
+			weapon = weapon,
+		})
+		local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, { player }, options)
+		if not ok then
+			warn("[SWARMFALL] join fight failed", err)
+			leavingFor[player] = nil
+			social(player, "error", "Не получилось вступить — попробуй ещё раз")
+		end
+	end)
+	return true
+end
+
 function handlers.take(player: Player, uid)
 	local asker = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
 	local sq = squads:squadOf(player)
@@ -1756,7 +1898,12 @@ local groveCache, groveAt = nil, -1e9
 function groveInfo()
 	if not groveCache or os.clock() - groveAt > 2 then
 		groveAt = os.clock()
-		groveCache = { ghosts = Neighbors.ghosts(), held = Neighbors.held(), feed = Neighbors.feed() }
+		groveCache = {
+			ghosts = Neighbors.ghosts(),
+			held = Neighbors.held(),
+			feed = Neighbors.feed(),
+			weekly = Weekly.boards(), -- DD-088
+		}
 	end
 	return groveCache
 end
@@ -1827,6 +1974,61 @@ local function publish()
 	else
 		stateRemote:FireAllClients(nil, { mode = "LOBBY", lobby = lobbyInfo() })
 	end
+end
+
+-- DD-088: a squad's server tells its grove how the fight goes (the host's sign shows it, a neighbour can
+-- join a defence from there); the grove listens on its own topic. Live servers only.
+local MessagingService = game:GetService("MessagingService")
+local function groveTopic(job: string): string
+	return "TLG_Grove_" .. string.sub(job, 1, 60)
+end
+if TELEPORTS and not IS_SESSION then
+	task.spawn(function()
+		local ok, err = pcall(MessagingService.SubscribeAsync, MessagingService, groveTopic(game.JobId), function(msg)
+			Neighbors.progress(msg.Data)
+		end)
+		if not ok then
+			warn("[SWARMFALL] grove topic", err)
+		end
+	end)
+end
+local reportClock, reportedEnd = 0, nil
+local function reportFight(dt: number)
+	if not (IS_SESSION and TELEPORTS and sessionFrom) or not world then
+		return
+	end
+	reportClock += dt
+	local ended = world.result ~= nil
+	if ended and reportedEnd == world then
+		return
+	end
+	if reportClock < 5 and not ended then
+		return
+	end
+	reportClock = 0
+	if ended then
+		reportedEnd = world
+	end
+	local members = {}
+	for uid in participants do
+		table.insert(members, uid)
+	end
+	local opMode = world.op.mode or "hunt"
+	local data = {
+		host = sessionHostId,
+		members = members,
+		mode = opMode,
+		name = if world.op.id == "STRIKE"
+			then "Первый натиск"
+			elseif opMode == "siege" then "Оборона бура · ур. " .. tostring(world.op.siege or 1)
+			elseif opMode == "raid" then "Налёт"
+			else "«" .. Goals.titleCase(world.op.name) .. "»",
+		p = world:progress(),
+		result = if ended then (if world.result.victory then "win" else "loss") else nil,
+	}
+	task.spawn(function()
+		pcall(MessagingService.PublishAsync, MessagingService, groveTopic(sessionFrom :: string), data)
+	end)
 end
 
 local fallClock = 0
@@ -1914,6 +2116,10 @@ RunService.Heartbeat:Connect(function(dt)
 			syncCharacters(dt)
 		end
 		world:step(dt)
+		if next(joinQueue) then
+			admitJoiners()
+		end
+		reportFight(dt)
 		local events = world:drainEvents()
 		if #events > 0 then
 			eventsRemote:FireAllClients(events)
@@ -1956,6 +2162,7 @@ Players.PlayerRemoving:Connect(function(player)
 	lobby.ready[player] = nil
 	lobby.weapon[player] = nil
 	continueVotes[player] = nil
+	joinQueue[player] = nil
 	tracking[player] = nil
 	local idx = table.find(joinOrder, player)
 	if idx then

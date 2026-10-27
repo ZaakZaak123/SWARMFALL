@@ -9,6 +9,7 @@ local Theme = require(script.Parent.Theme)
 local Icons = require(script.Parent.Icons)
 local Audio = require(script.Parent.Audio)
 local Collection = require(Shared:WaitForChild("Collection"))
+local Meta = require(Shared:WaitForChild("Meta"))
 
 local new, C, F = Theme.new, Theme.C, Theme.F
 local label, tween = Theme.label, Theme.tween
@@ -377,6 +378,162 @@ function HubMenus.showOutposts()
 	ui.outKey = nil
 	ui.outposts.show()
 	HubMenus.refreshOutposts()
+end
+
+-- The week's boards (DD-088) ---------------------------------------------------------------------------------
+local WEEK_LOOK = {
+	defense = {
+		icon = "shield",
+		color = C.orange,
+		why = "Лучший удержанный уровень обороны бура",
+	},
+	research = {
+		icon = "hive",
+		color = C.violet,
+		why = "Ступени исследований: образцы, силуэты, эталоны",
+	},
+	help = {
+		icon = "heart",
+		color = C.pink,
+		why = "Поднятые союзники и победы вместе с новичками (×3)",
+	},
+}
+
+local function weekLeft(seconds: number): string
+	local d = math.floor(seconds / 86400)
+	local h = math.floor(seconds % 86400 / 3600)
+	return if d > 0 then string.format("%d д %d ч", d, h) else string.format("%d ч", math.max(1, h))
+end
+HubMenus.weekLeft = weekLeft
+
+local function buildWeekly()
+	local m = H.modal("GroveWeekly", 860, 560, "НЕДЕЛЯ РОЩИ", C.gold)
+	ui.weekly = m
+	ui.weeklySub = label("", {
+		Position = UDim2.fromOffset(28, 62),
+		Size = UDim2.new(1, -56, 0, 20),
+		FontFace = F.body,
+		TextSize = 14,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 42,
+		Parent = m.panel,
+	})
+	ui.weeklyCols = new("Frame", {
+		Position = UDim2.fromOffset(28, 96),
+		Size = UDim2.new(1, -56, 1, -124),
+		ZIndex = 42,
+		Parent = m.panel,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12) },
+	})
+end
+
+function HubMenus.showWeekly(weekly, mine)
+	if not weekly then
+		return
+	end
+	ui.weeklySub.Text = string.format(
+		"Новая неделя через %s. Тройка лучших получает титул недели и строку в летописи.",
+		weekLeft(weekly.endsIn or 0)
+	)
+	H.clear(ui.weeklyCols)
+	for i, board in { "defense", "research", "help" } do
+		local look = WEEK_LOOK[board]
+		local col = Theme.panel(
+			{
+				Size = UDim2.new(1 / 3, -8, 1, 0),
+				CornerRadius = 16,
+				LayoutOrder = i,
+				ZIndex = 43,
+				Parent = ui.weeklyCols,
+			},
+			look.color
+		)
+		disc(col, look.icon, look.color, 40, UDim2.fromOffset(12, 12))
+		label(
+			Meta.WeeklyNames[board],
+			{
+				Position = UDim2.fromOffset(60, 12),
+				Size = UDim2.new(1, -66, 0, 22),
+				FontFace = F.display,
+				TextSize = 18,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 44,
+				Parent = col,
+			}
+		)
+		label(
+			look.why,
+			{
+				Position = UDim2.fromOffset(60, 34),
+				Size = UDim2.new(1, -66, 0, 32),
+				FontFace = F.body,
+				TextSize = 11,
+				TextColor3 = C.dim,
+				TextWrapped = true,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				ZIndex = 44,
+				Parent = col,
+			}
+		)
+		local rows = weekly[board] or {}
+		if #rows == 0 then
+			label(
+				"Пока никого — стань первым.",
+				{
+					Position = UDim2.fromOffset(14, 84),
+					Size = UDim2.new(1, -28, 0, 20),
+					FontFace = F.bodyBold,
+					TextSize = 13,
+					TextColor3 = C.dim,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ZIndex = 44,
+					Parent = col,
+				}
+			)
+		end
+		for k, row in rows do
+			local me = row.uid == myId
+			label(string.format("%d.  %s", k, row.name), {
+				Position = UDim2.fromOffset(14, 78 + (k - 1) * 34),
+				Size = UDim2.new(1, -90, 0, 28),
+				FontFace = if k <= 3 then F.bodyHeavy else F.bodyBold,
+				TextSize = 15,
+				TextColor3 = if me then C.lime elseif k <= 3 then C.text else C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 44,
+				Parent = col,
+			})
+			label(
+				tostring(row.value),
+				{
+					AnchorPoint = Vector2.new(1, 0),
+					Position = UDim2.new(1, -14, 0, 78 + (k - 1) * 34),
+					Size = UDim2.fromOffset(70, 28),
+					FontFace = F.display,
+					TextSize = 18,
+					TextColor3 = look.color,
+					TextXAlignment = Enum.TextXAlignment.Right,
+					ZIndex = 44,
+					Parent = col,
+				}
+			)
+		end
+		label(string.format("ТВОЁ: %d", (mine and mine[board]) or 0), {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 14, 1, -12),
+			Size = UDim2.new(1, -28, 0, 22),
+			FontFace = F.head,
+			TextSize = 13,
+			TextColor3 = C.lime,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 44,
+			Parent = col,
+		})
+	end
+	ui.weekly.show()
 end
 
 -- Hunter card -----------------------------------------------------------------------------------------------
@@ -841,6 +998,7 @@ function HubMenus.init(helpers, actions)
 	buildBoard()
 	buildOutposts()
 	buildCard()
+	buildWeekly()
 	buildBanner()
 	buildToast()
 end
@@ -864,7 +1022,7 @@ function HubMenus.mySquad()
 end
 
 function HubMenus.anyVisible(): boolean
-	for _, m in { ui.board, ui.outposts, ui.card } do
+	for _, m in { ui.board, ui.outposts, ui.card, ui.weekly } do
 		if m and m.shade.Visible then
 			return true
 		end
@@ -873,7 +1031,7 @@ function HubMenus.anyVisible(): boolean
 end
 
 function HubMenus.hideAll()
-	for _, m in { ui.board, ui.outposts, ui.card } do
+	for _, m in { ui.board, ui.outposts, ui.card, ui.weekly } do
 		if m then
 			m.shade.Visible = false
 		end

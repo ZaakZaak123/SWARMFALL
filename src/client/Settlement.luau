@@ -264,16 +264,13 @@ local function buildTree(parent: Instance)
 	local plaque =
 		part({ Name = "TreeSign", Size = Vector3.one * 0.2, Transparency = 1, CFrame = CFrame.new(c), Parent = holder })
 	local b = billboard(plaque, plaque, UDim2.fromOffset(320, 56), Vector3.new(0, 11, 0), 220)
-	local t = label(
-		"ПОСЛЕДНЯЯ РОЩА",
-		{
-			Size = UDim2.new(1, 0, 0, 30),
-			FontFace = F.display,
-			TextSize = 26,
-			TextColor3 = rgb(226, 214, 190),
-			Parent = b,
-		}
-	)
+	local t = label("ПОСЛЕДНЯЯ РОЩА", {
+		Size = UDim2.new(1, 0, 0, 30),
+		FontFace = F.display,
+		TextSize = 26,
+		TextColor3 = rgb(226, 214, 190),
+		Parent = b,
+	})
 	stroke(t, 2.5)
 	local s = label("Старое древо: споры к нему не садятся", {
 		Position = UDim2.fromOffset(0, 30),
@@ -343,17 +340,14 @@ local function buildFire(parent: Instance)
 	d.AnchorPoint = Vector2.new(0, 0.5)
 	d.Position = UDim2.new(0, 0, 0.5, 0)
 	d.Parent = b
-	local t = label(
-		"КОСТЁР СБОРА",
-		{
-			Position = UDim2.fromOffset(54, 6),
-			Size = UDim2.new(1, -54, 0, 26),
-			FontFace = F.display,
-			TextSize = 22,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = b,
-		}
-	)
+	local t = label("КОСТЁР СБОРА", {
+		Position = UDim2.fromOffset(54, 6),
+		Size = UDim2.new(1, -54, 0, 26),
+		FontFace = F.display,
+		TextSize = 22,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = b,
+	})
 	stroke(t, 2.5)
 	local s = label("Встань у огня — тебя увидят как «ищу напарника»", {
 		Position = UDim2.fromOffset(54, 32),
@@ -441,6 +435,176 @@ local function buildBoard(parent: Instance)
 	p.ObjectText = "Летопись"
 	p.MaxActivationDistance = 12
 	table.insert(squarePrompts, p)
+end
+
+-- The week's board (DD-088): the three boards' top three, beside the chronicle.
+local weekGui: SurfaceGui? = nil
+local weekly = nil
+local weekKey = nil
+local WEEK_COLOR = { defense = C.orange, research = C.violet, help = C.pink }
+local function buildWeekBoard(parent: Instance)
+	local at = Grove.WeekBoard
+	local holder = new("Model", { Name = "WeekBoard", Parent = parent })
+	local face = CFrame.lookAt(at, Vector3.new(Grove.Center.X, 0, Grove.Center.Z)) * CFrame.Angles(0, math.pi, 0)
+	for _, x in { -5.2, 5.2 } do
+		part({
+			Name = "Post",
+			Size = Vector3.new(0.6, 8, 0.6),
+			CFrame = face * CFrame.new(x, 4, 0),
+			Color = rgb(96, 70, 48),
+			Material = Enum.Material.Wood,
+			CanCollide = true,
+			Parent = holder,
+		})
+	end
+	local plank = part({
+		Name = "Plank",
+		Size = Vector3.new(10.8, 5.4, 0.4),
+		CFrame = face * CFrame.new(0, 4.9, 0),
+		Color = rgb(70, 60, 54),
+		Material = Enum.Material.WoodPlanks,
+		CanCollide = true,
+		Parent = holder,
+	})
+	part({
+		Name = "Trim",
+		Size = Vector3.new(11.2, 0.35, 0.6),
+		CFrame = face * CFrame.new(0, 7.75, 0),
+		Color = rgb(214, 170, 70),
+		Material = Enum.Material.Metal,
+		Parent = holder,
+	})
+	weekGui = new(
+		"SurfaceGui",
+		{
+			Face = Enum.NormalId.Front,
+			CanvasSize = Vector2.new(540, 270),
+			LightInfluence = 0.3,
+			MaxDistance = 90,
+			Parent = plank,
+		}
+	)
+	label(
+		"НЕДЕЛЯ РОЩИ",
+		{
+			Name = "Title",
+			Size = UDim2.new(1, 0, 0, 38),
+			FontFace = F.display,
+			TextSize = 34,
+			TextColor3 = rgb(255, 222, 140),
+			Parent = weekGui,
+		}
+	)
+	label(
+		"",
+		{
+			Name = "Left",
+			Position = UDim2.fromOffset(0, 36),
+			Size = UDim2.new(1, 0, 0, 20),
+			FontFace = F.bodyBold,
+			TextSize = 15,
+			TextColor3 = rgb(220, 206, 180),
+			Parent = weekGui,
+		}
+	)
+	new("Frame", {
+		Name = "Cols",
+		Position = UDim2.fromOffset(10, 62),
+		Size = UDim2.new(1, -20, 1, -68),
+		BackgroundTransparency = 1,
+		Parent = weekGui,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
+	})
+	local p = prompt(plank, Enum.KeyCode.E, Enum.KeyCode.ButtonX, function()
+		if acts.weekly then
+			acts.weekly()
+		end
+	end)
+	p.ActionText = "Недельные доски"
+	p.ObjectText = "Неделя рощи"
+	p.MaxActivationDistance = 12
+	table.insert(squarePrompts, p)
+end
+
+local function setWeekBoard(w)
+	if not weekGui or not w then
+		return
+	end
+	local key = tostring(math.floor((w.endsIn or 0) / 3600))
+	for _, board in Meta.WeeklyBoards do
+		for _, row in w[board] or {} do
+			key ..= board .. row.uid .. ":" .. row.value
+		end
+	end
+	if key == weekKey then
+		return
+	end
+	weekKey = key
+	local d, h = math.floor((w.endsIn or 0) / 86400), math.floor((w.endsIn or 0) % 86400 / 3600)
+	weekGui.Left.Text = string.format(
+		"новая неделя через %s",
+		if d > 0 then d .. " д " .. h .. " ч" else math.max(1, h) .. " ч"
+	)
+	local cols = weekGui.Cols
+	for _, c in cols:GetChildren() do
+		if c:IsA("Frame") then
+			c:Destroy()
+		end
+	end
+	for i, board in Meta.WeeklyBoards do
+		local col = new(
+			"Frame",
+			{
+				Size = UDim2.new(1 / 3, -6, 1, 0),
+				BackgroundColor3 = rgb(40, 34, 30),
+				BackgroundTransparency = 0.3,
+				Corner = 10,
+				LayoutOrder = i,
+				Parent = cols,
+			}
+		)
+		label(
+			Meta.WeeklyNames[board],
+			{
+				Size = UDim2.new(1, 0, 0, 28),
+				FontFace = F.head,
+				TextSize = 18,
+				TextColor3 = WEEK_COLOR[board],
+				Parent = col,
+			}
+		)
+		local rows = w[board] or {}
+		if #rows == 0 then
+			label(
+				"пока никого",
+				{
+					Position = UDim2.fromOffset(0, 40),
+					Size = UDim2.new(1, 0, 0, 22),
+					FontFace = F.bodyBold,
+					TextSize = 15,
+					TextColor3 = rgb(170, 160, 150),
+					Parent = col,
+				}
+			)
+		end
+		for k = 1, math.min(3, #rows) do
+			local row = rows[k]
+			label(string.format("%d. %s — %d", k, row.name, row.value), {
+				Position = UDim2.fromOffset(6, 34 + (k - 1) * 32),
+				Size = UDim2.new(1, -12, 0, 30),
+				FontFace = if k == 1 then F.bodyHeavy else F.bodyBold,
+				TextSize = 20,
+				TextColor3 = if row.uid == myId then C.lime else rgb(240, 228, 206),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				Parent = col,
+			})
+		end
+	end
+end
+
+function Settlement.weekly()
+	return weekly
 end
 
 local function setBoardLines(list)
@@ -547,39 +711,30 @@ local function buildSign(i: number)
 	local light =
 		new("PointLight", { Color = LANTERN.home, Range = 14, Brightness = 0, Shadows = false, Parent = lamp })
 	local gui = billboard(post, post, UDim2.fromOffset(260, 78), Vector3.new(0, 8.6, 0), 160)
-	local name = label(
-		"",
-		{
-			Size = UDim2.new(1, 0, 0, 28),
-			FontFace = F.display,
-			TextSize = 24,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			Parent = gui,
-		}
-	)
+	local name = label("", {
+		Size = UDim2.new(1, 0, 0, 28),
+		FontFace = F.display,
+		TextSize = 24,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Parent = gui,
+	})
 	stroke(name, 2.5)
-	local title = label(
-		"",
-		{
-			Position = UDim2.fromOffset(0, 28),
-			Size = UDim2.new(1, 0, 0, 18),
-			FontFace = F.head,
-			TextSize = 13,
-			TextColor3 = C.gold,
-			Parent = gui,
-		}
-	)
+	local title = label("", {
+		Position = UDim2.fromOffset(0, 28),
+		Size = UDim2.new(1, 0, 0, 18),
+		FontFace = F.head,
+		TextSize = 13,
+		TextColor3 = C.gold,
+		Parent = gui,
+	})
 	stroke(title)
-	local status = label(
-		"",
-		{
-			Position = UDim2.fromOffset(0, 48),
-			Size = UDim2.new(1, 0, 0, 22),
-			FontFace = F.bodyHeavy,
-			TextSize = 16,
-			Parent = gui,
-		}
-	)
+	local status = label("", {
+		Position = UDim2.fromOffset(0, 48),
+		Size = UDim2.new(1, 0, 0, 22),
+		FontFace = F.bodyHeavy,
+		TextSize = 16,
+		Parent = gui,
+	})
 	stroke(status)
 	local main = prompt(post, Enum.KeyCode.E, Enum.KeyCode.ButtonX, function()
 		local pl = plots[i]
@@ -589,6 +744,10 @@ local function buildSign(i: number)
 		if pl.kind == "me" then
 			if acts.lantern then
 				acts.lantern()
+			end
+		elseif pl.kind == "held" then
+			if pl.entry.fightHost and acts.joinFight then
+				acts.joinFight(pl.entry.fightHost)
 			end
 		elseif pl.kind == "online" then
 			local sq = Settlement.squadOf(pl.entry.id)
@@ -642,8 +801,10 @@ local function setSign(i: number)
 		sg.name.Text = e.name
 		sg.name.TextColor3 = C.text
 		sg.title.Text = e.title or ""
-		sg.status.Text = "В вылазке · " .. tostring(e.away or "бой")
-		sg.status.TextColor3 = STATUS_COLOR.away
+		-- DD-088: how the fight goes out there, live; a defence in a breather lights the lantern
+		sg.status.Text = e.fightLine or ("В вылазке · " .. tostring(e.away or "бой"))
+		sg.status.TextColor3 = if e.canJoin then C.lime else STATUS_COLOR.away
+		lit = if e.canJoin then "open" else "off"
 	else
 		sg.name.Text = if kind == "me" then "ТВОЙ ДОМ · " .. e.name else e.name
 		sg.name.TextColor3 = if kind == "me" then C.lime else C.text
@@ -679,6 +840,12 @@ local function setSign(i: number)
 			else "Попроситься с ним"
 		sg.main.ObjectText = e.name
 		sg.card.ObjectText = e.name
+	elseif kind == "held" and e.canQueue and e.fightHost then
+		sg.main.Enabled = true
+		sg.main.ActionText = "Вступить в оборону"
+		sg.main.ObjectText = if e.canJoin
+			then "Передышка — успеешь к волне"
+			else "Войдёшь в ближайшую передышку"
 	else
 		sg.card.ObjectText = e and e.name or ""
 	end
@@ -728,18 +895,15 @@ local function buildHome(i: number, e)
 				CFrame = WC(xz[1], 10.4, xz[2], yaw) * CFrame.Angles(math.rad(-35), 0, 0),
 				Parent = home,
 			})
-			new(
-				"SpotLight",
-				{
-					Face = Enum.NormalId.Front,
-					Angle = 75,
-					Range = 34,
-					Brightness = 1.8,
-					Color = rgb(255, 236, 200),
-					Shadows = false,
-					Parent = head,
-				}
-			)
+			new("SpotLight", {
+				Face = Enum.NormalId.Front,
+				Angle = 75,
+				Range = 34,
+				Brightness = 1.8,
+				Color = rgb(255, 236, 200),
+				Shadows = false,
+				Parent = head,
+			})
 		end
 	end
 	local gallery = nil
@@ -825,17 +989,14 @@ local function buildHome(i: number, e)
 			{ Size = UDim2.new(1, 0, 0, 22), FontFace = F.display, TextSize = 17, TextColor3 = color, Parent = b }
 		)
 		stroke(tl)
-		local sl = label(
-			sub,
-			{
-				Position = UDim2.fromOffset(0, 22),
-				Size = UDim2.new(1, 0, 0, 16),
-				FontFace = F.bodyBold,
-				TextSize = 12,
-				TextColor3 = C.dim,
-				Parent = b,
-			}
-		)
+		local sl = label(sub, {
+			Position = UDim2.fromOffset(0, 22),
+			Size = UDim2.new(1, 0, 0, 16),
+			FontFace = F.bodyBold,
+			TextSize = 12,
+			TextColor3 = C.dim,
+			Parent = b,
+		})
 		stroke(sl, 1.5)
 	end
 	local wdef = Defs.Weapons[e.weapon or ""]
@@ -941,6 +1102,7 @@ local function ensureBuilt()
 	buildWoods(square)
 	buildFire(square)
 	buildBoard(square)
+	buildWeekBoard(square)
 	for i = 1, Grove.Plots do
 		plots[i] = { kind = "free", entry = nil, sign = buildSign(i) }
 	end
@@ -962,6 +1124,7 @@ function Settlement.init(actions)
 				clearHome(pl)
 			end
 			table.clear(squarePrompts)
+			feedKey, weekKey = nil, nil
 		end
 		ensureBuilt()
 		if hub then
@@ -1047,6 +1210,10 @@ function Settlement.setHub(info, id: number)
 		end
 		setSign(i)
 	end
+	if grove.weekly then
+		weekly = grove.weekly
+		setWeekBoard(weekly)
+	end
 	local fk = ""
 	for _, e in grove.feed or {} do
 		fk ..= e.t .. e.text
@@ -1125,6 +1292,11 @@ function Settlement.update(dt: number, active: boolean)
 			elseif pl.kind ~= "free" and pl.kind ~= "held" then
 				sg.card.Enabled = true
 			end
+			if not active then
+				sg.main.Enabled = false
+			elseif pl.kind == "held" then
+				sg.main.Enabled = pl.entry ~= nil and pl.entry.canQueue == true and pl.entry.fightHost ~= nil
+			end
 		end
 		if pl.near and pos then
 			local c = Grove.frame(i).Position
@@ -1188,17 +1360,14 @@ function Settlement.say(uid: number, i: number)
 	new("UIScale", { Scale = 0.4, Parent = plate })
 	local ic = Icons.new(sig.icon, 22, C.ink)
 	ic.Parent = plate
-	label(
-		sig.text,
-		{
-			Size = UDim2.fromOffset(0, 40),
-			AutomaticSize = Enum.AutomaticSize.X,
-			FontFace = F.bodyHeavy,
-			TextSize = 19,
-			TextColor3 = C.ink,
-			Parent = plate,
-		}
-	)
+	label(sig.text, {
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = F.bodyHeavy,
+		TextSize = 19,
+		TextColor3 = C.ink,
+		Parent = plate,
+	})
 	tween(plate:FindFirstChildOfClass("UIScale"), 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
 	Audio.play("ui", 0.4, if uid == myId then 1.25 else 1.4)
 	if sig.wave and uid == myId then
@@ -1245,29 +1414,23 @@ function tell(e)
 		{ Size = UDim2.fromOffset(0, 40), AutomaticSize = Enum.AutomaticSize.X, CornerRadius = 20, Parent = ticker },
 		if e.big then C.gold else C.line
 	)
-	new(
-		"UIListLayout",
-		{
-			FillDirection = Enum.FillDirection.Horizontal,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 8),
-			Parent = row,
-		}
-	)
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 8),
+		Parent = row,
+	})
 	new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 14), Parent = row })
 	local ic = Icons.new(e.icon or "star", 22, if e.big then C.gold else C.dim)
 	ic.Parent = row
-	label(
-		e.text,
-		{
-			Size = UDim2.fromOffset(0, 40),
-			AutomaticSize = Enum.AutomaticSize.X,
-			FontFace = F.bodyBold,
-			TextSize = 14,
-			TextColor3 = if e.big then C.text else C.dim,
-			Parent = row,
-		}
-	)
+	label(e.text, {
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = F.bodyBold,
+		TextSize = 14,
+		TextColor3 = if e.big then C.text else C.dim,
+		Parent = row,
+	})
 	if e.big then
 		Audio.play("orb", 0.5, 1.1)
 	end
@@ -1307,17 +1470,14 @@ end
 local sig = nil
 local function buildSignals()
 	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-	local g = new(
-		"ScreenGui",
-		{
-			Name = "GroveSignals",
-			ResetOnSpawn = false,
-			IgnoreGuiInset = true,
-			DisplayOrder = 9,
-			Enabled = false,
-			Parent = pg,
-		}
-	)
+	local g = new("ScreenGui", {
+		Name = "GroveSignals",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = 9,
+		Enabled = false,
+		Parent = pg,
+	})
 	local btn = new("TextButton", {
 		Name = "Open",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -1334,17 +1494,14 @@ local function buildSignals()
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.new(0.5, 0, 0.42, 0)
 	ic.Parent = btn
-	local keyLabel = label(
-		"СИГНАЛ · G",
-		{
-			Position = UDim2.new(0, -18, 1, 2),
-			Size = UDim2.new(1, 36, 0, 16),
-			FontFace = F.head,
-			TextSize = 11,
-			TextColor3 = C.dim,
-			Parent = btn,
-		}
-	)
+	local keyLabel = label("СИГНАЛ · G", {
+		Position = UDim2.new(0, -18, 1, 2),
+		Size = UDim2.new(1, 36, 0, 16),
+		FontFace = F.head,
+		TextSize = 11,
+		TextColor3 = C.dim,
+		Parent = btn,
+	})
 	stroke(keyLabel, 1.5)
 	local list = new("Frame", {
 		Name = "List",
@@ -1372,33 +1529,27 @@ local function buildSignals()
 			LayoutOrder = i,
 			Parent = list,
 		})
-		local k = label(
-			tostring(i),
-			{
-				Position = UDim2.fromOffset(8, 6),
-				Size = UDim2.fromOffset(28, 28),
-				FontFace = F.display,
-				TextSize = 16,
-				TextColor3 = C.dim,
-				Parent = row,
-			}
-		)
+		local k = label(tostring(i), {
+			Position = UDim2.fromOffset(8, 6),
+			Size = UDim2.fromOffset(28, 28),
+			FontFace = F.display,
+			TextSize = 16,
+			TextColor3 = C.dim,
+			Parent = row,
+		})
 		local _ = k
 		local ri = Icons.new(sgn.icon, 20, C.ink)
 		ri.Position = UDim2.fromOffset(38, 10)
 		ri.Parent = row
-		label(
-			sgn.text,
-			{
-				Position = UDim2.fromOffset(66, 0),
-				Size = UDim2.new(1, -74, 1, 0),
-				FontFace = F.bodyHeavy,
-				TextSize = 16,
-				TextColor3 = C.ink,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				Parent = row,
-			}
-		)
+		label(sgn.text, {
+			Position = UDim2.fromOffset(66, 0),
+			Size = UDim2.new(1, -74, 1, 0),
+			FontFace = F.bodyHeavy,
+			TextSize = 16,
+			TextColor3 = C.ink,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = row,
+		})
 		row.Activated:Connect(function()
 			say(i)
 		end)

@@ -110,7 +110,15 @@ local r2 = Profile.grantRun(p, "run-2", result(true, { components = { "CMP_STORM
 check(d.ops.O02 == 1 and d.ops.O04 == nil, "O01 win opens O02 (and nothing further)")
 check(Profile.hasBlueprint(p, "W_SCATTERGUN") == false, "Вулкан blueprint needs the O02 win")
 check(d.ops.O01 == 2, "O01 win opens threat 2")
-check(d.firstWinGrantUsed and d.scrap >= Defs.FirstWinGrant, string.format("first-win grant tops up to %d (balance %d, grant %s)", Defs.FirstWinGrant, d.scrap, tostring(r2.grant)))
+check(
+	d.firstWinGrantUsed and d.scrap >= Defs.FirstWinGrant,
+	string.format(
+		"first-win grant tops up to %d (balance %d, grant %s)",
+		Defs.FirstWinGrant,
+		d.scrap,
+		tostring(r2.grant)
+	)
+)
 local count = 0
 for _, u in r2.unlocked do
 	if u[1] == "component" then
@@ -130,7 +138,10 @@ local rr = Defs.runReward({ kills = 2000, level = 13, victory = true, time = 400
 check(rr.lines[1][2] == math.floor(700 / 12), "Ксенит counts personal kills")
 
 -- Mastery ladder sanity.
-check(Defs.masteryNeed("W_RAILGUN", 20) == 16800 and Defs.masteryNeed("W_SCATTERGUN", 2) == 90, "mastery thresholds match 03_GAME_DATA")
+check(
+	Defs.masteryNeed("W_RAILGUN", 20) == 16800 and Defs.masteryNeed("W_SCATTERGUN", 2) == 90,
+	"mastery thresholds match 03_GAME_DATA"
+)
 
 -- v1 -> v2 migration: a player who beat the Matka keeps the boss operations and gets S01.
 do
@@ -144,7 +155,10 @@ do
 	e.runs = 12
 	e.s01 = false
 	Profile._reconcile(e)
-	check(e.ops.O05 == 3 and e.ops.O07 == 1 and e.s01 == true and e.v == 3, "v1 veterans keep the boss hunts (O05/O07) and get S01")
+	check(
+		e.ops.O05 == 3 and e.ops.O07 == 1 and e.s01 == true and e.v == 3,
+		"v1 veterans keep the boss hunts (O05/O07) and get S01"
+	)
 end
 
 -- DD-061 raids: the raider's rating and the defence record are separate; nothing is taken from owners.
@@ -155,12 +169,21 @@ do
 	local e = Profile.get(q)
 	e.raid = { rating = 1234, wins = 3, losses = 1, defWins = 4, defLosses = 2 }
 	Profile._reconcile(e)
-	check(e.raid.attack == 1234 and e.raid.held == 4 and e.raid.pairs ~= nil, "migration: old rating becomes the raider rating, stopped raids the defence record")
+	check(
+		e.raid.attack == 1234 and e.raid.held == 4 and e.raid.pairs ~= nil,
+		"migration: old rating becomes the raider rating, stopped raids the defence record"
+	)
 	local scrap, attack = e.scrap, e.raid.attack
 	Profile.applyDefense(q, { { won = true, delta = 20 } })
-	check(e.raid.attack == attack and e.scrap == scrap and e.raid.held == 4, "a breached defence costs the owner nothing (rating, utility, record)")
+	check(
+		e.raid.attack == attack and e.scrap == scrap and e.raid.held == 4,
+		"a breached defence costs the owner nothing (rating, utility, record)"
+	)
 	Profile.applyDefense(q, { { won = false, delta = 0 } })
-	check(e.raid.held == 5 and e.scrap == scrap + Meta.DefenseReward, "a held raid adds to the record and pays from the system")
+	check(
+		e.raid.held == 5 and e.scrap == scrap + Meta.DefenseReward,
+		"a held raid adds to the record and pays from the system"
+	)
 	local function raidResult(uid, power, ageHours, victory)
 		local r = result(victory, { id = 3 })
 		r.mode = "raid"
@@ -168,11 +191,47 @@ do
 		return r
 	end
 	local a = Profile.grantRun(q, "raid-1", raidResult(99, 3000, 5, true), "RAID", 1)
-	check(a.total > 0 and a.rating.delta ~= 0 and not a.capped, "a won raid on an old snapshot pays and moves the raider rating")
+	check(
+		a.total > 0 and a.rating.delta ~= 0 and not a.capped,
+		"a won raid on an old snapshot pays and moves the raider rating"
+	)
 	local b = Profile.grantRun(q, "raid-2", raidResult(99, 3000, 5, true), "RAID", 1)
 	check(b.total == 0 and b.capped == "pair", "the same owner pays once a day")
 	local c = Profile.grantRun(q, "raid-3", raidResult(77, 3000, 0.5, true), "RAID", 1)
 	check(c.total > 0 and c.rating.unrated and c.rating.delta == 0, "a fresh snapshot pays but leaves the rating alone")
+end
+
+print("=== mentors and the week (DD-088)")
+do
+	local v = player(501)
+	Profile.load(v)
+	local dv = Profile.get(v)
+	dv.wins = 9
+	dv.wins_by_op = { O01 = 3, O02 = 3, O03 = 3 }
+	check(Meta.isVeteran(dv) and not Meta.isNewcomer(dv), "nine wins and the third sortie: a veteran")
+	local plain = Profile.grantRun(v, "m-0", result(true, { id = 501 }), "O01", 1)
+	local before = dv.mentor
+	local helped = Profile.grantRun(v, "m-1", result(true, { id = 501 }), "O01", 1, { mentor = { "Новичок" } })
+	check(
+		dv.mentor == before + 1 and helped.mentor[1] == "Новичок",
+		"a win beside a newcomer counts for the mentor"
+	)
+	check(
+		helped.total > plain.total,
+		string.format("the mentor's ксенит is higher (%d > %d)", helped.total, plain.total)
+	)
+	local week = Profile.thisWeek(dv)
+	check(week.n == Meta.weekIndex(os.time()) and week.help >= 3, "the week's help counts the mentored fight")
+	local lost = Profile.grantRun(v, "m-2", result(false, { id = 501 }), "O01", 1, { mentor = { "Новичок" } })
+	check(lost.mentor == nil and dv.mentor == before + 1, "a lost fight mentors no one")
+	dv.week = { n = week.n - 1, defense = 9, research = 9, help = 9 }
+	check(Profile.thisWeek(dv).help == 0 and dv.week.n == week.n, "a new week starts from zero")
+	check(
+		Profile.addLaurel(v, "help", week.n - 1) and not Profile.addLaurel(v, "help", week.n - 1),
+		"one laurel per board and week"
+	)
+	local r = Profile.grantRun(v, "m-3", result(true, { id = 501, species = { HIVE = 60 } }), "O01", 1)
+	check(Profile.thisWeek(dv).research >= 3 and r ~= nil, "research stages raised count for the week")
 end
 
 if failures > 0 then
