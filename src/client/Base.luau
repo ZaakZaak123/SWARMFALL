@@ -280,7 +280,7 @@ local function buildWorld()
 		beam.CFrame = WC(def.x, 7, def.z) * CFrame.Angles(0, 0, math.rad(90))
 		local light =
 			new("PointLight", { Color = def.color, Range = 14, Brightness = 1.2, Shadows = false, Parent = pad })
-		local bb = board(pad, def.icon, def.name, def.sub, def.color, 8.5)
+		local bb = board(pad, def.icon, def.name, def.sub, def.color, (def.h or 6) + 2.5)
 		local pr = prompt(pad, def.name, def.sub, function()
 			if actions and actions[def.key] then
 				actions[def.key]()
@@ -341,6 +341,7 @@ local function artModel(key: string, height: number, cf: CFrame, parent: Instanc
 	m.Size = t.Size * (height / t.Size.Y)
 	m.CFrame = cf * CFrame.new(0, m.Size.Y / 2, 0)
 	m.CastShadow = true
+	m.CanCollide = true -- DD-091: the shelter's models are solid (the hero walked through them); bushes opt out
 	m.Parent = parent
 	return m
 end
@@ -413,7 +414,7 @@ local function buildSpots()
 			"PointLight",
 			{ Color = Color3.fromRGB(255, 214, 160), Range = 12, Brightness = 0, Shadows = false, Parent = ring }
 		)
-		local bb = board(ring, def.icon, def.name, "", sd.color, 7.5)
+		local bb = board(ring, def.icon, def.name, "", sd.color, (sd.h or 5) + 2.5)
 		local pr = prompt(ring, "Восстановить", def.name, function()
 			if actions and actions.spot then
 				actions.spot(id)
@@ -830,18 +831,9 @@ local function showGoalMarker(pos: Vector3, color: Color3, title: string, sub: s
 	local holder = new("Model", { Name = "GoalMarker", Parent = folder })
 	local ring = ringPart("Ring", 4.6, color, 0.34, holder)
 	ring.CFrame = CFrame.new(pos.X, 0.34, pos.Z)
-	local beam = part({
-		Name = "Beam",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(60, 1.2, 1.2),
-		Color = color,
-		Material = Enum.Material.Neon,
-		Transparency = 0.6,
-		Parent = holder,
-	})
-	beam.CFrame = CFrame.new(pos.X, 30, pos.Z) * CFrame.Angles(0, 0, math.rad(90))
-	-- the spot under the beam already carries its own sign
-	goalMarker = { holder = holder, ring = ring, beam = beam, key = key }
+	-- (owner, DD-091: no pillar of light into the sky over the goal — the ring, the sign and the chevron
+	-- at the hero's feet lead the way)
+	goalMarker = { holder = holder, ring = ring, key = key }
 end
 
 -- Leading the player (DD-082, owner playtest: «каждый шаг подсвечивать и вести игрока к действию»).
@@ -2214,7 +2206,6 @@ function Base.update(dt: number, _root: Vector3?)
 	if goalMarker then
 		local pulse = 0.5 + math.sin(now * 3.2) * 0.5
 		setRing(goalMarker.ring, pulse * 0.4, 3.6 + pulse * 0.8)
-		goalMarker.beam.Transparency = 0.55 + pulse * 0.25
 	end
 	if gui and gui.Enabled then
 		ui.playGlow.Transparency = 0.45 + math.sin(now * 3) * 0.25

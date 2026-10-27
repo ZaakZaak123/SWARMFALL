@@ -2,7 +2,7 @@
 -- The cableway's tunnel mouths in the ground (DD-091): the same dig in the grove's hill and in the
 -- funnel's wall. The owner: the hill was good, the entrance stood crooked in front of it — make it a real
 -- way under the ground. So the earth goes where an entrance needs it:
---   (grove only) the hill rises BEHIND the portal, with two shoulders flanking the approach;
+--   (grove only) a barrow rises BEHIND the portal, with two low shoulders flanking the approach;
 --   a cutting in front of the face — vertical earth on both sides, the floor level with the ground;
 --   the bore behind the face, a little wider and taller than the lining the client puts in it.
 -- The client (client/Cableway.cave) stands the portal on that: a headwall and wing walls whose tops follow
@@ -17,7 +17,7 @@ Portal.CUT_W = 24 -- the cutting's width between its earth walls
 Portal.CUT_L = 16 -- how far it runs out of the face
 Portal.BORE_W = 25 -- (terrain is drawn on a 4-stud grid: dug with room, or its faces poke through the lining)
 Portal.BORE_H = 24
-Portal.BORE_D = 30
+Portal.BORE_D = 16 -- a short bore: a story ride digs its own way on (client/Story)
 
 -- `mouth` is the floor centre of the face, `facing` points out of the tunnel (horizontal); `earth` is the
 -- hill's material, `floor` the cutting's.
@@ -26,18 +26,23 @@ function Portal.dig(mouth: Vector3, facing: Vector3, hill: boolean, earth, floor
 	local f = Vector3.new(facing.X, 0, facing.Z).Unit
 	local r = f:Cross(Vector3.yAxis).Unit
 	local ground = Vector3.new(mouth.X, 0, mouth.Z)
+	local out = CFrame.lookAt(ground, ground + f) -- -Z = out of the tunnel
 	if hill then
 		local mat = earth or M.LeafyGrass
-		-- the hill over the tunnel and the shoulders beside the cutting
-		-- (sized so the hill keeps clear of both plots' roads to the square, checked against the layout)
-		terrain:FillBall(ground - f * 18 + Vector3.new(0, -7, 0), 31, mat)
-		terrain:FillBall(ground - f * 30 + Vector3.new(0, -9, 0), 22, mat)
+		-- a compact barrow over the short tunnel (DD-091: the first hill, 31 studs round, swallowed the next
+		-- plot's lamp and trophy): an earth core over the bore, its top above the lining's roof, rounded
+		-- off by a mound behind it and two low shoulders beside the cutting
+		terrain:FillBlock(
+			out * CFrame.new(0, 10.5, Portal.BORE_D / 2 + 1),
+			Vector3.new(Portal.BORE_W + 6, 25, Portal.BORE_D + 2),
+			mat
+		)
+		terrain:FillBall(ground - f * 12 + Vector3.new(0, 1, 0), 22, mat)
 		for _, s in { -1, 1 } do
-			terrain:FillBall(ground + r * s * 21 - f * 3 + Vector3.new(0, -5, 0), 15, mat)
+			terrain:FillBall(ground + r * s * 17 - f * 2 + Vector3.new(0, -3, 0), 10, mat)
 		end
-		terrain:FillBall(ground - f * 26 + r * 4 + Vector3.new(0, 14, 0), 7, M.Rock)
+		terrain:FillBall(ground - f * 14 + r * 5 + Vector3.new(0, 18, 0), 4.5, M.Rock)
 	end
-	local out = CFrame.lookAt(ground, ground + f) -- -Z = out of the tunnel
 	-- the cutting in front of the face: dug below the floor, then the floor put back level (a dig that
 	-- stops at the floor leaves the hill's slope in the bottom voxel layer — a grass hump in the way in;
 	-- a fill up to -2 puts the surface exactly on 0, as everywhere else, DD-049)

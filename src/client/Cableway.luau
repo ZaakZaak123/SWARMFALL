@@ -87,7 +87,8 @@ end
 -- looked crooked and the ride was long; underground nothing breaks the picture and the way is short.)
 -- World points on the arena's side; the shelter's end goes through the plot's frame (DD-087: every plot
 -- has its own cave, in the hill between it and the next plot, shared/ShelterLayout.Cave).
-Cableway.ARENA_SIDE = Vector3.new(-104, 20, 34) -- post inside the funnel, west of the drill
+Cableway.ARENA_SIDE = Vector3.new(-104, 14, 34) -- post inside the funnel, west of the drill (DD-091: the span to
+-- the cave runs almost level, at 20 the ride climbed into the post and braked on the slope)
 Cableway.MOUTH_A = Vector3.new(Layout.ArenaCave.x, 0, Layout.ArenaCave.z) -- the cave in the funnel wall (floor centre)
 Cableway.FACING_A = Vector3.new(Layout.ArenaCave.fx, 0, Layout.ArenaCave.fz).Unit -- out of the cave, into the funnel
 Cableway.CABLE_H = 13 -- the cable's height over a cave's / the tunnel's floor
@@ -134,7 +135,7 @@ end
 -- lamp over the opening. `at` is the floor centre of the face, `facing` points out of the tunnel. The
 -- lining sits in folder "Inner" (a story ride hides it with "Dark": it rides its own tunnel through here).
 local CUT_W, CUT_L = 24, 16 -- server/Portal: the cutting
-local BORE_D = 26 -- how deep the lining runs (the bore is dug deeper)
+local BORE_D = 13 -- how deep the lining runs (server/Portal digs 16)
 local terrainRay = RaycastParams.new()
 terrainRay.FilterType = Enum.RaycastFilterType.Include
 terrainRay.FilterDescendantsInstances = { workspace.Terrain }
@@ -161,10 +162,21 @@ function Cableway.cave(parent: Instance, at: Vector3, facing: Vector3): Folder
 		local p =
 			part({ Size = size, CFrame = cf, Color = color, Material = mat or Enum.Material.Concrete }, into or folder)
 		p.CastShadow = shadow == true
+		p.CanCollide = shadow == true -- the walls, the face and the wings are solid (DD-091); trim is not
 		return p
 	end
 	-- the darkness further in (and what a crate rides into)
-	part({ Name = "Dark", Size = Vector3.new(19, 19, 1), CFrame = at3(0, 9, -BORE_D), Color = rgb(5, 5, 7) }, folder)
+	-- (solid: you may walk in to the dark, not through it)
+	part(
+		{
+			Name = "Dark",
+			Size = Vector3.new(19, 19, 1),
+			CFrame = at3(0, 9, -BORE_D),
+			Color = rgb(5, 5, 7),
+			CanCollide = true,
+		},
+		folder
+	)
 	-- the lining: walls, roof and floor, a steel rib every four studs, one dim lamp
 	local mid = -BORE_D / 2
 	for _, x in { -9.6, 9.6 } do

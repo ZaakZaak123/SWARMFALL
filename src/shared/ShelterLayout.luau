@@ -7,19 +7,20 @@
 
 local Layout = {}
 
--- Stations you walk up to (the HUD buttons do the same).
+-- Stations you walk up to (the HUD buttons do the same). DD-091: the models are about 1.6 times what they
+-- were (the hero looked too big beside them); their places stayed.
 Layout.Stations = {
-	armory = { art = "ARMORY", h = 6.5, x = -26, z = 12 },
-	launch = { art = "BEACON", h = 9, x = 0, z = -30 },
+	armory = { art = "ARMORY", h = 10.4, x = -26, z = 12 },
+	launch = { art = "BEACON", h = 14, x = 0, z = -30 },
 }
 
 -- Prepared spots (Meta.Home): rubble until restored, then the thing itself.
 Layout.Spots = {
-	GENERATOR = { art = "GENERATOR", h = 4.2, x = -11, z = 19, yaw = 0.3 },
-	WORKBENCH = { art = "WORKBENCH", h = 5, x = 13, z = 13, yaw = -0.25 },
-	RADIO = { art = "RADIO", h = 6.5, x = -24, z = -3, yaw = 0.35 },
-	LAB = { art = "TANK_FRAME", h = 7.5, x = 27, z = 9, yaw = -0.3 },
-	GARDEN = { art = "GARDEN", h = 4, x = -14, z = -14, yaw = 0.2 },
+	GENERATOR = { art = "GENERATOR", h = 6.7, x = -11, z = 19, yaw = 0.3 },
+	WORKBENCH = { art = "WORKBENCH", h = 8, x = 13, z = 13, yaw = -0.25 },
+	RADIO = { art = "RADIO", h = 10.4, x = -24, z = -3, yaw = 0.35 },
+	LAB = { art = "TANK_FRAME", h = 10.5, x = 27, z = 9, yaw = -0.3 },
+	GARDEN = { art = "GARDEN", h = 6.4, x = -14, z = -14, yaw = 0.2 },
 }
 
 Layout.Lamps = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
@@ -27,7 +28,7 @@ Layout.Lamps = { { -32, -20 }, { 32, -22 }, { -34, 24 }, { 34, 24 } }
 -- The shelter's own grove: the bunker, trees, old ruins, a wreck by the gate. { art, height, x, z, yaw }.
 -- DD-087: only what stands inside the plot (the settlement plants the woods between the plots).
 Layout.Decor = {
-	{ "SHELTER", 14, 0, 29, 0 },
+	{ "SHELTER", 21, 0, 32, 0 },
 	{ "OAK", 20, -42, 34, 0.4 },
 	{ "OAK", 18, -50, -4, 1.2 },
 	{ "OAK", 22, 6, 54, 1.7 },
@@ -43,20 +44,22 @@ Layout.Decor = {
 	{ "BUSH", 3.0, 30, -36, 2.5 },
 	{ "BUSH", 3.6, -8, 40, 0.2 },
 	{ "BUSH", 2.8, 12, 42, 1.2 },
-	{ "RUIN_WALL", 5, -11, -36, 0 },
-	{ "RUIN_WALL", 5, 11, -36, math.pi },
-	{ "RUIN_WALL", 4.5, -46, 8, 1.57 },
-	{ "RUIN_WALL", 4.2, 26, 52, -0.15 },
-	{ "RUIN_WALL", 4.5, -24, 50, 0.1 },
-	{ "CAR_WRECK", 2.8, 18, -46, 0.5 },
-	{ "CRATES", 3, -18, 24, 0.4 },
-	{ "CRATES", 2.6, 19, 21, -0.6 },
+	{ "RUIN_WALL", 6.5, -11, -36, 0 },
+	{ "RUIN_WALL", 6.5, 11, -36, math.pi },
+	{ "RUIN_WALL", 6, -46, 8, 1.57 },
+	{ "RUIN_WALL", 5.5, 26, 52, -0.15 },
+	{ "RUIN_WALL", 6, -24, 50, 0.1 },
+	{ "CAR_WRECK", 4.5, 18, -46, 0.5 },
+	{ "CRATES", 4.8, -18, 24, 0.4 },
+	{ "CRATES", 4.2, 19, 21, -0.6 },
 }
 
--- The cableway terminal (DD-065): the cable comes out of the hill cave to here. The cave (DD-082) is at
--- the foot of the hill between this plot and the next (DD-087); fx, fz point out of it.
+-- The cableway terminal (DD-065): the cable comes out of the hill cave to here. The cave (DD-082) is
+-- behind the yard's north-west corner, its mouth to the terminal and the gate side the camera looks from
+-- (DD-091: it stood by the road with its back to the camera, and its hill swallowed the next plot's
+-- lamp and trophy); fx, fz point out of it.
 Layout.Terminal = { x = -37, z = -9 }
-Layout.Cave = { x = -60, z = -40, fx = 0.6, fz = 0.8 }
+Layout.Cave = { x = -62, z = 44, fx = 0.5, fz = -0.866 }
 -- The cableway's other mouth, in the funnel's north-west wall (world space, not shelter coordinates): the
 -- server digs both (server/Portal), the client builds the portal and rides the cable (client/Cableway).
 Layout.ArenaCave = { x = -120, z = 84, fx = 0.42, fz = -0.91 }

@@ -701,6 +701,7 @@ end
 
 -- Scenes ---------------------------------------------------------------------------------------------------------
 -- A scene is a list of shots ({ from, to, cam(k, t) -> CFrame }) and cues ({ at, fn }).
+local HOLD_READ = 2.0 -- seconds a hold lingers on its caption before the scene goes on (DD-091)
 local function play(def)
 	if scene then
 		scene.finish()
@@ -774,8 +775,12 @@ local function play(def)
 		if h and s.t >= h and not s.waiting then
 			s.t = h
 			s.waiting = true
+			s.holdAt = os.clock()
 			driftT = 0
-			showNext(true)
+		end
+		-- owner (DD-091): no «Дальше» — a hold is a breath to read the line, then the scene goes on by itself
+		if s.waiting and not s.frozen and os.clock() - (s.holdAt or 0) >= HOLD_READ then
+			s.advance()
 		end
 		if s.waiting and ui.next.Visible then
 			ui.nextScale.Scale = 1 + math.sin(os.clock() * 4) * 0.04
@@ -931,7 +936,7 @@ function Story.intro(onDone)
 					-- close: the hero slides down to the post inside the funnel
 					local pos = path.at(s)
 					local side = Cableway.ARENA_SIDE
-					local eye = (side + Vector3.new(18, 8, -26)):Lerp(side + Vector3.new(14, 5, -20), k)
+					local eye = (side + Vector3.new(18, 14, -26)):Lerp(side + Vector3.new(14, 11, -20), k) -- (the post came down 6, DD-091)
 					return CFrame.lookAt(eye, pos + Vector3.new(0, -4, 0))
 				end,
 			},
@@ -1268,7 +1273,7 @@ function Story.returnHome(opId: string, onDone)
 	local term = base.point("TERMINAL")
 	local side = Cableway.ARENA_SIDE
 	-- close on the pallet at the post: the hero and the cargo, the funnel behind them
-	local nearEye = side + Vector3.new(14, 3, -17) -- above the crystals by the post
+	local nearEye = side + Vector3.new(14, 9, -17) -- above the crystals by the post (it came down 6, DD-091)
 	local function spotShot(from: number, to: number, spot: string)
 		local at = base.point(spot)
 		return {
@@ -1631,7 +1636,7 @@ function Story.depart(opId: string, onDone)
 				cam = function(k)
 					local pos = path.at(s)
 					local side = Cableway.ARENA_SIDE
-					local eye = (side + Vector3.new(18, 8, -26)):Lerp(side + Vector3.new(14, 5, -20), k)
+					local eye = (side + Vector3.new(18, 14, -26)):Lerp(side + Vector3.new(14, 11, -20), k) -- (the post came down 6, DD-091)
 					return CFrame.lookAt(eye, pos + Vector3.new(0, -4, 0))
 				end,
 			},
