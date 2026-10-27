@@ -1,7 +1,6 @@
 --!nonstrict
--- Builds ReplicatedStorage.ArtTemplates from Shared.Art at server start (DD-042). Each template is an
--- anchored, non-colliding MeshPart at its native size, named by key. Loading runs in parallel and is
--- bounded by a timeout: a missing asset only means the procedural fallback is used for that key.
+-- Builds ReplicatedStorage.ArtTemplates from baked ArtAssets (DD-097). Legacy places can still load
+-- missing templates from Shared.Art within a timeout, then use procedural fallbacks.
 
 local AssetService = game:GetService("AssetService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,16 +15,19 @@ folder.Parent = ReplicatedStorage
 local loaded: { [string]: MeshPart } = {}
 
 local function make(key: string, def)
+	local assets = ReplicatedStorage:FindFirstChild("ArtAssets")
+	local template = assets and assets:FindFirstChild(key)
 	local ok, mp = pcall(function()
+		if template and template:IsA("MeshPart") and template.MeshId == def.mesh and template.TextureID == def.tex then
+			return template:Clone()
+		end
 		return AssetService:CreateMeshPartAsync(Content.fromUri(def.mesh))
 	end)
 	if not ok or not mp then
 		warn("[SPOREFALL] art asset failed:", key, mp)
 		return
 	end
-	pcall(function()
-		mp.TextureID = def.tex
-	end)
+	mp.TextureID = def.tex
 	mp.Name = key
 	mp.Anchored = true
 	mp.CanCollide = false

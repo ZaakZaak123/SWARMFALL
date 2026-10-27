@@ -17,6 +17,8 @@ local Meta = require(Shared:WaitForChild("Meta"))
 
 local Theme = require(script.Parent:WaitForChild("Theme"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
+local ArtPreload = require(script.Parent:WaitForChild("ArtPreload"))
+ArtPreload.start()
 local Audio = require(script.Parent:WaitForChild("Audio"))
 local EnemyView = require(script.Parent:WaitForChild("EnemyView"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
@@ -382,6 +384,9 @@ local function playing(): boolean
 	if
 		not (mode == "RUN" and run ~= nil and me ~= nil and me.alive and run.paused == "")
 		or Story.active()
+		or not ArtPreload.ready
+		or not player.Character
+		or player.Character:GetAttribute("SpawnReady") ~= "RUN"
 		or reveal
 	then
 		return false
@@ -696,7 +701,16 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	me = findPlayerState(myId)
 	-- DD-075: the newcomer's first sortie opens with the ride out to the drill; the first defence with a
 	-- look at the new turret. Both play while the run waits for the first move.
-	if not storyChecked and run and run.phase == "COUNTDOWN" and not run.result then
+	local character = player.Character
+	if
+		not storyChecked
+		and run
+		and run.phase == "COUNTDOWN"
+		and not run.result
+		and ArtPreload.ready
+		and character
+		and character:GetAttribute("SpawnReady") == "RUN"
+	then
 		local prof = Menus.profile()
 		local function back()
 			if inRun and run and not run.result then

@@ -3,6 +3,7 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
+      "ArtAssets": { "$path": "assets/art/ArtAssets.rbxm" },
       "Shared": {
         "$path": "src/shared"
       },

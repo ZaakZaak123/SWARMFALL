@@ -15,6 +15,11 @@ rojo build -o build/SWARMFALL.rbxlx
 Открыть `build/SWARMFALL.rbxlx` в Roblox Studio → Play (или `rojo serve` + плагин Rojo для живой синхронизации).
 Арена, свет и remotes создаются сервером при старте — в Edit-режиме место пустое, это нормально.
 
+Меши окружения и их текстуры включены в `ReplicatedStorage.ArtAssets`. При изменении `Shared.Art`
+обновить реальные `MeshSize` в `production/environment/art-bounds.json` из Studio, затем выполнить
+`lune run tools/package_art` и `lune run tests/art_assets` перед сборкой. Клиент предзагружает шаблоны
+до вступления; Studio-проверка не подтверждает доступ к ассетам на настоящем телефоне.
+
 **Сохранения:** профиль хранится в DataStore. В Studio без «Enable Studio Access to API Services» профиль работает
 в офлайн-режиме (звёздочка возле скрапа) — ничего не пишется и ничего не стирается.
 

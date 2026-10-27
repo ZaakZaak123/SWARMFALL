@@ -4,6 +4,7 @@
     "$className": "DataModel",
     "ReplicatedStorage": {
       "Shared": { "$path": "src/shared" },
+      "ArtAssets": { "$path": "assets/art/ArtAssets.rbxm" },
       "WeaponAssets": { "$path": "assets/weapon_models" },
       "EnemyAssets": { "$path": "assets/enemy_models" },
       "XeniteAssets": { "$path": "assets/xenite" }

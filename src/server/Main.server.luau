@@ -18,6 +18,7 @@ local Ops = require(Shared:WaitForChild("Ops"))
 local World = require(script.Parent.Sim.World)
 local Arena = require(script.Parent.Arena)
 local ArtLoader = require(script.Parent.ArtLoader)
+local characterLoads = require(script.Parent.CharacterLoads).new()
 local Profile = require(script.Parent.Profile)
 local Outposts = require(script.Parent.Outposts)
 local Home = require(script.Parent.Home)
@@ -187,6 +188,8 @@ local function rootOf(player: Player): BasePart?
 end
 
 local function clearCharacter(player: Player)
+	characterLoads:cancel(player)
+	tracking[player] = nil
 	if player.Character then
 		player.Character:Destroy()
 		player.Character = nil
@@ -205,42 +208,48 @@ Profile.onChanged(function(player)
 end)
 
 local function prepareCharacter(player: Player, x: number, z: number, facing: number?)
-	local ok, err = pcall(function()
-		player:LoadCharacter()
-	end)
-	if not ok then
-		warn("[SWARMFALL] LoadCharacter failed", err)
-		return
-	end
-	local char = player.Character
-	if not char then
-		return
-	end
-	local hum = char:WaitForChild("Humanoid", 5) :: Humanoid?
-	local root = char:WaitForChild("HumanoidRootPart", 5) :: BasePart?
-	if not hum or not root then
-		return
-	end
-	local ff = char:FindFirstChildOfClass("ForceField")
-	if ff then
-		ff:Destroy()
-	end
-	hum.MaxHealth = 100
-	hum.Health = 100
-	hum.WalkSpeed = Defs.Player.Speed
-	hum.UseJumpPower = true
-	hum.JumpPower = 0
-	hum.AutoRotate = false
-	hum.BreakJointsOnDeath = true
-	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-	hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-	for _, d in char:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.CollisionGroup = "Survivors"
+	local spawnMode = mode
+	-- Stop movement sync from copying a previous home position into the new run during the load.
+	tracking[player] = nil
+	characterLoads:run(player, function(current)
+		local ok, err = pcall(function()
+			player:LoadCharacter()
+		end)
+		if not ok then
+			warn("[SWARMFALL] LoadCharacter failed", err)
+			return
 		end
-	end
-	char:PivotTo(CFrame.new(x, 3.2, z) * CFrame.Angles(0, facing or 0, 0))
-	tracking[player] = { x = x, z = z, y = 3.2 }
+		local char = player.Character
+		if not char or not current() then
+			return
+		end
+		local hum = char:WaitForChild("Humanoid", 5) :: Humanoid?
+		local root = char:WaitForChild("HumanoidRootPart", 5) :: BasePart?
+		if not hum or not root or not current() or player.Character ~= char then
+			return
+		end
+		local ff = char:FindFirstChildOfClass("ForceField")
+		if ff then
+			ff:Destroy()
+		end
+		hum.MaxHealth = 100
+		hum.Health = 100
+		hum.WalkSpeed = Defs.Player.Speed
+		hum.UseJumpPower = true
+		hum.JumpPower = 0
+		hum.AutoRotate = false
+		hum.BreakJointsOnDeath = true
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+		for _, d in char:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.CollisionGroup = "Survivors"
+			end
+		end
+		char:PivotTo(CFrame.new(x, 3.2, z) * CFrame.Angles(0, facing or 0, 0))
+		tracking[player] = { x = x, z = z, y = 3.2 }
+		char:SetAttribute("SpawnReady", spawnMode)
+	end)
 end
 
 -- Onboarding funnel (DD-052): where new players drop off, step by step, in the Creator Dashboard.
@@ -2320,6 +2329,7 @@ for _, player in Players:GetPlayers() do
 end
 
 Players.PlayerRemoving:Connect(function(player)
+	characterLoads:cancel(player)
 	if sessionHostId == player.UserId then
 		sessionHostId = nil
 	end
