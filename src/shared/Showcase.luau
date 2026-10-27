@@ -55,15 +55,10 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 		table.insert(out, { id = id, name = name, icon = icon, why = why })
 	end
 	if won(d, "O01") then
-		add(
-			"SHELTER",
-			"Запустил убежище",
-			"pin",
-			"Добыл генератор в первой вылазке"
-		)
+		add("SHELTER", "Первый свет", "pin", "Генератор добыт в первой вылазке")
 	end
 	if (d.saves or 0) >= 10 then
-		add("SAVIOR", "Спаситель", "heart", "Поднял союзников " .. (d.saves or 0) .. " раз")
+		add("SAVIOR", "Спаситель", "heart", "Союзников поднято: " .. (d.saves or 0))
 	end
 	local specimens = Collection.summary(d.research)
 	if specimens.complete >= 5 then
@@ -71,7 +66,7 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 			"NATURALIST",
 			"Исследователь роя",
 			"hive",
-			"Собрал полные экземпляры " .. specimens.complete .. " видов"
+			"Полных экземпляров в коллекции: " .. specimens.complete
 		)
 	end
 	if specimens.exemplary >= 3 then
@@ -79,11 +74,11 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 			"CURATOR",
 			"Хранитель коллекции",
 			"star",
-			"Вырастил эталоны " .. specimens.exemplary .. " видов"
+			"Эталонов в коллекции: " .. specimens.exemplary
 		)
 	end
 	if won(d, "O03") then
-		add("SCOURGE", "Гроза роя", "crosshair", "Разрядил тесла-вышку")
+		add("SCOURGE", "Гроза роя", "crosshair", "Тесла-вышка разряжена")
 	end
 	local home = d.home or {}
 	local all = true
@@ -93,14 +88,14 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 		end
 	end
 	if all then
-		add("KEEPER", "Хозяин убежища", "heart", "Восстановил всё убежище")
+		add("KEEPER", "Хозяин убежища", "heart", "Всё убежище восстановлено")
 	end
 	if best >= 3 then
 		add(
 			"SIEGE",
-			"Удержал бур · " .. best,
+			"Страж бура · " .. best,
 			"shield",
-			"Отбил оборону бура уровня " .. best
+			"Оборона бура уровня " .. best .. " отбита"
 		)
 	end
 	-- DD-088: the grove's mentors and the week's best
@@ -109,13 +104,13 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 			"MENTOR",
 			"Наставник рощи",
 			"users",
-			"Выиграл бои вместе с новичками: " .. (d.mentor or 0)
+			"Победы вместе с новичками: " .. (d.mentor or 0)
 		)
 	end
 	local laurelTitles = {
-		defense = { "WEEK_DEFENSE", "Лучший защитник недели", "shield" },
-		research = { "WEEK_RESEARCH", "Лучший исследователь недели", "hive" },
-		help = { "WEEK_HELP", "Лучший помощник недели", "heart" },
+		defense = { "WEEK_DEFENSE", "Защитник недели", "shield" },
+		research = { "WEEK_RESEARCH", "Исследователь недели", "hive" },
+		help = { "WEEK_HELP", "Помощник недели", "heart" },
 	}
 	for _, board in Meta.WeeklyBoards do
 		local l = (d.laurels or {})[board]
@@ -130,12 +125,72 @@ function Showcase.titles(d): { { id: string, name: string, icon: string, why: st
 		end
 	end
 	if won(d, "O05") then
-		add("BROOD", "Победил Мать роя", "skull", "Убил королеву роя в вылазке 5")
+		add(
+			"BROOD",
+			"Гроза Матери роя",
+			"skull",
+			"Мать роя повержена в вылазке 5"
+		)
 	end
 	if won(d, "O07") then
 		add("DEVOURER", "Пожиратель повержен", "crown", "Финал первой главы")
 	end
 	return out
+end
+
+-- The emblems a survivor may fly on the plot's flag (DD-089): each says something they did.
+function Showcase.emblems(d): { { id: string, name: string, why: string, ok: boolean } }
+	local specimens = Collection.summary(d.research)
+	local laurel = false
+	for _, l in d.laurels or {} do
+		if type(l) == "table" and (l.n or 0) > 0 then
+			laurel = true
+		end
+	end
+	return {
+		{ id = "pin", name = "Житель", why = "Есть у каждого", ok = true },
+		{ id = "skull", name = "Альфа", why = "Победи Альфу в вылазке 1", ok = won(d, "O01") },
+		{ id = "coil", name = "Тесла", why = "Пройди вылазку 3", ok = won(d, "O03") },
+		{
+			id = "hive",
+			name = "Коллекция",
+			why = "Собери 3 полных образца",
+			ok = specimens.complete >= 3,
+		},
+		{
+			id = "shield",
+			name = "Бур",
+			why = "Удержи бур на уровне 5",
+			ok = ((d.outpost and d.outpost.best) or 0) >= 5,
+		},
+		{
+			id = "heart",
+			name = "Спаситель",
+			why = "Подними союзников 10 раз",
+			ok = (d.saves or 0) >= 10,
+		},
+		{
+			id = "users",
+			name = "Наставник",
+			why = "Выиграй бой вместе с новичком",
+			ok = (d.mentor or 0) >= 1,
+		},
+		{ id = "star", name = "Лавр", why = "Попади в тройку недели", ok = laurel },
+		{ id = "crown", name = "Пожиратель", why = "Пройди главу 1", ok = won(d, "O07") },
+	}
+end
+
+-- The flag as shown: a colour index and an earned emblem (an unearned one falls back to «Житель»).
+function Showcase.banner(d): { color: number, emblem: string }
+	local b = if type(d.banner) == "table" then d.banner else {}
+	local color = math.clamp(math.floor(tonumber(b.color) or 1), 1, #Meta.BannerColors)
+	local emblem = "pin"
+	for _, e in Showcase.emblems(d) do
+		if e.id == b.emblem and e.ok then
+			emblem = e.id
+		end
+	end
+	return { color = color, emblem = emblem }
 end
 
 function Showcase.title(d): (string, string)
@@ -151,15 +206,15 @@ function Showcase.title(d): (string, string)
 	if won(d, "O07") then
 		return "Пожиратель повержен", "crown"
 	elseif best >= 10 then
-		return "Удержал бур · " .. best, "shield"
+		return "Страж бура · " .. best, "shield"
 	elseif won(d, "O05") then
-		return "Победил Мать роя", "skull"
+		return "Гроза Матери роя", "skull"
 	elseif best >= 3 then
-		return "Удержал бур · " .. best, "shield"
+		return "Страж бура · " .. best, "shield"
 	elseif won(d, "O03") then
 		return "Гроза роя", "crosshair"
 	elseif won(d, "O01") then
-		return "Запустил убежище", "pin"
+		return "Первый свет", "pin"
 	end
 	return "Новобранец", "star"
 end
@@ -256,6 +311,7 @@ function Showcase.build(userId: number, name: string, d, weapon: string, form: s
 			end
 			return out
 		end)(),
+		banner = Showcase.banner(d), -- DD-089: the plot's flag
 		trophyKey = (if won(d, "O01") then "a" else "") .. (if won(d, "O05") then "b" else "") .. (if won(d, "O07")
 			then "c"
 			else ""),

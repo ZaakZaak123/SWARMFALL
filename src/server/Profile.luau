@@ -87,6 +87,7 @@ local function defaults()
 		mentor = 0, -- DD-088: fights won as a veteran with a newcomer in the squad
 		week = { n = 0, defense = 0, research = 0, help = 0 }, -- DD-088: this week's board values
 		laurels = {}, -- DD-088: board -> { n = times in the week's top three, last = week index }
+		banner = { color = 1, emblem = "pin" }, -- DD-089: the plot's flag
 	}
 end
 
@@ -299,6 +300,8 @@ function Profile.public(player: Player)
 		mentor = d.mentor,
 		week = Profile.thisWeek(d),
 		laurels = d.laurels,
+		banner = Showcase.banner(d),
+		emblems = Showcase.emblems(d),
 	}
 end
 
@@ -648,8 +651,63 @@ function Profile.like(liker: Player, owner: Player, day: number): boolean
 	return true
 end
 
+-- DD-089: ♥ for a home whose owner is not here (another grove, offline): once a day per home, the
+-- owner gets it from the guestbook the next time they come in.
+function Profile.likeAway(liker: Player, uid: number, day: number): boolean
+	local a = Profile.get(liker)
+	if not a or uid == liker.UserId then
+		return false
+	end
+	local key = tostring(uid)
+	if a.liked[key] == day then
+		return false
+	end
+	for k, v in a.liked do
+		if v ~= day then
+			a.liked[k] = nil
+		end
+	end
+	a.liked[key] = day
+	mark(liker)
+	return true
+end
+
+-- What came while the owner was away (the guestbook): ♥ count into the profile.
+function Profile.addLikes(player: Player, n: number)
+	local d = Profile.get(player)
+	if d and n > 0 then
+		d.likes = (d.likes or 0) + math.floor(n)
+		mark(player)
+	end
+end
+
+-- DD-089: the plot's flag: any of the eight colours, an earned emblem.
+function Profile.setBanner(player: Player, color: number, emblem: string): boolean
+	local d = Profile.get(player)
+	if not d or type(color) ~= "number" or type(emblem) ~= "string" then
+		return false
+	end
+	color = math.floor(color)
+	if color < 1 or color > #Meta.BannerColors then
+		return false
+	end
+	for _, e in Showcase.emblems(d) do
+		if e.id == emblem and e.ok then
+			d.banner = { color = color, emblem = emblem }
+			mark(player)
+			return true
+		end
+	end
+	return false
+end
+
 -- One-time onboarding flags the client may set (the victory scene was watched).
 local CLIENT_TUT = {
+	-- DD-089: the first walk through the grove (one hint each)
+	groveSign = true,
+	groveNeighbor = true,
+	groveSignal = true,
+	groveFire = true,
 	drill = true,
 	intro = true,
 	go_O02 = true,
@@ -901,6 +959,12 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	local bonus = Meta.squadMult(result.squad or 1)
 	local week = thisWeek(d)
 	local mentored = result.victory and extra and type(extra.mentor) == "table" and #extra.mentor > 0
+	-- DD-089: the Light of the Tree pays everyone (its tier when the fight ended)
+	local light = extra and tonumber(extra.light) or 0
+	if light > 0 then
+		bonus *= 1 + light * Meta.TreeBonus
+		reward.light = light
+	end
 	if mentored then
 		bonus *= Meta.MentorBonus
 		d.mentor = (d.mentor or 0) + 1

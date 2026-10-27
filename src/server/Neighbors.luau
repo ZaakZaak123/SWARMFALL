@@ -295,6 +295,22 @@ local function demoEntries()
 	return out
 end
 
+local lastGhosts: { [number]: number } = {} -- user id -> plot of a home from another grove (last look)
+
+-- The plot an absent owner's home stands on here (a home from another grove, or a plot held while the
+-- owner fights): ♥ and visits for it go to their guestbook (DD-089).
+function Neighbors.awayPlot(uid: number): number?
+	if lastGhosts[uid] then
+		return lastGhosts[uid]
+	end
+	for i, pl in plots do
+		if pl.uid == uid and pl.away then
+			return i
+		end
+	end
+	return nil
+end
+
 -- Free plots and what stands on them: { [plot] = entry } for survivors from other groves (or demo).
 function Neighbors.ghosts(): { [number]: any }
 	local present = {}
@@ -328,6 +344,7 @@ function Neighbors.ghosts(): { [number]: any }
 	end)
 	local out = {}
 	local k = 1
+	table.clear(lastGhosts)
 	for _, fp in free do
 		while list[k] and present[list[k].id] do
 			k += 1
@@ -336,6 +353,7 @@ function Neighbors.ghosts(): { [number]: any }
 			local e = table.clone(list[k])
 			e.ghost = true
 			out[fp.i] = e
+			lastGhosts[e.id] = fp.i
 			k += 1
 		end
 	end

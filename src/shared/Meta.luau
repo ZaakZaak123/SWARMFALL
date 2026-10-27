@@ -397,6 +397,32 @@ Meta.WeeklyBoards = { "defense", "research", "help" }
 Meta.WeeklyNames = { defense = "ОБОРОНА БУРА", research = "ИССЛЕДОВАНИЯ", help = "ПОМОЩЬ" }
 Meta.WeeklyWords = { defense = "оборона бура", research = "исследования", help = "помощь" }
 
+-- DD-089: the Light of the Tree — every victory in every grove this week lights the old Tree a little
+-- more; each lit tier gives everyone +5% ксенита until the week ends.
+Meta.TreeTiers = { 30, 100, 250, 600, 1500 }
+Meta.TreeBonus = 0.05
+function Meta.treeTier(wins: number): number
+	local tier = 0
+	for i, need in Meta.TreeTiers do
+		if wins >= need then
+			tier = i
+		end
+	end
+	return tier
+end
+
+-- DD-089: the plot's flag. Eight cloth colours; the emblems are earned (Showcase.emblems).
+Meta.BannerColors = {
+	{ 198, 255, 66 },
+	{ 255, 204, 70 },
+	{ 255, 138, 56 },
+	{ 255, 64, 92 },
+	{ 255, 86, 198 },
+	{ 182, 124, 255 },
+	{ 86, 238, 230 },
+	{ 120, 176, 255 },
+}
+
 function Meta.anomalyFor(day: number)
 	local n = #Meta.Anomalies
 	return Meta.Anomalies[(day * 7919 + 3) % n + 1]

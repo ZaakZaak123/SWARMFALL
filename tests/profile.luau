@@ -232,6 +232,14 @@ do
 	)
 	local r = Profile.grantRun(v, "m-3", result(true, { id = 501, species = { HIVE = 60 } }), "O01", 1)
 	check(Profile.thisWeek(dv).research >= 3 and r ~= nil, "research stages raised count for the week")
+	local lit = Profile.grantRun(v, "m-4", result(true, { id = 501 }), "O01", 1, { light = 2 })
+	local dark = Profile.grantRun(v, "m-5", result(true, { id = 501 }), "O01", 1, { light = 0 })
+	check(lit.light == 2 and lit.total > dark.total, "the Light of the Tree pays more (DD-089)")
+	check(not Profile.setBanner(v, 3, "crown"), "an emblem needs its deed (the chapter is not done)")
+	check(Profile.setBanner(v, 3, "skull") and dv.banner.emblem == "skull", "an earned emblem goes on the flag")
+	check(not Profile.setBanner(v, 99, "pin"), "no colour outside the eight")
+	local day = Meta.dayIndex(os.time())
+	check(Profile.likeAway(v, 777, day) and not Profile.likeAway(v, 777, day), "♥ for an absent home: once a day")
 end
 
 if failures > 0 then

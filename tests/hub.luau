@@ -62,7 +62,7 @@ local prof = {
 }
 local entry = Showcase.build(1, "Ann", prof, "W_ARC_RIFLE", nil)
 print("  title: " .. entry.title .. "  trophies: " .. #entry.trophies .. "  M" .. entry.mastery)
-check(entry.title == "Победил Мать роя", "title is the hardest deed")
+check(entry.title == "Гроза Матери роя", "title is the hardest deed")
 check(entry.slots["4"] ~= nil and entry.slots["4"].id == "STING", "outpost slots travel with string keys")
 check(entry.power > 0 and entry.likes == 3 and not entry.newbie, "power, likes, veteran")
 local fresh =
@@ -88,7 +88,7 @@ do
 	d.title = "SAVIOR"
 	check(Showcase.title(d) == "Спаситель", "a chosen earned title is worn")
 	d.title = "DEVOURER"
-	check(Showcase.title(d) == "Удержал бур · 4", "an unearned choice falls back to the hardest deed")
+	check(Showcase.title(d) == "Страж бура · 4", "an unearned choice falls back to the hardest deed")
 	local e = Showcase.build(1, "A", d, "W_ARC_RIFLE", nil)
 	check(e.titleWhy ~= "" and e.saves == 12, "the card says where the title came from and counts rescues")
 end
@@ -106,7 +106,10 @@ for id = 1, 3 do
 	end
 	print("  " .. id .. ": " .. table.concat(names, ", "))
 end
-check(aw[2] and aw[2][1][2] == "Спаситель · 2" and aw[2][2][2] == "Защитник бура", "help comes first: rescues and guarding the drill")
+check(
+	aw[2] and aw[2][1][2] == "Спаситель · 2" and aw[2][2][2] == "Защитник бура",
+	"help comes first: rescues and guarding the drill"
+)
 check(aw[1] and aw[1][1][2] == "Главный калибр", "the top gun is noticed")
 check(aw[3] ~= nil and #aw[3] == 1, "everyone is noticed for something")
 check(next(Showcase.awards({ { id = 1, damage = 1 } })) == nil, "no awards in a solo run")

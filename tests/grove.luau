@@ -209,6 +209,36 @@ check(
 )
 check(Chronicle.provenance(nil, now) == "Трофей добыт", "an old trophy without a log still reads")
 
+print("=== flag and the Light of the Tree (DD-089)")
+local Showcase = H.require("src/shared/Showcase")
+local Meta = H.require("src/shared/Meta")
+local fresh = { wins_by_op = {}, research = {}, outpost = { best = 0 } }
+local veteran = { wins_by_op = { O01 = 1, O07 = 1 }, research = {}, outpost = { best = 6 }, saves = 12, mentor = 2 }
+local function okIds(d)
+	local out = {}
+	for _, e in Showcase.emblems(d) do
+		if e.ok then
+			table.insert(out, e.id)
+		end
+	end
+	return table.concat(out, ",")
+end
+check(okIds(fresh) == "pin", "a newcomer flies the plain emblem only")
+check(
+	okIds(veteran):find("crown") ~= nil and okIds(veteran):find("users") ~= nil,
+	"deeds open emblems (" .. okIds(veteran) .. ")"
+)
+fresh.banner = { color = 4, emblem = "crown" }
+local b1 = Showcase.banner(fresh)
+check(b1.color == 4 and b1.emblem == "pin", "an unearned emblem falls back to the plain one")
+veteran.banner = { color = 99, emblem = "crown" }
+local b2 = Showcase.banner(veteran)
+check(b2.color == #Meta.BannerColors and b2.emblem == "crown", "colour clamped, earned emblem kept")
+check(
+	Meta.treeTier(0) == 0 and Meta.treeTier(30) == 1 and Meta.treeTier(99999) == #Meta.TreeTiers,
+	"tree tiers by the week's wins"
+)
+
 print(if failures == 0 then "ALL PASS" else string.format("%d FAILURE(S)", failures))
 if failures > 0 then
 	error("grove failed")

@@ -26,6 +26,8 @@ local Showcase = require(Shared:WaitForChild("Showcase"))
 local Squads = require(script.Parent.Squads)
 local Neighbors = require(script.Parent.Neighbors)
 local Weekly = require(script.Parent.Weekly)
+local Guestbook = require(script.Parent.Guestbook)
+local TreeLight = require(script.Parent.TreeLight)
 local Grove = require(Shared:WaitForChild("Grove"))
 local Layout = require(Shared:WaitForChild("ShelterLayout"))
 local Chronicle = require(Shared:WaitForChild("Chronicle"))
@@ -390,10 +392,21 @@ local function settle()
 			end
 		end
 	end
+	-- DD-089: every win in every grove lights the Tree; its light pays everyone this week
+	local light = TreeLight.state().tier
+	if r.victory then
+		local n = 0
+		for _, player in participants do
+			if player.Parent then
+				n += 1
+			end
+		end
+		TreeLight.add(n)
+	end
 	for userId, player in participants do
 		if player.Parent then
 			local d = Profile.get(player)
-			local extra = nil
+			local extra = { light = light }
 			if d and r.victory and Meta.isVeteran(d) then
 				local names = {}
 				for uid, name in newcomers do
@@ -402,7 +415,7 @@ local function settle()
 					end
 				end
 				if #names > 0 then
-					extra = { mentor = names }
+					extra.mentor = names
 				end
 			end
 			rewards[userId] = Profile.grantRun(player, runId, r, world.op.id, world.threat, extra)
@@ -1014,6 +1027,16 @@ Players.PlayerAdded:Connect(function(player)
 			end
 			groveLook(player)
 			if mode == "HUB" then
+				-- DD-089: what came while they were away (♥ and visits from other groves)
+				local book = Guestbook.claim(player.UserId)
+				if book and player.Parent then
+					Profile.addLikes(player, book.likes or 0)
+					social(
+						player,
+						"guestbook",
+						{ likes = book.likes or 0, visits = book.visits or 0, names = book.names or {} }
+					)
+				end
 				-- DD-088: last week's top three get their laurel (and the grove hears of it)
 				for _, board in Weekly.laurels(player) do
 					local e = Neighbors.note(
@@ -1594,18 +1617,32 @@ local function nearPlot(player: Player, plot: number?): boolean
 end
 
 function handlers.like(player: Player, uid)
-	local owner = Codec.isUserId(uid, RunService:IsStudio()) and Players:GetPlayerByUserId(uid)
-	if
-		not campOnly()
-		or not owner
-		or owner == player
-		or not nearPlot(player, Neighbors.plotOf(uid))
-		or not Profile.like(player, owner, Meta.dayIndex(os.time()))
-	then
+	if not campOnly() or not Codec.isUserId(uid, RunService:IsStudio()) or uid == player.UserId then
 		return false
 	end
-	social(owner, "liked", player.DisplayName)
+	local owner = Players:GetPlayerByUserId(uid)
+	local day = Meta.dayIndex(os.time())
+	if owner and Neighbors.plotOf(uid) and not Neighbors.awayPlot(uid) then
+		if not nearPlot(player, Neighbors.plotOf(uid)) or not Profile.like(player, owner, day) then
+			return false
+		end
+		social(owner, "liked", player.DisplayName)
+		social(player, "likeSent", owner.DisplayName)
+		return true
+	end
+	-- DD-089: an absent owner's home (another grove, or out on a fight): the ♥ waits in their guestbook
+	local plot = Neighbors.awayPlot(uid)
+	if not plot or not nearPlot(player, plot) or not Profile.likeAway(player, uid, day) then
+		return false
+	end
+	Guestbook.like(uid, player.DisplayName)
+	social(player, "likeSent", "")
 	return true
+end
+
+-- DD-089: the plot's flag (colour and an earned emblem).
+function handlers.banner(player: Player, color, emblem)
+	return finite(color) and type(emblem) == "string" and Profile.setBanner(player, color, emblem)
 end
 
 -- «Посетить» (the residents' list, a hunter's card): a quick way to a plot's sign, facing the gate. The
@@ -1867,6 +1904,7 @@ local function lobbyInfo(L, h, members, shared)
 	}
 end
 
+local groveCache, groveAt = nil, -1e9 -- the grove's slow part (groveInfo below)
 -- What a survivor is up to, for their sign and nameplate (DD-087 §5).
 local function statusOf(player: Player, sq): (string, string)
 	local st = {}
@@ -1886,6 +1924,13 @@ local function statusOf(player: Player, sq): (string, string)
 		if at and at ~= Neighbors.plotOf(player.UserId) then
 			local ownerUid = Neighbors.plots()[at].uid
 			st.guestOf = ownerUid and Neighbors.name(ownerUid)
+			-- DD-089: walking round an absent owner's home is a visit in their guestbook
+			local cached = groveCache
+			local ghost = cached and cached.ghosts and cached.ghosts[at]
+			local away = ownerUid and Neighbors.awayPlot(ownerUid) == at and ownerUid or (ghost and ghost.id)
+			if away then
+				Guestbook.visit(away, player.UserId, player.DisplayName)
+			end
 		end
 		st.square = Grove.onSquare(root.Position)
 	end
@@ -1894,7 +1939,6 @@ local function statusOf(player: Player, sq): (string, string)
 end
 
 -- The grove's static part (homes from other groves, held plots, the chronicle) changes slowly.
-local groveCache, groveAt = nil, -1e9
 function groveInfo()
 	if not groveCache or os.clock() - groveAt > 2 then
 		groveAt = os.clock()
@@ -1903,6 +1947,7 @@ function groveInfo()
 			held = Neighbors.held(),
 			feed = Neighbors.feed(),
 			weekly = Weekly.boards(), -- DD-088
+			light = TreeLight.state(), -- DD-089
 		}
 	end
 	return groveCache
@@ -2032,6 +2077,7 @@ local function reportFight(dt: number)
 end
 
 local fallClock = 0
+local lastTier = nil -- the Tree's light tier last seen (DD-089)
 RunService.Heartbeat:Connect(function(dt)
 	-- safety net at home: anyone who drops under the shelter ground is put back in the yard
 	fallClock += dt
@@ -2061,6 +2107,25 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 		if mode == "HUB" then
 			Neighbors.tick()
+			-- DD-089: the Tree grew brighter (somewhere in the world a grove won): the grove hears of it
+			local tier = TreeLight.state().tier
+			if lastTier and tier > lastTier then
+				local e = Neighbors.note(
+					"sun",
+					string.format(
+						"Древо засветилось ярче: свет %d/%d, +%d%% ксенита всем до понедельника",
+						tier,
+						#Meta.TreeTiers,
+						math.floor(tier * Meta.TreeBonus * 100 + 0.5)
+					),
+					nil,
+					true
+				)
+				for _, p in Players:GetPlayers() do
+					social(p, "chronicle", e)
+				end
+			end
+			lastTier = tier
 		end
 	end
 	if mode == "HUB" then

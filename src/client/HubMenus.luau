@@ -386,16 +386,19 @@ local WEEK_LOOK = {
 		icon = "shield",
 		color = C.orange,
 		why = "Лучший удержанный уровень обороны бура",
+		how = "Отбей оборону бура на радиостанции — её уровень попадёт сюда.",
 	},
 	research = {
 		icon = "hive",
 		color = C.violet,
 		why = "Ступени исследований: образцы, силуэты, эталоны",
+		how = "Бей новые виды роя: каждая новая ступень колбы — очко.",
 	},
 	help = {
 		icon = "heart",
 		color = C.pink,
 		why = "Поднятые союзники и победы вместе с новичками (×3)",
+		how = "Поднимай товарищей в бою и бери новичков с собой.",
 	},
 }
 
@@ -439,59 +442,49 @@ function HubMenus.showWeekly(weekly, mine)
 	H.clear(ui.weeklyCols)
 	for i, board in { "defense", "research", "help" } do
 		local look = WEEK_LOOK[board]
-		local col = Theme.panel(
-			{
-				Size = UDim2.new(1 / 3, -8, 1, 0),
-				CornerRadius = 16,
-				LayoutOrder = i,
-				ZIndex = 43,
-				Parent = ui.weeklyCols,
-			},
-			look.color
-		)
+		local col = Theme.panel({
+			Size = UDim2.new(1 / 3, -8, 1, 0),
+			CornerRadius = 16,
+			LayoutOrder = i,
+			ZIndex = 43,
+			Parent = ui.weeklyCols,
+		}, look.color)
 		disc(col, look.icon, look.color, 40, UDim2.fromOffset(12, 12))
-		label(
-			Meta.WeeklyNames[board],
-			{
-				Position = UDim2.fromOffset(60, 12),
-				Size = UDim2.new(1, -66, 0, 22),
-				FontFace = F.display,
-				TextSize = 18,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 44,
-				Parent = col,
-			}
-		)
-		label(
-			look.why,
-			{
-				Position = UDim2.fromOffset(60, 34),
-				Size = UDim2.new(1, -66, 0, 32),
-				FontFace = F.body,
-				TextSize = 11,
-				TextColor3 = C.dim,
-				TextWrapped = true,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextYAlignment = Enum.TextYAlignment.Top,
-				ZIndex = 44,
-				Parent = col,
-			}
-		)
+		label(Meta.WeeklyNames[board], {
+			Position = UDim2.fromOffset(60, 12),
+			Size = UDim2.new(1, -66, 0, 22),
+			FontFace = F.display,
+			TextSize = 18,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 44,
+			Parent = col,
+		})
+		label(look.why, {
+			Position = UDim2.fromOffset(60, 34),
+			Size = UDim2.new(1, -66, 0, 32),
+			FontFace = F.body,
+			TextSize = 11,
+			TextColor3 = C.dim,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			ZIndex = 44,
+			Parent = col,
+		})
 		local rows = weekly[board] or {}
 		if #rows == 0 then
-			label(
-				"Пока никого — стань первым.",
-				{
-					Position = UDim2.fromOffset(14, 84),
-					Size = UDim2.new(1, -28, 0, 20),
-					FontFace = F.bodyBold,
-					TextSize = 13,
-					TextColor3 = C.dim,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					ZIndex = 44,
-					Parent = col,
-				}
-			)
+			label("Пока никого — стань первым. " .. look.how, {
+				Position = UDim2.fromOffset(14, 84),
+				Size = UDim2.new(1, -28, 0, 60),
+				TextWrapped = true,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				FontFace = F.bodyBold,
+				TextSize = 13,
+				TextColor3 = C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 44,
+				Parent = col,
+			})
 		end
 		for k, row in rows do
 			local me = row.uid == myId
@@ -506,20 +499,17 @@ function HubMenus.showWeekly(weekly, mine)
 				ZIndex = 44,
 				Parent = col,
 			})
-			label(
-				tostring(row.value),
-				{
-					AnchorPoint = Vector2.new(1, 0),
-					Position = UDim2.new(1, -14, 0, 78 + (k - 1) * 34),
-					Size = UDim2.fromOffset(70, 28),
-					FontFace = F.display,
-					TextSize = 18,
-					TextColor3 = look.color,
-					TextXAlignment = Enum.TextXAlignment.Right,
-					ZIndex = 44,
-					Parent = col,
-				}
-			)
+			label(tostring(row.value), {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -14, 0, 78 + (k - 1) * 34),
+				Size = UDim2.fromOffset(70, 28),
+				FontFace = F.display,
+				TextSize = 18,
+				TextColor3 = look.color,
+				TextXAlignment = Enum.TextXAlignment.Right,
+				ZIndex = 44,
+				Parent = col,
+			})
 		end
 		label(string.format("ТВОЁ: %d", (mine and mine[board]) or 0), {
 			AnchorPoint = Vector2.new(0, 1),
@@ -534,6 +524,162 @@ function HubMenus.showWeekly(weekly, mine)
 		})
 	end
 	ui.weekly.show()
+end
+
+-- The plot's flag (DD-089) -------------------------------------------------------------------------------------
+local function buildBanner2()
+	local m = H.modal("PlotFlag", 720, 520, "ФЛАГ УЧАСТКА", C.lime)
+	ui.flag = m
+	label(
+		"Флаг стоит у твоей таблички: цвет — любой, эмблема — за то, что ты сделал.",
+		{
+			Position = UDim2.fromOffset(28, 62),
+			Size = UDim2.new(1, -56, 0, 20),
+			FontFace = F.body,
+			TextSize = 14,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 42,
+			Parent = m.panel,
+		}
+	)
+	ui.flagPreview = new("Frame", {
+		Position = UDim2.fromOffset(28, 100),
+		Size = UDim2.fromOffset(180, 120),
+		BackgroundColor3 = C.lime,
+		Corner = 8,
+		ZIndex = 43,
+		Parent = m.panel,
+	})
+	ui.flagColors = new("Frame", {
+		Position = UDim2.fromOffset(230, 100),
+		Size = UDim2.new(1, -258, 0, 44),
+		ZIndex = 43,
+		Parent = m.panel,
+		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
+	})
+	ui.flagEmblems = new("Frame", {
+		Position = UDim2.fromOffset(28, 240),
+		Size = UDim2.new(1, -56, 1, -264),
+		ZIndex = 43,
+		Parent = m.panel,
+	})
+	new(
+		"UIGridLayout",
+		{
+			CellSize = UDim2.fromOffset(212, 64),
+			CellPadding = UDim2.fromOffset(10, 10),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = ui.flagEmblems,
+		}
+	)
+end
+
+local flagState = nil -- { color, emblem, emblems }
+local function drawFlag()
+	local st = flagState
+	local c = Meta.BannerColors[st.color] or Meta.BannerColors[1]
+	ui.flagPreview.BackgroundColor3 = Color3.fromRGB(c[1], c[2], c[3])
+	H.clear(ui.flagPreview)
+	local ic = Icons.new(st.emblem, 80, C.white)
+	ic.AnchorPoint = Vector2.new(0.5, 0.5)
+	ic.Position = UDim2.fromScale(0.5, 0.5)
+	ic.ZIndex = 44
+	ic.Parent = ui.flagPreview
+	H.clear(ui.flagColors)
+	for i, rgbv in Meta.BannerColors do
+		local chip = new("TextButton", {
+			Size = UDim2.fromOffset(44, 44),
+			BackgroundColor3 = Color3.fromRGB(rgbv[1], rgbv[2], rgbv[3]),
+			Text = "",
+			Corner = UDim.new(1, 0),
+			Stroke = {
+				Color = C.white,
+				Thickness = if i == st.color then 3 else 0,
+				Transparency = if i == st.color then 0 else 1,
+			},
+			LayoutOrder = i,
+			ZIndex = 44,
+			Parent = ui.flagColors,
+		})
+		chip.Activated:Connect(function()
+			st.color = i
+			H.send("banner", st.color, st.emblem)
+			Audio.play("ui", 0.6, 1.2)
+			drawFlag()
+		end)
+	end
+	H.clear(ui.flagEmblems)
+	for i, e in st.emblems do
+		local on = e.id == st.emblem
+		local cell = new("TextButton", {
+			BackgroundColor3 = C.ink,
+			BackgroundTransparency = if e.ok then 0.15 else 0.55,
+			Text = "",
+			Corner = 14,
+			Stroke = {
+				Color = if on then C.lime else C.white,
+				Transparency = if on then 0 else 0.85,
+				Thickness = if on then 2 else 1,
+			},
+			LayoutOrder = i,
+			ZIndex = 44,
+			Parent = ui.flagEmblems,
+		})
+		local ic = Icons.new(e.id, 30, if e.ok then C.text else C.dim)
+		ic.Position = UDim2.fromOffset(12, 17)
+		ic.ZIndex = 45
+		ic.Parent = cell
+		label(
+			e.name,
+			{
+				Position = UDim2.fromOffset(54, 8),
+				Size = UDim2.new(1, -60, 0, 22),
+				FontFace = F.bodyHeavy,
+				TextSize = 15,
+				TextColor3 = if e.ok then C.text else C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 45,
+				Parent = cell,
+			}
+		)
+		label(
+			if e.ok then "Открыто" else e.why,
+			{
+				Position = UDim2.fromOffset(54, 30),
+				Size = UDim2.new(1, -60, 0, 28),
+				FontFace = F.body,
+				TextSize = 11,
+				TextColor3 = if e.ok then C.lime else C.dim,
+				TextWrapped = true,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				ZIndex = 45,
+				Parent = cell,
+			}
+		)
+		cell.Activated:Connect(function()
+			if not e.ok then
+				Audio.play("warn", 0.3)
+				return
+			end
+			st.emblem = e.id
+			H.send("banner", st.color, st.emblem)
+			Audio.play("ui", 0.6, 1.3)
+			drawFlag()
+		end)
+	end
+end
+
+-- pub: the own public profile (banner + emblems)
+function HubMenus.showFlag(pub)
+	if not pub or not pub.emblems then
+		return
+	end
+	local b = pub.banner or { color = 1, emblem = "pin" }
+	flagState = { color = b.color or 1, emblem = b.emblem or "pin", emblems = pub.emblems }
+	drawFlag()
+	ui.flag.show()
 end
 
 -- Hunter card -----------------------------------------------------------------------------------------------
@@ -971,6 +1117,14 @@ function HubMenus.onSocial(kind: string, data)
 				end
 			end
 		)
+	elseif kind == "likeSent" then
+		Audio.play("orb", 0.6, 1.3)
+		HubMenus.toast(
+			if data ~= ""
+				then "♥ дому " .. tostring(data)
+				else "♥ отправлено — хозяин увидит, когда зайдёт",
+			C.pink
+		)
 	elseif kind == "asked" then
 		HubMenus.toast(string.format("Спросили %s — ждём ответа", tostring(data)), C.cyan)
 	elseif kind == "visitor" then
@@ -999,6 +1153,7 @@ function HubMenus.init(helpers, actions)
 	buildOutposts()
 	buildCard()
 	buildWeekly()
+	buildBanner2()
 	buildBanner()
 	buildToast()
 end
@@ -1022,7 +1177,7 @@ function HubMenus.mySquad()
 end
 
 function HubMenus.anyVisible(): boolean
-	for _, m in { ui.board, ui.outposts, ui.card, ui.weekly } do
+	for _, m in { ui.board, ui.outposts, ui.card, ui.weekly, ui.flag } do
 		if m and m.shade.Visible then
 			return true
 		end
@@ -1031,7 +1186,7 @@ function HubMenus.anyVisible(): boolean
 end
 
 function HubMenus.hideAll()
-	for _, m in { ui.board, ui.outposts, ui.card, ui.weekly } do
+	for _, m in { ui.board, ui.outposts, ui.card, ui.weekly, ui.flag } do
 		if m then
 			m.shade.Visible = false
 		end

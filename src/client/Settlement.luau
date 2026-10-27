@@ -64,6 +64,8 @@ local hub = nil -- the last camp state
 local plots = {} -- i -> { kind, entry, key, home = Folder?, near = Folder?, gallery, sign = {...} }
 local feedKey = nil
 local visible = true
+local treeLamps = {} -- { part, light } — lit by the Light of the Tree (DD-089)
+local treeLine: TextLabel? = nil
 local pending = {} -- chronicle lines waiting for a calm moment
 local calm = false
 local tell -- shows a chronicle line (defined with the chronicle below)
@@ -254,12 +256,14 @@ local function buildTree(parent: Instance)
 			Material = Enum.Material.Neon,
 			Parent = holder,
 		})
+		local light = nil
 		if i % 3 == 0 then
-			new(
+			light = new(
 				"PointLight",
 				{ Color = rgb(255, 186, 120), Range = 16, Brightness = 0.9, Shadows = false, Parent = lamp }
 			)
 		end
+		table.insert(treeLamps, { part = lamp, light = light })
 	end
 	local plaque =
 		part({ Name = "TreeSign", Size = Vector3.one * 0.2, Transparency = 1, CFrame = CFrame.new(c), Parent = holder })
@@ -272,7 +276,7 @@ local function buildTree(parent: Instance)
 		Parent = b,
 	})
 	stroke(t, 2.5)
-	local s = label("Старое древо: споры к нему не садятся", {
+	treeLine = label("Старое древо: споры к нему не садятся", {
 		Position = UDim2.fromOffset(0, 30),
 		Size = UDim2.new(1, 0, 0, 20),
 		FontFace = F.bodyBold,
@@ -280,7 +284,48 @@ local function buildTree(parent: Instance)
 		TextColor3 = C.dim,
 		Parent = b,
 	})
-	stroke(s)
+	stroke(treeLine)
+	b.Size = UDim2.fromOffset(420, 56)
+end
+
+-- The Light of the Tree (DD-089): the settlers' lanterns light up with every grove's wins this week.
+local lightKey = nil
+local function setTreeLight(light)
+	if not light then
+		return
+	end
+	local key = light.tier .. ":" .. light.wins
+	if key == lightKey then
+		return
+	end
+	lightKey = key
+	local lit = 4 + math.floor(light.tier * 12 / #Meta.TreeTiers + 0.5)
+	for k, l in treeLamps do
+		local on = k <= lit
+		l.part.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		l.part.Color = if on then rgb(255, 190, 110) else rgb(80, 70, 58)
+		if l.light then
+			l.light.Enabled = on and Settings.quality > 1
+		end
+	end
+	if treeLine then
+		treeLine.Text = if light.need
+			then string.format(
+				"Свет Древа %d/%d · побед всех рощ за неделю: %d из %d%s",
+				light.tier,
+				#Meta.TreeTiers,
+				light.wins,
+				light.need,
+				if light.tier > 0
+					then string.format(" · +%d%% ксенита всем", math.floor(light.bonus * 100 + 0.5))
+					else ""
+			)
+			else string.format(
+				"Древо горит во всю силу · +%d%% ксенита всем до понедельника",
+				math.floor(light.bonus * 100 + 0.5)
+			)
+		treeLine.TextColor3 = if light.tier > 0 then rgb(255, 214, 140) else C.dim
+	end
 end
 
 local function buildFire(parent: Instance)
@@ -474,39 +519,30 @@ local function buildWeekBoard(parent: Instance)
 		Material = Enum.Material.Metal,
 		Parent = holder,
 	})
-	weekGui = new(
-		"SurfaceGui",
-		{
-			Face = Enum.NormalId.Front,
-			CanvasSize = Vector2.new(540, 270),
-			LightInfluence = 0.3,
-			MaxDistance = 90,
-			Parent = plank,
-		}
-	)
-	label(
-		"НЕДЕЛЯ РОЩИ",
-		{
-			Name = "Title",
-			Size = UDim2.new(1, 0, 0, 38),
-			FontFace = F.display,
-			TextSize = 34,
-			TextColor3 = rgb(255, 222, 140),
-			Parent = weekGui,
-		}
-	)
-	label(
-		"",
-		{
-			Name = "Left",
-			Position = UDim2.fromOffset(0, 36),
-			Size = UDim2.new(1, 0, 0, 20),
-			FontFace = F.bodyBold,
-			TextSize = 15,
-			TextColor3 = rgb(220, 206, 180),
-			Parent = weekGui,
-		}
-	)
+	weekGui = new("SurfaceGui", {
+		Face = Enum.NormalId.Front,
+		CanvasSize = Vector2.new(540, 270),
+		LightInfluence = 0.3,
+		MaxDistance = 90,
+		Parent = plank,
+	})
+	label("НЕДЕЛЯ РОЩИ", {
+		Name = "Title",
+		Size = UDim2.new(1, 0, 0, 38),
+		FontFace = F.display,
+		TextSize = 34,
+		TextColor3 = rgb(255, 222, 140),
+		Parent = weekGui,
+	})
+	label("", {
+		Name = "Left",
+		Position = UDim2.fromOffset(0, 36),
+		Size = UDim2.new(1, 0, 0, 20),
+		FontFace = F.bodyBold,
+		TextSize = 15,
+		TextColor3 = rgb(220, 206, 180),
+		Parent = weekGui,
+	})
 	new("Frame", {
 		Name = "Cols",
 		Position = UDim2.fromOffset(10, 62),
@@ -552,40 +588,31 @@ local function setWeekBoard(w)
 		end
 	end
 	for i, board in Meta.WeeklyBoards do
-		local col = new(
-			"Frame",
-			{
-				Size = UDim2.new(1 / 3, -6, 1, 0),
-				BackgroundColor3 = rgb(40, 34, 30),
-				BackgroundTransparency = 0.3,
-				Corner = 10,
-				LayoutOrder = i,
-				Parent = cols,
-			}
-		)
-		label(
-			Meta.WeeklyNames[board],
-			{
-				Size = UDim2.new(1, 0, 0, 28),
-				FontFace = F.head,
-				TextSize = 18,
-				TextColor3 = WEEK_COLOR[board],
-				Parent = col,
-			}
-		)
+		local col = new("Frame", {
+			Size = UDim2.new(1 / 3, -6, 1, 0),
+			BackgroundColor3 = rgb(40, 34, 30),
+			BackgroundTransparency = 0.3,
+			Corner = 10,
+			LayoutOrder = i,
+			Parent = cols,
+		})
+		label(Meta.WeeklyNames[board], {
+			Size = UDim2.new(1, 0, 0, 28),
+			FontFace = F.head,
+			TextSize = 18,
+			TextColor3 = WEEK_COLOR[board],
+			Parent = col,
+		})
 		local rows = w[board] or {}
 		if #rows == 0 then
-			label(
-				"пока никого",
-				{
-					Position = UDim2.fromOffset(0, 40),
-					Size = UDim2.new(1, 0, 0, 22),
-					FontFace = F.bodyBold,
-					TextSize = 15,
-					TextColor3 = rgb(170, 160, 150),
-					Parent = col,
-				}
-			)
+			label("пока никого", {
+				Position = UDim2.fromOffset(0, 40),
+				Size = UDim2.new(1, 0, 0, 22),
+				FontFace = F.bodyBold,
+				TextSize = 15,
+				TextColor3 = rgb(170, 160, 150),
+				Parent = col,
+			})
 		end
 		for k = 1, math.min(3, #rows) do
 			local row = rows[k]
@@ -765,6 +792,49 @@ local function buildSign(i: number)
 		end
 	end)
 	card.ActionText = "Карточка"
+	-- DD-089: the plot's flag beside the sign (its owner's colour and emblem) and the third prompt: ♥ for
+	-- a neighbour's home, the flag for the own one
+	local pole = part({
+		Name = "FlagPole",
+		Size = Vector3.new(0.35, 11, 0.35),
+		CFrame = turn * CFrame.new(-3.4, 5.5, 0),
+		Color = rgb(70, 62, 56),
+		Material = Enum.Material.Metal,
+		Parent = holder,
+	})
+	local cloth = part({
+		Name = "Flag",
+		Size = Vector3.new(3.6, 2.4, 0.1),
+		CFrame = turn * CFrame.new(-5.2, 9.6, 0),
+		Color = rgb(198, 255, 66),
+		Material = Enum.Material.Fabric,
+		Parent = holder,
+	})
+	local emblems = {}
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local sg = new(
+			"SurfaceGui",
+			{ Face = face, CanvasSize = Vector2.new(180, 120), LightInfluence = 0.6, MaxDistance = 160, Parent = cloth }
+		)
+		local ic = Icons.new("pin", 84, rgb(255, 255, 255))
+		ic.AnchorPoint = Vector2.new(0.5, 0.5)
+		ic.Position = UDim2.fromScale(0.5, 0.5)
+		ic.Parent = sg
+		table.insert(emblems, { gui = sg, icon = ic })
+	end
+	local third = prompt(post, Enum.KeyCode.R, Enum.KeyCode.ButtonB, function()
+		local pl = plots[i]
+		if not pl or not pl.entry then
+			return
+		end
+		if pl.kind == "me" then
+			if acts.banner then
+				acts.banner()
+			end
+		elseif acts.like then
+			acts.like(pl.entry.id)
+		end
+	end)
 	return {
 		holder = holder,
 		lamp = lamp,
@@ -774,7 +844,32 @@ local function buildSign(i: number)
 		status = status,
 		main = main,
 		card = card,
+		third = third,
+		pole = pole,
+		cloth = cloth,
+		clothCf = cloth.CFrame,
+		emblems = emblems,
 	}
+end
+
+local function setFlag(sg, banner)
+	local show = banner ~= nil
+	sg.pole.Transparency = if show then 0 else 1
+	sg.cloth.Transparency = if show then 0 else 1
+	for _, em in sg.emblems do
+		em.gui.Enabled = show
+	end
+	if not show then
+		return
+	end
+	local c = Meta.BannerColors[banner.color or 1] or Meta.BannerColors[1]
+	sg.cloth.Color = rgb(c[1], c[2], c[3])
+	if sg.emblemId ~= banner.emblem then
+		sg.emblemId = banner.emblem
+		for _, em in sg.emblems do
+			em.icon = Icons.swap(em.icon, banner.emblem or "pin", rgb(255, 255, 255))
+		end
+	end
 end
 
 local function setSign(i: number)
@@ -813,6 +908,10 @@ local function setSign(i: number)
 		sg.status.TextColor3 = STATUS_COLOR[e.statusKey or "home"] or C.text
 		lit = if e.statusKey == "open" then "open" else "home"
 	end
+	setFlag(sg, if e and kind ~= "free" then (e.banner or { color = 1, emblem = "pin" }) else nil)
+	sg.third.Enabled = kind ~= "free"
+	sg.third.ActionText = if kind == "me" then "Флаг участка" else "♥ Нравится дом"
+	sg.third.ObjectText = if kind == "me" then "Цвет и эмблема" elseif e then e.name else ""
 	local col = LANTERN[lit]
 	sg.lamp.Color = col
 	sg.lamp.Material = if lit == "off" then Enum.Material.SmoothPlastic else Enum.Material.Neon
@@ -1124,7 +1223,8 @@ function Settlement.init(actions)
 				clearHome(pl)
 			end
 			table.clear(squarePrompts)
-			feedKey, weekKey = nil, nil
+			feedKey, weekKey, lightKey = nil, nil, nil
+			table.clear(treeLamps)
 		end
 		ensureBuilt()
 		if hub then
@@ -1214,6 +1314,7 @@ function Settlement.setHub(info, id: number)
 		weekly = grove.weekly
 		setWeekBoard(weekly)
 	end
+	setTreeLight(grove.light)
 	local fk = ""
 	for _, e in grove.feed or {} do
 		fk ..= e.t .. e.text
@@ -1268,12 +1369,261 @@ function Settlement.setVisible(on: boolean)
 	folder.Parent = if on then workspace else nil
 end
 
+-- The first walk through the grove (DD-089): one quiet hint at a time, each once, when the hero comes
+-- to the thing it is about. Marked done on the server (profile tut) so it never repeats.
+local COACH = {
+	{
+		key = "groveSign",
+		icon = "pin",
+		title = "ТВОЯ ТАБЛИЧКА",
+		text = "Зажги фонарь (E) — соседи увидят, что ты ищешь напарника. R — флаг участка.",
+	},
+	{
+		key = "groveNeighbor",
+		icon = "eye",
+		title = "ДОМ СОСЕДА",
+		text = "У постаментов написано, как добыты трофеи. У таблички: F — карточка, R — ♥ дому.",
+	},
+	{
+		key = "groveSignal",
+		icon = "users",
+		title = "РЯДОМ ЖИТЕЛЬ",
+		text = "Нажми G и скажи «Привет!» — без чата. А у его таблички можно попроситься с ним.",
+	},
+	{
+		key = "groveFire",
+		icon = "users",
+		title = "КОСТЁР СБОРА",
+		text = "Встань у огня — фонарь у твоей таблички загорится, и тебя позовут с собой.",
+	},
+}
+local profile = nil -- the own public profile (for the hints' tut flags)
+local coachGui = nil
+local coachOn = nil -- { key, until }
+local coachDone = {} -- keys shown this session (the server flag may lag)
+
+function Settlement.setProfile(pub)
+	profile = pub
+end
+
+local function coachPanel()
+	if coachGui then
+		return coachGui
+	end
+	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local g = new(
+		"ScreenGui",
+		{ Name = "GroveCoach", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 12, Parent = pg }
+	)
+	local panel = Theme.panel({
+		Name = "Panel",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 14),
+		Size = UDim2.fromOffset(560, 74),
+		CornerRadius = 22,
+		Visible = false,
+		Parent = g,
+	}, C.lime)
+	local d = Icons.disc("pin", 46, C.lime, 2)
+	d.Name = "Disc"
+	d.AnchorPoint = Vector2.new(0, 0.5)
+	d.Position = UDim2.new(0, 14, 0.5, 0)
+	d.Parent = panel
+	label(
+		"",
+		{
+			Name = "Title",
+			Position = UDim2.fromOffset(72, 10),
+			Size = UDim2.new(1, -86, 0, 22),
+			FontFace = F.display,
+			TextSize = 19,
+			TextColor3 = C.lime,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = panel,
+		}
+	)
+	label(
+		"",
+		{
+			Name = "Text",
+			Position = UDim2.fromOffset(72, 32),
+			Size = UDim2.new(1, -86, 0, 36),
+			FontFace = F.bodyBold,
+			TextSize = 14,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			Parent = panel,
+		}
+	)
+	coachGui = g
+	return g
+end
+
+local function showCoach(c)
+	local g = coachPanel()
+	local panel = g.Panel
+	panel.Title.Text = c.title
+	panel.Text.Text = c.text
+	local old = panel:FindFirstChild("Disc")
+	if old then
+		old:Destroy()
+	end
+	local d = Icons.disc(c.icon, 46, C.lime, 2)
+	d.Name = "Disc"
+	d.AnchorPoint = Vector2.new(0, 0.5)
+	d.Position = UDim2.new(0, 14, 0.5, 0)
+	d.Parent = panel
+	panel.Visible = true
+	panel.Position = UDim2.new(0.5, 0, 0, -6)
+	tween(panel, 0.35, { Position = UDim2.new(0.5, 0, 0, 14) }, Enum.EasingStyle.Back)
+	Audio.play("ui", 0.5, 1.3)
+	coachOn = { key = c.key, untilT = os.clock() + 9 }
+	coachDone[c.key] = true
+	if acts.tut then
+		acts.tut(c.key)
+	end
+end
+
+local function coach(pos: Vector3?)
+	if coachOn then
+		if os.clock() > coachOn.untilT then
+			coachOn = nil
+			if coachGui then
+				coachGui.Panel.Visible = false
+			end
+		end
+		return
+	end
+	local tut = profile and profile.tut or {}
+	if not pos or not profile or ((profile.winsByOp or {}).O01 or 0) == 0 then
+		return -- the first sortie and its scenes come first
+	end
+	local function due(key: string): boolean
+		return not tut[key] and not coachDone[key]
+	end
+	local function near(at: Vector3, r: number): boolean
+		return Vector3.new(at.X - pos.X, 0, at.Z - pos.Z).Magnitude < r
+	end
+	if due("groveSign") and myPlot then
+		local f = Grove.frame(myPlot)
+		if near(Grove.at(f, Layout.Sign.x, 0, Layout.Sign.z), 26) then
+			return showCoach(COACH[1])
+		end
+	end
+	if due("groveNeighbor") then
+		for i, pl in plots do
+			if pl.entry and pl.kind ~= "me" and pl.kind ~= "free" and near(Grove.frame(i).Position, 70) then
+				return showCoach(COACH[2])
+			end
+		end
+	end
+	if due("groveSignal") then
+		for _, other in Players:GetPlayers() do
+			local r = other ~= Players.LocalPlayer
+				and other.Character
+				and other.Character:FindFirstChild("HumanoidRootPart")
+			if r and near(r.Position, 35) then
+				return showCoach(COACH[3])
+			end
+		end
+	end
+	if due("groveFire") and near(Grove.Fire, 30) then
+		return showCoach(COACH[4])
+	end
+end
+
+-- «Пока тебя не было» (DD-089): what other survivors left at the home while its owner was away.
+local bookQueue = {}
+function Settlement.guestbook(data)
+	table.insert(bookQueue, data)
+end
+
+local function showBook(data)
+	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local g = new(
+		"ScreenGui",
+		{ Name = "GroveGuestbook", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Parent = pg }
+	)
+	local panel = Theme.panel({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.42),
+		Size = UDim2.fromOffset(480, 230),
+		CornerRadius = 26,
+		Parent = g,
+	}, C.pink)
+	new("UIScale", { Scale = 0.6, Parent = panel })
+	label(
+		"ПОКА ТЕБЯ НЕ БЫЛО",
+		{
+			Position = UDim2.fromOffset(0, 20),
+			Size = UDim2.new(1, 0, 0, 32),
+			FontFace = F.display,
+			TextSize = 28,
+			Parent = panel,
+		}
+	)
+	local lines = {}
+	if (data.likes or 0) > 0 then
+		table.insert(
+			lines,
+			string.format("♥ %d — твоему дому от жителей других рощ", data.likes)
+		)
+	end
+	if (data.visits or 0) > 0 then
+		table.insert(lines, string.format("Твой дом осмотрели %d раз", data.visits))
+	end
+	if type(data.names) == "table" and #data.names > 0 then
+		table.insert(lines, "Заходили: " .. table.concat(data.names, ", ", 1, math.min(#data.names, 6)))
+	end
+	label(table.concat(lines, string.char(10)), {
+		Position = UDim2.fromOffset(28, 62),
+		Size = UDim2.new(1, -56, 0, 90),
+		FontFace = F.bodyBold,
+		TextSize = 17,
+		TextWrapped = true,
+		Parent = panel,
+	})
+	local ok, okLabel = Theme.button(
+		"ОТЛИЧНО",
+		{
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -20),
+			Size = UDim2.fromOffset(200, 50),
+			TextSize = 16,
+		},
+		"primary"
+	)
+	ok.Parent = panel
+	local _ = okLabel
+	ok.Activated:Connect(function()
+		g:Destroy()
+	end)
+	tween(panel:FindFirstChildOfClass("UIScale"), 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+	Audio.play("orb", 0.8, 1.15)
+	task.delay(14, function()
+		if g.Parent then
+			g:Destroy()
+		end
+	end)
+end
+
 -- Per frame: details near the hero, prompts only while walking the grove, the fire flickers.
 function Settlement.update(dt: number, active: boolean)
 	calm = active
 	if active and #pending > 0 then
 		local e = table.remove(pending, 1)
 		task.delay(0.8, tell, e)
+	end
+	if active and #bookQueue > 0 then
+		showBook(table.remove(bookQueue, 1))
+	end
+	if active then
+		local r = myRoot()
+		coach(r and r.Position)
+	elseif coachGui and coachOn then
+		coachOn = nil
+		coachGui.Panel.Visible = false
 	end
 	if not folder or not visible then
 		return
@@ -1291,6 +1641,11 @@ function Settlement.update(dt: number, active: boolean)
 				sg.card.Enabled = false
 			elseif pl.kind ~= "free" and pl.kind ~= "held" then
 				sg.card.Enabled = true
+			end
+			sg.third.Enabled = active and pl.kind ~= "free"
+			if sg.cloth.Transparency < 1 then
+				local t = os.clock() + i * 0.7
+				sg.cloth.CFrame = sg.clothCf * CFrame.Angles(0, math.sin(t * 1.6) * 0.12, math.sin(t * 2.3) * 0.03)
 			end
 			if not active then
 				sg.main.Enabled = false

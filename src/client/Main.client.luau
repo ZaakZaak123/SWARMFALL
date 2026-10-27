@@ -929,6 +929,15 @@ Settlement.init({
 	say = function(i: number)
 		send("say", i)
 	end,
+	like = function(uid: number)
+		send("like", uid)
+	end,
+	banner = function()
+		HubMenus.showFlag(Menus.profile())
+	end,
+	tut = function(key: string)
+		send("tut", key)
+	end,
 	weekly = function()
 		local prof = Menus.profile()
 		HubMenus.showWeekly(Settlement.weekly(), prof and prof.week)
@@ -946,6 +955,8 @@ remotes:WaitForChild(Codec.Remotes.Social).OnClientEvent:Connect(function(kind, 
 		Settlement.say(tonumber(data.uid) or 0, tonumber(data.i) or 0)
 	elseif kind == "chronicle" and type(data) == "table" then
 		Settlement.chronicle(data)
+	elseif kind == "guestbook" and type(data) == "table" then
+		Settlement.guestbook(data)
 	elseif kind == "grove" and type(data) == "table" then
 		-- a squad's own server: where our home stands in the grove we came from, and the neighbours
 		Settlement.setSnapshot(data.plots, data.grove, myId)
@@ -1849,6 +1860,7 @@ profileRemote.OnClientEvent:Connect(function(pub)
 		Menus.setProfile(pub)
 		Base.setProfile(pub)
 		Story.profile(pub)
+		Settlement.setProfile(pub)
 	end
 end)
 send("profile")
@@ -2694,6 +2706,27 @@ if RunService:IsStudio() then
 		return Story.active()
 	end
 	storyHook.Parent = script.Parent
+	-- The grove's windows and panels on demand (DD-089): a prompt cannot be pressed from a script.
+	local groveHook = Instance.new("BindableFunction")
+	groveHook.Name = "SwarmGroveHook"
+	groveHook.OnInvoke = function(what, arg)
+		if what == "weekly" then
+			local prof = Menus.profile()
+			HubMenus.showWeekly(Settlement.weekly(), prof and prof.week)
+		elseif what == "flag" then
+			HubMenus.showFlag(Menus.profile())
+		elseif what == "book" then
+			Settlement.guestbook({ likes = 3, visits = 7, names = { "Аня", "Костя", "Лис" } })
+		elseif what == "say" then
+			send("say", arg or 1)
+		elseif what == "like" then
+			send("like", arg)
+		elseif what == "close" then
+			HubMenus.hideAll()
+		end
+		return true
+	end
+	groveHook.Parent = script.Parent
 end
 
 print("[SWARMFALL] client ready", Defs.Version)
