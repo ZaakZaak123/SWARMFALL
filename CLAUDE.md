@@ -38,6 +38,8 @@ selene src
 
 Studio: MCP `roblox-studio` (execute_luau, start_stop_play, get_console_output, screen_capture с `capture_id`). Не объявляй PASS без реальной проверки — пиши `UNVERIFIED`.
 
+Studio и геймпад: к машине подключён геймпад, владелец играет с него в другую игру на втором мониторе, и Studio тоже слышит его ввод (герой «сам» ходит, срабатывают подсказки ButtonX/ButtonY, открываются меню). В начале каждого Play перед проверками глуши геймпад: вставь код `tools/studio_nopad.luau` целиком в `execute_luau` (Client; HTTP на клиенте не работает). Телепорты героя делай с Server (клиентский PivotTo сервер откатывает).
+
 ## Дисциплина
 
 - Ветка `reboot/creative` (творческий перезапуск, DD-029…), маленькие коммиты с рабочим состоянием. Новые тесты: `lune run tests/map_check`.

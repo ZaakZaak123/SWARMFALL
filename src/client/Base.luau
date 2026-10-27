@@ -426,9 +426,9 @@ local function buildSpots()
 		pr.MaxActivationDistance = 9
 		spotParts[id] = { holder = holder, ring = ring, board = bb, prompt = pr, light = light, def = def, sd = sd }
 	end
-	-- string lights across the courtyard, from the bunker's corners to the front lamps
-	local runs =
-		{ { W(-7, 7, 21.5), W(-32, 10, -20) }, { W(7, 7, 21.5), W(32, 10, -22) }, { W(-7, 7, 21.5), W(7, 7, 21.5) } }
+	-- string lights across the courtyard, from the cabin's porch posts to the front lamps (DD-093)
+	local postZ = Layout.Cabin.z - 16.6
+	local runs = { { W(-6.6, 11, postZ), W(-32, 10, -20) }, { W(6.6, 11, postZ), W(32, 10, -22) } }
 	for _, r in runs do
 		local a, b = r[1], r[2]
 		local n = math.floor((b - a).Magnitude / 3)
@@ -2421,7 +2421,7 @@ function Base.point(name: string): Vector3
 	elseif name == "TERMINAL" then
 		return W(TERMINAL.x, 8.4, TERMINAL.z)
 	elseif name == "SHELTER" then
-		return W(0, 0, 29)
+		return W(Layout.Cabin.x, 0, Layout.Cabin.z - 7)
 	elseif name == "GATE" then
 		return W(0, 0, -30)
 	elseif name == "ARMORY" then

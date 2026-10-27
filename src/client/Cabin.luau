@@ -3,8 +3,8 @@
 -- доступным для входа … качественное чиловое место, чтоб захотелось туда заходить после боя и отдыхать и
 -- собраться с друзьями». A timber cabin built from parts on a concrete plinth: plank walls patched with rusty
 -- sheets, a tin gable roof, a brick chimney that smokes, a porch with a bench and a lantern, warm windows.
--- Inside: a stove with a fire and an armchair by it, a couch, a table with four chairs under a hanging lamp,
--- fairy lights along the back wall, a wind-up gramophone (the shelter's music on and off), a bookcase, a
+-- Inside (DD-093: roomy, ~32 × 22): a stove with a fire and two armchairs, a couch, a table for six,
+-- a hanging and a standing lamp, fairy lights, a wind-up gramophone (the shelter's music on and off), a bookcase, a
 -- guitar, a clock, and the owner's keepsakes: a cork board with a note for every sortie won, a cup on the
 -- shelf for every boss beaten, a jar with the first xenite, the old photos, a child's drawing, a teddy bear.
 -- The seats are the server's (server/Home.furnish at shared/ShelterLayout.Cabin) under the chairs drawn here.
@@ -34,9 +34,9 @@ local BLOCK, CYL, BALL = Enum.PartType.Block, Enum.PartType.Cylinder, Enum.PartT
 
 local F = Layout.Cabin.floor -- the boards' top
 local BASE = 1.4 -- the plinth's top: where the walls stand
-local TOP = 11.4 -- the walls' top
-local RIDGE = 17.4
-local HX, HZ = 11.6, 8.6 -- the walls' centre lines
+local TOP = BASE + 12 -- the walls' top
+local RIDGE = TOP + 7.5
+local HX, HZ = 16.4, 11.6 -- the walls' centre lines (DD-093: a roomy house, ~32 × 22 inside)
 local PITCH = math.atan2(RIDGE - TOP, HZ + 0.4)
 
 local P = {
@@ -200,7 +200,6 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	self.fadeK = 0
 	self.power = nil
 	self.bulbs = {}
-	self.lights = {}
 	local function C(x: number, y: number, z: number): CFrame
 		return cf * CFrame.new(x, y, z)
 	end
@@ -210,35 +209,47 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		end
 		return p
 	end
+	local function face(yaw: number): CFrame
+		return CFrame.Angles(0, yaw, 0)
+	end
+	local seats = Layout.Cabin.seats
+	local W = HX + 0.4 -- half the outer length of the long walls
+	local IX, IZ = HX - 0.4, HZ - 0.4 -- the room's inner faces
 
 	-- the plinth, the floor ------------------------------------------------------------------------------
-	mk(folder, Vector3.new(25, BASE + 1, 19), C(0, (BASE - 1) / 2, 0), P.concrete, M.Concrete, { CanCollide = true })
 	mk(
 		folder,
-		Vector3.new(HX * 2 - 0.8, 0.2, HZ * 2 - 0.8),
-		C(0, F - 0.1, 0),
-		P.plankIn,
-		M.WoodPlanks,
+		Vector3.new(W * 2 + 1, BASE + 1, HZ * 2 + 1.6),
+		C(0, (BASE - 1) / 2, 0),
+		P.concrete,
+		M.Concrete,
 		{ CanCollide = true }
 	)
+	mk(folder, Vector3.new(IX * 2, 0.2, IZ * 2), C(0, F - 0.1, 0), P.plankIn, M.WoodPlanks, { CanCollide = true })
 
 	-- the walls: a frame per side (local X along the wall, -Z out of the house), holes cut out ------------
 	local sides = {
-		front = { CFrame.new(0, 0, -HZ), 12 },
-		back = { CFrame.Angles(0, math.pi, 0) * CFrame.new(0, 0, -HZ), 12 },
-		left = { CFrame.Angles(0, -math.pi / 2, 0) * CFrame.new(0, 0, -HX), HZ - 0.4 }, -- +X, screen-left
-		right = { CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, -HX), HZ - 0.4 },
+		front = { CFrame.new(0, 0, -HZ), W },
+		back = { CFrame.Angles(0, math.pi, 0) * CFrame.new(0, 0, -HZ), W },
+		left = { CFrame.Angles(0, -math.pi / 2, 0) * CFrame.new(0, 0, -HX), IZ }, -- +X, screen-left
+		right = { CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, -HX), IZ },
 	}
 	local function S(side: string, u: number, y: number, out: number): CFrame
 		return cf * sides[side][1] * CFrame.new(u, y, -out)
 	end
-	-- holes { u0, u1, y0, y1 } in the side's own u
-	local holes = {
-		front = { { -2.2, 2.2, BASE, F + 8.2 }, { -9.8, -6.6, F + 3, F + 7 }, { 6.6, 9.8, F + 3, F + 7 } },
-		back = { { 4, 8, F + 4, F + 7.4 } },
-		left = { { -4, 0, F + 4, F + 7.4 } },
-		right = {},
+	local DOOR = 2.4
+	-- windows { side, u0, u1, y0, y1, shutters } in the side's own u (back: u = -x, left: u = z, right: u = -z)
+	local windows = {
+		{ "front", -13, -9, F + 3.2, F + 7.8, true },
+		{ "front", 9, 13, F + 3.2, F + 7.8, true },
+		{ "back", 6, 11, F + 4.6, F + 8.6, false },
+		{ "left", -6, -1, F + 4.4, F + 8.4, false },
+		{ "right", -8, -5, F + 4.4, F + 8.4, false },
 	}
+	local holes = { front = { { -DOOR, DOOR, BASE, F + 8.8 } }, back = {}, left = {}, right = {} }
+	for _, w in windows do
+		table.insert(holes[w[1]], { w[2], w[3], w[4], w[5] })
+	end
 	for side, def in sides do
 		local half = def[2]
 		local cuts = { -half, half }
@@ -313,11 +324,12 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	-- rusty sheets nailed over old holes
 	for _, sh in
 		{
-			{ "back", -5, 4.2, 3.6, 3.8, P.rust, 0.06 },
-			{ "back", 2.6, 3.4, 2.4, 2.8, P.tin, -0.04 },
-			{ "left", 4.6, 5.2, 3.2, 4.4, P.rust, 0.05 },
-			{ "right", -4.8, 4.4, 3.0, 3.4, P.tin, -0.05 },
-			{ "front", -4.3, 3.4, 1.6, 2.0, P.rust, 0.08 },
+			{ "back", -6, 4.6, 4.0, 4.2, P.rust, 0.06 },
+			{ "back", 1.5, 3.6, 2.6, 3.0, P.tin, -0.04 },
+			{ "left", 6, 5.4, 3.4, 4.6, P.rust, 0.05 },
+			{ "right", 4.5, 4.6, 3.2, 3.6, P.tin, -0.05 },
+			{ "front", -5.4, 3.6, 1.8, 2.2, P.rust, 0.08 },
+			{ "front", 15, 6.4, 1.6, 3.2, P.tin, -0.03 },
 		}
 	do
 		add(
@@ -333,14 +345,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 
 	-- windows: glass, a frame with a cross, a sill; shutters and a flower box on the front ones; curtains in
-	for _, w in
-		{
-			{ "front", -9.8, -6.6, F + 3, F + 7, true },
-			{ "front", 6.6, 9.8, F + 3, F + 7, true },
-			{ "back", 4, 8, F + 4, F + 7.4, false },
-			{ "left", -4, 0, F + 4, F + 7.4, false },
-		}
-	do
+	for _, w in windows do
 		local side, u0, u1, y0, y1, shutters = w[1], w[2], w[3], w[4], w[5], w[6]
 		local u, y, wd, ht = (u0 + u1) / 2, (y0 + y1) / 2, u1 - u0, y1 - y0
 		add(
@@ -369,14 +374,17 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		add(side, mk(folder, Vector3.new(wd + 1, 0.25, 0.8), S(side, u, y0 - 0.45, 0.5), P.trim, M.Wood))
 		if shutters then
 			for _, s in { -1, 1 } do
-				local leaf = mk(
-					folder,
-					Vector3.new(wd / 2, ht + 0.2, 0.15),
-					S(side, (if s < 0 then u0 else u1) + s * (wd / 4 + 0.25), y, 0.5) * CFrame.Angles(0, s * 0.12, 0),
-					rgb(82, 104, 92),
-					M.WoodPlanks
+				add(
+					side,
+					mk(
+						folder,
+						Vector3.new(wd / 2, ht + 0.2, 0.15),
+						S(side, (if s < 0 then u0 else u1) + s * (wd / 4 + 0.25), y, 0.5)
+							* CFrame.Angles(0, s * 0.12, 0),
+						rgb(82, 104, 92),
+						M.WoodPlanks
+					)
 				)
-				add(side, leaf)
 			end
 			-- the flower box under the sill
 			add(side, mk(small, Vector3.new(wd - 0.2, 0.8, 0.8), S(side, u, y0 - 1.1, 0.85), P.wood, M.WoodPlanks))
@@ -422,34 +430,43 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		end
 	end
 
-	-- the door: open into the room, flat to the front wall; its frame; a sign with the owner's name ----
-	for _, t in { { 0.4, 8.6, -2.4, BASE + 4.3 }, { 0.4, 8.6, 2.4, BASE + 4.3 }, { 5.2, 0.45, 0, F + 8.4 } } do
+	-- the door: open into the room along its jamb; its frame; a sign with the owner's name --------------
+	for _, t in
+		{
+			{ 0.4, F + 9.2 - BASE, -DOOR - 0.2, (BASE + F + 9.2) / 2 },
+			{ 0.4, F + 9.2 - BASE, DOOR + 0.2, (BASE + F + 9.2) / 2 },
+			{ DOOR * 2 + 0.8, 0.45, 0, F + 9 },
+		}
+	do
 		add("front", mk(folder, Vector3.new(t[1], t[2], 1.0), S("front", t[3], t[4], 0), P.trim, M.Wood))
 	end
 	do
-		local hinge = C(2.1, F + 4.05, -HZ + 0.55)
-		local leaf = hinge * CFrame.Angles(0, -math.rad(78), 0) * CFrame.new(2.1, 0, 0)
-		add("front", mk(folder, Vector3.new(4.2, 8.1, 0.25), leaf, P.wood, M.WoodPlanks))
-		for _, y in { -2.6, 2.6 } do
-			add("front", mk(small, Vector3.new(4, 0.35, 0.1), leaf * CFrame.new(0, y, -0.15), P.dark, M.Wood))
+		local hinge = C(DOOR - 0.1, F + 4.3, -HZ + 0.55)
+		local leaf = hinge * CFrame.Angles(0, -math.rad(78), 0) * CFrame.new(DOOR - 0.2, 0, 0)
+		add("front", mk(folder, Vector3.new(DOOR * 2 - 0.4, 8.6, 0.25), leaf, P.wood, M.WoodPlanks))
+		for _, y in { -2.8, 2.8 } do
+			add(
+				"front",
+				mk(small, Vector3.new(DOOR * 2 - 0.6, 0.35, 0.1), leaf * CFrame.new(0, y, -0.15), P.dark, M.Wood)
+			)
 		end
 		add(
 			"front",
 			mk(
 				small,
 				Vector3.new(0.3, 0.3, 0.3),
-				leaf * CFrame.new(1.6, -0.2, -0.25),
+				leaf * CFrame.new(DOOR - 0.7, -0.2, -0.25),
 				P.brass,
 				M.Metal,
 				{ Shape = BALL }
 			)
 		)
 	end
-	local sign = add("front", mk(folder, Vector3.new(5.6, 0.9, 0.2), S("front", 0, F + 8.95, 0.6), P.dark, M.Wood))
+	local sign = add("front", mk(folder, Vector3.new(6.4, 1.0, 0.2), S("front", 0, F + 10.2, 0.6), P.dark, M.Wood))
 	do
 		local g = Instance.new("SurfaceGui")
 		g.Face = Enum.NormalId.Front
-		g.CanvasSize = Vector2.new(400, 80)
+		g.CanvasSize = Vector2.new(400, 64)
 		g.LightInfluence = 1
 		g.Parent = sign
 		self.signText = text(g, "ДОМ", 0.5, 0.5, 0.94, 0.8, P.paper, Font.fromEnum(Enum.Font.Antique))
@@ -458,62 +475,72 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 
 	-- the porch: a deck, a step, posts with an awning, rails, a bench by the door, a lantern -----------
 	local DZ = -HZ - 0.4 -- the front wall's face
-	mk(folder, Vector3.new(12, 0.4, 4.6), C(0, BASE - 0.2, DZ - 2.3), P.wood, M.WoodPlanks, { CanCollide = true })
+	local PW, PD = 7, 5 -- the porch's half-width and depth
+	mk(folder, Vector3.new(PW * 2, 0.4, PD), C(0, BASE - 0.2, DZ - PD / 2), P.wood, M.WoodPlanks, { CanCollide = true })
 	mk(
 		folder,
-		Vector3.new(11.6, BASE + 0.6, 4.4),
-		C(0, (BASE - 0.6) / 2 - 0.2, DZ - 2.3),
+		Vector3.new(PW * 2 - 0.4, BASE + 0.6, PD - 0.2),
+		C(0, (BASE - 0.6) / 2 - 0.2, DZ - PD / 2),
 		P.dark,
 		M.WoodPlanks,
 		{ CanCollide = true }
 	)
-	mk(folder, Vector3.new(5.6, 1.4, 1.3), C(0, 0, DZ - 5.25), P.wood, M.WoodPlanks, { CanCollide = true })
-	for _, x in { -5.6, 5.6 } do
+	mk(folder, Vector3.new(6, 1.4, 1.3), C(0, 0, DZ - PD - 0.65), P.wood, M.WoodPlanks, { CanCollide = true })
+	local postZ = DZ - PD + 0.4
+	for _, x in { -PW + 0.4, PW - 0.4 } do
 		add(
 			"front",
-			mk(folder, Vector3.new(0.6, 8.6, 0.6), C(x, BASE + 4.3, DZ - 4.2), P.trim, M.Wood, { CanCollide = true })
+			mk(folder, Vector3.new(0.6, 10.4, 0.6), C(x, BASE + 5.2, postZ), P.trim, M.Wood, { CanCollide = true })
 		)
 	end
-	add("front", mk(folder, Vector3.new(12.4, 0.5, 0.6), C(0, BASE + 8.4, DZ - 4.2), P.trim, M.Wood))
+	add("front", mk(folder, Vector3.new(PW * 2 + 0.4, 0.5, 0.6), C(0, BASE + 10.2, postZ), P.trim, M.Wood))
 	do
-		local run, drop = 5.2, 1.0
+		local run, drop = PD + 0.6, 1.4
 		local tilt = math.atan2(drop, run)
 		add(
 			"front",
 			mk(
 				folder,
-				Vector3.new(13.4, 0.22, math.sqrt(run * run + drop * drop) + 0.3),
-				C(0, TOP - 0.3 - drop / 2 + 0.1, DZ - run / 2) * CFrame.Angles(-tilt, 0, 0),
+				Vector3.new(PW * 2 + 1.4, 0.22, math.sqrt(run * run + drop * drop) + 0.3),
+				C(0, TOP - 0.2 - drop / 2, DZ - run / 2) * CFrame.Angles(-tilt, 0, 0),
 				P.rust,
 				M.CorrodedMetal
 			)
 		)
 	end
-	for _, x in { -5.7, 5.7 } do
-		mk(folder, Vector3.new(0.25, 0.25, 4.0), C(x, BASE + 3, DZ - 2.1), P.trim, M.Wood)
+	for _, x in { -PW + 0.3, PW - 0.3 } do
+		mk(folder, Vector3.new(0.25, 0.25, PD - 0.6), C(x, BASE + 3, DZ - PD / 2 + 0.1), P.trim, M.Wood)
 		for k = 0, 2 do
-			mk(small, Vector3.new(0.18, 3, 0.18), C(x, BASE + 1.5, DZ - 0.7 - k * 1.3), P.trim, M.Wood)
+			mk(small, Vector3.new(0.18, 3, 0.18), C(x, BASE + 1.5, DZ - 0.8 - k * 1.4), P.trim, M.Wood)
 		end
 	end
 	for _, s in { -1, 1 } do
-		mk(folder, Vector3.new(2.9, 0.25, 0.25), C(s * 4.2, BASE + 3, DZ - 4.2), P.trim, M.Wood)
+		mk(folder, Vector3.new(PW - 3.4, 0.25, 0.25), C(s * (PW + 3) / 2, BASE + 3, postZ), P.trim, M.Wood)
 	end
-	-- the bench (seats 9 and 10 of shared/ShelterLayout)
+	-- the bench (the porch seats of shared/ShelterLayout)
 	do
-		local bx, bz = 4.25, DZ - 1.05
-		mk(folder, Vector3.new(3.2, 0.25, 1.3), C(bx, BASE + 1.68, bz), P.wood, M.WoodPlanks, { CanCollide = true })
-		for _, x in { -1.3, 1.3 } do
+		local b1, b2 = seats[12], seats[13]
+		local bx, bz = (b1[1] + b2[1]) / 2, b1[2]
+		mk(folder, Vector3.new(3.4, 0.25, 1.3), C(bx, BASE + 1.68, bz), P.wood, M.WoodPlanks, { CanCollide = true })
+		for _, x in { -1.4, 1.4 } do
 			mk(small, Vector3.new(0.3, 1.6, 1.1), C(bx + x, BASE + 0.8, bz), P.trim, M.Wood)
 		end
 	end
-	mk(small, Vector3.new(3.4, 0.05, 1.8), C(0, BASE + 0.03, DZ - 1.4), rgb(120, 92, 60), M.Fabric)
+	mk(small, Vector3.new(3.6, 0.05, 1.8), C(0, BASE + 0.03, DZ - 1.4), rgb(120, 92, 60), M.Fabric)
 	do
 		local lantern = add(
 			"front",
-			mk(small, Vector3.new(0.7, 1.0, 0.7), C(-3.3, F + 6.4, DZ - 0.6), P.warm, M.Neon, { CastShadow = false })
+			mk(
+				small,
+				Vector3.new(0.7, 1.0, 0.7),
+				C(-DOOR - 1.2, F + 6.8, DZ - 0.6),
+				P.warm,
+				M.Neon,
+				{ CastShadow = false }
+			)
 		)
-		add("front", mk(small, Vector3.new(0.9, 0.2, 0.9), C(-3.3, F + 7.0, DZ - 0.6), P.dark, M.Metal))
-		add("front", mk(small, Vector3.new(0.15, 0.15, 0.7), C(-3.3, F + 7.0, DZ - 0.25), P.dark, M.Metal))
+		add("front", mk(small, Vector3.new(0.9, 0.2, 0.9), C(-DOOR - 1.2, F + 7.4, DZ - 0.6), P.dark, M.Metal))
+		add("front", mk(small, Vector3.new(0.15, 0.15, 0.7), C(-DOOR - 1.2, F + 7.4, DZ - 0.25), P.dark, M.Metal))
 		local l = Instance.new("PointLight")
 		l.Color = P.warm
 		l.Range = 16
@@ -523,12 +550,12 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 
 	-- the roof: two tin slopes with ribs on a timber lining, fascias, a ridge cap ------------------------
-	local slope = math.sqrt((HZ + 1.8) ^ 2 + ((HZ + 1.8) * math.tan(PITCH)) ^ 2)
+	local run = HZ + 1.8
+	local slope = run / math.cos(PITCH)
+	local RW = W * 2 + 2.8 -- with the overhang at the gables
 	for _, s in { -1, 1 } do
-		local midZ = s * (HZ + 1.8) / 2
-		local midY = RIDGE - (HZ + 1.8) / 2 * math.tan(PITCH)
-		local base = C(0, midY, midZ) * CFrame.Angles(s * PITCH, 0, 0)
-		add("roof", mk(folder, Vector3.new(26.8, 0.4, slope), base * CFrame.new(0, 0.25, 0), P.rust, M.CorrodedMetal))
+		local base = C(0, RIDGE - run / 2 * math.tan(PITCH), s * run / 2) * CFrame.Angles(s * PITCH, 0, 0)
+		add("roof", mk(folder, Vector3.new(RW, 0.4, slope), base * CFrame.new(0, 0.25, 0), P.rust, M.CorrodedMetal))
 		add(
 			"roof",
 			mk(
@@ -539,7 +566,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 				M.WoodPlanks
 			)
 		)
-		for x = -12.6, 12.7, 1.8 do
+		for x = -RW / 2 + 0.6, RW / 2 - 0.5, 1.8 do
 			add(
 				"roof",
 				mk(
@@ -551,31 +578,42 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 				)
 			)
 		end
-		add("roof", mk(folder, Vector3.new(27, 0.7, 0.3), base * CFrame.new(0, 0.1, s * slope / 2), P.trim, M.Wood))
-		for _, x in { -13.45, 13.45 } do
+		add(
+			"roof",
+			mk(folder, Vector3.new(RW + 0.2, 0.7, 0.3), base * CFrame.new(0, 0.1, s * slope / 2), P.trim, M.Wood)
+		)
+		for _, x in { -RW / 2 - 0.05, RW / 2 + 0.05 } do
 			add("roof", mk(folder, Vector3.new(0.3, 0.7, slope), base * CFrame.new(x, 0.15, 0), P.trim, M.Wood))
 		end
 	end
-	add("roof", mk(folder, Vector3.new(27.2, 0.5, 1.6), C(0, RIDGE + 0.45, 0), P.tin, M.CorrodedMetal))
+	add("roof", mk(folder, Vector3.new(RW + 0.4, 0.5, 1.6), C(0, RIDGE + 0.45, 0), P.tin, M.CorrodedMetal))
 	-- the truss inside: tie beams, king posts, the ridge beam
-	for _, x in { -6, 0, 6 } do
-		add("roof", mk(folder, Vector3.new(0.7, 0.7, HZ * 2 - 0.8), C(x, TOP - 0.6, 0), P.dark, M.Wood))
+	for _, x in { -10, 0, 10 } do
+		add("roof", mk(folder, Vector3.new(0.7, 0.7, IZ * 2), C(x, TOP - 0.6, 0), P.dark, M.Wood))
 		add(
 			"roof",
 			mk(folder, Vector3.new(0.5, RIDGE - TOP - 0.4, 0.5), C(x, (TOP + RIDGE) / 2 - 0.4, 0), P.dark, M.Wood)
 		)
 	end
-	add("roof", mk(folder, Vector3.new(HX * 2 - 0.8, 0.7, 0.7), C(0, RIDGE - 0.5, 0), P.dark, M.Wood))
+	add("roof", mk(folder, Vector3.new(IX * 2, 0.7, 0.7), C(0, RIDGE - 0.5, 0), P.dark, M.Wood))
 
 	-- the chimney on the right gable, the stove inside it -----------------------------------------------
+	local SX, SZ = -IX, -1 -- the stove's back at the right wall's inner face
 	local chim = add(
 		"right",
-		mk(folder, Vector3.new(2.8, 21, 3.2), C(-HX - 1.65, 10, -1), P.brick, M.Brick, { CanCollide = true })
+		mk(
+			folder,
+			Vector3.new(2.8, RIDGE + 3, 3.2),
+			C(-HX - 1.65, (RIDGE + 3) / 2 - 0.5, SZ),
+			P.brick,
+			M.Brick,
+			{ CanCollide = true }
+		)
 	)
-	add("right", mk(folder, Vector3.new(3.4, 0.5, 3.8), C(-HX - 1.65, 20.7, -1), P.concrete, M.Concrete))
+	add("right", mk(folder, Vector3.new(3.4, 0.5, 3.8), C(-HX - 1.65, RIDGE + 2.75, SZ), P.concrete, M.Concrete))
 	do
 		local a = Instance.new("Attachment")
-		a.Position = Vector3.new(0, 11, 0)
+		a.Position = Vector3.new(0, (RIDGE + 3) / 2 + 0.5, 0)
 		a.Parent = chim
 		local e = Instance.new("ParticleEmitter")
 		e.Texture = Fx.Tex.smoke
@@ -598,27 +636,19 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		e.LightInfluence = 1
 		e.Parent = a
 	end
-	local SX, SZ = -HX + 0.4, -1 -- the stove's back at the right wall's inner face
-	mk(folder, Vector3.new(2.8, 0.3, 7), C(SX + 1.4, F + 0.15, SZ), rgb(96, 90, 84), M.Concrete, { CanCollide = true })
+	mk(folder, Vector3.new(3, 0.3, 7.6), C(SX + 1.5, F + 0.15, SZ), rgb(96, 90, 84), M.Concrete, { CanCollide = true })
 	for _, s in { -1, 1 } do
-		mk(
-			folder,
-			Vector3.new(1.8, 4.4, 1.3),
-			C(SX + 0.9, F + 2.5, SZ + s * 2.55),
-			P.brick,
-			M.Brick,
-			{ CanCollide = true }
-		)
+		mk(folder, Vector3.new(2, 4.8, 1.4), C(SX + 1, F + 2.7, SZ + s * 2.8), P.brick, M.Brick, { CanCollide = true })
 	end
-	mk(folder, Vector3.new(0.3, 4.4, 3.9), C(SX + 0.15, F + 2.5, SZ), P.soot, M.Concrete)
-	mk(folder, Vector3.new(1.8, 1.0, 6.4), C(SX + 0.9, F + 5.0, SZ), P.brick, M.Brick, { CanCollide = true })
-	mk(folder, Vector3.new(1.4, TOP - F - 5.5, 5.0), C(SX + 0.7, (F + 5.5 + TOP) / 2, SZ), P.brick, M.Brick)
-	mk(folder, Vector3.new(2.5, 0.35, 7.2), C(SX + 1.2, F + 5.65, SZ), P.dark, M.Wood)
+	mk(folder, Vector3.new(0.3, 4.8, 4.2), C(SX + 0.15, F + 2.7, SZ), P.soot, M.Concrete)
+	mk(folder, Vector3.new(2, 1.0, 7), C(SX + 1, F + 5.4, SZ), P.brick, M.Brick, { CanCollide = true })
+	mk(folder, Vector3.new(1.5, TOP - F - 5.9, 5.4), C(SX + 0.75, (F + 5.9 + TOP) / 2, SZ), P.brick, M.Brick)
+	mk(folder, Vector3.new(2.7, 0.35, 7.8), C(SX + 1.3, F + 6.05, SZ), P.dark, M.Wood)
 	for k = -1, 1 do
 		mk(
 			small,
-			Vector3.new(2.6, 0.5, 0.5),
-			C(SX + 1.1, F + 0.65 + (if k == 0 then 0.35 else 0), SZ + k * 0.45) * CFrame.Angles(0, math.pi / 2, 0),
+			Vector3.new(2.8, 0.55, 0.55),
+			C(SX + 1.2, F + 0.65 + (if k == 0 then 0.38 else 0), SZ + k * 0.5) * CFrame.Angles(0, math.pi / 2, 0),
 			rgb(92, 62, 40),
 			M.Wood,
 			{ Shape = CYL }
@@ -626,42 +656,50 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 	local embers = mk(
 		small,
-		Vector3.new(1.4, 0.2, 2.8),
-		C(SX + 1.1, F + 0.42, SZ),
+		Vector3.new(1.5, 0.2, 3),
+		C(SX + 1.2, F + 0.42, SZ),
 		rgb(255, 120, 50),
 		M.Neon,
 		{ CastShadow = false }
 	)
 	do
 		local fire = Instance.new("Fire")
-		fire.Size = 3.2
+		fire.Size = 3.6
 		fire.Heat = 3
 		fire.Color = rgb(255, 130, 50)
 		fire.SecondaryColor = rgb(255, 214, 120)
 		fire.Parent = embers
 		local l = Instance.new("PointLight")
 		l.Color = rgb(255, 150, 80)
-		l.Range = 22
+		l.Range = 26
 		l.Brightness = 2
 		l.Shadows = true
 		l.Parent =
-			mk(small, Vector3.new(0.2, 0.2, 0.2), C(SX + 2.6, F + 2, SZ), P.warm, M.SmoothPlastic, { Transparency = 1 })
+			mk(small, Vector3.new(0.2, 0.2, 0.2), C(SX + 2.8, F + 2, SZ), P.warm, M.SmoothPlastic, { Transparency = 1 })
 		self.fireLight = l
-		self.embers = embers
 	end
 	-- firewood stacked by the stove
 	for row = 0, 2 do
 		for k = 0, 2 - row do
 			mk(
 				small,
-				Vector3.new(1.7, 0.55, 0.55),
-				C(SX + 1.1, F + 0.3 + row * 0.48, SZ + 3.6 + (k - (2 - row) / 2) * 0.58) * CFrame.Angles(0, 0, 0),
+				Vector3.new(1.8, 0.55, 0.55),
+				C(SX + 1.1, F + 0.3 + row * 0.48, SZ + 4.2 + (k - (2 - row) / 2) * 0.58),
 				rgb(120, 86, 56):Lerp(rgb(84, 60, 40), (row + k) % 2 * 0.5),
 				M.Wood,
 				{ Shape = CYL }
 			)
 		end
 	end
+	-- a basket of logs on the other side
+	mk(
+		small,
+		Vector3.new(1.4, 1.6, 1.6),
+		C(SX + 1.2, F + 0.7, SZ - 4.4) * CFrame.Angles(0, 0, math.pi / 2),
+		rgb(150, 116, 70),
+		M.Fabric,
+		{ Shape = CYL }
+	)
 
 	-- furniture -----------------------------------------------------------------------------------------
 	local function chair(at: CFrame)
@@ -685,30 +723,17 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			mk(small, Vector3.new(1.4, 0.35, 0.12), at * CFrame.new(0, y, 0.82), P.wood, M.Wood)
 		end
 		mk(folder, Vector3.new(1.95, 0.3, 0.28), at * CFrame.new(0, 4.35, 0.82), P.dark, M.Wood)
+		mk(small, Vector3.new(1.6, 0.18, 1.6), at * CFrame.new(0, 1.99, 0), rgb(150, 70, 56), M.Fabric)
 	end
-	local function sofa(at: CFrame, width: number, n: number)
-		mk(
-			folder,
-			Vector3.new(width, 1.1, 2.6),
-			at * CFrame.new(0, 0.65, 0.1),
-			P.fabric,
-			M.Fabric,
-			{ CanCollide = true }
-		)
-		mk(
-			folder,
-			Vector3.new(width, 2.3, 0.7),
-			at * CFrame.new(0, 2.15, 1.05),
-			P.fabric,
-			M.Fabric,
-			{ CanCollide = true }
-		)
+	local function sofa(at: CFrame, width: number, n: number, color: Color3, cushion: Color3)
+		mk(folder, Vector3.new(width, 1.1, 2.6), at * CFrame.new(0, 0.65, 0.1), color, M.Fabric, { CanCollide = true })
+		mk(folder, Vector3.new(width, 2.3, 0.7), at * CFrame.new(0, 2.15, 1.05), color, M.Fabric, { CanCollide = true })
 		for _, s in { -1, 1 } do
 			mk(
 				folder,
 				Vector3.new(0.7, 1.9, 2.8),
 				at * CFrame.new(s * (width / 2 - 0.35), 1.15, 0.05),
-				P.fabric,
+				color,
 				M.Fabric,
 				{ CanCollide = true }
 			)
@@ -716,12 +741,12 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		local inner = width - 1.4
 		for k = 1, n do
 			local x = -inner / 2 + (k - 0.5) * inner / n
-			mk(small, Vector3.new(inner / n - 0.08, 0.5, 2.1), at * CFrame.new(x, 1.45, -0.15), P.cushion, M.Fabric)
+			mk(small, Vector3.new(inner / n - 0.08, 0.5, 2.1), at * CFrame.new(x, 1.45, -0.15), cushion, M.Fabric)
 			mk(
 				small,
 				Vector3.new(inner / n - 0.12, 1.5, 0.45),
 				at * CFrame.new(x, 2.5, 0.55) * CFrame.Angles(-0.12, 0, 0),
-				P.cushion,
+				cushion,
 				M.Fabric
 			)
 		end
@@ -731,30 +756,20 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			end
 		end
 	end
-	local function face(yaw: number)
-		return CFrame.Angles(0, yaw, 0)
-	end
-	-- the seats of shared/ShelterLayout.Cabin: chairs 1–4, the couch 5–7, the armchair 8 (the bench above)
-	local seats = Layout.Cabin.seats
-	for k = 1, 4 do
+	-- the table and its six chairs (seats 1–6)
+	local TX, TZ = 7, 2.5
+	for k = 1, 6 do
 		local s = seats[k]
 		chair(C(s[1], F, s[2]) * face(s[3]))
 	end
-	sofa(C(-5.5, F, 6.6), 7.6, 3)
-	do
-		local s = seats[8]
-		sofa(C(s[1], F, s[2]) * face(s[3]), 3.2, 1)
-	end
-	-- the table: a lamp hangs over it
-	local TX, TZ = 5, 2.2
-	mk(folder, Vector3.new(6.4, 0.35, 4), C(TX, F + 3.1, TZ), P.wood, M.WoodPlanks, { CanCollide = true })
-	for _, x in { -2.8, 2.8 } do
-		for _, z in { -1.6, 1.6 } do
+	mk(folder, Vector3.new(7.6, 0.35, 4.4), C(TX, F + 3.1, TZ), P.wood, M.WoodPlanks, { CanCollide = true })
+	for _, x in { -3.4, 3.4 } do
+		for _, z in { -1.8, 1.8 } do
 			mk(folder, Vector3.new(0.4, 2.95, 0.4), C(TX + x, F + 1.47, TZ + z), P.dark, M.Wood, { CanCollide = true })
 		end
 	end
 	local T = F + 3.28 -- the table's top
-	for _, pl in { { -1.6, 1.3 }, { 1.6, 1.3 }, { -2.5, 0 }, { 2.5, 0 } } do
+	for _, pl in { { -1.8, 1.4 }, { 1.8, 1.4 }, { -1.8, -1.4 }, { 1.8, -1.4 }, { -3, 0 }, { 3, 0 } } do
 		mk(
 			small,
 			Vector3.new(0.06, 1.1, 1.1),
@@ -764,7 +779,14 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			{ Shape = CYL }
 		)
 	end
-	for _, mg in { { -0.9, 1.0, rgb(150, 70, 52) }, { 1.0, 0.8, rgb(70, 96, 120) }, { 2.0, -0.6, rgb(200, 190, 170) } } do
+	for _, mg in
+		{
+			{ -1, 1.0, rgb(150, 70, 52) },
+			{ 1.1, 0.8, rgb(70, 96, 120) },
+			{ 2.3, -0.7, rgb(200, 190, 170) },
+			{ -2.4, -0.8, rgb(110, 130, 80) },
+		}
+	do
 		mk(
 			small,
 			Vector3.new(0.6, 0.45, 0.45),
@@ -778,14 +800,14 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	mk(
 		small,
 		Vector3.new(2.6, 0.03, 1.8),
-		C(TX - 0.6, T + 0.02, TZ - 0.5) * CFrame.Angles(0, 0.2, 0),
+		C(TX - 0.6, T + 0.02, TZ - 0.3) * CFrame.Angles(0, 0.2, 0),
 		rgb(212, 196, 150),
 		M.SmoothPlastic
 	)
 	mk(
 		small,
 		Vector3.new(0.2, 0.9, 0.9),
-		C(TX + 0.6, T + 0.1, TZ - 0.1) * CFrame.Angles(0, 0, math.pi / 2),
+		C(TX + 0.6, T + 0.1, TZ + 0.1) * CFrame.Angles(0, 0, math.pi / 2),
 		P.brass,
 		M.Metal,
 		{ Shape = CYL }
@@ -793,7 +815,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	local flame = mk(
 		small,
 		Vector3.new(0.5, 0.7, 0.5),
-		C(TX + 0.6, T + 0.6, TZ - 0.1),
+		C(TX + 0.6, T + 0.6, TZ + 0.1),
 		rgb(255, 222, 160),
 		M.Glass,
 		{ Shape = BALL, Transparency = 0.25, CastShadow = false }
@@ -809,7 +831,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	mk(
 		small,
 		Vector3.new(0.4, 1.4, 1.4),
-		C(TX - 1.7, T + 0.2, TZ - 0.3) * CFrame.Angles(0, 0, math.pi / 2),
+		C(TX - 1.6, T + 0.2, TZ + 0.3) * CFrame.Angles(0, 0, math.pi / 2),
 		rgb(120, 86, 56),
 		M.Wood,
 		{ Shape = CYL }
@@ -818,7 +840,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		mk(
 			small,
 			Vector3.new(0.45, 0.45, 0.45),
-			C(TX - 1.9 + k * 0.3, T + 0.55, TZ - 0.3 + (k % 2) * 0.25),
+			C(TX - 1.9 + k * 0.3, T + 0.55, TZ + 0.3 + (k % 2) * 0.25),
 			c,
 			M.SmoothPlastic,
 			{ Shape = BALL }
@@ -828,7 +850,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		mk(
 			small,
 			Vector3.new(0.5, 0.03, 0.7),
-			C(TX + 1.6 + k * 0.08, T + 0.03 + k * 0.03, TZ - 1.1) * CFrame.Angles(0, k * 0.4, 0),
+			C(TX + 1.8 + k * 0.08, T + 0.03 + k * 0.03, TZ - 0.4) * CFrame.Angles(0, k * 0.4, 0),
 			P.paper,
 			M.SmoothPlastic
 		)
@@ -836,16 +858,16 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	do
 		mk(
 			small,
-			Vector3.new(0.08, TOP - F - 7.2, 0.08),
-			C(TX, (F + 7.2 + TOP) / 2, TZ),
+			Vector3.new(0.08, TOP - F - 7.8, 0.08),
+			C(TX, (F + 7.8 + TOP) / 2, TZ),
 			P.soot,
 			M.SmoothPlastic,
 			{ CastShadow = false }
 		)
 		mk(
 			small,
-			Vector3.new(0.6, 1.3, 1.3),
-			C(TX, F + 7.3, TZ) * CFrame.Angles(0, 0, math.pi / 2),
+			Vector3.new(0.6, 1.4, 1.4),
+			C(TX, F + 7.9, TZ) * CFrame.Angles(0, 0, math.pi / 2),
 			rgb(70, 92, 78),
 			M.Metal,
 			{ Shape = CYL }
@@ -853,51 +875,99 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		local bulb = mk(
 			small,
 			Vector3.new(0.45, 0.45, 0.45),
-			C(TX, F + 7.0, TZ),
+			C(TX, F + 7.6, TZ),
 			P.warm,
 			M.Neon,
 			{ Shape = BALL, CastShadow = false }
 		)
 		local l = Instance.new("PointLight")
 		l.Color = rgb(255, 200, 140)
-		l.Range = 20
+		l.Range = 22
 		l.Brightness = 1.4
 		l.Shadows = true
 		l.Parent = bulb
 		self.lamp = { part = bulb, light = l }
 	end
-	-- rugs under the table and before the couch
-	for _, r in { { -5.2, 2.6, 7.4, 6.4 }, { TX, TZ, 8.4, 6.6 } } do
-		mk(small, Vector3.new(r[3], 0.05, r[4]), C(r[1], F + 0.03, r[2]), P.rugEdge, M.Fabric, { CastShadow = false })
-		mk(
-			small,
-			Vector3.new(r[3] - 0.7, 0.06, r[4] - 0.7),
-			C(r[1], F + 0.04, r[2]),
-			P.rug,
-			M.Fabric,
-			{ CastShadow = false }
-		)
+	-- the living corner: a couch at the back (7–9), two armchairs turned to the fire (10, 11), a crate
+	sofa(C(-8, F, IZ - 1.6), 9.2, 3, P.fabric, P.cushion)
+	for k = 10, 11 do
+		local s = seats[k]
+		sofa(C(s[1], F, s[2]) * face(s[3]), 3.2, 1, rgb(120, 70, 52), rgb(146, 88, 64))
 	end
-	-- a crate for a coffee table: mugs, a book, a candle
-	mk(folder, Vector3.new(3.4, 1.3, 1.8), C(-5.5, F + 0.65, 3.6), P.wood, M.WoodPlanks, { CanCollide = true })
+	mk(folder, Vector3.new(3.6, 1.3, 2), C(-8, F + 0.65, 5.4), P.wood, M.WoodPlanks, { CanCollide = true })
 	mk(
 		small,
 		Vector3.new(1.2, 0.3, 0.9),
-		C(-6.3, F + 1.45, 3.5) * CFrame.Angles(0, 0.3, 0),
+		C(-8.8, F + 1.45, 5.3) * CFrame.Angles(0, 0.3, 0),
 		rgb(120, 40, 36),
 		M.SmoothPlastic
 	)
 	mk(
 		small,
 		Vector3.new(0.6, 0.45, 0.45),
-		C(-4.6, F + 1.52, 3.8) * CFrame.Angles(0, 0, math.pi / 2),
+		C(-7, F + 1.52, 5.6) * CFrame.Angles(0, 0, math.pi / 2),
 		rgb(214, 200, 170),
 		M.SmoothPlastic,
 		{ Shape = CYL }
 	)
-	-- a teddy bear on the couch's arm end
+	mk(
+		small,
+		Vector3.new(0.6, 0.45, 0.45),
+		C(-7.6, F + 1.52, 4.9) * CFrame.Angles(0, 0, math.pi / 2),
+		rgb(150, 70, 52),
+		M.SmoothPlastic,
+		{ Shape = CYL }
+	)
+	-- a standing lamp in the couch's corner
 	do
-		local b = C(-8.5, F + 1.7, 6.5) * CFrame.Angles(0, 0.3, 0)
+		local at = C(-IX + 1.1, F, IZ - 1.1)
+		mk(
+			small,
+			Vector3.new(0.2, 1.2, 1.2),
+			at * CFrame.new(0, 0.1, 0) * CFrame.Angles(0, 0, math.pi / 2),
+			P.dark,
+			M.Metal,
+			{ Shape = CYL }
+		)
+		mk(small, Vector3.new(0.18, 5.6, 0.18), at * CFrame.new(0, 2.9, 0), P.dark, M.Metal)
+		mk(
+			small,
+			Vector3.new(1.3, 1.9, 1.9),
+			at * CFrame.new(0, 5.9, 0) * CFrame.Angles(0, 0, math.pi / 2),
+			rgb(226, 196, 150),
+			M.Fabric,
+			{ Shape = CYL, Transparency = 0.1 }
+		)
+		local bulb = mk(
+			small,
+			Vector3.new(0.4, 0.4, 0.4),
+			at * CFrame.new(0, 5.6, 0),
+			P.warm,
+			M.Neon,
+			{ Shape = BALL, CastShadow = false }
+		)
+		local l = Instance.new("PointLight")
+		l.Color = rgb(255, 196, 140)
+		l.Range = 14
+		l.Brightness = 1
+		l.Parent = bulb
+		self.floorLamp = { part = bulb, light = l }
+	end
+	-- rugs: under the table, and before the fire
+	for _, r in { { -9.2, 1.4, 9.6, 9.6 }, { TX, TZ, 11.4, 9.4 } } do
+		mk(small, Vector3.new(r[3], 0.05, r[4]), C(r[1], F + 0.03, r[2]), P.rugEdge, M.Fabric, { CastShadow = false })
+		mk(
+			small,
+			Vector3.new(r[3] - 0.7, 0.06, r[4] - 0.7),
+			C(r[1], F + 0.04, r[2]),
+			if r[1] < 0 then P.rug else rgb(70, 86, 110),
+			M.Fabric,
+			{ CastShadow = false }
+		)
+	end
+	-- a teddy bear at the couch's end
+	do
+		local b = C(-12.25, F + 2.1, IZ - 1.5) * CFrame.Angles(0, 0.3, 0)
 		local fur = rgb(150, 106, 66)
 		mk(small, Vector3.new(0.9, 1.0, 0.8), b * CFrame.new(0, 0.5, 0), fur, M.Fabric, { Shape = BALL })
 		mk(small, Vector3.new(0.75, 0.75, 0.75), b * CFrame.new(0, 1.25, -0.05), fur, M.Fabric, { Shape = BALL })
@@ -925,13 +995,20 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 
 	-- the back wall: the gramophone on its cabinet, the shelf of cups over it, the cork board ----------
-	local BZ = HZ - 0.4 -- the back wall's inner face
-	local cab = mk(folder, Vector3.new(3, 2.6, 1.4), C(0, F + 1.3, BZ - 0.75), P.dark, M.Wood, { CanCollide = true })
+	local GX = 1.2
+	local cab = mk(folder, Vector3.new(3, 2.6, 1.4), C(GX, F + 1.3, IZ - 0.75), P.dark, M.Wood, { CanCollide = true })
 	for _, x in { -0.72, 0.72 } do
-		mk(small, Vector3.new(1.3, 2.1, 0.06), C(x, F + 1.3, BZ - 1.47), P.wood, M.Wood)
-		mk(small, Vector3.new(0.12, 0.12, 0.12), C(x * 0.3, F + 1.5, BZ - 1.53), P.brass, M.Metal, { Shape = BALL })
+		mk(small, Vector3.new(1.3, 2.1, 0.06), C(GX + x, F + 1.3, IZ - 1.47), P.wood, M.Wood)
+		mk(
+			small,
+			Vector3.new(0.12, 0.12, 0.12),
+			C(GX + x * 0.3, F + 1.5, IZ - 1.53),
+			P.brass,
+			M.Metal,
+			{ Shape = BALL }
+		)
 	end
-	local G = C(0.1, F + 2.6, BZ - 0.8)
+	local G = C(GX + 0.1, F + 2.6, IZ - 0.8)
 	mk(small, Vector3.new(1.5, 0.6, 1.4), G * CFrame.new(0, 0.3, 0), rgb(110, 66, 40), M.Wood)
 	mk(
 		small,
@@ -985,24 +1062,33 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			)
 		end
 	end
-	-- the crank on the side
 	mk(small, Vector3.new(0.5, 0.1, 0.1), G * CFrame.new(0.9, 0.35, 0), P.brass, M.Metal)
 	mk(small, Vector3.new(0.12, 0.35, 0.12), G * CFrame.new(1.12, 0.5, 0), P.dark, M.Wood)
-	-- records leaning by the cabinet
 	for k = 0, 2 do
 		mk(
 			small,
 			Vector3.new(0.08, 1.4, 1.4),
-			C(1.85 + k * 0.1, F + 0.7, BZ - 0.9) * CFrame.Angles(0, 0, -0.08 - k * 0.04),
+			C(GX + 1.85 + k * 0.1, F + 0.7, IZ - 0.9) * CFrame.Angles(0, 0, -0.08 - k * 0.04),
 			({ rgb(160, 70, 50), rgb(60, 90, 120), rgb(200, 170, 90) })[k + 1],
 			M.SmoothPlastic
+		)
+	end
+	-- two floor cushions by the gramophone, to sit and listen
+	for k, c in { rgb(170, 120, 60), rgb(90, 110, 130) } do
+		mk(
+			small,
+			Vector3.new(0.6, 2, 2),
+			C(GX - 4.4 + k * 2.2, F + 0.3, IZ - 3) * CFrame.Angles(0, 0, math.pi / 2),
+			c,
+			M.Fabric,
+			{ Shape = CYL }
 		)
 	end
 	if opts.own then
 		local pr = Instance.new("ProximityPrompt")
 		pr.ObjectText = "Граммофон"
-		pr.KeyboardKeyCode = Enum.KeyCode.E
-		pr.GamepadKeyCode = Enum.KeyCode.ButtonX
+		pr.KeyboardKeyCode = Enum.KeyCode.R -- not E: the seats round it answer E
+		pr.GamepadKeyCode = Enum.KeyCode.ButtonY
 		pr.HoldDuration = 0
 		pr.MaxActivationDistance = 7
 		pr.RequiresLineOfSight = false
@@ -1025,16 +1111,16 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		self.prompt = pr
 	end
 	-- the shelf over the gramophone: the old photo; the boss cups come with the entry
-	local shelfY = F + 6.0
-	mk(folder, Vector3.new(5.0, 0.25, 1.0), C(-0.5, shelfY, BZ - 0.5), P.dark, M.Wood)
-	for _, x in { -2.7, 1.7 } do
-		mk(small, Vector3.new(0.2, 0.8, 0.8), C(x, shelfY - 0.5, BZ - 0.4), P.dark, M.Wood)
+	local shelfY = F + 6.4
+	mk(folder, Vector3.new(5.0, 0.25, 1.0), C(GX - 0.2, shelfY, IZ - 0.5), P.dark, M.Wood)
+	for _, x in { -2.4, 2.0 } do
+		mk(small, Vector3.new(0.2, 0.8, 0.8), C(GX + x, shelfY - 0.5, IZ - 0.4), P.dark, M.Wood)
 	end
 	do
 		local frame = mk(
 			small,
 			Vector3.new(1.6, 1.3, 0.12),
-			C(-2.2, shelfY + 0.78, BZ - 0.5) * CFrame.Angles(math.rad(-8), 0.15, 0),
+			C(GX - 1.9, shelfY + 0.78, IZ - 0.5) * CFrame.Angles(math.rad(-8), 0.15, 0),
 			P.dark,
 			M.Wood
 		)
@@ -1042,11 +1128,12 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			mk(small, Vector3.new(1.3, 1.0, 0.05), frame.CFrame * CFrame.new(0, 0, -0.07), P.paper, M.SmoothPlastic)
 		)
 	end
-	self.shelf = { y = shelfY + 0.125, z = BZ - 0.5, xs = { -0.9, 0.2, 1.3 } }
+	self.shelf = { y = shelfY + 0.125, z = IZ - 0.5, xs = { GX - 0.6, GX + 0.5, GX + 1.6 } }
 	-- the cork board over the table
-	local board = mk(folder, Vector3.new(5.8, 3.6, 0.15), C(TX + 0.4, F + 6.4, BZ - 0.1), rgb(176, 130, 86), M.Fabric)
+	local BX = TX + 0.4
+	local board = mk(folder, Vector3.new(5.8, 3.6, 0.15), C(BX, F + 7, IZ - 0.1), rgb(176, 130, 86), M.Fabric)
 	for _, t in { { 6.2, 0.25, 0, 1.92 }, { 6.2, 0.25, 0, -1.92 }, { 0.25, 3.8, -3.0, 0 }, { 0.25, 3.8, 3.0, 0 } } do
-		mk(small, Vector3.new(t[1], t[2], 0.2), C(TX + 0.4 + t[3], F + 6.4 + t[4], BZ - 0.12), P.dark, M.Wood)
+		mk(small, Vector3.new(t[1], t[2], 0.2), C(BX + t[3], F + 7 + t[4], IZ - 0.12), P.dark, M.Wood)
 	end
 	do
 		local g = Instance.new("SurfaceGui")
@@ -1055,11 +1142,10 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		g.LightInfluence = 1
 		g.Parent = board
 		self.boardGui = g
-		-- the child's drawing pinned in the corner (always)
 		local d = mk(
 			small,
 			Vector3.new(1.5, 1.2, 0.04),
-			C(TX + 2.4, F + 5.6, BZ - 0.2) * CFrame.Angles(0, 0, 0.06),
+			C(BX + 2, F + 6.2, IZ - 0.2) * CFrame.Angles(0, 0, 0.06),
 			P.paper,
 			M.SmoothPlastic
 		)
@@ -1067,8 +1153,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 
 	-- the left wall: the bookcase, the clock, the guitar, a plant ---------------------------------------
-	local LX = HX - 0.4 -- the left wall's inner face
-	mk(folder, Vector3.new(1.3, 7.2, 3.2), C(LX - 0.65, F + 3.6, 6.2), P.dark, M.Wood, { CanCollide = true })
+	mk(folder, Vector3.new(1.3, 7.2, 3.2), C(IX - 0.65, F + 3.6, 7.6), P.dark, M.Wood, { CanCollide = true })
 	do
 		local rng = Random.new(7)
 		local colours = {
@@ -1079,17 +1164,17 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			rgb(110, 70, 96),
 			rgb(196, 182, 150),
 		}
-		for shelf = 0, 3 do
-			local y = F + 0.6 + shelf * 1.7
-			mk(small, Vector3.new(1.1, 0.12, 3.0), C(LX - 0.7, y, 6.2), P.wood, M.Wood)
-			local z = 4.85
-			while z < 7.4 do
+		for row = 0, 3 do
+			local y = F + 0.6 + row * 1.7
+			mk(small, Vector3.new(1.1, 0.12, 3.0), C(IX - 0.7, y, 7.6), P.wood, M.Wood)
+			local z = 6.25
+			while z < 8.8 do
 				local w = rng:NextNumber(0.18, 0.34)
 				local h = rng:NextNumber(0.9, 1.35)
 				mk(
 					small,
 					Vector3.new(0.85, h, w),
-					C(LX - 0.75, y + 0.06 + h / 2, z + w / 2)
+					C(IX - 0.75, y + 0.06 + h / 2, z + w / 2)
 						* CFrame.Angles(if rng:NextNumber() < 0.1 then 0.2 else 0, 0, 0),
 					colours[rng:NextInteger(1, #colours)],
 					M.SmoothPlastic
@@ -1099,7 +1184,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		end
 	end
 	do
-		local at = C(LX - 0.12, F + 7.6, 2.4)
+		local at = C(IX - 0.12, F + 8.2, 3.2)
 		mk(small, Vector3.new(0.2, 2.1, 2.1), at, P.dark, M.Wood, { Shape = CYL })
 		mk(
 			small,
@@ -1114,7 +1199,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		self.clock.m = mk(small, Vector3.new(0.05, 0.75, 0.08), at, P.soot, M.SmoothPlastic, { CastShadow = false })
 	end
 	do
-		local g = C(LX - 0.6, F, -5.6) * CFrame.Angles(0, -math.pi / 2, 0) * CFrame.Angles(math.rad(-14), 0, 0)
+		local g = C(IX - 0.6, F, -8) * CFrame.Angles(0, -math.pi / 2, 0) * CFrame.Angles(math.rad(-14), 0, 0)
 		local body = rgb(170, 104, 50)
 		mk(
 			small,
@@ -1143,8 +1228,11 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		mk(small, Vector3.new(0.3, 2.4, 0.18), g * CFrame.new(0, 4.1, 0), P.dark, M.Wood)
 		mk(small, Vector3.new(0.4, 0.7, 0.2), g * CFrame.new(0, 5.6, 0), P.dark, M.Wood)
 	end
-	do
-		local at = C(LX - 1.1, F, -HZ + 1.5)
+	for _, pz in { -IZ + 1.4, IZ - 1.4 } do
+		local at = C(IX - 1.2, F, pz)
+		if pz > 0 then
+			at = C(-IX + 1.2, F, -IZ + 1.4) -- the second plant in the front right corner
+		end
 		mk(
 			small,
 			Vector3.new(1.0, 1.1, 1.1),
@@ -1167,13 +1255,13 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 	-- a backpack and a helmet dropped by the door
 	do
-		local at = C(-3.9, F, -HZ + 1.3) * CFrame.Angles(0, 0.4, 0)
+		local at = C(-DOOR - 2, F, -IZ + 1.1) * CFrame.Angles(0, 0.4, 0)
 		mk(small, Vector3.new(1.4, 1.8, 0.9), at * CFrame.new(0, 0.9, 0), rgb(92, 98, 70), M.Fabric)
 		mk(small, Vector3.new(1.2, 0.7, 0.4), at * CFrame.new(0, 0.6, -0.6), rgb(80, 86, 60), M.Fabric)
 		mk(
 			small,
 			Vector3.new(1.3, 1.0, 1.4),
-			C(-5.2, F + 0.35, -HZ + 1.6) * CFrame.Angles(0.2, 0.8, 0),
+			C(-DOOR - 3.6, F + 0.35, -IZ + 1.4) * CFrame.Angles(0.2, 0.8, 0),
 			rgb(84, 92, 74),
 			M.Metal,
 			{ Shape = BALL }
@@ -1181,13 +1269,13 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 	end
 	-- fairy lights along the back wall, sagging between nails
 	do
-		local n = 15
+		local n = 21
 		local prev = nil
 		for k = 0, n - 1 do
 			local t = k / (n - 1)
-			local x = -10.4 + t * 20.8
-			local sag = math.abs(math.sin(t * math.pi * 3)) * 0.6
-			local pos = C(x, TOP - 1.4 - sag, BZ - 0.3).Position
+			local x = -IX + 0.8 + t * (IX * 2 - 1.6)
+			local sag = math.abs(math.sin(t * math.pi * 4)) * 0.6
+			local pos = C(x, TOP - 1.3 - sag, IZ - 0.3).Position
 			local bulb = mk(
 				small,
 				Vector3.new(0.32, 0.32, 0.32),
@@ -1212,19 +1300,20 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		end
 		local glow = Instance.new("PointLight")
 		glow.Color = rgb(255, 206, 150)
-		glow.Range = 16
+		glow.Range = 18
 		glow.Brightness = 0.7
-		glow.Parent = self.bulbs[8]
+		glow.Parent = self.bulbs[11]
 		self.bulbGlow = glow
 	end
-	-- the mantel: a candle pair, a jar for the first xenite, dried flowers
+	-- the mantel: a candle pair, dried flowers, the old photo; the jar for the first xenite comes later
 	do
-		local mx = SX + 1.4
-		for _, z in { SZ - 2.8, SZ - 2.2 } do
+		local mx = SX + 1.5
+		local my = F + 6.22
+		for _, z in { SZ - 3.1, SZ - 2.5 } do
 			mk(
 				small,
 				Vector3.new(0.7, 0.25, 0.25),
-				C(mx, F + 6.17, z) * CFrame.Angles(0, 0, math.pi / 2),
+				C(mx, my + 0.35, z) * CFrame.Angles(0, 0, math.pi / 2),
 				rgb(236, 226, 196),
 				M.SmoothPlastic,
 				{ Shape = CYL }
@@ -1232,7 +1321,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			mk(
 				small,
 				Vector3.new(0.14, 0.2, 0.14),
-				C(mx, F + 6.62, z),
+				C(mx, my + 0.8, z),
 				rgb(255, 210, 120),
 				M.Neon,
 				{ Shape = BALL, CastShadow = false }
@@ -1241,7 +1330,7 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 		mk(
 			small,
 			Vector3.new(0.6, 0.6, 0.6),
-			C(mx, F + 6.12, SZ + 2.6) * CFrame.Angles(0, 0, math.pi / 2),
+			C(mx, my + 0.3, SZ + 2.9) * CFrame.Angles(0, 0, math.pi / 2),
 			rgb(120, 140, 160),
 			M.Glass,
 			{ Shape = CYL, Transparency = 0.4 }
@@ -1250,16 +1339,16 @@ function Cabin.build(cf: CFrame, parent: Instance, opts)
 			mk(
 				small,
 				Vector3.new(0.06, 1.3, 0.06),
-				C(mx, F + 6.7, SZ + 2.6) * CFrame.Angles((k - 1.5) * 0.18, 0, (k % 2 - 0.5) * 0.3),
+				C(mx, my + 0.9, SZ + 2.9) * CFrame.Angles((k - 1.5) * 0.18, 0, (k % 2 - 0.5) * 0.3),
 				rgb(150, 120, 70),
 				M.Wood
 			)
 		end
-		self.mantel = { x = mx, y = F + 5.82, z = SZ }
+		self.mantel = { x = mx, y = my, z = SZ }
 		local photo = mk(
 			small,
 			Vector3.new(0.12, 1.3, 1.6),
-			C(mx + 0.1, F + 6.5, SZ - 0.4) * CFrame.Angles(0, 0, math.rad(8)),
+			C(mx + 0.1, my + 0.7, SZ - 0.4) * CFrame.Angles(0, 0, math.rad(8)),
 			P.dark,
 			M.Wood
 		)
@@ -1475,6 +1564,8 @@ function Cabin:setPower(on: boolean)
 	self.lantern.light.Enabled = on
 	self.lantern.part.Material = if on then M.Neon else M.Glass
 	self.bulbGlow.Enabled = on
+	self.floorLamp.light.Enabled = on
+	self.floorLamp.part.Material = if on then M.Neon else M.SmoothPlastic
 	for i, b in self.bulbs do
 		b.Material = if on then M.Neon else M.SmoothPlastic
 		b.Color = if not on
