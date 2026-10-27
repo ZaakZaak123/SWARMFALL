@@ -1588,9 +1588,10 @@ function Story.depart(opId: string, onDone)
 				to = 3.35,
 				cam = function(k)
 					-- beside the cable just out of the courtyard: the hero rides past to the cave in the hill
-					local eye = term + rel(-12, -1, 7)
+					-- (from the yard's side of the cable: the other side is the old oak's crown, DD-091)
+					local eye = term + rel(-8, 0, -16)
 					local pos = path.at(s)
-					return CFrame.lookAt(eye:Lerp(eye + rel(-3, 2, 0), k), pos + Vector3.new(0, -3.5, 0))
+					return CFrame.lookAt(eye:Lerp(eye + rel(2, 2, -2), k), pos + Vector3.new(0, -3.5, 0))
 				end,
 			},
 			{
