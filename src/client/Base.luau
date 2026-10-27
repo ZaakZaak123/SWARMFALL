@@ -2238,7 +2238,7 @@ function Base.update(dt: number, _root: Vector3?)
 		end
 		ui.scale.Scale = math.clamp(
 			math.min(workspace.CurrentCamera.ViewportSize.X / 1280, workspace.CurrentCamera.ViewportSize.Y / 720),
-			0.62,
+			if Theme.phone() then 0.5 else 0.62, -- DD-100: the old floor filled a phone's screen
 			1.2
 		)
 		ui.safe.Size = UDim2.fromScale(1 / ui.scale.Scale, 1 / ui.scale.Scale)

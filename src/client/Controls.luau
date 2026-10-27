@@ -39,7 +39,6 @@ local touchVec = Vector2.zero
 local gui, pad, knob, buttons
 local touchLayoutSize = Vector2.zero
 local autoId = nil -- the enemy the touch auto-aim holds
-local dragRef = nil -- third person, touch: the camera's ground axes when the aiming thumb came down
 local marker = nil -- the ring under it
 local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
 local TURN = 16 -- radians per second the auto-aim swings the gun (quick, but a visible turn, not a snap)
@@ -109,7 +108,7 @@ local function layoutTouch()
 		return
 	end
 	touchLayoutSize = size
-	local k = math.clamp(size.Y / 600, 0.68, 1)
+	local k = math.clamp(size.Y / 600, 0.6, 1) -- (buttons never go under 44 points, below)
 	pad.Position = UDim2.new(1, -150 * k, 1, -150 * k)
 	pad.Size = UDim2.fromOffset(200 * k, 200 * k)
 	knob.Size = UDim2.fromOffset(74 * k, 74 * k)
@@ -328,7 +327,6 @@ function Controls.release()
 	touchVec = Vector2.zero
 	Controls.firing = false
 	autoId = nil
-	dragRef = nil
 	showMarker(nil)
 end
 
@@ -401,29 +399,24 @@ function Controls.update(
 			knob.Position = UDim2.new(0.5, clamped.X, 0.5, clamped.Y)
 			local active = touchAim ~= nil and v.Magnitude > radius * 0.2
 			firing = active
-			if not auto then
-				-- DD-099: the thumb points the gun, the camera follows. The direction is read on the ground
-				-- as the camera stood when the thumb came down (so the camera swinging in behind does not
-				-- spin it further), and the camera eases round behind it.
-				if active then
-					local cam = workspace.CurrentCamera.CFrame
-					if not dragRef then
-						local f = Vector3.new(cam.LookVector.X, 0, cam.LookVector.Z)
-						f = if f.Magnitude > 1e-3 then f.Unit else Vector3.zAxis
-						local r = Vector3.new(cam.RightVector.X, 0, cam.RightVector.Z)
-						r = if r.Magnitude > 1e-3 then r.Unit else Vector3.xAxis
-						dragRef = { f = f, r = r }
+			if active and not auto then
+				-- DD-100 (owner: the first version was better, improve it): the pad turns the camera as it
+				-- always did and the gun fires down the crosshair, with two aids a phone shooter needs.
+				-- Friction: with an enemy right on the crosshair the turn slows down, so a thumb stays on
+				-- it. Pull: while firing, the camera drifts toward the enemy nearest the crosshair.
+				local look = Vector2.new(clamped.X / radius, -clamped.Y / radius)
+				local cx, cz = fwdX or 0, fwdZ or 1
+				if Settings.aimAssist then
+					if EnemyView.nearestInCone(rootPos.X, rootPos.Z, cx, cz, range, math.cos(math.rad(6))) then
+						look *= 0.5
 					end
-					local w = dragRef.r * clamped.X - dragRef.f * clamped.Y
-					if w.Magnitude > 1e-3 then
-						ax, az = w.X / w.Magnitude, w.Z / w.Magnitude
-						local d = (math.atan2(ax, az) - math.atan2(fwdX or 0, fwdZ or 1) + math.pi) % (2 * math.pi)
-							- math.pi
+					local tx, tz = EnemyView.nearestInCone(rootPos.X, rootPos.Z, cx, cz, range, math.cos(math.rad(14)))
+					if tx and dt > 0 then
+						local d = (math.atan2(tx, tz) - math.atan2(cx, cz) + math.pi) % (2 * math.pi) - math.pi
 						CameraRig.look(-d * math.min(1, dt * 3), 0)
 					end
-				else
-					dragRef = nil
 				end
+				Controls.look = look
 			end
 			if auto then
 				-- the camera swings in behind the run while the right thumb leaves it alone
@@ -446,7 +439,8 @@ function Controls.update(
 		end
 		-- Gentle aim assist toward enemies near the crosshair line (not on mouse).
 		if device ~= "pc" and Settings.aimAssist then
-			local bx, bz = EnemyView.nearestInCone(rootPos.X, rootPos.Z, ax, az, range, math.cos(math.rad(8)))
+			local cone = if device == "touch" then 12 else 8 -- DD-100: a thumb is coarser than a stick
+			local bx, bz = EnemyView.nearestInCone(rootPos.X, rootPos.Z, ax, az, range, math.cos(math.rad(cone)))
 			if bx then
 				ax, az = bx, bz
 			end

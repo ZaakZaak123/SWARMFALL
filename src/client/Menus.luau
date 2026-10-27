@@ -1087,7 +1087,7 @@ function Menus.showLobby(info, id: number, dev: string)
 	end
 	MetaMenus.setLobby(info)
 	if ui.lobby.Visible then
-		local k = math.max(0.72, viewportScale(Vector2.new(1280, 760)))
+		local k = math.max(if Theme.phone() then 0.52 else 0.72, viewportScale(Vector2.new(1280, 760)))
 		ui.lobbyScale.Scale = k
 		ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
 		Menus.refreshLobby()

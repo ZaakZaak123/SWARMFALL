@@ -1001,7 +1001,9 @@ end
 function Hud.update(run, me, extra, dt: number)
 	local now = os.clock()
 	local vs = workspace.CurrentCamera.ViewportSize
-	local k = math.clamp(math.min(vs.Y / 820, vs.X / 1100), 0.72, 1.2)
+	-- DD-100: a phone (~390 points tall) may go further down than a small monitor: at the old floor of
+	-- 0.72 the HUD took the whole screen
+	local k = math.clamp(math.min(vs.Y / 820, vs.X / 1100), if Theme.phone() then 0.52 else 0.72, 1.2)
 	ui.scale.Scale = k
 	ui.root.Size = UDim2.fromScale(1 / k, 1 / k)
 	local touch = extra.device == "touch"
