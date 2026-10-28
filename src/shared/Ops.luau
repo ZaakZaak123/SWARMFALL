@@ -87,10 +87,11 @@ export type OpDef = {
 local ALL = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 -- O01 levels: three cards in the first ~35 s, before the Alpha (TUNABLE against tests/ops_run O01).
 local XP_O01 = { 4, 17, 26 }
--- O02: four cards, the last before the Alpha (~0:58).
-local XP_O02 = { 6, 20, 34, 50 }
--- O05: six cards — the boss at ~0:30 needs a build, not a starter rifle.
-local XP_O05 = { 4, 10, 16, 24, 34, 46 }
+-- O02: four cards, the last before the Alpha. (DD-111, owner: «каждые несколько секунд все карточки
+-- вылазят»: ~1.5× the XP — each card earned, the last ones in the Alpha fight)
+local XP_O02 = { 8, 28, 50, 76 }
+-- O05: six cards — the boss needs a build, not a starter rifle; it comes with half of them now (DD-111).
+local XP_O05 = { 5, 13, 22, 34, 48, 64 }
 
 -- SPOREFALL hunts (DD-032): one new idea per hunt.
 --   O01 ВЫСАДКА       shoot, level up, pick cards; one big enemy at the end. No objective to guard.

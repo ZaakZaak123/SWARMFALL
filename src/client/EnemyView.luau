@@ -539,16 +539,46 @@ function EnemyView.nearestInCone(ox: number, oz: number, dx: number, dz: number,
 	return bx, bz
 end
 
+-- DD-111 (owner: «он сам стреляет, и непонятно даже куда — не видно, а он уже убивает»): in the simple
+-- fight the gun takes only what is on the screen — a gun's range (82 studs for the rifle) reached past
+-- the edge of the high chase camera. Set by Controls each frame.
+EnemyView.screenOnly = false
+local SCREEN_MARGIN = 14
+local screenCam, screenSize, screenTop = nil, Vector2.zero, 0
+local function screenFrame()
+	screenCam = workspace.CurrentCamera
+	screenSize = if screenCam then screenCam.ViewportSize else Vector2.zero
+	local ok, inset = pcall(function()
+		return game:GetService("GuiService").TopbarInset.Max.Y
+	end)
+	screenTop = (if ok and inset then inset else 0) + SCREEN_MARGIN
+end
+local function onScreen(rec): boolean
+	if not screenCam then
+		return true
+	end
+	local p, front = screenCam:WorldToViewportPoint(Vector3.new(rec.dx, rec.radius, rec.dz))
+	return front
+		and p.X > SCREEN_MARGIN
+		and p.X < screenSize.X - SCREEN_MARGIN
+		and p.Y > screenTop
+		and p.Y < screenSize.Y - SCREEN_MARGIN
+end
+
 -- DD-098: the touch auto-aim's target. The nearest enemy in range, the ones ahead of (fx, fz) counting
 -- as closer; `keepId` (the current target) holds until a rival is clearly nearer (no flicking between
 -- two runners at the same distance). Returns id, x, z of the target or nil.
 function EnemyView.autoTarget(ox: number, oz: number, range: number, fx: number, fz: number, keepId: number?)
 	local best, bestId, bx, bz = math.huge, nil, nil, nil
 	local keepScore = math.huge
+	local screen = EnemyView.screenOnly
+	if screen then
+		screenFrame()
+	end
 	for id, rec in records do
 		local cx, cz = rec.dx - ox, rec.dz - oz
 		local d = math.sqrt(cx * cx + cz * cz)
-		if d < range then
+		if d < range and (not screen or onScreen(rec)) then
 			local ahead = if d > 0.1 then (cx * fx + cz * fz) / d else 1
 			local score = d * (1.25 - 0.25 * ahead)
 			if id == keepId then
@@ -585,11 +615,27 @@ function EnemyView.autoTargetFor(
 	end
 	-- the knot/line weighing is ~1 ms over a full swarm: about eight times a second, not every frame
 	local now = os.clock()
+	local screen = EnemyView.screenOnly
+	if screen then
+		screenFrame()
+	end
 	local held = keepId and records[keepId]
+	if held and (screen and not onScreen(held)) then
+		held, keepId = nil, nil -- went off the screen: choose again
+	end
 	if held and keepId == lastPick.id and now - lastPick.t < 0.12 then
 		return keepId, held.dx, held.dz
 	end
-	local id, x, z = AutoTarget.pick(kind, records, ox, oz, range, keepId)
+	local pool = records
+	if screen then
+		pool = {}
+		for rid, rec in records do
+			if onScreen(rec) then
+				pool[rid] = rec
+			end
+		end
+	end
+	local id, x, z = AutoTarget.pick(kind, pool, ox, oz, range, keepId)
 	lastPick.id, lastPick.t = id, now
 	return id, x, z
 end

@@ -924,8 +924,9 @@ function Defs.hpScale(t: number): number
 	return 1 + (t / 60) * 0.24
 end
 
+-- (DD-111: ×1.5 — a siege handed a card every few seconds)
 function Defs.xpToNext(level: number): number
-	return math.floor(7 + level * 5 + level ^ 1.75)
+	return math.floor((7 + level * 5 + level ^ 1.75) * 1.5)
 end
 
 -- DD-105: the weapon's super — the main skill. It charges from the damage the hero deals (not from a

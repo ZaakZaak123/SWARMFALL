@@ -125,6 +125,7 @@ end
 -- DD-103: in the simple fight each gun picks its own kind of target (EnemyView.autoTargetFor).
 local function autoAim(rootPos: Vector3, ax: number, az: number, range: number, front: boolean, dt: number)
 	local id, tx, tz
+	EnemyView.screenOnly = Settings.simpleCombat == true -- DD-111: only what the player sees
 	if Settings.simpleCombat and Controls.weapon then
 		id, tx, tz = EnemyView.autoTargetFor(Controls.weapon, rootPos.X, rootPos.Z, range, ax, az, autoId)
 	else
