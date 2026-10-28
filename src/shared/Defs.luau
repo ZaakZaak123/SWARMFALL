@@ -933,8 +933,10 @@ end
 -- A run starts half charged. Tap: at the gun's own target; drag (phone) or aim (PC): where you point.
 -- Numbers are TUNABLE.
 Defs.Super = {
-	Seconds = 12,
+	Seconds = 15, -- (12 made the boss fights a third shorter; DD-105 tuning)
 	Start = 0.5,
+	BossMult = 0.6, -- (times Combat's 0.6 for any depth-1 hit on a boss)
+	BigMult = 0.7,
 }
 Defs.Supers = {
 	-- a slow ball of lightning: bursts on the first enemy (or at its range), stuns, arcs on to more

@@ -22,6 +22,13 @@ function Super.need(weaponDef): number
 	return weaponDef.damage * weaponDef.rate * (weaponDef.pellets or 1) * Defs.Super.Seconds
 end
 
+-- Bosses and heavies take less (as from the Громобой): a super is for the swarm, not a boss-skip.
+-- (Combat.damage already gives a boss 0.6 of any depth-1 hit: 0.36 in all, near the hammer's 0.35.)
+local function hit(w, p, e, amount: number, flags: number, x: number, z: number)
+	local mult = if e.def.boss then Defs.Super.BossMult elseif e.def.big then Defs.Super.BigMult else 1
+	return Combat.damage(w, p, e, amount * mult, 1, flags, x, z)
+end
+
 local function stun(w, e, seconds: number)
 	if not e.def.big then
 		e.stunUntil = math.max(e.stunUntil, w.t + seconds)
@@ -66,7 +73,7 @@ local function ballBurst(w, p, b)
 		if e.alive and not e.invulnerable and (e.x - b.x) ^ 2 + (e.z - b.z) ^ 2 <= (S.radius + e.def.radius) ^ 2 then
 			struck[e] = true
 			stun(w, e, S.stun)
-			Combat.damage(w, p, e, S.damage, 1, bit32.bor(DF.ARC, DF.SUPER), b.x, b.z)
+			hit(w, p, e, S.damage, bit32.bor(DF.ARC, DF.SUPER), b.x, b.z)
 		end
 	end
 	-- arcs on to the nearest ones it did not touch
@@ -87,7 +94,7 @@ local function ballBurst(w, p, b)
 		struck[best] = true
 		w:emit(E.ARC, b.x, b.z, best.x, best.z, C.BLUE)
 		stun(w, best, S.stun * 0.5)
-		Combat.damage(w, p, best, S.arcDamage, 1, bit32.bor(DF.ARC, DF.SUPER), b.x, b.z)
+		hit(w, p, best, S.arcDamage, bit32.bor(DF.ARC, DF.SUPER), b.x, b.z)
 	end
 	w:emit(E.SUPER, p.id, p.weaponDef.index, 2, b.x, b.z, b.dx, b.dz, S.radius)
 end
@@ -115,7 +122,7 @@ function Super.cast(w, p, dx: number, dz: number)
 				if edge <= S.reach and (d < 2.5 or (cx * dx + cz * dz) / d >= cosHalf) then
 					stun(w, e, S.stun)
 					push(w, e, p.x, p.z, S.knock)
-					Combat.damage(w, p, e, S.damage, 1, bit32.bor(DF.BLAST, DF.SUPER), p.x, p.z)
+					hit(w, p, e, S.damage, bit32.bor(DF.BLAST, DF.SUPER), p.x, p.z)
 				end
 			end
 		end
@@ -127,7 +134,7 @@ function Super.cast(w, p, dx: number, dz: number)
 	elseif id == "W_RAILGUN" then
 		local len = w.nav.ray(ox, oz, dx, dz, S.range)
 		alongLine(w, ox, oz, dx, dz, len, S.halfWidth, function(e)
-			Combat.damage(w, p, e, S.damage, 1, DF.SUPER, ox, oz)
+			hit(w, p, e, S.damage, DF.SUPER, ox, oz)
 		end)
 		table.insert(w.superStrips, {
 			owner = p,
@@ -180,7 +187,7 @@ function Super.update(w, p, dt: number)
 				local ox, oz = p.x + dx * 1.2, p.z + dz * 1.2
 				local len = w.nav.ray(ox, oz, dx, dz, p.stats.range)
 				alongLine(w, ox, oz, dx, dz, len, S.halfWidth, function(e)
-					Combat.damage(w, p, e, S.tickDamage, 1, DF.SUPER, ox, oz)
+					hit(w, p, e, S.tickDamage, DF.SUPER, ox, oz)
 				end)
 			end
 		end
