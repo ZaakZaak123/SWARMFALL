@@ -76,7 +76,7 @@ local function setSheet(open: boolean)
 	sheetOpen = open
 	if open then
 		ui.overlay.Visible = true
-		ui.sheet.Position = UDim2.new(1, 360, 0, 0)
+		ui.sheet.Position = UDim2.new(1, 500, 0, 0)
 		ui.backdrop.BackgroundTransparency = 1
 		Theme.tween(ui.sheet, 0.28, { Position = UDim2.new(1, 0, 0, 0) })
 		Theme.tween(ui.backdrop, 0.2, { BackgroundTransparency = 0.5 })
@@ -85,7 +85,7 @@ local function setSheet(open: boolean)
 		Theme.tween(
 			ui.sheet,
 			0.2,
-			{ Position = UDim2.new(1, 360, 0, 0) },
+			{ Position = UDim2.new(1, 500, 0, 0) },
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.In
 		)
@@ -116,7 +116,7 @@ local function buildSheet(gui: ScreenGui)
 		Name = "Sheet",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 0),
-		Size = UDim2.new(0, 340, 1, 0),
+		Size = UDim2.new(0, 474, 1, 0), -- DD-107: three columns, every tile on one screen
 		BackgroundTransparency = 0.04,
 		CornerRadius = 18,
 	}, C.lime)
@@ -171,8 +171,8 @@ local function buildSheet(gui: ScreenGui)
 		Parent = sheet,
 	})
 	new("UIGridLayout", {
-		CellSize = UDim2.new(0.5, -5, 0, 56),
-		CellPadding = UDim2.fromOffset(8, 8),
+		CellSize = UDim2.new(1 / 3, -6, 0, 52),
+		CellPadding = UDim2.fromOffset(8, 7),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = list,
 	})

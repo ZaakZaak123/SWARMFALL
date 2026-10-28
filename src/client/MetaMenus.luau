@@ -150,7 +150,26 @@ local function buildOutpost()
 		ZIndex = 42,
 		Parent = m.panel,
 	})
-	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = ui.opDetail })
+	ui.opList = new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = ui.opDetail })
+	-- DD-107: on a phone the schematic shrinks and the buildings stand two by two, all on one screen
+	ui.opGrid = new("UIGridLayout", {
+		CellSize = UDim2.new(0.5, -4, 0, 62),
+		CellPadding = UDim2.fromOffset(8, 4),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	})
+	local mapScale = new("UIScale", { Parent = map })
+	local mapPhone, top = 262, 84
+	m.phoneSize = Vector2.new(960, top + mapPhone + 12)
+	function m.relayout(phone: boolean)
+		mapScale.Scale = if phone then mapPhone / (MAP_R * 2 + 40) else 1
+		map.Position = UDim2.fromOffset(28, if phone then top else 96)
+		local x = if phone then 28 + mapPhone + 20 else MAP_R * 2 + 92
+		ui.opDetail.Position = UDim2.fromOffset(x, if phone then top else 96)
+		ui.opDetail.Size = UDim2.new(1, -(x + 28), 1, if phone then -(top + 8) else -120)
+		ui.opSub.Position = UDim2.fromOffset(28, if phone then 56 else 60)
+		ui.opSub.TextTruncate = Enum.TextTruncate.AtEnd
+		MetaMenus.refreshOutpost()
+	end
 end
 
 local function costText(def, lvl: number): string
@@ -239,7 +258,11 @@ function MetaMenus.refreshOutpost()
 	H.clear(ui.opDetail)
 	local slot = slots[selectedSocket] or slots[tostring(selectedSocket)]
 	local sock = Meta.Sockets[selectedSocket]
+	local flat = ui.outpost.phone == true and not slot -- DD-107: the phone's two-column list
+	ui.opList.Parent = if flat then nil else ui.opDetail
+	ui.opGrid.Parent = if flat then ui.opDetail else nil
 	label((if sock.ring == 1 then "ВНУТРЕННЕЕ" else "ВНЕШНЕЕ") .. " ГНЕЗДО " .. selectedSocket, {
+		Visible = not flat,
 		Size = UDim2.new(1, 0, 0, 22),
 		FontFace = F.head,
 		TextSize = 12,
@@ -293,11 +316,12 @@ function MetaMenus.refreshOutpost()
 			local open = unlockedBy(def)
 			local can = open and profile.scrap >= def.cost[1]
 			local r = row(ui.opDetail, order, 76)
-			iconDisc(r, def.icon, if open then def.color else C.dim, 50, UDim2.fromOffset(12, 13))
-			label(def.name, { Position = UDim2.fromOffset(74, 12), Size = UDim2.new(1, -230, 0, 22), FontFace = F.display, TextSize = 16, TextColor3 = if open then C.text else C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = r })
-			label(if open then statLine(def, 1) else "Откроется: победа в «" .. Ops.get(def.unlock).name .. "»", { Position = UDim2.fromOffset(74, 38), Size = UDim2.new(1, -230, 0, 28), FontFace = F.body, TextSize = 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 44, Parent = r })
+			local textX, textW = if flat then 62 else 74, if flat then -172 else -230
+			iconDisc(r, def.icon, if open then def.color else C.dim, if flat then 44 else 50, UDim2.fromOffset(if flat then 10 else 12, if flat then 10 else 13))
+			label(def.name, { Position = UDim2.fromOffset(textX, if flat then 7 else 12), Size = UDim2.new(1, textW, 0, 22), FontFace = F.display, TextSize = if flat then 15 else 16, TextColor3 = if open then C.text else C.dim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44, Parent = r })
+			label(if open then statLine(def, 1) else "Откроется: победа в «" .. Ops.get(def.unlock).name .. "»", { Position = UDim2.fromOffset(textX, if flat then 30 else 38), Size = UDim2.new(1, textW, 0, 28), FontFace = F.body, TextSize = if flat then 11 else 12, TextColor3 = C.dim, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 44, Parent = r })
 			if open then
-				local b, bl = Theme.button("◆ " .. def.cost[1], { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(130, 44), TextSize = 15, ZIndex = 44 }, if can then "primary" else "ghost")
+				local b, bl = Theme.button("◆ " .. def.cost[1], { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, if flat then -10 else -12, 0.5, 0), Size = UDim2.fromOffset(if flat then 100 else 130, if flat then 40 else 44), TextSize = 15, ZIndex = 44 }, if can then "primary" else "ghost")
 				b.Parent = r
 				bl.ZIndex = 45
 				Xenite.inline(bl)

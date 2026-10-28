@@ -30,6 +30,7 @@ local Controls = {
 		else "pc",
 	cursor = Vector2.new(0, 0),
 	enabled = false,
+	range = false, -- set by Main: the hero stands on the base's shooting range (DD-107)
 	actions = {}, -- name -> callback
 }
 
@@ -39,6 +40,7 @@ local touchAim: InputObject? = nil
 local touchVec = Vector2.zero
 local gui, pad, knob, buttons, padName
 local touchLayoutSize = Vector2.zero
+local tipAnchor = nil -- DD-107: where the first-time tip stands (left of the cluster), set by layoutTouch
 local autoId = nil -- the enemy the touch auto-aim holds
 local marker = nil -- the ring under it
 local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
@@ -156,38 +158,55 @@ end
 -- and the aim pad is gone (the gun aims itself; a drag on the super aims the super). Over the shoulder
 -- the corner stays the aim-and-fire pad and the super is next to it. Offsets for a 600-point-high
 -- screen: { x, y, diameter }.
-local LAYOUT_SIMPLE = {
-	super = { -165, -165, 200 },
-	dash = { -410, -120, 116 },
-	overdrive = { -385, -310, 106 },
-	evolve = { -165, -410, 96 },
-	reload = { -560, -330, 86 },
-	view = { -400, -450, 86 },
-}
-local LAYOUT_SHOULDER = {
-	super = { -400, -110, 140 },
-	dash = { -360, -300, 104 },
-	overdrive = { -560, -190, 100 },
-	evolve = { -150, -390, 92 },
-	reload = { -540, -345, 86 },
-	view = { -400, -450, 86 },
-}
+-- DD-107 (owner, phone: «кнопки боя занимают почти пол экрана — ближе к углу, ближе по дуге, меньше
+-- основную»): the cluster is built round the corner one like the shooters on phones do it — the main
+-- button about a quarter of the screen's height (Roblox's own jump button is 70 points on a phone), the
+-- others about two thirds of it on one tight arc round it (left, up-left, up), all within the thumb's
+-- reach from the corner; nothing under 48 points (the platforms' touch minimum). Angles in degrees,
+-- counter-clockwise from "right" (180 = straight left, 90 = straight up).
+local ARC_SIMPLE = { dash = 196, overdrive = 143, evolve = 90 }
+local ARC_SHOULDER = { super = 186, dash = 148, overdrive = 100 } -- round the aim pad
+local OUTER_SHOULDER = { evolve = 172, reload = 135, view = 100 } -- the second ring
 local function layoutTouch()
 	local size = workspace.CurrentCamera.ViewportSize
 	if size == touchLayoutSize then
 		return
 	end
 	touchLayoutSize = size
-	local k = math.clamp(size.Y / 600, 0.6, 1) -- (buttons never go under 44 points, below)
+	local H = math.min(size.Y, size.X)
+	local main = math.clamp(H * 0.25, 76, 128) -- the corner button
+	local small = math.clamp(H * 0.16, 52, 84)
+	local margin = math.clamp(H * 0.03, 10, 22)
+	local captionRoom = 13 -- (the corner one's name hangs under it)
+	local cx, cy = -(margin + main / 2), -(margin + captionRoom + main / 2)
+	local function place(b, angle: number, radius: number, d: number)
+		local a = math.rad(angle)
+		b:setLayout(UDim2.new(1, cx + math.cos(a) * radius, 1, cy - math.sin(a) * radius), d)
+	end
+	local ring1 = main / 2 + small / 2 + math.max(12, small * 0.24)
+	local ring2 = ring1 + small + math.max(10, small * 0.2)
 	pad.Visible = not padSimple
-	pad.Position = UDim2.new(1, -150 * k, 1, -150 * k)
-	pad.Size = UDim2.fromOffset(200 * k, 200 * k)
-	knob.Size = UDim2.fromOffset(74 * k, 74 * k)
+	pad.Position = UDim2.new(1, cx, 1, cy)
+	pad.Size = UDim2.fromOffset(main * 1.2, main * 1.2)
+	knob.Size = UDim2.fromOffset(main * 0.45, main * 0.45)
 	padName.Text = "ПРИЦЕЛ И ОГОНЬ"
-	local layout = if padSimple then LAYOUT_SIMPLE else LAYOUT_SHOULDER
-	for name, b in buttons do
-		local l = layout[name]
-		b:setLayout(UDim2.new(1, l[1] * k, 1, l[2] * k), math.max(44, l[3] * k))
+	-- the first-time tip stands left of the whole cluster, on the bottom line (it named its button anyway)
+	tipAnchor = UDim2.new(1, cx + math.cos(math.rad(196)) * ring1 - small / 2 - 10, 1, -(margin + 4))
+	if padSimple then
+		buttons.super:setLayout(UDim2.new(1, cx, 1, cy), main)
+		for name, angle in ARC_SIMPLE do
+			place(buttons[name], angle, ring1, small)
+		end
+		place(buttons.reload, 150, ring2, small * 0.85) -- (shown only out of the chase camera)
+		place(buttons.view, 112, ring2, small * 0.85)
+	else
+		local r = main * 0.6 + small / 2 + 10
+		for name, angle in ARC_SHOULDER do
+			place(buttons[name], angle, r, if name == "super" then small * 1.15 else small)
+		end
+		for name, angle in OUTER_SHOULDER do
+			place(buttons[name], angle, r + small + 10, small * 0.85)
+		end
 	end
 end
 
@@ -229,7 +248,10 @@ local function stepTips(now: number)
 		tipFor = name
 		tipUntil = now + 5
 		tipText.Text = TIPS[name]
-		tipBubble.Parent = buttons[name].button -- (rides on its button, left of it)
+		tipBubble.Parent = gui
+		if tipAnchor then
+			tipBubble.Position = tipAnchor
+		end
 		tipBubble.Visible = true
 	end
 end
@@ -350,21 +372,30 @@ function Controls.init(playerGui: PlayerGui)
 	-- the first-time bubble: left of its button, pointing at it
 	tipBubble = Theme.panel({
 		Name = "Tip",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(0, -10, 0.5, 0),
-		Size = UDim2.fromOffset(0, 34),
-		AutomaticSize = Enum.AutomaticSize.X,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -260, 1, -14),
+		Size = UDim2.fromOffset(0, 0),
+		AutomaticSize = Enum.AutomaticSize.XY,
 		Visible = false,
 		ZIndex = 5,
-		CornerRadius = 17,
+		CornerRadius = 12,
 	}, C.lime)
 	tipBubble.Parent = gui
-	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = tipBubble })
+	-- DD-107: a small two-line note beside the button, not a bar across the fight
+	new("UIPadding", {
+		PaddingLeft = UDim.new(0, 9),
+		PaddingRight = UDim.new(0, 9),
+		PaddingTop = UDim.new(0, 5),
+		PaddingBottom = UDim.new(0, 5),
+		Parent = tipBubble,
+	})
 	tipText = Theme.label("", {
-		Size = UDim2.fromScale(0, 1),
-		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(190, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		FontFace = Theme.F.bodyBold,
-		TextSize = 13,
+		TextSize = 11,
 		ZIndex = 6,
 		Parent = tipBubble,
 	})
@@ -532,7 +563,7 @@ function Controls.update(
 			touchLayoutSize = Vector2.zero
 		end
 		layoutTouch()
-		buttons.view.button.Visible = not simple -- the chase camera is the simple fight's only view
+		buttons.view.button.Visible = not simple and not Controls.range -- (chase: the simple fight's only view)
 		stepTips(now)
 		for _, b in buttons do
 			b:step(now)
@@ -680,6 +711,8 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	if not b then
 		return
 	end
+	-- DD-107: the base's shooting range is the gun alone (the shelter's buttons hold the corner there)
+	visible = visible and not Controls.range
 	b.button.Visible = visible
 	if visible then
 		queueTip(name)

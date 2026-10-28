@@ -856,6 +856,18 @@ local function buildCard()
 			ui.cardInviteLabel.Text = "ПРИГЛАШЕНИЕ ОТПРАВЛЕНО"
 		end
 	end)
+	-- DD-107: on a phone the card lies on its side — who and with what on the left, trophies, titles
+	-- and the buttons on the right — all on one screen
+	m.phoneSize = Vector2.new(1000, 330)
+	function m.relayout(phone: boolean)
+		ui.cardBody.Size = UDim2.new(1, -56, 1, if phone then -82 else -150)
+		bar.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0, 1)
+		bar.Position = if phone then UDim2.new(1, -28, 1, -18) else UDim2.new(0, 28, 1, -22)
+		bar.Size = if phone then UDim2.fromOffset(444, 46) else UDim2.new(1, -56, 0, 46)
+		for _, b in { ui.cardVisit, ui.cardInvite } do
+			b.Size = UDim2.fromOffset(if phone then 217 else 240, 46)
+		end
+	end
 end
 
 -- override: an entry built from the own profile (outside the camp there is no camp state)
@@ -867,6 +879,9 @@ function HubMenus.showCard(uid: number, override)
 	cardUid = uid
 	H.clear(ui.cardBody)
 	local b = ui.cardBody
+	-- DD-107: the phone's side-by-side card: the right column starts at rx, rw wide
+	local side = Theme.phone()
+	local rx, rw = if side then 500 else 0, if side then 444 else 0
 	disc(b, h.titleIcon, C.gold, 72, UDim2.fromOffset(0, 0))
 	label(h.name, {
 		Position = UDim2.fromOffset(88, 0),
@@ -909,8 +924,8 @@ function HubMenus.showCard(uid: number, override)
 	-- your own card: pick which earned title to wear
 	if uid == myId and acts.ownTitles then
 		label("ТИТУЛ НАД ГОЛОВОЙ — ВЫБЕРИ ЗАСЛУЖЕННЫЙ", {
-			Position = UDim2.fromOffset(0, 270),
-			Size = UDim2.new(1, 0, 0, 16),
+			Position = UDim2.fromOffset(rx, if side then 48 else 270),
+			Size = UDim2.new(if side then 0 else 1, rw, 0, 16),
 			FontFace = F.head,
 			TextSize = 10,
 			TextColor3 = C.dim,
@@ -919,8 +934,8 @@ function HubMenus.showCard(uid: number, override)
 			Parent = b,
 		})
 		local chips = new("Frame", {
-			Position = UDim2.fromOffset(0, 292),
-			Size = UDim2.new(1, 0, 0, 60),
+			Position = UDim2.fromOffset(rx, if side then 70 else 292),
+			Size = UDim2.new(if side then 0 else 1, rw, 0, if side then 90 else 60),
 			ZIndex = 43,
 			Parent = b,
 			List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), Wraps = true },
@@ -950,7 +965,7 @@ function HubMenus.showCard(uid: number, override)
 	local form = h.form and Defs.Evolutions[h.form]
 	local wr = row(b, 0, 64)
 	wr.Position = UDim2.fromOffset(0, 88)
-	wr.Size = UDim2.new(1, 0, 0, 64)
+	wr.Size = if side then UDim2.fromOffset(478, 64) else UDim2.new(1, 0, 0, 64)
 	disc(wr, "crosshair", C.cyan, 44, UDim2.fromOffset(10, 10))
 	label(if form then form.name else (w and w.name or "Оружие"), {
 		Position = UDim2.fromOffset(64, 10),
@@ -1019,8 +1034,8 @@ function HubMenus.showCard(uid: number, override)
 		})
 	end
 	local tro = new("Frame", {
-		Position = UDim2.fromOffset(0, 240),
-		Size = UDim2.new(1, 0, 0, 36),
+		Position = UDim2.fromOffset(rx, if side then 0 else 240),
+		Size = UDim2.new(if side then 0 else 1, rw, 0, 36),
 		ZIndex = 43,
 		Parent = b,
 		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },

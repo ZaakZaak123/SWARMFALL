@@ -83,7 +83,8 @@ local function resultsScale(): number
 	if Theme.phone() then
 		-- DD-102: the column with the buttons beside it (1220 × 500), under Roblox's top bar (~60 points)
 		local vs = if gui and gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
-		return math.clamp(math.min(vs.X / 1220, (vs.Y - 62) / 500), 0.3, 1.25)
+		-- DD-107: the column's real height (more unlocks, a longer goal), so nothing hangs off the bottom
+		return math.clamp(math.min(vs.X / 1220, (vs.Y - 62) / (ui.resPhoneH or 500)), 0.3, 1.25)
 	end
 	return viewportScale(Vector2.new(1240, 780))
 end
@@ -140,6 +141,16 @@ local lobbyPhoneLayout
 -- shrinking whole into the screen's height (the owner's phone got 8-point words)
 local function fitModal(m)
 	local phone = Theme.phone()
+	-- DD-107 (owner: «в идеале на один экран, чтоб помещалось на мобильных, без скроллов»): a window
+	-- that knows a landscape phone layout (m.phoneSize + m.relayout) is laid out for it and scaled whole
+	-- into the space under Roblox's buttons; the rest still fill the width and scroll
+	if m.relayout and m.phone ~= phone then
+		m.phone = phone
+		m.panel.Size = if phone
+			then UDim2.fromOffset(m.phoneSize.X, m.phoneSize.Y)
+			else UDim2.fromOffset(m.w, m.h)
+		m.relayout(phone)
+	end
 	if phone then
 		local vs = if gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
 		local k = math.clamp((vs.X - 16) / m.w, 0.5, 1)
@@ -148,6 +159,15 @@ local function fitModal(m)
 			return game:GetService("GuiService").TopbarInset.Max.Y
 		end)
 		local top = (if ok and inset then inset else 0) + 4
+		if m.relayout then
+			local pw, ph = m.phoneSize.X, m.phoneSize.Y
+			m.panel.Parent = m.shade
+			m.panel.AnchorPoint = Vector2.new(0.5, 0)
+			m.panel.Position = UDim2.new(0.5, 0, 0, top)
+			m.scale.Scale = math.min(1, (vs.X - 16) / pw, (vs.Y - top - 6) / ph)
+			m.scroller.Visible = false
+			return true
+		end
 		m.panel.Parent = m.scroller
 		m.panel.AnchorPoint = Vector2.new(0.5, 0)
 		m.panel.Position = UDim2.new(0.5, 0, 0, top)
@@ -467,6 +487,13 @@ local function buildLobby()
 		Parent = safe,
 		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 14) },
 	})
+	-- DD-107: a phone stands the guns two by two, small, right above В БОЙ
+	ui.weaponsGrid = new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(212, 92),
+		CellPadding = UDim2.fromOffset(10, 8),
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	})
 	-- Top right: xenite, settings, squad
 	local tr = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
@@ -516,7 +543,7 @@ local function buildLobby()
 			end
 		end)
 	end)
-	label("+10% ксенита за каждого в отряде", {
+	ui.inviteNote = label("+10% ксенита за каждого в отряде", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -56, 0, 92),
 		Size = UDim2.fromOffset(240, 14),
@@ -754,15 +781,17 @@ local function weaponCard(id: string, order: number)
 		Parent = ui.weapons,
 	})
 	local scale = new("UIScale", { Parent = card })
-	local vpHolder = new("Frame", { Position = UDim2.fromOffset(6, 2), Size = UDim2.new(1, -12, 0, 88), Parent = card })
+	local small = ui.lobbyPhone == true -- DD-107: the phone's small card (the gun, its name, one line)
+	local vpHolder =
+		new("Frame", { Position = UDim2.fromOffset(6, 2), Size = UDim2.new(1, -12, 0, if small then 54 else 88), Parent = card })
 	local vp = Preview.weapon(vpHolder, id, false, { spin = selected, zoom = 0.62, pitch = 0.18 })
 	if state ~= "owned" then
 		vp.ImageTransparency = 0.55
 		vp.ImageColor3 = Color3.fromRGB(120, 110, 150)
 	end
 	label(w.name, {
-		Position = UDim2.fromOffset(16, 92),
-		Size = UDim2.new(1, -32, 0, 22),
+		Position = UDim2.fromOffset(if small then 12 else 16, if small then 54 else 92),
+		Size = UDim2.new(1, if small then -24 else -32, 0, if small then 18 else 22),
 		FontFace = F.display,
 		TextSize = 14,
 		TextScaled = true,
@@ -776,11 +805,12 @@ local function weaponCard(id: string, order: number)
 		elseif state == "buy" then "Чертёж получен"
 		else "Откроется: победа в «" .. Ops.get(Defs.Blueprints[id] or "O02").name .. "»"
 	label(sub, {
-		Position = UDim2.fromOffset(16, 114),
-		Size = UDim2.new(1, -32, 0, 26),
+		Position = UDim2.fromOffset(if small then 12 else 16, if small then 73 else 114),
+		Size = UDim2.new(1, if small then -24 else -32, 0, if small then 14 else 26),
 		FontFace = F.body,
 		TextSize = 11,
-		TextWrapped = true,
+		TextWrapped = not small,
+		TextTruncate = if small then Enum.TextTruncate.AtEnd else Enum.TextTruncate.None,
 		TextColor3 = C.dim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -792,8 +822,8 @@ local function weaponCard(id: string, order: number)
 		local affordable = profile and profile.scrap >= price
 		local buy, buyLabel = Theme.button("КУПИТЬ  " .. price, {
 			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -10, 0, 10),
-			Size = UDim2.fromOffset(130, 34),
+			Position = UDim2.new(1, -8, 0, 8),
+			Size = UDim2.fromOffset(if small then 112 else 130, if small then 30 else 34),
 			TextSize = 13,
 		}, if affordable then "primary" else "ghost")
 		buy.Parent = card
@@ -895,7 +925,7 @@ function Menus.refreshLobby()
 		ui.anomalyText.TextColor3 = anomaly.color
 	end
 	ui.modeRow.Visible = mode ~= "hunt"
-	ui.huntWhy.Visible = mode == "hunt"
+	ui.huntWhy.Visible = mode == "hunt" and not ui.lobbyPhone -- (DD-107: a phone keeps the brief only)
 	-- Rebuild the action row only when its content changes: lobby state arrives 4×/s and a rebuilt
 	-- button swallows the click in progress.
 	local rowKey = mode .. "|" .. tostring(isHost) .. "|" .. tostring(info.target and info.target.uid) .. "|"
@@ -1048,14 +1078,13 @@ function Menus.refreshLobby()
 	end
 	local showWeapons = prof ~= nil and ((prof.ops.O02 or 0) >= 1 or #shown > 2 or prof.weapons.W_SCATTERGUN)
 	ui.weapons.Visible = showWeapons
-	ui.weaponsTitle.Visible = showWeapons
+	ui.weaponsTitle.Visible = showWeapons and not ui.lobbyPhone
 	if not (prof and prof.weapons[selectedWeapon]) then
 		selectedWeapon = "W_ARC_RIFLE"
 	end
 	local y = ui.hunt.Position.Y.Offset + ui.hunt.Size.Y.Offset + 18
 	if ui.lobbyPhone then -- DD-102: on the right, above В БОЙ; the upgrades under the card (the corner is the thumbstick's)
-		ui.weaponsTitle.Position = UDim2.new(1, -4, 1, -286)
-		ui.weapons.Position = UDim2.new(1, 0, 1, -132)
+		ui.weapons.Position = UDim2.new(1, 0, 0, 0) -- (DD-107: from the top, under the xenite)
 		ui.metaRow.AnchorPoint = Vector2.zero
 		ui.metaRow.Position = UDim2.fromOffset(0, y - 6)
 	else
@@ -1148,7 +1177,7 @@ function Menus.showLobby(info, id: number, dev: string)
 	if ui.lobby.Visible then
 		local phone = Theme.phone()
 		lobbyPhoneLayout(phone)
-		local k = math.max(if phone then 0.62 else 0.72, viewportScale(Vector2.new(1280, 760)))
+		local k = math.max(if phone then 0.72 else 0.72, viewportScale(Vector2.new(1280, 760))) -- (DD-107: was 0.62)
 		ui.lobbyScale.Scale = k
 		ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
 		Menus.refreshLobby()
@@ -1169,12 +1198,30 @@ function lobbyPhoneLayout(phone: boolean)
 	ui.lobbyPad.PaddingBottom = UDim.new(0, if phone then 30 else 36)
 	ui.tabs.Position = UDim2.fromOffset(0, if phone then 0 else 124)
 	-- (the hunt card and the weapons are placed by refreshLobby, which reads ui.lobbyPhone)
-	ui.weaponsTitle.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.zero
-	ui.weaponsTitle.TextXAlignment = if phone then Enum.TextXAlignment.Right else Enum.TextXAlignment.Left
-	ui.weapons.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.zero
-	ui.weapons:FindFirstChildOfClass("UIListLayout").HorizontalAlignment = if phone
-		then Enum.HorizontalAlignment.Right
-		else Enum.HorizontalAlignment.Left
+	ui.weaponsTitle.TextXAlignment = Enum.TextXAlignment.Left
+	-- DD-107: the guns two by two in the right column (the title would only repeat what they show)
+	ui.weaponsTitle.Visible = not phone
+	ui.weapons.AnchorPoint = if phone then Vector2.new(1, 0) else Vector2.zero
+	ui.weapons.Size = if phone then UDim2.fromOffset(434, 200) else UDim2.fromOffset(700, 150)
+	ui.weaponsList = ui.weaponsList or ui.weapons:FindFirstChildOfClass("UIListLayout")
+	ui.weaponsList.Parent = if phone then nil else ui.weapons
+	ui.weaponsGrid.Parent = if phone then ui.weapons else nil
+	ui.weaponsKey = nil
+	-- the invite lives in the shelter's menu on a phone; В БОЙ and НА БАЗУ a little smaller
+	ui.invite.Visible = not phone
+	ui.inviteNote.Visible = not phone
+	ui.harvest.Position = UDim2.new(1, -56, 0, if phone then 50 else 112)
+	ui.play.Size = UDim2.fromOffset(if phone then 300 else 330, if phone then 80 else 92)
+	ui.back.Position = UDim2.new(1, if phone then -312 else -346, 1, -36)
+	ui.back.Size = UDim2.fromOffset(if phone then 170 else 190, if phone then 60 else 64)
+	-- the meta row stays left of НА БАЗУ
+	for _, b in ui.metaRow:GetChildren() do
+		if b:IsA("GuiButton") then
+			b.Size = if b == ui.upgradesBtn
+				then UDim2.fromOffset(if phone then 160 else 230, if phone then 52 else 58)
+				else UDim2.fromOffset(if phone then 112 else 150, if phone then 52 else 58)
+		end
+	end
 end
 
 -- The launch pad (hunt choice, weapons, В БОЙ): opened from the base station or button (DD-052).
@@ -1240,7 +1287,7 @@ end
 local function buildUpgrades()
 	local m = modal("Upgrades", 860, 560, "УЛУЧШЕНИЯ", nil)
 	ui.upgrades = m
-	label(
+	local lead = label(
 		"Навсегда. Покупаются за Ксенит, который приносит каждая вылазка.",
 		{
 			Position = UDim2.fromOffset(28, 60),
@@ -1266,12 +1313,22 @@ local function buildUpgrades()
 		ZIndex = 42,
 		Parent = m.panel,
 	})
-	new("UIGridLayout", {
+	local grid = new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(190, 210),
 		CellPadding = UDim2.fromOffset(12, 12),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = ui.upgradesGrid,
 	})
+	-- DD-107: on a phone the cards lie flat (icon and name side by side), two rows of four on one screen
+	m.phoneSize = Vector2.new(56 + 4 * 200 + 3 * 10, 66 + 2 * 118 + 10 + 18)
+	function m.relayout(phone: boolean)
+		lead.Visible = not phone
+		ui.upgradesGrid.Position = UDim2.fromOffset(28, if phone then 66 else 96)
+		ui.upgradesGrid.Size = UDim2.new(1, -56, 1, if phone then -84 else -120)
+		grid.CellSize = if phone then UDim2.fromOffset(200, 118) else UDim2.fromOffset(190, 210)
+		grid.CellPadding = if phone then UDim2.fromOffset(10, 10) else UDim2.fromOffset(12, 12)
+		Menus.refreshUpgrades()
+	end
 end
 
 function Menus.refreshUpgrades()
@@ -1299,22 +1356,26 @@ function Menus.refreshUpgrades()
 			Stroke = { Color = if can then def.color else C.white, Transparency = if can then 0.3 else 0.88 },
 			Parent = ui.upgradesGrid,
 		})
-		local disc = Icons.disc(def.icon, 60, def.color, 43)
-		disc.AnchorPoint = Vector2.new(0.5, 0)
-		disc.Position = UDim2.new(0.5, 0, 0, 14)
+		local flat = ui.upgrades.phone == true -- DD-107: the phone's flat card
+		local disc = Icons.disc(def.icon, if flat then 44 else 60, def.color, 43)
+		disc.AnchorPoint = if flat then Vector2.zero else Vector2.new(0.5, 0)
+		disc.Position = if flat then UDim2.fromOffset(10, 10) else UDim2.new(0.5, 0, 0, 14)
 		disc.Parent = tile
 		label(def.name, {
-			Position = UDim2.fromOffset(8, 80),
-			Size = UDim2.new(1, -16, 0, 20),
+			Position = UDim2.fromOffset(if flat then 62 else 8, if flat then 12 else 80),
+			Size = UDim2.new(1, if flat then -70 else -16, 0, 20),
 			FontFace = F.display,
 			TextSize = 14,
+			TextXAlignment = if flat then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
 			ZIndex = 43,
 			Parent = tile,
 		})
 		for k = 1, def.max do
 			new("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, (k - (def.max + 1) / 2) * 16, 0, 104),
+				AnchorPoint = Vector2.new(if flat then 0 else 0.5, 0),
+				Position = if flat
+					then UDim2.fromOffset(62 + (k - 1) * 16, 38)
+					else UDim2.new(0.5, (k - (def.max + 1) / 2) * 16, 0, 104),
 				Size = UDim2.fromOffset(12, 5),
 				BackgroundColor3 = if k <= rank then def.color else C.white,
 				BackgroundTransparency = if k <= rank then 0 else 0.8,
@@ -1328,10 +1389,10 @@ function Menus.refreshUpgrades()
 			elseif rank > 0 then def.stat(rank) .. "  →  " .. def.stat(rank + 1)
 			else def.stat(1)
 		label(statText, {
-			Position = UDim2.fromOffset(10, 116),
-			Size = UDim2.new(1, -20, 0, 36),
+			Position = UDim2.fromOffset(10, if flat then 56 else 116),
+			Size = UDim2.new(1, -20, 0, if flat then 22 else 36),
 			FontFace = F.bodyBold,
-			TextSize = 13,
+			TextSize = if flat then 12 else 13,
 			TextWrapped = true,
 			TextColor3 = if maxed then C.dim else C.text,
 			ZIndex = 43,
@@ -1339,8 +1400,8 @@ function Menus.refreshUpgrades()
 		})
 		local b, bl = Theme.button(if maxed then "МАКС" else "◆ " .. cost, {
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -12),
-			Size = UDim2.new(1, -28, 0, 40),
+			Position = UDim2.new(0.5, 0, 1, if flat then -8 else -12),
+			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 32 else 40),
 			ZIndex = 43,
 			TextSize = 15,
 		}, if can then "primary" else "ghost")
@@ -1444,6 +1505,7 @@ local function buildSettings()
 			end,
 		})
 	end
+	local built = {}
 	for i, r in rows do
 		local y = 84 + (i - 1) * 66
 		local row = new("Frame", {
@@ -1461,11 +1523,12 @@ local function buildSettings()
 			C.dim,
 			{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), ZIndex = 43, Parent = row }
 		)
-		label(r[1], {
+		local name = label(r[1], {
 			Position = UDim2.fromOffset(54, 0),
 			Size = UDim2.new(1, -200, 1, 0),
 			FontFace = F.bodyBold,
 			TextSize = 15,
+			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
 			Parent = row,
@@ -1488,6 +1551,26 @@ local function buildSettings()
 		Settings.onChanged(function()
 			bl.Text = r[3]() -- the cabin's gramophone turns the music too
 		end)
+		built[i] = { row = row, name = name, button = b }
+	end
+	-- DD-107: on a phone the rows stand in two columns, the whole window on one screen
+	local cols = 2
+	m.phoneSize = Vector2.new(760, 84 + math.ceil(#rows / cols) * 62 + 6)
+	function m.relayout(phone: boolean)
+		for i, e in built do
+			if phone then
+				local c, r = (i - 1) % cols, (i - 1) // cols
+				e.row.Position = UDim2.new(c / cols, 24 - c * 18, 0, 76 + r * 62) -- (12 between the columns)
+				e.row.Size = UDim2.new(1 / cols, -30, 0, 52)
+				e.name.Size = UDim2.new(1, -178, 1, 0)
+				e.button.Size = UDim2.fromOffset(116, 36)
+			else
+				e.row.Position = UDim2.fromOffset(24, 84 + (i - 1) * 66)
+				e.row.Size = UDim2.new(1, -48, 0, 56)
+				e.name.Size = UDim2.new(1, -200, 1, 0)
+				e.button.Size = UDim2.fromOffset(130, 38)
+			end
+		end
 	end
 end
 
@@ -2401,7 +2484,7 @@ local function buildResults()
 		ZIndex = 22,
 		Parent = ui.resList,
 	})
-	new("UIGridLayout", {
+	ui.resUnlockGrid = new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(320, 96),
 		CellPadding = UDim2.fromOffset(12, 12),
 		FillDirectionMaxCells = 2,
@@ -3030,6 +3113,20 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		local col = if g.structure then Meta.Structures[g.structure].color else C.lime
 		local d = Icons.disc(g.icon, 44, col, 23)
 		d.Parent = ui.resGoalIcon
+	end
+	-- DD-107: on a phone, many unlocks stand three in a row, and the whole column is scaled to fit
+	local many = phone and k >= 4
+	ui.resUnlockGrid.FillDirectionMaxCells = if many then 3 else 2
+	ui.resUnlockGrid.CellSize = if many then UDim2.fromOffset(246, 84) else UDim2.fromOffset(320, 96)
+	if phone then
+		task.defer(function()
+			local list = ui.resList:FindFirstChildOfClass("UIListLayout")
+			if list and ui.resScale.Scale > 0 then
+				ui.resPhoneH = math.max(500, list.AbsoluteContentSize.Y / ui.resScale.Scale + 8)
+				ui.resBody.Size = UDim2.fromOffset(1220, ui.resPhoneH)
+				ui.resScale.Scale = resultsScale()
+			end
+		end)
 	end
 end
 

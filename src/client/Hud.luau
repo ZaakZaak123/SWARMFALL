@@ -767,8 +767,27 @@ local function nextBanner()
 	ui.bannerText.Text = b.text
 	ui.bannerText.TextColor3 = b.color
 	ui.bannerLine.BackgroundColor3 = b.color
-	ui.bannerSub.Text = b.sub
-	setBannerVisual(b.visual, b.color)
+	-- DD-107 (owner, phone: «надписи Штурм: бур… никто не успевает прочитать, а на экране мельтешит»):
+	-- on a phone a banner is only its title, small, on no band — a glance, not a sign over the fight
+	local phone = Theme.phone()
+	ui.bannerSub.Text = if phone then "" else b.sub
+	ui.bannerText.TextSize = if phone then 30 else 40
+	ui.bannerPlate.Visible = not phone
+	ui.bannerLine.Visible = not phone
+	setBannerVisual(if phone then nil else b.visual, b.color)
+	if phone then
+		ui.bannerText.TextTransparency = 1
+		ui.bannerScale.Scale = 1.1
+		tween(ui.bannerScale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+		tween(ui.bannerText, 0.2, { TextTransparency = 0 })
+		task.delay(1.8, function()
+			tween(ui.bannerText, 0.3, { TextTransparency = 1 })
+			task.wait(0.32)
+			ui.banner.Visible = false
+			nextBanner()
+		end)
+		return
+	end
 	-- the picture sits just left of the title, however long the title is
 	ui.bannerVisual.Position = UDim2.new(0.5, -ui.bannerText.TextBounds.X / 2 - 14, 0, 34)
 	ui.bannerText.TextTransparency = 1
@@ -801,7 +820,8 @@ local function nextBanner()
 end
 
 function Hud.banner(text: string, sub: string, color: Color3, duration: number, visual: string?)
-	if #bannerQueue >= 3 then
+	-- (a phone keeps only the newest one waiting: old news is no news)
+	if #bannerQueue >= (if Theme.phone() then 1 else 3) then
 		table.remove(bannerQueue, 1)
 	end
 	table.insert(bannerQueue, { text = text, sub = sub, color = color, duration = duration, visual = visual })
@@ -893,7 +913,7 @@ function Hud.superCallout(name: string, color: Color3)
 	Theme.tween(fx.edge, 0.5, { ImageTransparency = 1 })
 	fx.title.Text = name
 	fx.title.TextColor3 = color
-	fx.title.TextSize = if Theme.phone() then 30 else 40
+	fx.title.TextSize = if Theme.phone() then 24 else 40
 	fx.title.TextTransparency = 0
 	fx.stroke.Transparency = 0.1
 	fx.scale.Scale = 1.6
@@ -943,6 +963,9 @@ end
 local BURST_WORDS =
 	{ { 25, "ОПУСТОШЕНИЕ", C.red }, { 15, "МЯСОРУБКА", C.orange }, { 0, "РАЗГРОМ", C.gold } }
 function Hud.burst(n: number)
+	if Theme.phone() then
+		return -- DD-107: on a phone the kill burst is the swarm bursting, not a word over it
+	end
 	for _, w in BURST_WORDS do
 		if n >= w[1] then
 			ui.burst.Text = string.format('%s  <font size="40">×%d</font>', w[2], n)
@@ -965,9 +988,10 @@ end
 
 -- A streak milestone (DD-084): the word big in the middle, under the hero.
 function Hud.milestone(word: string, n: number, color: Color3)
-	ui.burst.Text = string.format('%s  <font size="46">×%d</font>', word, n)
+	local phone = Theme.phone() -- DD-107: a phone gets it smaller (it still marks the streak)
+	ui.burst.Text = string.format('%s  <font size="%d">×%d</font>', word, if phone then 32 else 46, n)
 	ui.burst.TextColor3 = color
-	ui.burst.TextSize = 42
+	ui.burst.TextSize = if phone then 28 else 42
 	ui.burst.TextTransparency = 0
 	ui.burst.TextStrokeTransparency = 0.2
 	ui.burstScale.Scale = 1.9
