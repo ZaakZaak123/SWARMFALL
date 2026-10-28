@@ -12,6 +12,7 @@ local Defs = require(Shared:WaitForChild("Defs"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local Modules = require(Shared:WaitForChild("Modules"))
 local Evolve = require(Shared:WaitForChild("Evolve"))
+local Store = require(Shared:WaitForChild("Store"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 local Meta = require(Shared:WaitForChild("Meta"))
 
@@ -54,6 +55,7 @@ local function defaults()
 		tech = {}, -- owned technologies
 		forms = {}, -- crafted permanent forms (evolution id -> true)
 		evoOpen = {}, -- DD-112 stage 3: weapon id -> its evolution opened (it fires in the fight)
+		receipts = {}, -- DD-112 stage 4: developer product purchase id -> os.time() granted (idempotency)
 		equip = {}, -- weapon id -> equipped form id
 		lineTrial = 0, -- railgun «Пробой линии» qualified shots
 		feats = {}, -- M20 feat counters per weapon: { [weaponId] = { arcKills = n, ... } }
@@ -249,10 +251,13 @@ function Profile.get(player: Player)
 	return e and e.data
 end
 
-function Profile.save(player: Player)
+-- Returns whether the profile is safely stored (true when there is nothing to write).
+function Profile.save(player: Player): boolean
 	local e = profiles[player]
-	if not e or e.offline or not e.dirty or not store then
-		return
+	if not e or e.offline then
+		return false
+	elseif not e.dirty or not store then
+		return true
 	end
 	e.dirty = false
 	local snapshot = table.clone(e.data)
@@ -265,6 +270,7 @@ function Profile.save(player: Player)
 		e.dirty = true
 		warn("[SWARMFALL] profile save failed", player.Name, err)
 	end
+	return ok
 end
 
 local function mark(player: Player)
@@ -273,6 +279,47 @@ local function mark(player: Player)
 		e.dirty = true
 	end
 	changed(player)
+end
+
+-- DD-112 stage 4: the game passes a player owns (set by Shop; tests may replace it).
+Profile.passHook = function(_player: Player, _key: string): boolean
+	return false
+end
+
+-- DD-112 stage 4: a developer product's goods, once per purchase id. "granted" | "retry" (the profile is not
+-- loaded or not storable: Roblox calls ProcessReceipt again later). In Studio a profile without the
+-- DataStore takes test purchases in memory.
+function Profile.grantProduct(player: Player, purchaseId: string, product): string
+	local e = profiles[player]
+	local studio = RunService:IsStudio()
+	if not e or (e.offline and not studio) then
+		return "retry"
+	end
+	local d = e.data
+	if d.receipts[purchaseId] then
+		return "granted"
+	end
+	if product.kind == "alloy" then
+		d.alloy += product.amount
+	else
+		d.scrap += product.amount
+	end
+	d.receipts[purchaseId] = os.time()
+	-- keep the newest 60 purchase ids (Roblox retries a receipt within days, not years)
+	local ids = {}
+	for id, t in d.receipts do
+		table.insert(ids, { id, t })
+	end
+	if #ids > 60 then
+		table.sort(ids, function(a, b)
+			return a[2] < b[2]
+		end)
+		for i = 1, #ids - 60 do
+			d.receipts[ids[i][1]] = nil
+		end
+	end
+	mark(player)
+	return if Profile.save(player) or (e.offline and studio) then "granted" else "retry"
 end
 
 -- Public view sent to the owning client.
@@ -298,6 +345,13 @@ function Profile.public(player: Player)
 		tech = d.tech,
 		forms = d.forms,
 		evoOpen = d.evoOpen,
+		passes = (function()
+			local out = {}
+			for _, key in Store.PassOrder do
+				out[key] = Profile.passHook(player, key) == true
+			end
+			return out
+		end)(),
 		equip = d.equip,
 		modules = d.modules,
 		loadout = d.loadout,
@@ -1080,6 +1134,11 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		reward.total = math.floor(reward.total * bonus + 0.5)
 		reward.bonus = bonus
 	end
+	-- DD-112 stage 4: the «ДВОЙНОЙ КСЕНИТ» pass (xenite only)
+	if Profile.passHook(player, "DOUBLE_XENITE") then
+		reward.total = math.floor(reward.total * Store.XeniteMult + 0.5)
+		reward.pass = Store.XeniteMult
+	end
 	-- DD-112: сплав — the drill defence's own pay; squad and anomaly bonuses stay on xenite
 	local alloy = if mode == "siege"
 		then Defs.Alloy.siege(result.siege or 1, result.victory)
@@ -1107,12 +1166,17 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 		week.help += mine.revives or 0
 		local wid = mine.weapon
 		local before = Defs.masteryRank(wid, d.mastery[wid] or 0)
-		d.mastery[wid] = (d.mastery[wid] or 0) + (mine.weaponKills or 0)
+		-- DD-112 stage 4: the «ОРУЖЕЙНИК» pass
+		local gained = mine.weaponKills or 0
+		if Profile.passHook(player, "ARMORER") then
+			gained = math.floor(gained * Store.MasteryMult + 0.5)
+		end
+		d.mastery[wid] = (d.mastery[wid] or 0) + gained
 		local after, into, need = Defs.masteryRank(wid, d.mastery[wid])
 		if after > before then
 			table.insert(unlocked, { "mastery", wid, after })
 		end
-		reward.progress = { weapon = wid, added = mine.weaponKills or 0, rank = after, into = into, need = need }
+		reward.progress = { weapon = wid, added = gained, rank = after, into = into, need = need }
 		local f = d.feats[wid] or {}
 		d.feats[wid] = f
 		for k, v in mine.feats or {} do

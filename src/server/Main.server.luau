@@ -20,6 +20,7 @@ local Arena = require(script.Parent.Arena)
 local ArtLoader = require(script.Parent.ArtLoader)
 local characterLoads = require(script.Parent.CharacterLoads).new()
 local Profile = require(script.Parent.Profile)
+local Shop = require(script.Parent.Shop)
 local Outposts = require(script.Parent.Outposts)
 local Home = require(script.Parent.Home)
 local Meta = require(Shared:WaitForChild("Meta"))
@@ -203,6 +204,7 @@ local function pushProfile(player: Player)
 	end
 end
 Profile.onChanged(pushProfile)
+Shop.init(pushProfile) -- DD-112 stage 4: game passes and products
 Profile.onChanged(function(player)
 	Outposts.publish(player)
 end)
@@ -1366,6 +1368,11 @@ end
 
 function handlers.buyTech(player: Player, id)
 	return lobbyOnly() and type(id) == "string" and Profile.buyTech(player, id)
+end
+
+-- DD-112 stage 4: buy a catalogue item (shared/Store key); the server prompts its Creator Hub id.
+function handlers.buy(player: Player, key)
+	return lobbyOnly() and type(key) == "string" and Shop.prompt(player, key)
 end
 
 function handlers.openEvolution(player: Player, weaponId)

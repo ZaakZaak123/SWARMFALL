@@ -23,6 +23,7 @@ local Meta = require(Shared:WaitForChild("Meta"))
 local Goals = require(Shared:WaitForChild("Goals"))
 local Modules = require(Shared:WaitForChild("Modules"))
 local Evolve = require(Shared:WaitForChild("Evolve"))
+local Store = require(Shared:WaitForChild("Store"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
@@ -1579,6 +1580,20 @@ local function buildUpgrades()
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = ui.upgradesGrid,
 	})
+	-- DD-112 stage 4: the shop (passes and packs), shown only when something is on sale (shared/Store)
+	ui.shopGrid = new("Frame", {
+		Position = UDim2.fromOffset(28, 116),
+		Size = UDim2.new(1, -56, 0, 424),
+		Visible = false,
+		ZIndex = 42,
+		Parent = m.panel,
+	})
+	local shopGrid = new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(190, 200),
+		CellPadding = UDim2.fromOffset(12, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = ui.shopGrid,
+	})
 	-- DD-107: on a phone the perk cards lie flat (icon and name side by side), two rows of four
 	m.phoneSize = Vector2.new(820, 404)
 	function m.relayout(phone: boolean)
@@ -1592,6 +1607,10 @@ local function buildUpgrades()
 		ui.upgradesGrid.Size = UDim2.new(1, -56, 0, bodyH)
 		grid.CellSize = if phone then UDim2.fromOffset(183, 136) else UDim2.fromOffset(190, 200)
 		grid.CellPadding = if phone then UDim2.fromOffset(8, 8) else UDim2.fromOffset(12, 12)
+		ui.shopGrid.Position = UDim2.fromOffset(28, top)
+		ui.shopGrid.Size = UDim2.new(1, -56, 0, bodyH)
+		shopGrid.CellSize = grid.CellSize
+		shopGrid.CellPadding = grid.CellPadding
 		Menus.refreshUpgrades()
 	end
 end
@@ -1680,6 +1699,83 @@ local function refreshPerks()
 				Audio.play("warn", 0.4)
 			end
 		end)
+	end
+end
+
+-- DD-112 stage 4: the shop tab — passes (owned: «ЕСТЬ») and xenite / сплав packs, Robux prices. Only
+-- items with a Creator Hub id are listed; the server prompts the purchase.
+local function refreshShop()
+	local flat = ui.upgrades.phone == true
+	local order = 0
+	local function card(key: string, item, owned: boolean, colour: Color3)
+		order += 1
+		local tile = new("Frame", {
+			BackgroundColor3 = C.panel2,
+			BackgroundTransparency = 0.35,
+			Corner = 16,
+			LayoutOrder = order,
+			ZIndex = 42,
+			Stroke = { Color = colour, Transparency = if owned then 0.7 else 0.3 },
+			Parent = ui.shopGrid,
+		})
+		local disc = Icons.disc(item.icon, if flat then 40 else 56, colour, 43)
+		disc.AnchorPoint = if flat then Vector2.zero else Vector2.new(0.5, 0)
+		disc.Position = if flat then UDim2.fromOffset(10, 10) else UDim2.new(0.5, 0, 0, 12)
+		disc.Parent = tile
+		label(item.name, {
+			Position = UDim2.fromOffset(if flat then 58 else 8, if flat then 12 else 74),
+			Size = UDim2.new(1, if flat then -66 else -16, 0, 20),
+			FontFace = F.display,
+			TextSize = 14,
+			TextXAlignment = if flat then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 43,
+			Parent = tile,
+		})
+		label(item.text, {
+			Position = UDim2.fromOffset(if flat then 58 else 10, if flat then 32 else 98),
+			Size = UDim2.new(1, if flat then -66 else -20, 0, if flat then 48 else 50),
+			FontFace = F.bodyBold,
+			TextSize = 12,
+			TextWrapped = true,
+			TextColor3 = C.dim,
+			TextXAlignment = if flat then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			ZIndex = 43,
+			Parent = tile,
+		})
+		local b, bl = Theme.button(if owned then "ЕСТЬ" else "R$ " .. item.price, {
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, if flat then -8 else -12),
+			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 32 else 40),
+			ZIndex = 43,
+			TextSize = 15,
+		}, if owned then "ghost" else "primary")
+		b.Parent = tile
+		bl.ZIndex = 44
+		if owned then
+			bl.TextColor3 = C.lime
+		end
+		b.Activated:Connect(function()
+			if owned then
+				Audio.play("ui", 0.5)
+			else
+				send("buy", key)
+				Audio.play("ui", 0.8, 1.2)
+			end
+		end)
+	end
+	for _, key in Store.PassOrder do
+		local pass = Store.Passes[key]
+		if Store.configured(pass) then
+			card(key, pass, (profile.passes or {})[key] == true, C.gold)
+		end
+	end
+	for _, key in Store.ProductOrder do
+		local product = Store.Products[key]
+		if Store.configured(product) then
+			card(key, product, false, if product.kind == "alloy" then C.orange else C.pink)
+		end
 	end
 end
 
@@ -2157,21 +2253,35 @@ function Menus.refreshUpgrades()
 			table.insert(owned, wid)
 		end
 	end
-	if armoryTab ~= "HERO" and not (profile.weapons or {})[armoryTab or ""] then
+	local shop = Store.open()
+	if armoryTab ~= "HERO" and not (armoryTab == "SHOP" and shop) and not (profile.weapons or {})[armoryTab or ""] then
 		armoryTab = owned[1] or "HERO"
 	end
 	clear(ui.armoryTabs)
 	local phone = ui.upgrades.phone == true
 	local tabs = table.clone(owned)
 	table.insert(tabs, "HERO")
+	if shop then
+		table.insert(tabs, "SHOP")
+	end
 	for i, key in tabs do
 		local on = key == armoryTab
 		local w = Defs.Weapons[key]
 		local text = if w
 			then w.short .. "  M" .. Defs.masteryRank(key, (profile.mastery or {})[key] or 0)
+			elseif key == "SHOP" then "МАГАЗИН"
 			else "ГЕРОЙ"
 		local b, bl = Theme.button(text, {
-			Size = UDim2.fromOffset(if phone then 126 else 140, if phone then 34 else 36),
+			-- four guns, the hero and the shop must fit the window's width
+			Size = UDim2.fromOffset(
+				math.min(
+					if phone then 126 else 140,
+					math.floor(
+						((if phone then ui.upgrades.phoneSize.X else ui.upgrades.w) - 56 - 8 * (#tabs - 1)) / #tabs
+					)
+				),
+				if phone then 34 else 36
+			),
 			LayoutOrder = i,
 			ZIndex = 43,
 			TextSize = if phone then 13 else 14,
@@ -2188,19 +2298,24 @@ function Menus.refreshUpgrades()
 	end
 	clear(ui.armoryBody)
 	clear(ui.upgradesGrid)
-	ui.armoryBody.Visible = armoryTab ~= "HERO"
+	clear(ui.shopGrid)
+	ui.armoryBody.Visible = armoryTab ~= "HERO" and armoryTab ~= "SHOP"
 	ui.upgradesGrid.Visible = armoryTab == "HERO"
+	ui.shopGrid.Visible = armoryTab == "SHOP"
 	if armoryTab == "HERO" then
 		refreshPerks()
+	elseif armoryTab == "SHOP" then
+		refreshShop()
 	else
 		refreshGun(armoryTab)
 	end
 end
 
--- weapon: the tab to open on (default: the gun picked for the next sortie)
+-- weapon: the tab to open on (default: the gun picked for the next sortie); "HERO" / "SHOP" open those tabs
 function Menus.showUpgrades(weapon: string?)
 	local want = weapon or selectedWeapon
-	if want and profile and (profile.weapons or {})[want] then
+	local tab = want == "HERO" or (want == "SHOP" and Store.open())
+	if want and (tab or (profile and (profile.weapons or {})[want])) then
 		armoryTab = want
 	end
 	ui.upgrades.show()
@@ -4014,6 +4129,9 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		end
 		if reward.bonus and reward.bonus > 1.001 then
 			chip(string.format("бонусы ×%.2f", reward.bonus), C.lime)
+		end
+		if reward.pass then
+			chip(string.format("пропуск ×%d", reward.pass), C.gold) -- DD-112 stage 4: «ДВОЙНОЙ КСЕНИТ»
 		end
 		if reward.light and reward.light > 0 then
 			chip(string.format("Свет Древа +%d%%", math.floor(reward.light * 5 + 0.5)), C.lime)
