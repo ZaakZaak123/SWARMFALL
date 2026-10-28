@@ -40,7 +40,6 @@ local touchAim: InputObject? = nil
 local touchVec = Vector2.zero
 local gui, pad, knob, buttons, padName
 local touchLayoutSize = Vector2.zero
-local tipAnchor = nil -- DD-107: where the first-time tip stands (left of the cluster), set by layoutTouch
 local autoId = nil -- the enemy the touch auto-aim holds
 local marker = nil -- the ring under it
 local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
@@ -165,8 +164,8 @@ end
 -- reach from the corner; nothing under 48 points (the platforms' touch minimum). Angles in degrees,
 -- counter-clockwise from "right" (180 = straight left, 90 = straight up).
 local ARC_SIMPLE = { dash = 196, overdrive = 143, evolve = 90 }
-local ARC_SHOULDER = { super = 186, dash = 148, overdrive = 100 } -- round the aim pad
-local OUTER_SHOULDER = { evolve = 172, reload = 135, view = 100 } -- the second ring
+local ARC_SHOULDER = { super = 180, dash = 132, overdrive = 88 } -- round the aim pad
+local OUTER_SHOULDER = { evolve = 168, reload = 132, view = 98 } -- the second ring
 local function layoutTouch()
 	local size = workspace.CurrentCamera.ViewportSize
 	if size == touchLayoutSize then
@@ -179,33 +178,35 @@ local function layoutTouch()
 	local margin = math.clamp(H * 0.03, 10, 22)
 	local captionRoom = 13 -- (the corner one's name hangs under it)
 	local cx, cy = -(margin + main / 2), -(margin + captionRoom + main / 2)
-	local function place(b, angle: number, radius: number, d: number)
+	local function place(name: string, angle: number, radius: number, d: number)
 		local a = math.rad(angle)
-		b:setLayout(UDim2.new(1, cx + math.cos(a) * radius, 1, cy - math.sin(a) * radius), d)
+		local x = cx + math.cos(a) * radius
+		buttons[name]:setLayout(UDim2.new(1, x, 1, cy - math.sin(a) * radius), d)
 	end
-	local ring1 = main / 2 + small / 2 + math.max(12, small * 0.24)
-	local ring2 = ring1 + small + math.max(10, small * 0.2)
+	local gap = math.max(12, small * 0.24)
 	pad.Visible = not padSimple
 	pad.Position = UDim2.new(1, cx, 1, cy)
 	pad.Size = UDim2.fromOffset(main * 1.2, main * 1.2)
 	knob.Size = UDim2.fromOffset(main * 0.45, main * 0.45)
 	padName.Text = "ПРИЦЕЛ И ОГОНЬ"
-	-- the first-time tip stands left of the whole cluster, on the bottom line (it named its button anyway)
-	tipAnchor = UDim2.new(1, cx + math.cos(math.rad(196)) * ring1 - small / 2 - 10, 1, -(margin + 4))
 	if padSimple then
+		local ring1 = main / 2 + small / 2 + gap
+		local ring2 = ring1 + small + math.max(10, small * 0.2)
 		buttons.super:setLayout(UDim2.new(1, cx, 1, cy), main)
 		for name, angle in ARC_SIMPLE do
-			place(buttons[name], angle, ring1, small)
+			place(name, angle, ring1, small)
 		end
-		place(buttons.reload, 150, ring2, small * 0.85) -- (shown only out of the chase camera)
-		place(buttons.view, 112, ring2, small * 0.85)
+		place("reload", 150, ring2, small * 0.85) -- (shown only out of the chase camera)
+		place("view", 112, ring2, small * 0.85)
 	else
-		local r = main * 0.6 + small / 2 + 10
+		-- over the shoulder the corner is the aim pad (main * 1.2 across); each ring sits off its edge
+		local padR = main * 0.6
 		for name, angle in ARC_SHOULDER do
-			place(buttons[name], angle, r, if name == "super" then small * 1.15 else small)
+			local d = if name == "super" then small * 1.15 else small
+			place(name, angle, padR + d / 2 + gap, d)
 		end
 		for name, angle in OUTER_SHOULDER do
-			place(buttons[name], angle, r + small + 10, small * 0.85)
+			place(name, angle, padR + small * 1.15 + gap * 2 + small * 0.85 / 2, small * 0.85)
 		end
 	end
 end
@@ -247,11 +248,13 @@ local function stepTips(now: number)
 		table.remove(tipQueue, 1)
 		tipFor = name
 		tipUntil = now + 5
-		tipText.Text = TIPS[name]
+		-- the button's name in its own colour, then what it does
+		local b = buttons[name]
+		local head, rest = string.match(TIPS[name], "^(.-) — (.*)$")
+		tipText.Text = if head
+			then string.format('<font color="#%s">%s</font>  %s', b.color:ToHex(), head, rest)
+			else TIPS[name]
 		tipBubble.Parent = gui
-		if tipAnchor then
-			tipBubble.Position = tipAnchor
-		end
 		tipBubble.Visible = true
 	end
 end
@@ -369,11 +372,12 @@ function Controls.init(playerGui: PlayerGui)
 	end)
 	Controls.buttons = buttons
 	Controls.gui = gui
-	-- the first-time bubble: left of its button, pointing at it
+	-- the first-time bubble. DD-107: beside its button it covered the next button, the health bar or the
+	-- hero; it stands under the timer and the goal instead (it names its button, in its colour)
 	tipBubble = Theme.panel({
 		Name = "Tip",
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -260, 1, -14),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.33),
 		Size = UDim2.fromOffset(0, 0),
 		AutomaticSize = Enum.AutomaticSize.XY,
 		Visible = false,
@@ -393,7 +397,7 @@ function Controls.init(playerGui: PlayerGui)
 		Size = UDim2.fromOffset(190, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
+		RichText = true,
 		FontFace = Theme.F.bodyBold,
 		TextSize = 11,
 		ZIndex = 6,

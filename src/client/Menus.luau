@@ -3115,7 +3115,7 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		d.Parent = ui.resGoalIcon
 	end
 	-- DD-107: on a phone, many unlocks stand three in a row, and the whole column is scaled to fit
-	local many = phone and k >= 4
+	local many = phone and k >= 3
 	ui.resUnlockGrid.FillDirectionMaxCells = if many then 3 else 2
 	ui.resUnlockGrid.CellSize = if many then UDim2.fromOffset(246, 84) else UDim2.fromOffset(320, 96)
 	if phone then

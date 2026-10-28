@@ -52,5 +52,9 @@ Settings.autoAim = false
 -- stays for those who want to aim by hand. On by default on a touch screen; the settings switch back to
 -- the over-the-shoulder fight.
 Settings.simpleCombat = Settings.touch
+-- Studio-only: workspace attribute DevShoulder starts in the over-the-shoulder fight (layout checks)
+if game:GetService("RunService"):IsStudio() and workspace:GetAttribute("DevShoulder") then
+	Settings.simpleCombat = false
+end
 
 return Settings

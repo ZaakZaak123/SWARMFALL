@@ -969,7 +969,9 @@ function Fx.number(pos: Vector3, amount: number, color: Color3, big: boolean)
 	while numberTimes[1] and now - numberTimes[1] > 0.25 do
 		table.remove(numberTimes, 1)
 	end
-	if not big and #numberTimes >= 5 then
+	local phone = Theme.phone()
+	-- DD-107: a phone's screen is half a monitor's: fewer numbers at once, and smaller
+	if not big and #numberTimes >= (if phone then 3 else 5) then
 		return
 	end
 	table.insert(numberTimes, now)
@@ -982,7 +984,7 @@ function Fx.number(pos: Vector3, amount: number, color: Color3, big: boolean)
 	n.label.Text = tostring(math.floor(amount + 0.5))
 	n.label.TextColor3 = color
 	-- readable at the top-down camera: even a small hit is a clear number, big ones grow from there
-	local s = math.clamp(0.8 + amount / 120, 0.8, 1.6) * (if big then 1.45 else 1)
+	local s = math.clamp(0.8 + amount / 120, 0.8, 1.6) * (if big then 1.45 else 1) * (if phone then 0.62 else 1)
 	n.size = s
 	n.gui.Size = UDim2.fromOffset(70 * s, 26 * s)
 	n.gui.Enabled = true
