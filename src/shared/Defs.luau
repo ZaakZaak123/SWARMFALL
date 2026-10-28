@@ -1173,10 +1173,14 @@ Defs.Mastery = {
 	},
 }
 
+-- DD-112: the ladder ×0.4 — a chapter (~2000 kills) takes the rifle to ~M9, so ranks open modules and the
+-- evolution while the chapter is still being played (it was M6 at the chapter's end).
+Defs.Mastery.Compress = 0.4
+
 function Defs.masteryNeed(weaponId: string, rank: number): number
 	local ladder = Defs.Mastery.Ladder
 	local r = math.clamp(rank, 1, #ladder)
-	return math.floor(ladder[r] * (Defs.Mastery.Scale[weaponId] or 1) + 0.5)
+	return math.floor(ladder[r] * (Defs.Mastery.Scale[weaponId] or 1) * Defs.Mastery.Compress + 0.5)
 end
 
 -- Returns rank (1..20), kills into the current rank, kills needed for the next (nil at M20).
@@ -1251,8 +1255,23 @@ Defs.FormMastery = 10 -- M10 opens the permanent form craft
 -- line. Counted across runs once the railgun is owned; the first completion grants the component.
 Defs.LineTrial = { Shots = 60, MinHits = 2 }
 
--- Story blueprints (D03 §1): O02 → Вулкан, O03 → Разлом, O04 → Рельсотрон. Blueprint ≠ owned.
+-- Story weapons: the first win of the sortie brings the weapon home, free, with its main module
+-- (DD-112; was a blueprint to buy for 650–1750).
 Defs.Blueprints = { W_SCATTERGUN = "O02", W_PLASMA_BEAM = "O04", W_RAILGUN = "O05" }
+
+-- Сплав (DD-112, profile `alloy`): the drill smelts it while it is held. It pays for module tiers II–III
+-- and, later, the evolution. The drill defence is its main source.
+Defs.Alloy = {
+	Strike = 10, -- «Первый натиск»: the first сплав right after the first turret
+	RaidWin = 5,
+	siege = function(level: number, victory: boolean): number
+		return if victory then 8 + 3 * level else 3 + level
+	end,
+	-- story sorties: only above threat I
+	hunt = function(threat: number, victory: boolean): number
+		return if victory then 2 * math.max(0, threat - 1) else 0
+	end,
+}
 
 -- Squad rules (DD-012): a player at 0 HP is downed, not dead. A teammate standing close fills the revive
 -- ring; nobody close = it slowly drains. Bleed-out ends the operation for that player (spectate).

@@ -115,11 +115,14 @@ local function goalAction()
 		if g.mode == "siege" then
 			send("mode", "siege")
 		end
+		if g.weapon then
+			send("weapon", g.weapon) -- DD-112: a new gun's goal takes it into the next sortie
+		end
 		Menus.openLaunch()
 	elseif g.station == "home" and g.spot then
 		send("restore", g.spot)
 	elseif g.station == "armory" then
-		Menus.showUpgrades()
+		Menus.showUpgrades(g.weapon)
 	elseif g.station == "swarm" then
 		MetaMenus.showSwarm()
 	end

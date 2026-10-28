@@ -36,6 +36,7 @@ local function defaults()
 	return {
 		v = VERSION,
 		scrap = 0,
+		alloy = 0, -- DD-112: сплав from the drill defence (module tiers II–III)
 		runs = 0,
 		wins = 0,
 		kills = 0,
@@ -92,6 +93,24 @@ local function defaults()
 		decorOn = nil, -- DD-090: the one up on the plot (nil = none)
 	}
 end
+
+-- DD-112: a weapon comes with its main module, in the core slot when the slot is empty. The rifle's comes
+-- with the first win of the first sortie (that fight teaches its cards first).
+local function grantWeapon(d, wid: string): boolean
+	local fresh = not d.weapons[wid]
+	d.weapons[wid] = true
+	local main = Modules.mainOf(wid)
+	if wid == "W_ARC_RIFLE" and ((d.wins_by_op or {}).O01 or 0) == 0 then
+		return fresh
+	end
+	if Modules.get(main) and not d.modules[main] then
+		d.modules[main] = true
+		d.loadout[wid] = Modules.placeNew(wid, d.loadout[wid] or {}, main)
+		return true
+	end
+	return fresh
+end
+Profile._grantWeapon = grantWeapon -- tests
 
 local function reconcile(data)
 	local base = defaults()
@@ -154,6 +173,17 @@ local function reconcile(data)
 		data.home.LAB = true -- DD-077: the third sortie brings the sample home
 	end
 	data.brood = Meta.cleanBrood(data.brood)
+	-- DD-112: story weapons are the sortie's reward (no blueprint to buy), each with its main module
+	for wid, opId in Defs.Blueprints do
+		if (won[opId] or 0) > 0 then
+			data.weapons[wid] = true
+		end
+	end
+	for wid in Defs.Weapons do
+		if data.weapons[wid] then
+			grantWeapon(data, wid)
+		end
+	end
 	data.v = VERSION
 	return data
 end
@@ -245,6 +275,7 @@ function Profile.public(player: Player)
 	local d = e.data
 	return {
 		scrap = d.scrap,
+		alloy = d.alloy,
 		perks = d.perks,
 		weapons = d.weapons,
 		threat = d.threat,
@@ -372,26 +403,14 @@ end
 function Profile.craftModule(player: Player, id: string): boolean
 	local d = Profile.get(player)
 	local m = Modules.get(id)
-	if not d or not m or d.modules[id] or not d.weapons[m.weapon] or d.scrap < m.cost then
+	if not d or not m or not Modules.craftable(d, m, Defs.masteryRank(m.weapon, d.mastery[m.weapon] or 0)) then
 		return false
-	end
-	if Defs.masteryRank(m.weapon, d.mastery[m.weapon] or 0) < m.mastery then
-		return false
-	end
-	if m.tier > 1 then
-		local prev = string.format("MOD_%s_%s%d", m.weapon:sub(3), m.branch, m.tier - 1)
-		if not d.modules[prev] then
-			return false
-		end
 	end
 	d.scrap -= m.cost
+	d.alloy -= m.alloy
 	d.modules[id] = true
-	-- First module of a weapon goes straight into the CORE slot.
-	local lo = d.loadout[m.weapon] or {}
-	d.loadout[m.weapon] = lo
-	if not lo.core then
-		lo.core = id
-	end
+	-- DD-112: what was just made goes to work (a tier up replaces its own branch in the slot).
+	d.loadout[m.weapon] = Modules.placeNew(m.weapon, d.loadout[m.weapon] or {}, id)
 	mark(player)
 	task.spawn(Profile.save, player)
 	return true
@@ -959,6 +978,8 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 			mult = 1,
 		}
 		d.tut.strike = true
+		reward.alloy = Defs.Alloy.Strike
+		d.alloy += reward.alloy
 		d.lastRun = runId
 		d.lastReward = reward
 		d.scrap += reward.total
@@ -1027,6 +1048,15 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	if bonus > 1.001 then
 		reward.total = math.floor(reward.total * bonus + 0.5)
 		reward.bonus = bonus
+	end
+	-- DD-112: сплав — the drill defence's own pay; squad and anomaly bonuses stay on xenite
+	local alloy = if mode == "siege"
+		then Defs.Alloy.siege(result.siege or 1, result.victory)
+		elseif mode == "raid" then (if result.victory and not reward.capped then Defs.Alloy.RaidWin else 0)
+		else Defs.Alloy.hunt(threat, result.victory)
+	if alloy > 0 then
+		reward.alloy = alloy
+		d.alloy += alloy
 	end
 	d.lastRun = runId
 	d.scrap += reward.total
@@ -1108,6 +1138,16 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 				d.home[hid] = true
 				table.insert(unlocked, { "home", hid })
 			end
+		end
+		-- DD-112: the sortie's weapon comes home with its main module; the first sortie fits the rifle's
+		for wid, bop in Defs.Blueprints do
+			if bop == opId and not d.weapons[wid] then
+				grantWeapon(d, wid)
+				table.insert(unlocked, { "weapon", wid })
+			end
+		end
+		if opId == "O01" and not d.modules[Modules.mainOf("W_ARC_RIFLE")] and grantWeapon(d, "W_ARC_RIFLE") then
+			table.insert(unlocked, { "module", Modules.mainOf("W_ARC_RIFLE") })
 		end
 		-- First-win story components (D03 §3).
 		local firstWin = { O06 = "CMP_FLAME_HEART", O07 = "CMP_VOID_HEART" }

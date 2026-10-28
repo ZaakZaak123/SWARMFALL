@@ -128,7 +128,7 @@ end
 check(count == 0, "component is unique (not re-granted)")
 check(d.mastery.W_ARC_RIFLE == 1280, "mastery accumulates across runs")
 local rank = Defs.masteryRank("W_ARC_RIFLE", d.mastery.W_ARC_RIFLE)
-check(rank == 4, "1280 rifle kills = M4 (M5 needs 1300; rank " .. rank .. ")")
+check(rank == 7, "1280 rifle kills = M7 (DD-112 ladder ×0.4: M8 needs 1520; rank " .. rank .. ")")
 local scrapBefore3 = d.scrap
 local r3 = Profile.grantRun(p, "run-3", result(true), "O01", 1)
 check(r3.grant == nil and d.scrap == scrapBefore3 + r3.total, "grant is never paid twice")
@@ -139,8 +139,8 @@ check(rr.lines[1][2] == math.floor(700 / 12), "Ксенит counts personal kill
 
 -- Mastery ladder sanity.
 check(
-	Defs.masteryNeed("W_RAILGUN", 20) == 16800 and Defs.masteryNeed("W_SCATTERGUN", 2) == 90,
-	"mastery thresholds match 03_GAME_DATA"
+	Defs.masteryNeed("W_RAILGUN", 20) == 6720 and Defs.masteryNeed("W_SCATTERGUN", 2) == 36,
+	"mastery thresholds: 03_GAME_DATA ×0.4 (DD-112)"
 )
 
 -- v1 -> v2 migration: a player who beat the Matka keeps the boss operations and gets S01.
@@ -255,6 +255,78 @@ do
 	dv.week.wins = 0
 	dv.decor = {}
 	check(not Profile.earnDecor(v, 5), "no win this week, no decoration")
+end
+
+-- DD-112: guns are the sortie's reward, each with its main module; сплав from the drill defence
+do
+	local Modules = H.require("src/shared/Modules")
+	local g = player(601)
+	Profile.load(g)
+	local dg = Profile.get(g)
+	local rifleMain = Modules.mainOf("W_ARC_RIFLE")
+	check(not dg.modules[rifleMain], "no rifle module before the first sortie is won")
+	local lost = Profile.grantRun(g, "e-1", result(false, { id = 601 }), "O01", 1)
+	check(not dg.modules[rifleMain] and (lost.alloy or 0) == 0, "a lost first sortie brings no module, no сплав")
+	local w1 = Profile.grantRun(g, "e-2", result(true, { id = 601 }), "O01", 1)
+	local gotModule = false
+	for _, u in w1.unlocked do
+		if u[1] == "module" and u[2] == rifleMain then
+			gotModule = true
+		end
+	end
+	check(
+		gotModule and dg.modules[rifleMain] and dg.loadout.W_ARC_RIFLE.core == rifleMain,
+		"the first win fits the rifle's main module, in the core"
+	)
+	check(not Profile.craftModule(g, rifleMain), "the main module is not crafted")
+	local w2 = Profile.grantRun(g, "e-3", result(true, { id = 601 }), "O02", 1)
+	local gotGun = false
+	for _, u in w2.unlocked do
+		if u[1] == "weapon" and u[2] == "W_SCATTERGUN" then
+			gotGun = true
+		end
+	end
+	local vMain = Modules.mainOf("W_SCATTERGUN")
+	check(
+		gotGun and dg.weapons.W_SCATTERGUN and dg.modules[vMain] and dg.loadout.W_SCATTERGUN.core == vMain,
+		"the second sortie's win brings «Вулкан» home free, its main module in the core"
+	)
+	-- a tier I module of another branch: xenite and M1; it fills the adapter
+	dg.scrap, dg.alloy = 1000, 0
+	local b1 = Modules.id("W_ARC_RIFLE", "B", 1)
+	check(Profile.craftModule(g, b1) and dg.scrap == 840, "tier I costs 160 xenite")
+	check(dg.loadout.W_ARC_RIFLE.adapter == b1, "a module of another branch goes to the adapter")
+	-- tier II: mastery M4 and сплав
+	local a2 = Modules.id("W_ARC_RIFLE", "A", 2)
+	dg.mastery.W_ARC_RIFLE = 0
+	check(not Profile.craftModule(g, a2), "tier II needs mastery M4")
+	dg.mastery.W_ARC_RIFLE = Defs.masteryNeed("W_ARC_RIFLE", 4)
+	check(not Profile.craftModule(g, a2), "tier II needs сплав")
+	dg.alloy = 25
+	check(Profile.craftModule(g, a2) and dg.alloy == 5 and dg.scrap == 440, "tier II: 400 xenite + 20 сплава")
+	check(
+		dg.loadout.W_ARC_RIFLE.core == a2 and dg.loadout.W_ARC_RIFLE.adapter == b1,
+		"a tier up replaces its own branch in the core"
+	)
+	-- сплав: the drill defence pays it, more on a higher level; sortie only above threat I
+	local function siege(victory: boolean, level: number)
+		local r = result(victory, { id = 601 })
+		r.mode, r.siege = "siege", level
+		return r
+	end
+	local s1 = Profile.grantRun(g, "e-4", siege(true, 1), "SIEGE", 1)
+	local s5 = Profile.grantRun(g, "e-5", siege(true, 5), "SIEGE", 1)
+	local sl = Profile.grantRun(g, "e-6", siege(false, 3), "SIEGE", 1)
+	check(s1.alloy == 11 and s5.alloy == 23 and sl.alloy == 6, "the drill defence pays сплав (11 / 23 / lost 6)")
+	local h1 = Profile.grantRun(g, "e-7", result(true, { id = 601 }), "O02", 1)
+	local h3 = Profile.grantRun(g, "e-8", result(true, { id = 601 }), "O02", 3)
+	check((h1.alloy or 0) == 0 and h3.alloy == 4, "a sortie pays сплав only above threat I")
+	-- migration: an old save that won O02 owns «Вулкан» with its main module
+	local old = Profile._reconcile({ wins_by_op = { O01 = 1, O02 = 1 }, weapons = {}, modules = {}, loadout = {} })
+	check(
+		old.weapons.W_SCATTERGUN and old.modules[vMain] and old.modules[rifleMain] and old.alloy == 0,
+		"migration: won sorties' guns and main modules (DD-112)"
+	)
 end
 
 if failures > 0 then

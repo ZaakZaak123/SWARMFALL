@@ -3,7 +3,9 @@
 -- step — what to do, where on the base to do it, and what it opens. Pure function of the public profile
 -- so the client can draw it and the tests can walk it. Order matters: the first match wins.
 
+local Defs = require(script.Parent.Defs)
 local Meta = require(script.Parent.Meta)
+local Modules = require(script.Parent.Modules)
 local Ops = require(script.Parent.Ops)
 
 local Goals = {}
@@ -19,6 +21,8 @@ export type Goal = {
 	structure: string?, -- a structure to show as a model (what is being bought or opened)
 	op: string?, -- the hunt that gets you there
 	mode: string?, -- launch goals for the drill defence ("siege")
+	weapon: string?, -- DD-112: the gun the goal is about (the armory opens on it)
+	module: string?, -- DD-112: the module to craft
 }
 
 -- Cyrillic-aware case helpers (string.lower is byte-wise and leaves Cyrillic alone).
@@ -169,6 +173,54 @@ function Goals.next(pub): Goal?
 			station = "swarm",
 			spot = "LAB",
 		}
+	end
+	-- DD-112: the gun before the turrets. A weapon that came home and has not fought yet; then the
+	-- cheapest module the most-used gun can take now.
+	local weapons = pub.weapons or {}
+	local mastery = pub.mastery or {}
+	for _, wid in Defs.WeaponOrder do
+		local w = Defs.Weapons[wid]
+		if weapons[wid] and w.cost > 0 and (mastery[wid] or 0) == 0 then
+			return {
+				key = "weapon_" .. wid,
+				icon = "swords",
+				title = "НОВОЕ ОРУЖИЕ: " .. w.short,
+				text = w.tagline .. " Возьми его в следующую вылазку.",
+				station = "launch",
+				weapon = wid,
+			}
+		end
+	end
+	local fav, most = nil, -1
+	for _, wid in Defs.WeaponOrder do
+		if weapons[wid] and (mastery[wid] or 0) > most then
+			fav, most = wid, mastery[wid] or 0
+		end
+	end
+	if fav then
+		local rank = Defs.masteryRank(fav, mastery[fav] or 0)
+		local best = nil
+		for _, m in Modules.ByWeapon[fav] or {} do
+			if Modules.craftable(pub, m, rank) and (not best or m.cost < best.cost) then
+				best = m
+			end
+		end
+		if best then
+			return {
+				key = "module_" .. best.id,
+				icon = "gear",
+				title = "НОВЫЙ МОДУЛЬ · " .. Defs.Weapons[fav].short,
+				text = string.format(
+					"«%s»: %s. Хватает ксенита (%d).",
+					best.name,
+					lowerFirst(best.text),
+					best.cost
+				),
+				station = "armory",
+				weapon = fav,
+				module = best.id,
+			}
+		end
 	end
 	-- An opened structure the player can afford and has not built yet: build it (what the last sortie's
 	-- homecoming promised, DD-076).

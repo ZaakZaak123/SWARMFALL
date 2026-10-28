@@ -1855,6 +1855,8 @@ function Base.refresh()
 			btn = if h and (profile.scrap or 0) >= h.cost then "ПОЧИНИТЬ" else nil
 		elseif goal.station == "swarm" then
 			btn = "В ЛАБОРАТОРИЮ"
+		elseif goal.station == "armory" then
+			btn = "В ОРУЖЕЙНУЮ"
 		end
 		ui.goalBtn.Visible = btn ~= nil and (goal.station ~= "build" or ownsBase)
 		ui.goalBtnLabel.Text = btn or ""

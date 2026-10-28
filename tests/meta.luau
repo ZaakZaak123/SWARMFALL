@@ -105,6 +105,22 @@ do
 	g = step("defended")
 	check(g.key == "op_O02" and g.structure == "ARC" and g.text:find("Разрядник") ~= nil, "goal 5: next sortie opens the Разрядник and the radio")
 	pub.winsByOp.O02, pub.ops.O03, pub.scrap, pub.home.RADIO = 1, 1, 400, true
+	-- DD-112: the gun before the turrets — a new gun to take out, then a module the main gun can take
+	pub.weapons = { W_ARC_RIFLE = true, W_SCATTERGUN = true }
+	pub.mastery = { W_ARC_RIFLE = 300 }
+	pub.modules = { MOD_ARC_RIFLE_A1 = true, MOD_SCATTERGUN_A1 = true }
+	local gw = step("new gun")
+	check(
+		gw.key == "weapon_W_SCATTERGUN" and gw.station == "launch" and gw.weapon == "W_SCATTERGUN",
+		"goal (DD-112): take the new «Вулкан» out"
+	)
+	pub.mastery.W_SCATTERGUN = 12
+	local gm = step("module")
+	check(
+		gm.station == "armory" and gm.weapon == "W_ARC_RIFLE" and gm.module == "MOD_ARC_RIFLE_B1",
+		"goal (DD-112): the cheapest module the most-used gun can take, before the turret"
+	)
+	pub.weapons, pub.mastery, pub.modules = nil, nil, nil
 	check(step("won O02").key == "build_ARC", "goal 6 (DD-076): the homecoming's promise first — the Разрядник")
 	pub.outpost.slots[1] = { id = "ARC", lvl = 1 }
 	pub.scrap = 320

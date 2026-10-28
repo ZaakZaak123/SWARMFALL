@@ -3,6 +3,7 @@
 --   opts.op      operation id (default: from map, legacy)
 --   opts.anchor  {x, z} the bot orbits (default reactor/centre); far away = "does not defend"
 --   opts.style   "CROWD" | "LINE" | "CONTROL": draft cards of that build style (DD-017)
+--   opts.loadout { core, adapter } module ids for every bot (DD-112)
 
 local H = require("./harness")
 
@@ -37,6 +38,7 @@ function Bot.run(
 			perks = perks,
 			s01 = (opts or {}).s01,
 			firstHunt = (opts or {}).firstHunt,
+			loadout = (opts or {}).loadout, -- DD-112: { core = moduleId?, adapter = moduleId? }
 		})
 	end
 	local w = World.new({

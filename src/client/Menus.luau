@@ -21,6 +21,7 @@ local Preview = require(script.Parent.Preview)
 local MetaMenus = require(script.Parent.MetaMenus)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Goals = require(Shared:WaitForChild("Goals"))
+local Modules = require(Shared:WaitForChild("Modules"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
@@ -705,7 +706,7 @@ local function buildLobby()
 		Parent = safe,
 		List = { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10) },
 	})
-	ui.upgradesBtn = Theme.button("УЛУЧШЕНИЯ", {
+	ui.upgradesBtn = Theme.button("ОРУЖЕЙНАЯ", {
 		Name = "Upgrades",
 		Size = UDim2.fromOffset(230, 58),
 		TextSize = 17,
@@ -911,6 +912,26 @@ local function weaponCard(id: string, order: number)
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Parent = card,
 	})
+	if state == "owned" and profile then
+		-- DD-112: the gun's mastery rank
+		local rank = Defs.masteryRank(id, (profile.mastery or {})[id] or 0)
+		local tag = new("Frame", {
+			Position = UDim2.fromOffset(10, 10),
+			Size = UDim2.fromOffset(40, 22),
+			BackgroundColor3 = C.gold,
+			Corner = UDim.new(1, 0),
+			ZIndex = 3,
+			Parent = card,
+		})
+		label("M" .. rank, {
+			Size = UDim2.fromScale(1, 1),
+			FontFace = F.numHeavy,
+			TextSize = 13,
+			TextColor3 = C.ink,
+			ZIndex = 4,
+			Parent = tag,
+		})
+	end
 	if state == "locked" then
 		icon("lock", 22, C.dim, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 12), Parent = card })
 	elseif state == "buy" then
@@ -1455,60 +1476,122 @@ function Menus.lobbyVisible(): boolean
 	return ui.lobby.Visible
 end
 
--- Upgrades (perks) ---------------------------------------------------------------------------------------
+-- The armory (DD-112): one tab per owned gun — its mastery, its two slots (core + adapter) and the three
+-- module branches — and «ГЕРОЙ», the perks. Opens on the gun the player fights with.
+local BRANCH_COLORS = { A = C.cyan, B = C.violet, C = C.gold }
+local armoryTab = nil -- weapon id or "HERO"
+
+-- The alloy pill: the ingot mark + number, beside the xenite pill.
+local function alloyPill(parent, props)
+	local p = new("Frame", {
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.2,
+		Corner = UDim.new(1, 0),
+		Stroke = { Color = C.orange, Transparency = 0.5, Thickness = 1.5 },
+		Parent = parent,
+	})
+	for k, v in props or {} do
+		p[k] = v
+	end
+	new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 16), Parent = p })
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = p,
+	})
+	icon("core", 26, C.orange, { LayoutOrder = 1, Parent = p })
+	local amount = label("0", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 40),
+		FontFace = F.numHeavy,
+		TextSize = 18,
+		LayoutOrder = 2,
+		Parent = p,
+	})
+	return p, amount
+end
+
 local function buildUpgrades()
-	local m = modal("Upgrades", 860, 560, "УЛУЧШЕНИЯ", nil)
+	local m = modal("Upgrades", 860, 560, "ОРУЖЕЙНАЯ", nil)
 	ui.upgrades = m
-	local lead = label(
-		"Навсегда. Покупаются за Ксенит, который приносит каждая вылазка.",
-		{
-			Position = UDim2.fromOffset(28, 60),
-			Size = UDim2.new(1, -56, 0, 20),
-			FontFace = F.body,
-			TextSize = 14,
-			TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 42,
-			Parent = m.panel,
-		}
-	)
-	ui.upgradesXenite, ui.upgradesXeniteAmount =
-		xenitePill(m.panel, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -74, 0, 20), ZIndex = 42 })
-	for _, d in ui.upgradesXenite:GetDescendants() do
+	-- the purse (top right): сплав, then xenite
+	local purse = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -74, 0, 20),
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		ZIndex = 42,
+		Parent = m.panel,
+	})
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = purse,
+	})
+	ui.upgradesAlloy, ui.upgradesAlloyAmount = alloyPill(purse, { LayoutOrder = 1 })
+	ui.upgradesXenite, ui.upgradesXeniteAmount = xenitePill(purse, { LayoutOrder = 2 })
+	for _, d in purse:GetDescendants() do
 		if d:IsA("GuiObject") then
 			d.ZIndex = 43
 		end
 	end
+	-- tabs: the owned guns, then the hero
+	ui.armoryTabs = new("Frame", {
+		Position = UDim2.fromOffset(28, 66),
+		Size = UDim2.new(1, -56, 0, 38),
+		ZIndex = 42,
+		Parent = m.panel,
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		},
+	})
+	-- the gun's page
+	ui.armoryBody = new("Frame", {
+		Position = UDim2.fromOffset(28, 116),
+		Size = UDim2.new(1, -56, 0, 424),
+		ZIndex = 42,
+		Parent = m.panel,
+	})
+	-- the hero's page (perks)
 	ui.upgradesGrid = new("Frame", {
-		Position = UDim2.fromOffset(28, 96),
-		Size = UDim2.new(1, -56, 1, -120),
+		Position = UDim2.fromOffset(28, 116),
+		Size = UDim2.new(1, -56, 0, 424),
 		ZIndex = 42,
 		Parent = m.panel,
 	})
 	local grid = new("UIGridLayout", {
-		CellSize = UDim2.fromOffset(190, 210),
+		CellSize = UDim2.fromOffset(190, 200),
 		CellPadding = UDim2.fromOffset(12, 12),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = ui.upgradesGrid,
 	})
-	-- DD-107: on a phone the cards lie flat (icon and name side by side), two rows of four on one screen
-	m.phoneSize = Vector2.new(56 + 4 * 200 + 3 * 10, 66 + 2 * 138 + 10 + 18) -- (DD-109: taller, up to the top)
+	-- DD-107: on a phone the perk cards lie flat (icon and name side by side), two rows of four
+	m.phoneSize = Vector2.new(820, 404)
 	function m.relayout(phone: boolean)
-		lead.Visible = not phone
-		ui.upgradesGrid.Position = UDim2.fromOffset(28, if phone then 66 else 96)
-		ui.upgradesGrid.Size = UDim2.new(1, -56, 1, if phone then -84 else -120)
-		grid.CellSize = if phone then UDim2.fromOffset(200, 138) else UDim2.fromOffset(190, 210)
-		grid.CellPadding = if phone then UDim2.fromOffset(10, 10) else UDim2.fromOffset(12, 12)
+		local top = if phone then 108 else 116
+		ui.armoryTabs.Position = UDim2.fromOffset(28, if phone then 62 else 66)
+		ui.armoryBody.Position = UDim2.fromOffset(28, top)
+		-- fixed heights: the phone's lifted header shortens the panel and moves these up by the same cut
+		local bodyH = if phone then m.phoneSize.Y - top - 10 else m.h - top - 20
+		ui.armoryBody.Size = UDim2.new(1, -56, 0, bodyH)
+		ui.upgradesGrid.Position = UDim2.fromOffset(28, top)
+		ui.upgradesGrid.Size = UDim2.new(1, -56, 0, bodyH)
+		grid.CellSize = if phone then UDim2.fromOffset(183, 136) else UDim2.fromOffset(190, 200)
+		grid.CellPadding = if phone then UDim2.fromOffset(8, 8) else UDim2.fromOffset(12, 12)
 		Menus.refreshUpgrades()
 	end
 end
 
-function Menus.refreshUpgrades()
-	if not ui.upgrades or not profile then
-		return
-	end
-	ui.upgradesXeniteAmount.Text = Theme.commas(profile.scrap)
-	clear(ui.upgradesGrid)
+-- The perks (the hero tab).
+local function refreshPerks()
 	for i, id in Defs.PerkOrder do
 		local def = Defs.Perks[id]
 		local rank = profile.perks[id] or 0
@@ -1561,7 +1644,7 @@ function Menus.refreshUpgrades()
 			elseif rank > 0 then def.stat(rank) .. "  →  " .. def.stat(rank + 1)
 			else def.stat(1)
 		label(statText, {
-			Position = UDim2.fromOffset(10, if flat then 58 else 116),
+			Position = UDim2.fromOffset(10, if flat then 56 else 116),
 			Size = UDim2.new(1, -20, 0, if flat then 32 else 36),
 			FontFace = F.bodyBold,
 			TextSize = 13,
@@ -1573,7 +1656,7 @@ function Menus.refreshUpgrades()
 		local b, bl = Theme.button(if maxed then "МАКС" else "◆ " .. cost, {
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, if flat then -8 else -12),
-			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 36 else 40),
+			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 34 else 40),
 			ZIndex = 43,
 			TextSize = 15,
 		}, if can then "primary" else "ghost")
@@ -1594,9 +1677,356 @@ function Menus.refreshUpgrades()
 	end
 end
 
-function Menus.showUpgrades()
-	Menus.refreshUpgrades()
+-- What a module tile says when it cannot be made yet.
+local function whyNot(wid: string, m, why: string?): string
+	local w = Defs.Weapons[wid]
+	if why == "mastery" then
+		local kills = (profile.mastery or {})[wid] or 0
+		return string.format(
+			"Нужно мастерство M%d: ещё %d убийств «%s».",
+			m.mastery,
+			math.max(0, Defs.masteryNeed(wid, m.mastery) - kills),
+			w.short
+		)
+	elseif why == "prev" then
+		local prev = Modules.get(Modules.id(wid, m.branch, m.tier - 1))
+		return "Сначала собери «" .. (if prev then prev.name else "") .. "»."
+	elseif why == "scrap" then
+		return string.format("Не хватает ксенита: нужно %d, у тебя %d. Ксенит приносят вылазки.", m.cost, profile.scrap or 0)
+	elseif why == "alloy" then
+		return string.format(
+			"Не хватает сплава: нужно %d, у тебя %d. Сплав даёт оборона бура.",
+			m.alloy,
+			profile.alloy or 0
+		)
+	end
+	return ""
+end
+
+-- Put an owned module to work: the core's own branch replaces the core; another fills the adapter.
+local function equip(wid: string, id: string)
+	local lo = (profile.loadout or {})[wid] or {}
+	local out = Modules.placeNew(wid, { core = lo.core, adapter = lo.adapter }, id)
+	if out.core == lo.core and out.adapter == lo.adapter then
+		-- a lower tier or a third branch: it becomes the core
+		local mm = Modules.get(id)
+		local a = Modules.get(lo.adapter)
+		out = { core = id, adapter = if a and mm and a.branch ~= mm.branch then lo.adapter else nil }
+		if not Modules.validLoadout(wid, out.core, out.adapter) then
+			out.adapter = nil
+		end
+	end
+	send("equipModule", wid, "adapter", "")
+	send("equipModule", wid, "core", out.core or "")
+	if out.adapter then
+		send("equipModule", wid, "adapter", out.adapter)
+	end
+end
+
+local function refreshGun(wid: string)
+	local body = ui.armoryBody
+	local phone = ui.upgrades.phone == true
+	local w = Defs.Weapons[wid]
+	local kills = (profile.mastery or {})[wid] or 0
+	local rank, into, need = Defs.masteryRank(wid, kills)
+	local lo = (profile.loadout or {})[wid] or {}
+	local W = (if phone then ui.upgrades.phoneSize.X else ui.upgrades.w) - 56
+	local bodyH = body.Size.Y.Offset
+	-- the mastery line: name, rank, bar, what is next
+	local rowH = if phone then 30 else 40
+	label(w.name, {
+		Size = UDim2.fromOffset(if phone then 250 else 290, rowH),
+		FontFace = F.display,
+		TextSize = if phone then 17 else 20,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = w.color,
+		ZIndex = 43,
+		Parent = body,
+	})
+	local badge = new("Frame", {
+		Position = UDim2.fromOffset(if phone then 254 else 296, (rowH - 26) / 2),
+		Size = UDim2.fromOffset(52, 26),
+		BackgroundColor3 = C.gold,
+		Corner = UDim.new(1, 0),
+		ZIndex = 43,
+		Parent = body,
+	})
+	label("M" .. rank, {
+		Size = UDim2.fromScale(1, 1),
+		FontFace = F.numHeavy,
+		TextSize = 15,
+		TextColor3 = C.ink,
+		ZIndex = 44,
+		Parent = badge,
+	})
+	local barX = (if phone then 254 else 296) + 64
+	local barBack = new("Frame", {
+		Position = UDim2.fromOffset(barX, rowH / 2 - 5),
+		Size = UDim2.fromOffset(math.max(60, W - barX - (if phone then 190 else 230)), 10),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.85,
+		Corner = UDim.new(1, 0),
+		ZIndex = 43,
+		Parent = body,
+	})
+	new("Frame", {
+		Size = UDim2.fromScale(if need then math.clamp(into / need, 0, 1) else 1, 1),
+		BackgroundColor3 = C.gold,
+		Corner = UDim.new(1, 0),
+		ZIndex = 44,
+		Parent = barBack,
+	})
+	label(if need then string.format("до M%d — %d убийств", rank + 1, need - into) else "высшее мастерство", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromOffset(if phone then 180 else 220, rowH),
+		FontFace = F.bodyBold,
+		TextSize = if phone then 13 else 14,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 43,
+		Parent = body,
+	})
+	-- the note line: the two slots, or why the tapped module cannot be made
+	local core, adapter = Modules.get(lo.core), Modules.get(lo.adapter)
+	local slots = string.format(
+		"<font color=\"#%s\">ЯДРО</font>  %s     <font color=\"#%s\">АДАПТЕР</font>  %s",
+		C.lime:ToHex(),
+		if core then core.name else "—",
+		C.cyan:ToHex(),
+		if adapter then adapter.name else "— (модуль другой ветки, до II)"
+	)
+	local noteY = rowH + (if phone then 2 else 6)
+	local noteH = if phone then 20 else 24
+	ui.armoryNote = label(ui.armoryNoteText or slots, {
+		Position = UDim2.fromOffset(0, noteY),
+		Size = UDim2.new(1, 0, 0, noteH),
+		FontFace = F.bodyBold,
+		TextSize = if phone then 13 else 14,
+		TextColor3 = if ui.armoryNoteText then C.orange else C.text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 43,
+		Parent = body,
+	})
+	ui.armoryNoteText = nil
+	-- three branches, three tiers
+	local colY = noteY + noteH + (if phone then 6 else 12)
+	local gap = if phone then 8 else 12
+	local colW = (W - gap * 2) / 3
+	local headH = if phone then 18 else 24
+	local tileGap = if phone then 6 else 8
+	local tileH = math.floor((bodyH - colY - headH - tileGap * 3) / 3)
+	for bi, branch in Modules.Branches do
+		local x = (bi - 1) * (colW + gap)
+		local col = BRANCH_COLORS[branch]
+		local first = Modules.get(Modules.id(wid, branch, 1))
+		label(first and first.branchName or branch, {
+			Position = UDim2.fromOffset(x + 4, colY),
+			Size = UDim2.fromOffset(colW - 8, headH),
+			FontFace = F.head,
+			TextSize = if phone then 12 else 13,
+			TextColor3 = col,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = body,
+		})
+		for tier = 1, 3 do
+			local id = Modules.id(wid, branch, tier)
+			local m = Modules.get(id)
+			if not m then
+				continue
+			end
+			local owned = (profile.modules or {})[id] == true
+			local inCore, inAdapter = lo.core == id, lo.adapter == id
+			local can, why = Modules.craftable(profile, m, rank)
+			local tile = new("TextButton", {
+				Position = UDim2.fromOffset(x, colY + headH + tileGap + (tier - 1) * (tileH + tileGap)),
+				Size = UDim2.fromOffset(colW, tileH),
+				BackgroundColor3 = if inCore or inAdapter then C.panel2 else C.ink,
+				BackgroundTransparency = if owned then 0.1 else 0.4,
+				Text = "",
+				AutoButtonColor = false,
+				Corner = 14,
+				Stroke = {
+					Color = if inCore then C.lime elseif inAdapter then C.cyan elseif can then col else C.white,
+					Transparency = if inCore or inAdapter then 0.1 elseif can then 0.35 else 0.88,
+					Thickness = if inCore or inAdapter then 2 else 1,
+				},
+				ZIndex = 43,
+				Parent = body,
+			})
+			local pad = if phone then 8 else 12
+			label(m.name .. "  <font color=\"#" .. C.dim:ToHex() .. "\">" .. Modules.Roman[tier] .. "</font>", {
+				Position = UDim2.fromOffset(pad, if phone then 4 else 8),
+				Size = UDim2.new(1, -pad * 2 - (if phone then 92 else 108), 0, if phone then 20 else 22),
+				FontFace = F.display,
+				TextSize = if phone then 13 else 14,
+				TextColor3 = if owned then C.text else C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 44,
+				Parent = tile,
+			})
+			label(m.text, {
+				Position = UDim2.fromOffset(pad, if phone then 26 else 34),
+				Size = UDim2.new(1, -pad * 2, 1, if phone then -28 else -40),
+				FontFace = F.body,
+				TextSize = if phone then 12 else 13,
+				TextWrapped = true,
+				TextColor3 = if owned then C.text else C.dim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				ZIndex = 44,
+				Parent = tile,
+			})
+			-- the state, top right: in a slot / take / the price / the lock
+			local stateText, stateColor, fill = "", C.dim, nil
+			local price = false
+			if inCore then
+				stateText, stateColor, fill = "ЯДРО", C.ink, C.lime
+			elseif inAdapter then
+				stateText, stateColor, fill = "АДАПТЕР", C.ink, C.cyan
+			elseif owned and (profile.modules or {})[Modules.id(wid, branch, tier + 1)] then
+				stateText = "УЛУЧШЕН" -- its next tier is made: taking this one would be a step back
+			elseif owned then
+				stateText, stateColor = "ВЗЯТЬ", C.lime
+			elseif why == "mastery" then
+				stateText = "M" .. m.mastery
+			elseif why == "prev" or why == "free" then
+				stateText = "—"
+			else
+				price = true
+				stateText = "◆ " .. m.cost
+				stateColor = if can then C.ink else C.dim
+				fill = if can then C.lime else nil
+			end
+			local chip = new("Frame", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -6, 0, if phone then 4 else 6),
+				Size = UDim2.fromOffset(0, if phone then 20 else 24),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = fill or C.white,
+				BackgroundTransparency = if fill then 0 else 0.9,
+				Corner = UDim.new(1, 0),
+				ZIndex = 44,
+				Parent = tile,
+				List = {
+					FillDirection = Enum.FillDirection.Horizontal,
+					VerticalAlignment = Enum.VerticalAlignment.Center,
+					Padding = UDim.new(0, 4),
+				},
+			})
+			new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), Parent = chip })
+			if why == "mastery" and not owned then
+				icon("lock", 12, C.dim, { LayoutOrder = 1, ZIndex = 45, Parent = chip })
+			end
+			local sl = label(stateText, {
+				Size = UDim2.fromScale(0, 1),
+				AutomaticSize = Enum.AutomaticSize.X,
+				FontFace = F.head,
+				TextSize = if phone then 11 else 12,
+				TextColor3 = stateColor,
+				LayoutOrder = 2,
+				ZIndex = 45,
+				Parent = chip,
+			})
+			if price then
+				Xenite.inline(sl)
+				if m.alloy > 0 then
+					icon("core", 12, if can then C.ink else C.orange, { LayoutOrder = 3, ZIndex = 45, Parent = chip })
+					label(tostring(m.alloy), {
+						Size = UDim2.fromScale(0, 1),
+						AutomaticSize = Enum.AutomaticSize.X,
+						FontFace = F.head,
+						TextSize = if phone then 11 else 12,
+						TextColor3 = stateColor,
+						LayoutOrder = 4,
+						ZIndex = 45,
+						Parent = chip,
+					})
+				end
+			end
+			tile.Activated:Connect(function()
+				if inCore then
+					Audio.play("ui", 0.6)
+				elseif inAdapter then
+					send("equipModule", wid, "adapter", "")
+					Audio.play("equip", 0.6, 0.9)
+				elseif owned then
+					equip(wid, id)
+					Audio.play("equip", 0.7)
+				elseif can then
+					send("craftModule", id)
+					Audio.play("level", 0.8, 1.3)
+				else
+					ui.armoryNoteText = whyNot(wid, m, why)
+					Audio.play("warn", 0.4)
+					Menus.refreshUpgrades()
+				end
+			end)
+		end
+	end
+end
+
+function Menus.refreshUpgrades()
+	if not ui.upgrades or not profile then
+		return
+	end
+	ui.upgradesXeniteAmount.Text = Theme.commas(profile.scrap)
+	ui.upgradesAlloyAmount.Text = Theme.commas(profile.alloy or 0)
+	local owned = {}
+	for _, wid in Defs.WeaponOrder do
+		if (profile.weapons or {})[wid] then
+			table.insert(owned, wid)
+		end
+	end
+	if armoryTab ~= "HERO" and not (profile.weapons or {})[armoryTab or ""] then
+		armoryTab = owned[1] or "HERO"
+	end
+	clear(ui.armoryTabs)
+	local phone = ui.upgrades.phone == true
+	local tabs = table.clone(owned)
+	table.insert(tabs, "HERO")
+	for i, key in tabs do
+		local on = key == armoryTab
+		local w = Defs.Weapons[key]
+		local text = if w then w.short .. "  M" .. Defs.masteryRank(key, (profile.mastery or {})[key] or 0) else "ГЕРОЙ"
+		local b, bl = Theme.button(text, {
+			Size = UDim2.fromOffset(if phone then 126 else 140, if phone then 34 else 36),
+			LayoutOrder = i,
+			ZIndex = 43,
+			TextSize = if phone then 13 else 14,
+		}, if on then "primary" else "ghost")
+		b.Parent = ui.armoryTabs
+		bl.ZIndex = 44
+		b.Activated:Connect(function()
+			if armoryTab ~= key then
+				armoryTab = key
+				Audio.play("ui", 0.7)
+				Menus.refreshUpgrades()
+			end
+		end)
+	end
+	clear(ui.armoryBody)
+	clear(ui.upgradesGrid)
+	ui.armoryBody.Visible = armoryTab ~= "HERO"
+	ui.upgradesGrid.Visible = armoryTab == "HERO"
+	if armoryTab == "HERO" then
+		refreshPerks()
+	else
+		refreshGun(armoryTab)
+	end
+end
+
+-- weapon: the tab to open on (default: the gun picked for the next sortie)
+function Menus.showUpgrades(weapon: string?)
+	local want = weapon or selectedWeapon
+	if want and profile and (profile.weapons or {})[want] then
+		armoryTab = want
+	end
 	ui.upgrades.show()
+	Menus.refreshUpgrades()
 end
 
 -- Settings -----------------------------------------------------------------------------------------------
@@ -3072,6 +3502,62 @@ end
 -- After a loss (DD-082): what would have helped, from what the player can do right now.
 local function defeatTip(result): (string, string, string)
 	local scrap = profile and profile.scrap or 0
+	-- DD-112: the gun first — the module this gun can take now, else the nearest one and what it lacks
+	local mine = nil
+	for _, p in result.players or {} do
+		if p.id == myId then
+			mine = p
+		end
+	end
+	local wid = mine and mine.weapon or selectedWeapon
+	local w = Defs.Weapons[wid]
+	if profile and w and (profile.weapons or {})[wid] then
+		local rank = Defs.masteryRank(wid, (profile.mastery or {})[wid] or 0)
+		local ready, near, nearWhy = nil, nil, nil
+		for tier = 1, 3 do
+			for _, branch in Modules.Branches do
+				local m = Modules.get(Modules.id(wid, branch, tier))
+				if m then
+					local can, why = Modules.craftable(profile, m, rank)
+					if can and (not ready or m.cost < ready.cost) then
+						ready = m
+					elseif not near and (why == "scrap" or why == "alloy" or why == "mastery") then
+						near, nearWhy = m, why
+					end
+				end
+			end
+		end
+		if ready then
+			return "gear",
+				"УЛУЧШИ ОРУЖИЕ",
+				string.format("«%s»: %s. Хватает ксенита (%d) — в оружейной, навсегда.", ready.name, ready.text, ready.cost)
+		elseif near and nearWhy == "alloy" then
+			return "gear",
+				"НУЖЕН СПЛАВ",
+				string.format(
+					"«%s»: %d ксенита и %d сплава (у тебя %d). Сплав даёт оборона бура.",
+					near.name,
+					near.cost,
+					near.alloy,
+					profile.alloy or 0
+				)
+		elseif near and nearWhy == "scrap" then
+			return "gear",
+				"КОПИ НА МОДУЛЬ",
+				string.format("«%s»: %s. Нужно %d ксенита, у тебя %d.", near.name, near.text, near.cost, scrap)
+		elseif near then
+			local left = Defs.masteryNeed(wid, near.mastery) - ((profile.mastery or {})[wid] or 0)
+			return "star",
+				"НАБЕЙ МАСТЕРСТВО M" .. near.mastery,
+				string.format(
+					"Ещё %d убийств «%s» — откроется «%s»: %s.",
+					math.max(1, left),
+					w.short,
+					near.name,
+					near.text
+				)
+		end
+	end
 	local best = nil
 	for _, id in Defs.PerkOrder do
 		local def = Defs.Perks[id]
@@ -3299,6 +3785,23 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		end
 		if reward.grant then
 			chip("+" .. reward.grant .. " первая победа", C.gold)
+		end
+		if (reward.alloy or 0) > 0 then
+			chip("+" .. reward.alloy .. " сплава", C.orange) -- DD-112
+		end
+		local pr = reward.progress
+		if pr and Defs.Weapons[pr.weapon] and (pr.added or 0) > 0 then
+			-- DD-112: the gun's mastery, every fight (won or lost)
+			chip(
+				string.format(
+					"%s M%d · +%d%s",
+					Defs.Weapons[pr.weapon].short,
+					pr.rank or 1,
+					pr.added,
+					if pr.need then string.format(" (до M%d — %d)", (pr.rank or 1) + 1, pr.need - (pr.into or 0)) else ""
+				),
+				C.gold
+			)
 		end
 		if reward.mult and reward.mult > 1.001 then
 			chip(string.format("угроза ×%.2f", reward.mult), C.orange)
