@@ -454,6 +454,7 @@ function Hud.init(playerGui: PlayerGui)
 	-- Ability chips (PC / gamepad) to the right of the vitals
 	ui.dash = chip(vit, "dash", C.cyan, { Position = UDim2.new(1, 14, 0, 6) })
 	ui.od = chip(vit, "hammer", C.lime, { Position = UDim2.new(1, 72, 0, 6) })
+	ui.super = chip(vit, "chain", C.gold, { Position = UDim2.new(1, 130, 0, 6) }) -- DD-105
 	-- Prompt pill above the vitals (S01 lesson, legacy evolution)
 	ui.evolve = new("TextButton", {
 		Name = "Prompt",
@@ -1218,6 +1219,22 @@ function Hud.update(run, me, extra, dt: number)
 		ui.od.key.Text = if odReady then keyLabel(extra.device, "Q", "Y") else string.format("%.0f", me.s01Left)
 		ui.od.stroke.Transparency = if odReady then 0.1 + math.sin(now * 6) * 0.1 else 0.7
 		ui.od.stroke.Thickness = if me.s01Tutorial then 4 elseif odReady then 2 else 1
+		-- DD-105: the weapon's super (E / right mouse button / R1), charging from damage dealt
+		local sdef = Defs.Supers[me.weapon]
+		local charge = me.super or 0
+		ui.super.frame.Visible = sdef ~= nil and not touch
+		if sdef then
+			if ui.superIcon ~= sdef.icon then
+				ui.superIcon = sdef.icon
+				ui.super.icon = Icons.swap(ui.super.icon, sdef.icon, C.gold)
+			end
+			ui.super.fill.Size = UDim2.fromScale(1, math.clamp(charge, 0, 1))
+			ui.super.key.Text = if charge >= 1
+				then keyLabel(extra.device, "E", "RB")
+				else string.format("%d%%", math.floor(charge * 100))
+			ui.super.stroke.Transparency = if charge >= 1 then 0.1 + math.sin(now * 6) * 0.1 else 0.7
+			ui.super.stroke.Thickness = if charge >= 1 then 2 else 1
+		end
 		-- First-run controls hint: only before the first input and in the first seconds of a run.
 		local howTo = run.op == "O01" and (run.waiting or (run.phase == "ACTIVE" and run.t < 16)) and me.alive
 		ui.howTo.Visible = howTo

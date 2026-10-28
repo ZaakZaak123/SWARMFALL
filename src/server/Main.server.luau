@@ -1407,6 +1407,11 @@ function handlers.reload(player: Player)
 	return p ~= nil
 end
 
+function handlers.super(player: Player, dx, dz)
+	local p = participant(player)
+	return p ~= nil and finite(dx) and finite(dz) and world:super(p.id, dx, dz)
+end
+
 function handlers.s01(player: Player)
 	local p = participant(player)
 	return p ~= nil and world:gravihammer(p.id)

@@ -10,6 +10,7 @@ local Codec = require(Shared:WaitForChild("Codec"))
 local Nav = require(script.Parent.Nav)
 local Rng = require(script.Parent.Rng)
 local Combat = require(script.Parent.Combat)
+local Super = require(script.Parent.Super)
 local AI = require(script.Parent.AI)
 local Mission = require(script.Parent.Mission)
 local Outpost = require(script.Parent.Outpost)
@@ -63,6 +64,10 @@ local function newPlayer(map, info, index: number, count: number)
 		heat = 0,
 		overheatT = 0,
 		cool = 0,
+		-- DD-105: the weapon's super (Sim/Super)
+		super = Defs.Super.Start,
+		superNeed = Super.need(weapon),
+		superCasts = 0,
 		aimX = 0,
 		aimZ = 1,
 		firing = false,
@@ -218,6 +223,7 @@ function World.new(opts: Options)
 	self.orbCount = 0
 	self.nextOrbId = 0
 	self.hazards = {}
+	self.superStrips = {}
 	self.events = {}
 	self.level = 1
 	self.xp = 0
@@ -346,6 +352,25 @@ function World:dash(id: number, dx: number, dz: number): boolean
 	p.dashX, p.dashZ = dx / m, dz / m
 	table.clear(p.dashHit)
 	self:emit(E.DASH, p.id, p.x, p.z, p.dashX, p.dashZ)
+	return true
+end
+
+-- DD-105: the weapon's super. (dx, dz) is the way it goes: the client's aim (its own target on a tap).
+function World:super(id: number, dx: number, dz: number): boolean
+	local p = self.players[id]
+	if not p or not p.alive or self.phase ~= "ACTIVE" or self.paused or p.super < 1 then
+		return false
+	end
+	if p.superBall or p.superBeamUntil then
+		return false
+	end
+	local m = math.sqrt(dx * dx + dz * dz)
+	if m < 1e-3 then
+		dx, dz, m = p.aimX, p.aimZ, 1
+	end
+	dx, dz = dx / m, dz / m
+	p.aimX, p.aimZ = dx, dz
+	Super.cast(self, p, dx, dz)
 	return true
 end
 
@@ -1763,9 +1788,11 @@ function World:tick(dt: number)
 				end
 				self:emit(E.HAMMER, p.id, f.x, f.z, f.radius, 3, 0, 0)
 			end
+			Super.update(self, p, dt)
 			Combat.updatePlayer(self, p, dt)
 		end
 	end
+	Super.updateStrips(self, dt)
 	AI.update(self, dt)
 	if #self.structures > 0 then
 		Outpost.update(self, dt)
@@ -1864,6 +1891,8 @@ function World:publicState()
 			s01Left = math.max(0, p.s01Ready - self.t),
 			s01Cd = p.s01Cd,
 			s01Casting = p.hammerAt ~= nil,
+			super = math.floor(p.super * 100) / 100,
+			superOn = p.superBall ~= nil or p.superBeamUntil ~= nil,
 			s01Tutorial = self.paused == "S01" and self.s01Tutee == p.id,
 			downed = p.downedUntil ~= nil,
 			bleed = if p.downedUntil then math.max(0, math.ceil(p.downedUntil - self.t)) else nil,

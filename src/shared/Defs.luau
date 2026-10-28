@@ -928,6 +928,72 @@ function Defs.xpToNext(level: number): number
 	return math.floor(7 + level * 5 + level ^ 1.75)
 end
 
+-- DD-105: the weapon's super — the main skill. It charges from the damage the hero deals (not from a
+-- timer): `Seconds` of the bare weapon's full fire fill it, so cards that add damage charge it faster.
+-- A run starts half charged. Tap: at the gun's own target; drag (phone) or aim (PC): where you point.
+-- Numbers are TUNABLE.
+Defs.Super = {
+	Seconds = 12,
+	Start = 0.5,
+}
+Defs.Supers = {
+	-- a slow ball of lightning: bursts on the first enemy (or at its range), stuns, arcs on to more
+	W_ARC_RIFLE = {
+		name = "ШАРОВАЯ МОЛНИЯ",
+		short = "МОЛНИЯ",
+		icon = "chain",
+		text = "Шар молнии взрывается в толпе, оглушает и бьёт разрядами ещё по шести",
+		tip = "шар молнии: взрыв, оглушение, разряды",
+		speed = 42,
+		range = 70,
+		radius = 9,
+		damage = 120,
+		stun = 0.7,
+		arcs = 6,
+		arcRange = 22,
+		arcDamage = 70,
+	},
+	-- a point-blank wall of shot: a wide cone that throws the swarm back — the way out of a ring
+	W_SCATTERGUN = {
+		name = "ОТБОЙНЫЙ ЗАЛП",
+		short = "ЗАЛП",
+		icon = "burst",
+		text = "Широкий залп в упор отбрасывает рой — путь из окружения",
+		tip = "залп в упор отбрасывает рой",
+		halfAngle = 42,
+		reach = 17,
+		damage = 90,
+		knock = 13,
+		stun = 0.6,
+		iframes = 0.35,
+	},
+	-- three seconds of a wide beam that pierces everything and never overheats
+	W_PLASMA_BEAM = {
+		name = "ПРОЖИГ",
+		short = "ПРОЖИГ",
+		icon = "fire",
+		text = "Три секунды широкий луч прошивает всех насквозь и не перегревается",
+		tip = "3 с широкий луч насквозь, без перегрева",
+		duration = 3,
+		tick = 0.1,
+		halfWidth = 2.8,
+		tickDamage = 12,
+	},
+	-- one charged slug through the whole line to the wall, leaving a burning strip
+	W_RAILGUN = {
+		name = "РАЗГОН",
+		short = "РАЗГОН",
+		icon = "pierce",
+		text = "Заряженный выстрел прошивает всю линию до стены и оставляет горящую полосу",
+		tip = "выстрел через всю линию, полоса огня",
+		range = 200,
+		halfWidth = 2.2,
+		damage = 260,
+		strip = 4,
+		burnDps = 30,
+	},
+}
+
 -- S01 «ГРОМОБОЙ» (ex-«Гравимолот», DD-006, renamed DD-092): the one active skill. 360° gravity strike around the player, separate from
 -- weapons and cards. The first cast in O01 is the reactor-fed Emergency Overload (bigger, two waves).
 Defs.S01 = {

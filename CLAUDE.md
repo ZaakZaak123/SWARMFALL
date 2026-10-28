@@ -30,6 +30,7 @@ lune run tests/hub                  (быстро: отряды лагеря и 
 lune run tests/styles               (быстро: стили сборок и синергии; `run <STYLE> [weapon] [seed]` — бот O01 одним стилем)
 lune run tests/grove                (быстро: роща — участки не пересекаются, выдача участков, летопись, DD-087)
 lune run tests/auto_target          (быстро: выбор цели оружием в простом бою на телефоне, DD-103)
+lune run tests/supers               (быстро: суперудары оружия, DD-105)
 lune run tests/ops_run O01          (бот играет O01: ~10 мин)
 lune run tests/ops_run <O02..CA01>  (бот играет операцию; запускай параллельно в фоне)
 lune run tests/sim_run W_ARC_RIFLE  (старый регрессионный прогон)

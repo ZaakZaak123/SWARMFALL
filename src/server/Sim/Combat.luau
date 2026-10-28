@@ -572,6 +572,10 @@ function Combat.damage(w, p, e, amount: number, depth: number, flags: number, fr
 		end
 	end
 	amount *= mult
+	-- DD-105: the hero's damage charges the weapon's super (not the super's own, nor the Громобой's)
+	if p and p.superNeed and band(flags, bor(DF.SUPER, DF.GRAV)) == 0 then
+		p.super = math.min(1, p.super + math.min(amount, math.max(0, e.hp)) / p.superNeed)
+	end
 	e.hp -= amount
 	e.dmgAcc += amount
 	e.dmgFlags = bor(e.dmgFlags, flags)
@@ -602,7 +606,8 @@ function Combat.burn(w, e, dt: number)
 	if p and not w.players[p.id] then
 		p = nil
 	end
-	Combat.damage(w, p, e, e.burnDps * dt, 1, DF.BURN, e.x, e.z)
+	local super = if e.burnSuperUntil and w.t < e.burnSuperUntil then DF.SUPER else 0
+	Combat.damage(w, p, e, e.burnDps * dt, 1, bor(DF.BURN, super), e.x, e.z)
 end
 
 function Combat.onKill(w, p, e, depth: number, cause: number)
@@ -715,7 +720,7 @@ function Combat.updatePlayer(w, p, dt: number)
 				p.heat = 0
 			end
 			p.cool = 0
-		elseif p.firing then
+		elseif p.firing or p.superBeamUntil then -- (DD-105: the ПРОЖИГ fires by itself)
 			local heatRate = Defs.Beam.HeatPerSecond
 				* (if od then 0.5 else 1)
 				* (if p.evolved then 0.8 else 1)

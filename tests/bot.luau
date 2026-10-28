@@ -30,17 +30,14 @@ function Bot.run(
 	opts = opts or {}
 	local infos = {}
 	for i = 1, players do
-		table.insert(
-			infos,
-			{
-				id = i,
-				name = "BOT" .. i,
-				weapon = weapon,
-				perks = perks,
-				s01 = (opts or {}).s01,
-				firstHunt = (opts or {}).firstHunt,
-			}
-		)
+		table.insert(infos, {
+			id = i,
+			name = "BOT" .. i,
+			weapon = weapon,
+			perks = perks,
+			s01 = (opts or {}).s01,
+			firstHunt = (opts or {}).firstHunt,
+		})
 	end
 	local w = World.new({
 		seed = runSeed,
@@ -245,6 +242,13 @@ function Bot.run(
 				if close >= 4 and p.s01 and w.t >= p.s01Ready and w:gravihammer(p.id) then
 					milestones.overdrives = (milestones.overdrives or 0) + 1
 				end
+				-- DD-105: the super, at the current target once charged (a tap in the simple fight)
+				if p.super >= 1 and target and target.alive then
+					local tx, tz = target.x - p.x, target.z - p.z
+					if w:super(p.id, tx, tz) then
+						milestones.supers = (milestones.supers or 0) + 1
+					end
+				end
 				local m = math.sqrt(mx * mx + mz * mz)
 				local speed = Defs.Player.Speed
 				if w.t < p.dashUntil then
@@ -314,7 +318,7 @@ function Bot.run(
 			table.sort(ups)
 			print(
 				string.format(
-					"  %s  lvl %2d  enemies %3d  kills %4d  hp %3d  reactor %4s  od %3d  dmg %7d  %s%s",
+					"  %s  lvl %2d  enemies %3d  kills %4d  hp %3d  reactor %4s  od %3d  sup %3d  dmg %7d  %s%s",
 					fmt(w.t),
 					w.level,
 					#w.enemies,
@@ -322,6 +326,7 @@ function Bot.run(
 					math.floor(p.hp),
 					if w.mission and w.mission.reactor then tostring(math.floor(w.mission.reactor.hp)) else "-",
 					p.s01Stats.casts,
+					p.superCasts or 0,
 					math.floor(p.damage),
 					table.concat(ups, " "),
 					if p.evolved then "  [" .. p.evolved .. "]" else ""

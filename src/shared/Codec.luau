@@ -53,6 +53,7 @@ Codec.E = {
 	ASSAULT = 26, -- spawnX, spawnZ, count, etaSeconds, targetX, targetZ (strike group announced)
 	COMPONENT = 27, -- x, z, componentId (permanent component dropped — e.g. Ядро Бури)
 	HAMMER = 28, -- pid, x, z, radius, phase (0 granted, 1 windup, 2 impact), emergency 0/1, hits
+	SUPER = 31, -- pid, weaponIndex, phase (1 cast, 2 impact, 3 end), x, z, dx, dz, a (DD-105: the weapon's super)
 	TURRET = 30, -- ref (+slot allied / -enemyId hostile), fromX, fromZ, toX, toZ, kind (1 gun, 2 arc, 3 mortar, 4 shield)
 	OBJECTIVE = 29, -- action, x, z, a, b, c: 1 relay active (radius, charge, need), 2 target revealed (index),
 	--                 3 relay charged, 4 target destroyed (index, destroyed, total)
@@ -84,7 +85,7 @@ Codec.Flag = { BURN = 1, SLOW = 2, CORRODE = 4, EXPOSED = 8, HIT = 16, MUTANT = 
 -- Damage flags
 -- GRAV: S01 Gravihammer. CARD: an independent card ability (shock dash). ENV: environment the player
 -- triggered (coils, bomber chain blasts). Kill credit: see Combat.onKill / D03 §2.
-Codec.DF = { CRIT = 1, BURN = 2, ARC = 4, BLAST = 8, ARMOR = 16, GRAV = 32, CARD = 64, ENV = 128 }
+Codec.DF = { CRIT = 1, BURN = 2, ARC = 4, BLAST = 8, ARMOR = 16, GRAV = 32, CARD = 64, ENV = 128, SUPER = 256 }
 -- Kill causes (KILL event + attribution): 0 shot, 1 arc, 2 blast, 3 burn, 4 S01, 5 card ability, 6 environment
 Codec.Cause = { SHOT = 0, ARC = 1, BLAST = 2, BURN = 3, S01 = 4, CARD = 5, ENV = 6 }
 

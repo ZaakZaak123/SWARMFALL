@@ -42,6 +42,48 @@ local autoId = nil -- the enemy the touch auto-aim holds
 local marker = nil -- the ring under it
 local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
 local padSimple = nil -- the aim pad's look last laid out (DD-103: smaller and quieter in the simple fight)
+local superTouch: InputObject? = nil -- DD-105: the finger on the super button
+local superFrom = Vector2.zero
+local superLine = nil -- the dragged super's aim line on the ground
+local superLook = nil -- the weapon the super button is dressed for
+local function showSuperLine(from: Vector3?, dx: number?, dz: number?, len: number?)
+	if not from then
+		if superLine then
+			superLine.Parent = nil
+		end
+		return
+	end
+	if not superLine then
+		superLine = Instance.new("Part")
+		superLine.Name = "SuperAim"
+		superLine.Anchored = true
+		superLine.CanCollide = false
+		superLine.CanQuery = false
+		superLine.CanTouch = false
+		superLine.CastShadow = false
+		superLine.Material = Enum.Material.Neon
+		superLine.Color = C.gold
+		superLine.Transparency = 0.35
+	end
+	local l = len or 30
+	local a = Vector3.new(from.X, from.Y - 2.6, from.Z)
+	superLine.Size = Vector3.new(1.2, 0.12, l)
+	superLine.CFrame = CFrame.lookAt(a, a + Vector3.new(dx, 0, dz)) * CFrame.new(0, 0, -l / 2)
+	superLine.Parent = workspace
+end
+
+-- A screen drag (dx right, dy down) as a world XZ direction for the current camera.
+local function screenToWorldDir(v: Vector2): (number, number)
+	local cf = workspace.CurrentCamera.CFrame
+	local fwd = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+	fwd = if fwd.Magnitude < 1e-3 then Vector3.zAxis else fwd.Unit
+	local w = cf.RightVector * v.X - fwd * v.Y
+	local m = math.sqrt(w.X * w.X + w.Z * w.Z)
+	if m < 1e-4 then
+		return Controls.aimX, Controls.aimZ
+	end
+	return w.X / m, w.Z / m
+end
 local TURN = 16 -- radians per second the auto-aim swings the gun (quick, but a visible turn, not a snap)
 
 local function turnToward(ax: number, az: number, tx: number, tz: number, dt: number): (number, number)
@@ -110,12 +152,14 @@ end
 -- Keep the aim pad and abilities in the right thumb's corner on short landscape screens.
 -- DD-104: the buttons stand in an arc round the aim pad (left of it and above), each with its name
 -- under it, so a phone shows what each one is; offsets are for a 600-point-high screen.
+-- DD-105: the super (the main skill) is the biggest and nearest to the thumb; the dash above the pad.
 local LAYOUT = {
-	dash = { -360, -105, 96 },
-	overdrive = { -330, -275, 86 },
-	evolve = { -150, -345, 80 },
-	reload = { -500, -215, 70 },
-	view = { -500, -345, 70 },
+	super = { -345, -110, 104 },
+	dash = { -255, -270, 92 },
+	overdrive = { -420, -275, 86 },
+	evolve = { -110, -350, 78 },
+	reload = { -540, -140, 70 },
+	view = { -540, -350, 70 },
 }
 local function layoutTouch()
 	local size = workspace.CurrentCamera.ViewportSize
@@ -141,6 +185,7 @@ end
 
 -- DD-104: the first time a button shows up, a bubble beside it says what it does (one at a time).
 local TIPS = {
+	super = "СУПЕРУДАР — копится от урона; нажми — по цели, потяни — куда укажешь",
 	dash = "РЫВОК — проскочить сквозь рой, в рывке не ранят",
 	overdrive = "ГРОМОБОЙ — удар по всем вокруг, отбрасывает рой",
 	evolve = "ЭВОЛЮЦИЯ — оружие становится сильнее навсегда до конца вылазки",
@@ -190,6 +235,7 @@ end
 
 -- DD-104: every touch button says what it is
 local NAMES = {
+	Super = "СУПЕРУДАР",
 	Dash = "РЫВОК",
 	Gravihammer = "ГРОМОБОЙ",
 	Evolve = "ЭВОЛЮЦИЯ",
@@ -224,7 +270,7 @@ local function makeButton(name: string, label: string, sub: string, pos: UDim2, 
 		Parent = b,
 	})
 	local nameLabel = Theme.label(NAMES[name] or "", {
-		Name = "Name",
+		Name = "Caption",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 1, 2),
 		Size = UDim2.fromOffset(110, 13),
@@ -244,7 +290,16 @@ local function makeButton(name: string, label: string, sub: string, pos: UDim2, 
 		Corner = UDim.new(1, 0),
 		Parent = b,
 	})
-	return { button = b, sub = subLabel, fill = fill, color = color, size = size, position = pos, icon = ic }
+	return {
+		button = b,
+		sub = subLabel,
+		fill = fill,
+		color = color,
+		size = size,
+		position = pos,
+		icon = ic,
+		caption = nameLabel,
+	}
 end
 
 function Controls.init(playerGui: PlayerGui)
@@ -272,7 +327,7 @@ function Controls.init(playerGui: PlayerGui)
 	cross.Position = UDim2.fromScale(0.5, 0.5)
 	cross.Parent = pad
 	padName = Theme.label("", {
-		Name = "Name",
+		Name = "Caption",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 1, 2),
 		Size = UDim2.fromOffset(120, 13),
@@ -293,12 +348,21 @@ function Controls.init(playerGui: PlayerGui)
 		Parent = pad,
 	})
 	buttons = {
+		super = makeButton("Super", "chain", "", UDim2.new(1, -345, 1, -110), 104, C.gold),
 		dash = makeButton("Dash", "dash", "", UDim2.new(1, -300, 1, -90), 84, C.cyan),
 		overdrive = makeButton("Gravihammer", "hammer", "", UDim2.new(1, -290, 1, -195), 76, C.lime),
 		evolve = makeButton("Evolve", "evolve", "", UDim2.new(1, -150, 1, -300), 76, C.gold),
 		reload = makeButton("Reload", "reload", "", UDim2.new(1, -60, 1, -290), 54, C.dim),
 		view = makeButton("View", "topdown", "", UDim2.new(1, -60, 1, -370), 54, C.cyan),
 	}
+	-- DD-105: the super — a tap fires it at the gun's own target, a drag aims it (the line shows where)
+	buttons.super.button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch and not superTouch and Controls.enabled then
+			superTouch = input
+			superFrom = Vector2.new(input.Position.X, input.Position.Y)
+			Controls.superDir = nil
+		end
+	end)
 	-- DD-082: phones switch the view too (the first fight teaches the three views)
 	buttons.dash.button.Activated:Connect(function()
 		act("dash")
@@ -371,6 +435,13 @@ function Controls.init(playerGui: PlayerGui)
 			or key == Enum.KeyCode.ButtonL2
 		then
 			act("dash")
+		elseif
+			key == Enum.KeyCode.E
+			or key == Enum.KeyCode.ButtonR1
+			or (t == Enum.UserInputType.MouseButton2 and Controls.enabled) -- DD-105: where the gun points
+		then
+			Controls.superDir = nil
+			act("super")
 		elseif key == Enum.KeyCode.Q or key == Enum.KeyCode.ButtonY then
 			act("overdrive")
 		elseif key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonX then
@@ -400,7 +471,12 @@ function Controls.init(playerGui: PlayerGui)
 		end
 	end)
 	UserInputService.InputChanged:Connect(function(input)
-		if input == touchAim then
+		if input == superTouch then
+			local v = Vector2.new(input.Position.X, input.Position.Y) - superFrom
+			if v.Magnitude > 24 then
+				Controls.superDir = Vector2.new(screenToWorldDir(v))
+			end
+		elseif input == touchAim then
 			local center = pad.AbsolutePosition + pad.AbsoluteSize / 2
 			touchVec = Vector2.new(input.Position.X, input.Position.Y) - center
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
@@ -413,7 +489,12 @@ function Controls.init(playerGui: PlayerGui)
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
-		if input == touchAim then
+		if input == superTouch then
+			superTouch = nil
+			showSuperLine(nil)
+			act("super") -- Controls.superDir: the dragged way, or nil (the gun's own target)
+			Controls.superDir = nil
+		elseif input == touchAim then
 			touchAim = nil
 			touchVec = Vector2.zero
 		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -478,6 +559,11 @@ function Controls.update(
 	end
 	local device = Controls.device
 	local simple = device == "touch" and Settings.simpleCombat == true
+	if superTouch and Controls.superDir and Controls.enabled then
+		showSuperLine(rootPos, Controls.superDir.X, Controls.superDir.Y, 30)
+	else
+		showSuperLine(nil)
+	end
 	if device == "touch" then
 		if padSimple ~= simple then
 			-- DD-103: in the simple fight the pad is only for aiming by hand now and then: smaller
@@ -636,6 +722,33 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	b.fill.Size = UDim2.fromScale(1, math.clamp(cooldownFrac or 0, 0, 1))
 	b.sub.Text = sub or ""
 	b.button.BackgroundTransparency = if ready then 0.1 else 0.45
+	-- DD-105: a charged super breathes, so the thumb knows it is there
+	if name == "super" then
+		local stroke = b.button:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Thickness = if ready then 3 + math.sin(os.clock() * 6) * 1.5 else 2.5
+			stroke.Transparency = if ready then 0 else 0.25
+		end
+	end
+end
+
+-- DD-105: the super button wears the weapon's super (icon, short name, what it does).
+function Controls.setSuperLook(key: string, icon: string, short: string, tip: string)
+	local b = buttons and buttons.super
+	if not b or superLook == key then
+		return
+	end
+	superLook = key
+	local old = b.icon
+	local ic = Icons.new(icon, 48, b.color, C.ink)
+	ic.AnchorPoint = old.AnchorPoint
+	ic.Position = old.Position
+	ic.Size = old.Size
+	ic.Parent = b.button
+	old:Destroy()
+	b.icon = ic
+	b.caption.Text = short
+	TIPS.super = short .. " — " .. tip
 end
 
 function Controls.setViewIcon(name: string)

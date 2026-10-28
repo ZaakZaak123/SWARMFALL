@@ -432,6 +432,17 @@ Controls.actions.overdrive = function()
 		send("s01")
 	end
 end
+-- DD-105: the weapon's super — the dragged way (phone) or where the gun points (its own target on a tap)
+Controls.actions.super = function()
+	if not playing() or not me or (me.super or 0) < 1 or me.superOn then
+		return
+	end
+	local d = Controls.superDir
+	local dx, dz = if d then d.X else Controls.aimX, if d then d.Y else Controls.aimZ
+	send("super", dx, dz)
+	Audio.play("railCharge", 0.7, 1.25)
+	CameraRig.punch(5)
+end
 Controls.actions.evolve = function()
 	if playing() and me.canEvolve then
 		send("evolve")
@@ -1371,6 +1382,143 @@ handlers[E.DASH] = function(pid, x, z, dx, dz)
 	end
 end
 local hammerSwings = {} -- pid -> the hammer in the air (client/Hammer)
+
+-- DD-105: the supers' look. 1 cast, 2 impact (ball burst / rail line), 3 end (the wide beam).
+local superBalls = {} -- pid -> the lightning ball in flight
+local superBeams = {} -- pid -> the ПРОЖИГ's wide beam: { untilT }
+handlers[E.SUPER] = function(pid, wIndex, phase, x, z, dx, dz, a)
+	local id = Defs.WeaponOrder[wIndex]
+	local S = id and Defs.Supers[id]
+	if not S then
+		return
+	end
+	local pos = Vector3.new(x, 2.6, z)
+	local dir = Vector3.new(dx, 0, dz)
+	local mine = pid == myId
+	if phase == 1 then
+		if mine then
+			CameraRig.punch(8)
+			CameraRig.shake(0.25)
+		end
+		if id == "W_ARC_RIFLE" then
+			local ball = Instance.new("Part")
+			ball.Name = "SuperBall"
+			ball.Shape = Enum.PartType.Ball
+			ball.Size = Vector3.new(2.6, 2.6, 2.6)
+			ball.Material = Enum.Material.Neon
+			ball.Color = C.blue
+			ball.Anchored = true
+			ball.CanCollide = false
+			ball.CanQuery = false
+			ball.CanTouch = false
+			ball.CastShadow = false
+			ball.Position = pos + dir * 1.2
+			ball.Parent = workspace
+			local light = Instance.new("PointLight")
+			light.Color = C.blue
+			light.Range = 14
+			light.Brightness = 3
+			light.Parent = ball
+			superBalls[pid] = { part = ball, dir = dir, t0 = os.clock(), from = ball.Position }
+			Audio.at("coil", pos, 0.9, 1.1)
+			task.delay(S.range / S.speed + 0.6, function()
+				if superBalls[pid] and superBalls[pid].part == ball then
+					superBalls[pid] = nil
+				end
+				ball:Destroy()
+			end)
+		elseif id == "W_SCATTERGUN" then
+			Fx.telegraph(Codec.Shape.CONE, x, z, dx, dz, S.reach, S.halfAngle * 2, 0.12, C.orange, 0)
+			Fx.muzzle(CFrame.lookAt(pos + dir * 1.5, pos + dir * 3), "blast", C.orange, 3, 0.2)
+			Fx.emitWith("dust", pos + dir * 6, 26, 2)
+			Fx.shockwave(Vector3.new(x, 1, z) + dir * 5, S.reach * 0.7, C.orange, 0.35)
+			Fx.light(pos + dir * 4, C.orange, 30, 0.25)
+			Audio.at("shotgun", pos, 1, 0.75)
+			Audio.at("boom", pos, 0.6, 1.3)
+			if mine then
+				CameraRig.shake(0.45)
+			end
+		elseif id == "W_PLASMA_BEAM" then
+			superBeams[pid] = { untilT = os.clock() + S.duration, dir = dir }
+			Audio.at("beamStart", pos, 1, 0.7)
+		elseif id == "W_RAILGUN" then
+			Audio.at("railCharge", pos, 1, 0.7)
+		end
+	elseif phase == 2 then
+		if id == "W_ARC_RIFLE" then
+			local b = superBalls[pid]
+			superBalls[pid] = nil
+			if b then
+				b.part:Destroy()
+			end
+			local at = Vector3.new(x, 1, z)
+			Fx.boom(at, a, C.blue)
+			Fx.shockwave(at, a * 1.2, C.cyan, 0.4)
+			for k = 0, 5 do
+				local ang = k / 6 * math.pi * 2
+				Fx.lightning(
+					at + Vector3.yAxis * 2,
+					at + Vector3.new(math.cos(ang) * a, 0.5, math.sin(ang) * a),
+					C.blue,
+					0.35,
+					0.25
+				)
+			end
+			Fx.emit("sparkCyan", at + Vector3.yAxis, 40)
+			Fx.light(at + Vector3.yAxis * 4, C.blue, a * 4, 0.4)
+			Audio.at("thunder", at, 0.9)
+			if nearMe(at, a + 25) then
+				CameraRig.shake(0.35)
+			end
+		elseif id == "W_RAILGUN" then
+			local from = Vector3.new(x, 2.6, z)
+			local to = from + dir * a
+			Fx.rail(from, to, C.orange, 1.4, true)
+			Fx.telegraph(Codec.Shape.LINE, x, z, dx, dz, a, S.halfWidth * 2, 0.05, C.orange, S.strip)
+			Fx.light(from + dir * 6, C.orange, 40, 0.3)
+			Audio.at("rail", from, 1, 0.7)
+			Audio.at("railBody", from, 0.9, 0.8)
+			if mine then
+				CameraRig.punch(14)
+				CameraRig.shake(0.5)
+			end
+		end
+	elseif phase == 3 then
+		superBeams[pid] = nil
+		Fx.beamHide("super" .. pid)
+	end
+end
+
+-- The ball in flight and the wide beam, every frame (a beam follows its owner's aim).
+local function updateSupers(now: number)
+	for _, b in superBalls do
+		local S = Defs.Supers.W_ARC_RIFLE
+		local t = now - b.t0
+		b.part.Position = b.from + b.dir * math.min(S.range, t * S.speed) + Vector3.new(0, math.sin(t * 20) * 0.2, 0)
+		if math.random() < 0.35 then
+			local a = math.random() * math.pi * 2
+			Fx.lightning(
+				b.part.Position,
+				b.part.Position + Vector3.new(math.cos(a) * 4, math.random() * 2 - 1, math.sin(a) * 4),
+				C.blue,
+				0.15,
+				0.08
+			)
+		end
+	end
+	for pid, b in superBeams do
+		local r = characterRoot(pid)
+		if now > b.untilT or not r then
+			superBeams[pid] = nil
+			Fx.beamHide("super" .. pid)
+		else
+			local dir = if pid == myId then Vector3.new(Controls.aimX, 0, Controls.aimZ) else b.dir
+			local from = r.Position + dir * 1.5 + Vector3.new(0, 0.4, 0)
+			local wdef = Defs.Weapons.W_PLASMA_BEAM
+			Fx.beamDraw("super" .. pid, from, from + dir * wdef.range, C.violet, 2.4, 1.4, 14)
+		end
+	end
+end
 handlers[E.HAMMER] = function(pid, x, z, radius, phase, emergency, hits)
 	local pos = Vector3.new(x, 1, z)
 	local big = emergency == 1
@@ -2370,6 +2518,7 @@ end
 
 local function frame(dt: number)
 	local now = os.clock()
+	updateSupers(now)
 	fps += (1 / math.max(dt, 1e-3) - fps) * 0.05
 	adaptQuality(dt, fps)
 	local cam = workspace.CurrentCamera
@@ -2743,6 +2892,19 @@ local function frame(dt: number)
 			me.s01Left / math.max(1, me.s01Cd),
 			if me.s01Left > 0 then string.format("%.0f", me.s01Left) else "",
 			me.s01Left <= 0 or me.s01Tutorial
+		)
+		-- DD-105: the super charges from damage dealt; full, it glows
+		local sdef = Defs.Supers[me.weapon]
+		if sdef then
+			Controls.setSuperLook(me.weapon, sdef.icon, sdef.short, sdef.tip)
+		end
+		local charge = me.super or 0
+		Controls.setButton(
+			"super",
+			sdef ~= nil,
+			charge, -- (it fills up as it charges)
+			if charge < 1 then string.format("%d%%", math.floor(charge * 100)) else "",
+			charge >= 1 and not me.superOn
 		)
 		Controls.setButton("evolve", me.canEvolve, 0, "", true)
 		Controls.tipsOk = isPlaying and not choosing and not Story.active() and not Story.covered()
