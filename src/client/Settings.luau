@@ -47,4 +47,10 @@ end
 -- стала ещё хуже»): off by default, the manual aim pad is back; the settings still turn it on.
 Settings.autoAim = false
 
+-- DD-103 (prototype): the phone's simple fight. The camera stands still behind and above the hero (it
+-- never turns), the gun picks its target and fires by itself, the left thumb only runs; the right pad
+-- stays for those who want to aim by hand. On by default on a touch screen; the settings switch back to
+-- the over-the-shoulder fight.
+Settings.simpleCombat = Settings.touch
+
 return Settings

@@ -1368,7 +1368,7 @@ end
 
 -- Settings -----------------------------------------------------------------------------------------------
 local function buildSettings()
-	local m = modal("Settings", 520, 466, "НАСТРОЙКИ", nil)
+	local m = modal("Settings", 520, if Settings.touch then 532 else 466, "НАСТРОЙКИ", nil)
 	ui.settings = m
 	local names = { "НИЗКО", "СРЕДНЕ", "ВЫСОКО" }
 	local rows = {
@@ -1429,6 +1429,19 @@ local function buildSettings()
 			end,
 		},
 	}
+	-- DD-103: the phone's simple fight (still camera, the gun aims itself) or the over-the-shoulder one
+	if Settings.touch then
+		table.insert(rows, 4, {
+			"Бой",
+			"person",
+			function()
+				return if Settings.simpleCombat then "ПРОСТОЙ" else "ИЗ-ЗА ПЛЕЧА"
+			end,
+			function()
+				Settings.set("simpleCombat", not Settings.simpleCombat)
+			end,
+		})
+	end
 	for i, r in rows do
 		local y = 84 + (i - 1) * 66
 		local row = new("Frame", {

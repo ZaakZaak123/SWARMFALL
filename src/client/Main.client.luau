@@ -812,7 +812,12 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	local scened = Story.active() or Story.covered() -- a scene or the title card: no prompts over it
 	if not scened and run.phase == "COUNTDOWN" and run.waiting then
-		Menus.note("ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И В БОЙ")
+		-- (DD-103: in the phone's simple fight there is nothing to shoot with by hand)
+		Menus.note(
+			if CameraRig.chase()
+				then "ДВИГАЙСЯ — И В БОЙ"
+				else "ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И В БОЙ"
+		)
 	elseif not scened and run.phase == "COUNTDOWN" then
 		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
 	elseif not scened and run.phase ~= "COUNTDOWN" and not me and run.mode == "siege" then
@@ -2370,7 +2375,7 @@ local function frame(dt: number)
 	local root, hum = myRoot()
 	local isPlaying = playing()
 	if heroOutline then
-		heroOutline.Enabled = isPlaying and CameraRig.mode() == "top"
+		heroOutline.Enabled = isPlaying and (CameraRig.mode() == "top" or CameraRig.chase())
 	end
 	local choosing = Menus.offerVisible()
 	-- the shooting range on the base drives the gun while the hunter stands on its mark (DD-055)
@@ -2386,6 +2391,7 @@ local function frame(dt: number)
 	local fx, fz = CameraRig.forward()
 	if root then
 		local range = if me then Defs.Weapons[me.weapon].range else 60
+		Controls.weapon = if me then me.weapon else Menus.selectedWeapon() -- (DD-103: each gun picks its target)
 		Controls.update(root.Position, (isPlaying and not choosing) or ranging, range, immersive, fx, fz)
 	else
 		Controls.update(Vector3.zero, false, 60)
@@ -2525,7 +2531,14 @@ local function frame(dt: number)
 		if revealCf then
 			cam.CFrame = revealCf
 		end
-		if not cameraHinted and run.op == "O01" and run.phase == "ACTIVE" and (run.t or 0) > 18 and isPlaying then
+		if
+			not cameraHinted
+			and not CameraRig.chase() -- (DD-103: the simple fight has one view)
+			and run.op == "O01"
+			and run.phase == "ACTIVE"
+			and (run.t or 0) > 18
+			and isPlaying
+		then
 			local prof = Menus.profile()
 			if prof and ((prof.winsByOp or {}).O01 or 0) == 0 then
 				cameraHinted = true

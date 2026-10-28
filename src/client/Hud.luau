@@ -1223,7 +1223,10 @@ function Hud.update(run, me, extra, dt: number)
 		ui.howTo.Visible = howTo
 		if howTo then
 			ui.howToText.Text = if touch
-				then (if Settings.autoAim
+				then (if Settings.simpleCombat
+					then "Беги пальцем — герой стреляет сам"
+					elseif
+						Settings.autoAim
 					then "Левый палец — бег   ·   оружие стреляет само"
 					else "Левый палец — бег   ·   правый — огонь")
 				elseif
@@ -1278,7 +1281,8 @@ function Hud.update(run, me, extra, dt: number)
 	end
 	-- Reticle
 	-- DD-098: with the phone's auto-aim the ring under the target shows where the gun points, not a cross
-	ui.reticle.Visible = extra.showReticle and not (extra.device == "touch" and Settings.autoAim)
+	ui.reticle.Visible = extra.showReticle
+		and not (extra.device == "touch" and (Settings.autoAim or Settings.simpleCombat))
 	if extra.cursor then
 		ui.reticle.Position = UDim2.fromOffset(extra.cursor.X, extra.cursor.Y)
 	end

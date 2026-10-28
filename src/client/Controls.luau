@@ -41,6 +41,7 @@ local touchLayoutSize = Vector2.zero
 local autoId = nil -- the enemy the touch auto-aim holds
 local marker = nil -- the ring under it
 local lastRoot = nil -- the hero's position last frame (his run turns the third-person camera)
+local padSimple = nil -- the aim pad's look last laid out (DD-103: smaller and quieter in the simple fight)
 local TURN = 16 -- radians per second the auto-aim swings the gun (quick, but a visible turn, not a snap)
 
 local function turnToward(ax: number, az: number, tx: number, tz: number, dt: number): (number, number)
@@ -77,8 +78,14 @@ end
 
 -- The touch auto-aim: a target in range (in third person only one in front or close by), the gun
 -- turned toward it. Returns the new aim and whether there is something to shoot.
+-- DD-103: in the simple fight each gun picks its own kind of target (EnemyView.autoTargetFor).
 local function autoAim(rootPos: Vector3, ax: number, az: number, range: number, front: boolean, dt: number)
-	local id, tx, tz = EnemyView.autoTarget(rootPos.X, rootPos.Z, range, ax, az, autoId)
+	local id, tx, tz
+	if Settings.simpleCombat and Controls.weapon then
+		id, tx, tz = EnemyView.autoTargetFor(Controls.weapon, rootPos.X, rootPos.Z, range, ax, az, autoId)
+	else
+		id, tx, tz = EnemyView.autoTarget(rootPos.X, rootPos.Z, range, ax, az, autoId)
+	end
 	if id and front then
 		local cx, cz = tx - rootPos.X, tz - rootPos.Z
 		local d = math.sqrt(cx * cx + cz * cz)
@@ -109,9 +116,11 @@ local function layoutTouch()
 	end
 	touchLayoutSize = size
 	local k = math.clamp(size.Y / 600, 0.6, 1) -- (buttons never go under 44 points, below)
+	local p = if padSimple then 150 else 200
 	pad.Position = UDim2.new(1, -150 * k, 1, -150 * k)
-	pad.Size = UDim2.fromOffset(200 * k, 200 * k)
-	knob.Size = UDim2.fromOffset(74 * k, 74 * k)
+	pad.Size = UDim2.fromOffset(p * k, p * k)
+	knob.Size = UDim2.fromOffset(p * 0.37 * k, p * 0.37 * k)
+	pad.BackgroundTransparency = if padSimple then 0.75 else 0.6
 	for _, b in buttons do
 		local p = b.position
 		b.button.Position = UDim2.new(p.X.Scale, p.X.Offset * k, p.Y.Scale, p.Y.Offset * k)
@@ -365,8 +374,15 @@ function Controls.update(
 		Controls.device = "touch" -- Studio checks: the phone layout without the device emulator
 	end
 	local device = Controls.device
+	local simple = device == "touch" and Settings.simpleCombat == true
 	if device == "touch" then
+		if padSimple ~= simple then
+			-- DD-103: in the simple fight the pad is only for aiming by hand now and then: smaller
+			padSimple = simple
+			touchLayoutSize = Vector2.zero
+		end
 		layoutTouch()
+		buttons.view.button.Visible = not simple -- the chase camera is the simple fight's only view
 	end
 	gui.Enabled = Controls.enabled and device == "touch"
 	UserInputService.MouseIconEnabled = not Controls.enabled or (device ~= "pc") or false
@@ -374,7 +390,7 @@ function Controls.update(
 		UserInputService.MouseIconEnabled = false
 	end
 	Controls.look = nil
-	local auto = device == "touch" and Settings.autoAim
+	local auto = device == "touch" and (Settings.autoAim or simple)
 	if not Controls.enabled or not auto then
 		showMarker(nil)
 	end

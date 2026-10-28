@@ -47,10 +47,29 @@ local function distanceFor(size: Vector2): number
 	return if phone then dist * 0.86 else dist
 end
 
+-- DD-103: a phone's simple fight replaces third person with a still chase camera (see Settings).
+local function chaseOn(m: string): boolean
+	return m == "third" and Settings.touch and Settings.simpleCombat == true
+end
+
 -- Parameter targets per view. yawMix: 0 = fixed north (top), 1 = player yaw.
 local function target(m: string)
 	local cam = workspace.CurrentCamera
-	if m == "third" and Settings.touch then
+	if chaseOn(m) then
+		-- high behind the hero, half the top view's distance: the swarm is seen all round him, he is big
+		-- enough to read, and nothing turns it (the yaw stays where the fight began)
+		return {
+			dist = 32,
+			pitch = math.rad(56),
+			height = 2,
+			shoulder = 0,
+			fov = 62,
+			lead = 0,
+			stiff = 10,
+			yawMix = 1,
+			look = 1,
+		}
+	elseif m == "third" and Settings.touch then
 		-- DD-098: a phone's third person stands higher and further back with the hero in the middle: the
 		-- auto-aim picks targets all round him, and the thumb that runs has to see the swarm coming
 		return {
@@ -104,6 +123,36 @@ end
 
 local KEYS = { "dist", "pitch", "height", "shoulder", "fov", "lead", "stiff", "yawMix", "look" }
 
+-- DD-103: what stands between the chase camera and the hero turns see-through (locally).
+local faded: { [BasePart]: boolean } = {}
+local function fadeOccluders(from: Vector3?, to: Vector3)
+	local now = {}
+	if from then
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = rayParams.FilterDescendantsInstances
+		local origin, goal = from, to
+		for _ = 1, 4 do
+			local hit = workspace:Raycast(origin, goal - origin, params)
+			if not hit or not hit.Instance:IsA("BasePart") then
+				break
+			end
+			now[hit.Instance] = true
+			origin = hit.Position + (goal - origin).Unit * 0.2
+		end
+	end
+	for part in faded do
+		if not now[part] then
+			part.LocalTransparencyModifier = 0
+			faded[part] = nil
+		end
+	end
+	for part in now do
+		part.LocalTransparencyModifier = 0.7
+		faded[part] = true
+	end
+end
+
 local function ease(t: number): number
 	-- easeInOutSine: gentle start/stop with a low peak speed (π/2× average) — reads as a dolly move.
 	return -(math.cos(math.pi * t) - 1) / 2
@@ -124,7 +173,12 @@ end
 
 -- Immersive views use mouse-look / stick-look for aiming.
 function CameraRig.immersive(): boolean
-	return mode ~= "top"
+	return mode ~= "top" and not chaseOn(mode)
+end
+
+-- DD-103: the phone's still chase camera is on.
+function CameraRig.chase(): boolean
+	return chaseOn(mode)
 end
 
 -- Switch to a view; aimX/aimZ seeds the yaw so the camera swings in behind where you face.
@@ -150,6 +204,16 @@ function CameraRig.setMode(m: string, aimX: number?, aimZ: number?)
 	mode = m
 	transT = 0
 end
+
+-- DD-103: switching the simple fight on or off mid-run flies the camera over like a change of view
+Settings.onChanged(function(key)
+	if key == "simpleCombat" and current then
+		fromP = table.clone(current)
+		fromP.yaw = current.yaw
+		transitionTime = 1
+		transT = 0
+	end
+end)
 
 function CameraRig.cycle(aimX: number?, aimZ: number?): string
 	local i = table.find(CameraRig.Modes, mode) or 1
@@ -282,6 +346,7 @@ function CameraRig.update(
 		end
 		follow = nil
 		current = nil
+		fadeOccluders(nil, Vector3.zero)
 		return
 	end
 
@@ -349,8 +414,10 @@ function CameraRig.update(
 	right = -right
 	local camPos = pivot - forward * dist + right * p.shoulder + push * (1 - p.look * 0.7)
 
-	-- Keep the shoulder camera out of walls.
-	if dist > 1 and p.look > 0.5 then
+	-- Keep the shoulder camera out of walls (the chase camera looks over them and fades what hides the hero).
+	local chase = chaseOn(mode) and transT >= 1
+	fadeOccluders(if chase then camPos else nil, pivot)
+	if dist > 1 and p.look > 0.5 and not chase then
 		local hit = workspace:Raycast(pivot, camPos - pivot, rayParams)
 		if hit then
 			camPos = hit.Position + (pivot - camPos).Unit * 0.6
@@ -403,9 +470,9 @@ end
 
 -- Per-frame look input for immersive views (mouse lock handled here).
 function CameraRig.processInput(dt: number, device: string, active: boolean, stick: Vector2?)
-	local wantLock = active and mode ~= "top" and device == "pc"
+	local wantLock = active and CameraRig.immersive() and device == "pc"
 	UserInputService.MouseBehavior = if wantLock then Enum.MouseBehavior.LockCenter else Enum.MouseBehavior.Default
-	if not active or mode == "top" then
+	if not active or not CameraRig.immersive() then
 		return
 	end
 	if device == "pc" then
