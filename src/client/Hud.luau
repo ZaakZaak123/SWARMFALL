@@ -988,10 +988,12 @@ end
 
 -- A streak milestone (DD-084): the word big in the middle, under the hero.
 function Hud.milestone(word: string, n: number, color: Color3)
-	local phone = Theme.phone() -- DD-107: a phone gets it smaller (it still marks the streak)
-	ui.burst.Text = string.format('%s  <font size="%d">×%d</font>', word, if phone then 32 else 46, n)
+	if Theme.phone() then
+		return -- DD-108: the streak counter in the corner already says it; no word over the hero
+	end
+	ui.burst.Text = string.format('%s  <font size="46">×%d</font>', word, n)
 	ui.burst.TextColor3 = color
-	ui.burst.TextSize = if phone then 28 else 42
+	ui.burst.TextSize = 42
 	ui.burst.TextTransparency = 0
 	ui.burst.TextStrokeTransparency = 0.2
 	ui.burstScale.Scale = 1.9

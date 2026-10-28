@@ -2574,10 +2574,12 @@ local function buildResults()
 		ZIndex = 23,
 		Parent = ui.resMore,
 	})
-	ui.resMoreArrow = label("▾", {
-		Size = UDim2.fromOffset(14, 40),
+	-- (the font has no ▾: a › turned down)
+	ui.resMoreArrow = label("›", {
+		Size = UDim2.fromOffset(16, 40),
+		Rotation = 90,
 		FontFace = F.bodyBold,
-		TextSize = 16,
+		TextSize = 22,
 		TextColor3 = C.lime,
 		LayoutOrder = 3,
 		ZIndex = 23,
@@ -2590,6 +2592,7 @@ local function buildResults()
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(660, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 0.03,
 		CornerRadius = 20,
 		Visible = false,
 		ZIndex = 30,
@@ -2672,7 +2675,7 @@ local function buildResults()
 	local function setOpen(open: boolean)
 		ui.resStatsPanel.Visible = open
 		closer.Visible = open
-		ui.resMoreArrow.Text = if open then "▴" else "▾"
+		ui.resMoreArrow.Rotation = if open then -90 else 90
 		if open then
 			local k = ui.resScale.Scale
 			ui.resStatsScale.Scale = k * 0.9
@@ -2758,7 +2761,7 @@ local function layoutResults(phone: boolean, camp: boolean)
 		at(ui.resButton, rx, 170, bw, 66)
 		at(ui.resCamp, rx + bw + 10, 170, rwid - bw - 10, 66)
 		at(ui.resVotes, rx, 244, rwid, 18)
-		ui.resStatsPanel.Size = UDim2.fromOffset(820, 0)
+		ui.resStatsPanel.Size = UDim2.fromOffset(680, 0)
 	else
 		ui.resTitle.TextSize = 64
 		at(ui.resTitle, 0, 0, size.X, 70)
