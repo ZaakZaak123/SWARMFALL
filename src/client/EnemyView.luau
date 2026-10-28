@@ -7,6 +7,7 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
+local AutoTarget = require(Shared:WaitForChild("AutoTarget"))
 local Codec = require(Shared:WaitForChild("Codec"))
 local Settings = require(script.Parent.Settings)
 local Fx = require(script.Parent.Fx)
@@ -565,13 +566,9 @@ function EnemyView.autoTarget(ox: number, oz: number, range: number, fx: number,
 	return bestId, bx, bz
 end
 
--- DD-103: the simple phone fight lets each gun choose its own kind of target.
---   rifle, beam — the nearest (autoTarget);
---   shotgun     — the nearest thick knot: an enemy with others in the 13° cone behind it counts as closer;
---   rail        — the longest line: an enemy with others lined up behind it counts as closer (it pierces).
--- Only the CANDIDATES nearest are weighed (each against every enemy), so a full swarm stays cheap.
-local CANDIDATES = 12
-local KNOT_COS = math.cos(math.rad(13))
+-- DD-103: the simple phone fight lets each gun choose its own kind of target (Shared.AutoTarget); the
+-- rest take the nearest.
+local lastPick = { id = nil :: number?, t = 0 }
 function EnemyView.autoTargetFor(
 	weaponId: string,
 	ox: number,
@@ -583,55 +580,18 @@ function EnemyView.autoTargetFor(
 )
 	local def = Defs.Weapons[weaponId]
 	local kind = def and def.kind
-	if kind ~= "shotgun" and kind ~= "rail" then
+	if not AutoTarget.uses(kind) then
 		return EnemyView.autoTarget(ox, oz, range, fx, fz, keepId)
 	end
-	local near = {}
-	for id, rec in records do
-		local cx, cz = rec.dx - ox, rec.dz - oz
-		local d = math.sqrt(cx * cx + cz * cz)
-		if d < range and d > 0.1 then
-			table.insert(near, { id = id, rec = rec, d = d, ux = cx / d, uz = cz / d })
-		end
+	-- the knot/line weighing is ~1 ms over a full swarm: about eight times a second, not every frame
+	local now = os.clock()
+	local held = keepId and records[keepId]
+	if held and keepId == lastPick.id and now - lastPick.t < 0.12 then
+		return keepId, held.dx, held.dz
 	end
-	if #near == 0 then
-		return nil
-	end
-	table.sort(near, function(a, b)
-		return a.d < b.d
-	end)
-	local best, bestE, keepScore = math.huge, nil, math.huge
-	for i = 1, math.min(CANDIDATES, #near) do
-		local e = near[i]
-		local count = 0
-		for _, o in near do
-			if o ~= e and o.d > e.d * 0.6 then
-				if kind == "shotgun" then
-					if o.ux * e.ux + o.uz * e.uz > KNOT_COS then
-						count += 1
-					end
-				else
-					local along = (o.rec.dx - ox) * e.ux + (o.rec.dz - oz) * e.uz
-					local perp = math.abs((o.rec.dx - ox) * e.uz - (o.rec.dz - oz) * e.ux)
-					if along > 0 and perp < o.rec.radius + 0.45 then
-						count += 1
-					end
-				end
-			end
-		end
-		local score = e.d / (1 + count * (if kind == "rail" then 0.8 else 0.5))
-		if e.id == keepId then
-			keepScore = score
-		end
-		if score < best then
-			best, bestE = score, e
-		end
-	end
-	if keepId and keepScore < math.huge and best > keepScore * 0.65 then
-		local rec = records[keepId]
-		return keepId, rec.dx, rec.dz
-	end
-	return bestE.id, bestE.rec.dx, bestE.rec.dz
+	local id, x, z = AutoTarget.pick(kind, records, ox, oz, range, keepId)
+	lastPick.id, lastPick.t = id, now
+	return id, x, z
 end
 
 -- Gait radians per stud travelled, per enemy kind (small skitterers step fast, giants slow).

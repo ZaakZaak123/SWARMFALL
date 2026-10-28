@@ -1908,18 +1908,21 @@ function Base.refresh()
 		elseif op then "ВЫЛАЗКА " .. op.index .. " · " .. op.name
 		else ""
 	ui.playLabel.Text = if amReady then "ОТМЕНА" else "В БОЙ"
-	ui.playSub.Text = if amReady then "ждём отряд" else modeName
+	-- (the text as written, with its ◆: Xenite.inline swaps the glyph out of the label, the phone's copy
+	-- needs it to place its own)
+	local playSub = if amReady then "ждём отряд" else modeName
 	-- DD-075: until the first defence is done the big button is the next step itself, not another sortie
 	if not amReady and goal and not visitHome then
 		if goal.key == "sting" and goal.station == "build" then
 			ui.playLabel.Text = "СОБРАТЬ"
-			ui.playSub.Text = "ТУРЕЛЬ ДЛЯ БУРА · ◆ " .. Meta.Structures.STING.cost[1]
+			playSub = "ТУРЕЛЬ ДЛЯ БУРА · ◆ " .. Meta.Structures.STING.cost[1]
 		elseif goal.key == "strike" then
-			ui.playSub.Text = "ЗАЩИТИ БУР · ПЕРВЫЙ НАТИСК"
+			playSub = "ЗАЩИТИ БУР · ПЕРВЫЙ НАТИСК"
 		end
 	end
 	ui.play.BackgroundColor3 = if amReady then C.ink else C.lime
 	ui.playLabel.TextColor3 = if amReady then C.text else C.ink
+	ui.playSub.Text = playSub
 	ui.playSub.TextColor3 = if amReady then C.dim else C.ink
 	Icons.recolor(ui.playIcon, if amReady then C.text else C.ink)
 	local cd = lobby and lobby.countdown
@@ -1943,7 +1946,7 @@ function Base.refresh()
 		xenite = profile.scrap or 0,
 		showXenite = ui.xenite.Visible,
 		harvest = harvest,
-		play = { label = ui.playLabel.Text, sub = ui.playSub.Text, ready = amReady },
+		play = { label = ui.playLabel.Text, sub = playSub, ready = amReady },
 		status = ui.status.Text,
 		statusColor = ui.status.TextColor3,
 		hold = { visible = ui.hold.Visible, label = ui.holdLabel.Text },

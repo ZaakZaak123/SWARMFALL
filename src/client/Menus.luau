@@ -1404,7 +1404,9 @@ local function buildSettings()
 		},
 		-- DD-098: on a phone the row is the auto-aim (aim and fire at the nearest enemy by itself)
 		{
-			if Settings.touch then "Автоприцел и огонь" else "Помощь в прицеливании",
+			if Settings.touch
+				then "Автоприцел из-за плеча"
+				else "Помощь в прицеливании", -- (DD-103: the simple fight aims itself)
 			"crosshair",
 			function()
 				local on = if Settings.touch then Settings.autoAim else Settings.aimAssist
