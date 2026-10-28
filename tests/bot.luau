@@ -4,6 +4,7 @@
 --   opts.anchor  {x, z} the bot orbits (default reactor/centre); far away = "does not defend"
 --   opts.style   "CROWD" | "LINE" | "CONTROL": draft cards of that build style (DD-017)
 --   opts.loadout { core, adapter } module ids for every bot (DD-112)
+--   opts.evoOpen true: the gun's evolution is opened in the armory (DD-112 stage 3)
 
 local H = require("./harness")
 
@@ -25,6 +26,22 @@ Bot.ChapterBuild = {
 	O07 = { core = "MOD_ARC_RIFLE_A2", adapter = "MOD_ARC_RIFLE_B2" },
 	CA01 = { core = "MOD_ARC_RIFLE_A2", adapter = "MOD_ARC_RIFLE_B2" },
 }
+
+-- The same shape for any gun (branch A in the core, B in the adapter): what a player who switched to it
+-- can have by that sortie. Bot.buildFor("W_SCATTERGUN", "O05") -> { core = A2, adapter = B1 }.
+function Bot.buildFor(weapon: string, op: string, bare: boolean?)
+	local rifle = Bot.ChapterBuild[op]
+	local tag = string.sub(weapon, 3)
+	if bare then
+		return { core = "MOD_" .. tag .. "_A1" }
+	elseif not rifle then
+		return nil
+	end
+	local function swap(id: string?): string?
+		return if id then (string.gsub(id, "ARC_RIFLE", tag)) else nil
+	end
+	return { core = swap(rifle.core), adapter = swap(rifle.adapter) }
+end
 
 local function fmt(t: number): string
 	return string.format("%d:%02d", t // 60, math.floor(t % 60))
@@ -52,6 +69,7 @@ function Bot.run(
 			s01 = (opts or {}).s01,
 			firstHunt = (opts or {}).firstHunt,
 			loadout = (opts or {}).loadout, -- DD-112: { core = moduleId?, adapter = moduleId? }
+			evoOpen = (opts or {}).evoOpen, -- DD-112 stage 3: the gun's evolution is opened
 		})
 	end
 	local w = World.new({
@@ -133,8 +151,8 @@ function Bot.run(
 						milestones.firstChoice = w.t
 					end
 				end
-				if p.canEvolve then
-					assert(w:evolve(p.id), "evolve rejected")
+				-- DD-112 stage 3: an opened evolution fires by itself (World:tick)
+				if p.evolved and not milestones.evolved then
 					milestones.evolved = w.t
 				end
 				if w.paused == "S01" and w:gravihammer(p.id) then

@@ -1419,6 +1419,7 @@ local function buildHud(playerGui: PlayerGui)
 		LayoutOrder = 2,
 		Parent = ui.xenite,
 	})
+	ui.alloy, ui.alloyAmount = Xenite.alloy(ui.xenite, 40, 24, 18)
 	ui.invite = Theme.button("ПОЗВАТЬ ДРУГА", {
 		Name = "Invite",
 		AnchorPoint = Vector2.new(1, 0),
@@ -1873,6 +1874,8 @@ function Base.refresh()
 	end
 	ui.xeniteAmount.Text = Theme.commas(profile.scrap or 0)
 	ui.xenite.Visible = (profile.runs or 0) > 0 or (profile.scrap or 0) > 0
+	ui.alloy.Visible = (profile.alloy or 0) > 0
+	ui.alloyAmount.Text = Theme.commas(profile.alloy or 0)
 	local harvest = profile.outpost and profile.outpost.harvest or 0
 	ui.harvest.Visible = harvest > 0
 	ui.harvest.Label.Text = "СОБРАТЬ  +" .. harvest
@@ -1946,6 +1949,7 @@ function Base.refresh()
 		title = ui.owner.Text,
 		goal = phoneGoal,
 		xenite = profile.scrap or 0,
+		alloy = profile.alloy or 0,
 		showXenite = ui.xenite.Visible,
 		harvest = harvest,
 		play = { label = ui.playLabel.Text, sub = playSub, ready = amReady },

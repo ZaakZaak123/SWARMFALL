@@ -293,6 +293,7 @@ local function runInfo(player: Player, weapon: string)
 		s01 = data ~= nil and data.s01 == true,
 		firstHunt = data ~= nil and ((data.wins_by_op or {}).O01 or 0) == 0,
 		form = Profile.equippedForm(player, weapon),
+		evoOpen = data ~= nil and data.evoOpen[weapon] == true, -- DD-112 stage 3
 		tech = if data then table.clone(data.tech) else {},
 		loadout = Profile.loadoutFor(player, weapon),
 		s01Spec = Profile.s01Spec(player),
@@ -1367,6 +1368,10 @@ function handlers.buyTech(player: Player, id)
 	return lobbyOnly() and type(id) == "string" and Profile.buyTech(player, id)
 end
 
+function handlers.openEvolution(player: Player, weaponId)
+	return lobbyOnly() and type(weaponId) == "string" and Profile.openEvolution(player, weaponId)
+end
+
 function handlers.craftForm(player: Player, evoId)
 	return lobbyOnly() and type(evoId) == "string" and Profile.craftForm(player, evoId)
 end
@@ -1543,15 +1548,17 @@ if RunService:IsStudio() then
 		end
 		d.ops.O05 = math.max(d.ops.O05 or 0, 1)
 		d.scrap += 6000
-		-- DD-112: the won sorties' guns with their main modules, some сплав and rifle mastery (M4)
+		-- DD-112: the won sorties' guns with their main modules, some сплав, rifle mastery (M6) and the
+		-- storm core (the rifle's evolution can be opened)
 		for wid, opId in Defs.Blueprints do
 			if d.wins_by_op[opId] then
 				Profile._grantWeapon(d, wid)
 			end
 		end
 		Profile._grantWeapon(d, "W_ARC_RIFLE")
-		d.alloy += 60
-		d.mastery.W_ARC_RIFLE = math.max(d.mastery.W_ARC_RIFLE or 0, Defs.masteryNeed("W_ARC_RIFLE", 4) + 40)
+		d.alloy += 100
+		d.mastery.W_ARC_RIFLE = math.max(d.mastery.W_ARC_RIFLE or 0, Defs.masteryNeed("W_ARC_RIFLE", 6) + 40)
+		d.components.CMP_STORM_CORE = true
 		for _, k in Meta.SpeciesOrder do
 			d.research[k] = (d.research[k] or 0) + 400
 		end

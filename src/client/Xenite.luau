@@ -28,6 +28,56 @@ function Xenite.icon(size: number, props)
 	return i
 end
 
+-- DD-112: сплав rides in the xenite pill (a thin divider, the orange ingot, the number) so the base and the
+-- launch pad show both purses in one place. Hidden until the player has some: set `.Visible` with the
+-- amount. The pill must lay its children out with a horizontal UIListLayout.
+function Xenite.alloy(pill: GuiObject, height: number, iconSize: number, textSize: number): (Frame, TextLabel)
+	local Theme = require(script.Parent.Theme)
+	local Icons = require(script.Parent.Icons)
+	local seg = Instance.new("Frame")
+	seg.Name = "Alloy"
+	seg.BackgroundTransparency = 1
+	seg.Size = UDim2.fromOffset(0, height)
+	seg.AutomaticSize = Enum.AutomaticSize.X
+	seg.LayoutOrder = 10
+	seg.Visible = false
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, 6)
+	list.Parent = seg
+	local bar = Instance.new("Frame")
+	bar.BorderSizePixel = 0
+	bar.BackgroundColor3 = Theme.C.white
+	bar.BackgroundTransparency = 0.75
+	bar.Size = UDim2.fromOffset(2, math.floor(height * 0.5))
+	bar.LayoutOrder = 1
+	bar.Parent = seg
+	local ingot = Icons.new("core", iconSize, Theme.C.orange, nil, pill.ZIndex)
+	ingot.LayoutOrder = 2
+	ingot.Parent = seg
+	local amount = Instance.new("TextLabel")
+	amount.Name = "Amount"
+	amount.BackgroundTransparency = 1
+	amount.AutomaticSize = Enum.AutomaticSize.X
+	amount.Size = UDim2.fromOffset(0, height)
+	amount.FontFace = Theme.F.numHeavy
+	amount.TextSize = textSize
+	amount.TextColor3 = Theme.C.text
+	amount.Text = "0"
+	amount.LayoutOrder = 3
+	amount.Parent = seg
+	for _, d in seg:GetDescendants() do
+		if d:IsA("GuiObject") then
+			d.ZIndex = pill.ZIndex
+		end
+	end
+	seg.ZIndex = pill.ZIndex
+	seg.Parent = pill
+	return seg, amount
+end
+
 -- «◆» in a label's text becomes the emblem: the glyph is swapped for a gap and the image laid over it.
 function Xenite.inline(label: TextLabel)
 	if label:GetAttribute("XeniteInline") then

@@ -56,6 +56,7 @@ local function newPlayer(map, info, index: number, count: number)
 			else nil,
 		hasCore = false,
 		canEvolve = false,
+		evoOpen = info.evoOpen == true, -- DD-112 stage 3: the gun's evolution is opened in the armory
 		ammo = weapon.magazine,
 		reloadT = 0,
 		reloadDur = weapon.reload,
@@ -963,19 +964,23 @@ function World:kill(e, p, depth: number, cause: number)
 	end
 end
 
-function World:grantCores(x: number, z: number)
+-- DD-112 stage 3: the core for every hero whose gun can evolve (x, z: where it came from; nil — at the
+-- hero, the clock's core). With the run's level reached the gun evolves at once.
+function World:grantCores(x: number?, z: number?)
 	for _, p in self.playerList do
-		if not p.hasCore and p.alive then
+		if not p.hasCore and p.alive and p.evoOpen and not p.evolved then
 			p.hasCore = true
 			local evo = Defs.Evolutions[p.weaponDef.evolution]
-			self:emit(E.CORE, x, z, p.id)
-			self:banner(
-				evo.coreName .. " ПОЛУЧЕНО",
-				"Собери оба ключа, чтобы получить " .. evo.name,
-				C.GOLD,
-				3.5,
-				"core"
-			)
+			self:emit(E.CORE, x or p.x, z or p.z, p.id)
+			if self.level < Defs.Evolve.Level then
+				self:banner(
+					evo.coreName .. " ПОЛУЧЕНО",
+					string.format("%s — на %d-м уровне боя", evo.name, Defs.Evolve.Level),
+					C.GOLD,
+					3,
+					"core"
+				)
+			end
 			Combat.checkEvolve(self, p)
 		end
 	end
@@ -1069,6 +1074,7 @@ function World:gainXp(amount: number)
 		for _, p in self.playerList do
 			if p.alive then
 				p.pending += 1
+				Combat.checkEvolve(self, p)
 			end
 		end
 	end
@@ -1112,7 +1118,7 @@ function World:banish(id: number, offerId: number, index: number): boolean
 		return false
 	end
 	local choice = p.offer.choices[index]
-	if not choice or not Defs.Upgrades[choice] or (p.ranks[choice] or 0) > 0 or Combat.isKey(p, choice) then
+	if not choice or not Defs.Upgrades[choice] or (p.ranks[choice] or 0) > 0 then
 		return false
 	end
 	p.banishes -= 1
@@ -1177,7 +1183,7 @@ function World:evolve(id: number): boolean
 	Combat.blast(self, p, p.x, p.z, 20, 90, C.GOLD, 9)
 	if self.solo then
 		self.paused = "EVOLVE"
-		self.pauseUntil = 1.5
+		self.pauseUntil = Defs.Evolve.Pause
 		self.pauseClock = 0
 	end
 	return true
@@ -1302,9 +1308,13 @@ function World:legacyElite()
 	self.legacyElites = (self.legacyElites or 0) + 1
 	local e = self:spawnAtBreach(self.map.elite, self.map.spawnOrder, 1.6)
 	if e then
+		local core = false -- someone's evolution still waits for its core
+		for _, p in self.playerList do
+			core = core or (self.op.runEvolution and p.evoOpen and not p.hasCore and not p.evolved)
+		end
 		self:banner(
 			if self.legacyElites == 1 then "ЭЛИТА НА ПОДХОДЕ" else "ВТОРАЯ ЭЛИТА",
-			if self.op.runEvolution
+			if core
 				then "Убей элиту — она несёт ядро эволюции"
 				else "Опасная цель — сосредоточь огонь",
 			C.GOLD,
@@ -1797,6 +1807,23 @@ function World:tick(dt: number)
 	self:acidRain(dt)
 	if not self.solo then
 		self:updateRevives(dt)
+	end
+	-- DD-112 stage 3: the evolution's core from the wounded boss or the clock, and the evolution itself
+	if self.op.runEvolution then
+		local b = self.boss
+		if not self.bossCored and b and b.alive and b.hp <= b.maxHp * Defs.Evolve.BossCoreHp then
+			self.bossCored = true
+			self:grantCores(b.x, b.z)
+		end
+		if not self.clockCored and self.t >= Defs.Evolve.CoreAt then
+			self.clockCored = true
+			self:grantCores(nil, nil)
+		end
+		for _, p in self.playerList do
+			if p.canEvolve and not p.evolved and not self.paused then
+				self:evolve(p.id)
+			end
+		end
 	end
 	self:updateHazards()
 	self:updateOrbs()

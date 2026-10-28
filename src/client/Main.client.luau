@@ -2625,6 +2625,14 @@ local function frame(dt: number)
 				local rig = Gear.ensure(char, p.weapon, p.evolved ~= "", p.id == myId)
 				if rig then
 					Gear.update(rig, p.s01Casting, p.shield, not p.alive)
+					if p.id == myId then
+						-- DD-112 stage 3: the gun shows its mastery step (the profile's kills before this fight)
+						local prof = Menus.profile()
+						local tier =
+							Defs.masteryTier(Defs.masteryRank(p.weapon, prof and (prof.mastery or {})[p.weapon] or 0))
+						Gear.setMastery(rig, tier)
+						Shots.setMastery(tier)
+					end
 					local beamKind = Defs.Weapons[p.weapon].kind == "beam"
 					Rig.setState(
 						char,
@@ -2909,7 +2917,7 @@ local function frame(dt: number)
 			if charge < 1 then string.format("%d%%", math.floor(charge * 100)) else "",
 			charge >= 1 and not me.superOn
 		)
-		Controls.setButton("evolve", me.canEvolve, 0, "", true)
+		Controls.setButton("evolve", false, 0, "", true) -- DD-112 stage 3: the evolution fires by itself
 		-- DD-104: the simple fight reloads by itself in a lull (below): no button for it
 		Controls.setButton("reload", Defs.Weapons[me.weapon].kind ~= "beam" and not CameraRig.chase(), 0, "", false)
 		if CameraRig.chase() and isPlaying then

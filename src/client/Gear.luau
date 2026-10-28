@@ -102,6 +102,30 @@ function Gear.ensure(character: Model, weapon: string, evolved: boolean, isLocal
 	return rig
 end
 
+-- DD-112 stage 3: the own gun's barrel glows with its mastery step (Defs.masteryTier).
+function Gear.setMastery(rig, tier: number)
+	if rig.masteryTier == tier then
+		return
+	end
+	rig.masteryTier = tier
+	local light = rig.muzzle:FindFirstChild("MasteryGlow")
+	if tier <= 0 then
+		if light then
+			light:Destroy()
+		end
+		return
+	end
+	if not light then
+		light = Instance.new("PointLight")
+		light.Name = "MasteryGlow"
+		light.Shadows = false
+		light.Parent = rig.muzzle
+	end
+	light.Color = Defs.MasteryTierColor[tier] or rig.accent
+	light.Brightness = 0.6 + 0.35 * tier
+	light.Range = 4 + 1.5 * tier
+end
+
 function Gear.remove(character: Model)
 	local rig = rigs[character]
 	if rig then

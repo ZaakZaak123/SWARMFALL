@@ -21,6 +21,12 @@ function Shots.setHud(h)
 	hud = h
 end
 
+-- DD-112 stage 3: the own gun's mastery step (Defs.masteryTier) — a thicker, brighter tracer and flash.
+local masteryTier = 0
+function Shots.setMastery(tier: number)
+	masteryTier = tier
+end
+
 function Shots.color(weapon: string, evolved: boolean): Color3
 	if evolved then
 		return Defs.Evolutions[Defs.Weapons[weapon].evolution].color
@@ -38,7 +44,12 @@ local function impact(feel, item, dir: Vector3, color: Color3, vk: number)
 		end
 	end
 	if item.wall then
-		Fx.impactWall(item.to, item.normal or -dir, color, if feel.tracer and feel.tracer.style == "rail" then 2 else 0.9)
+		Fx.impactWall(
+			item.to,
+			item.normal or -dir,
+			color,
+			if feel.tracer and feel.tracer.style == "rail" then 2 else 0.9
+		)
 		if feel.impact.wallSound then
 			Audio.at(feel.impact.wallSound, item.to, 0.7)
 		end
@@ -47,9 +58,23 @@ end
 
 -- One trigger pull. character may be nil (fallback origin). items = { {to, hits = {{pos, id}}, wall, normal} }
 -- ammoFrac (local shots) lets the sound tell the player the cell is running dry.
-function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallback: Vector3, items, isLocal: boolean, quiet: boolean?, ammoFrac: number?)
+function Shots.fire(
+	character: Model?,
+	weapon: string,
+	evolved: boolean,
+	fallback: Vector3,
+	items,
+	isLocal: boolean,
+	quiet: boolean?,
+	ammoFrac: number?
+)
 	local feel = Feel.get(weapon, evolved)
 	local color = Shots.color(weapon, evolved)
+	local tier = if isLocal then masteryTier else 0
+	if tier > 0 then
+		color = color:Lerp(Color3.new(1, 1, 1), 0.07 * tier)
+	end
+	local mk = 1 + 0.12 * tier -- tracer width and flash size
 	local mcf = character and Rig.muzzleCFrame(character)
 	local first = items[1]
 	if not mcf then
@@ -63,8 +88,8 @@ function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallbac
 
 	if not quiet then
 		local fl = feel.flash
-		Fx.muzzle(mcf, fl.style, color, fl.size * (0.6 + 0.4 * vk), fl.life)
-		Fx.light(origin, color, fl.light, 0.07)
+		Fx.muzzle(mcf, fl.style, color, fl.size * (0.6 + 0.4 * vk) * mk, fl.life)
+		Fx.light(origin, color, fl.light * (1 + 0.25 * tier), 0.07)
 		if fl.arc and character and not Fx.busy(40) then
 			-- the charge jumps between the emitter electrodes as the bolt leaves
 			local a, b = Rig.prongTips(character)
@@ -130,15 +155,15 @@ function Shots.fire(character: Model?, weapon: string, evolved: boolean, fallbac
 		local delta = to - origin
 		local dir = if delta.Magnitude > 0.01 then delta.Unit else mcf.LookVector
 		if tr.style == "rail" then
-			Fx.rail(origin, to, color, tr.width * (0.7 + 0.3 * vk), tr.stars)
+			Fx.rail(origin, to, color, tr.width * (0.7 + 0.3 * vk) * mk, tr.stars)
 			impact(feel, item, dir, color, vk)
 		elseif tr.style == "lightning" then
-			Fx.lightning(origin, to, color, tr.width * vk, 0.12)
-			Fx.projectile(origin, to, color, tr.width * vk, tr.speed, tr.length, nil)
+			Fx.lightning(origin, to, color, tr.width * vk * mk, 0.12)
+			Fx.projectile(origin, to, color, tr.width * vk * mk, tr.speed, tr.length, nil)
 			impact(feel, item, dir, color, vk)
 		else
 			local speed = tr.speed * (0.9 + math.random() * 0.2)
-			Fx.projectile(origin, to, color, tr.width * vk, speed, tr.length * (0.7 + 0.3 * vk), function()
+			Fx.projectile(origin, to, color, tr.width * vk * mk, speed, tr.length * (0.7 + 0.3 * vk), function()
 				impact(feel, item, dir, color, vk)
 				if tr.fire and math.random() < 0.4 then
 					Fx.emit("ember", to, 1)
@@ -150,7 +175,16 @@ end
 
 -- Continuous beam (owner renders every frame; teammates from BEAM events).
 local beamOn = {}
-function Shots.beam(key: any, character: Model?, weapon: string, evolved: boolean, fallback: Vector3, to: Vector3, hitEnemy: boolean, isLocal: boolean)
+function Shots.beam(
+	key: any,
+	character: Model?,
+	weapon: string,
+	evolved: boolean,
+	fallback: Vector3,
+	to: Vector3,
+	hitEnemy: boolean,
+	isLocal: boolean
+)
 	local feel = Feel.get(weapon, evolved)
 	local color = Shots.color(weapon, evolved)
 	local from = (character and Rig.muzzle(character)) or fallback
@@ -194,7 +228,17 @@ end
 
 -- Replicated shot from a teammate (one event per pellet). Pellets in the same burst share one flash.
 local lastBurst = {}
-function Shots.remote(pid: number, character: Model?, weapon: string, evolved: boolean, ox: number, oz: number, ex: number, ez: number, range: number)
+function Shots.remote(
+	pid: number,
+	character: Model?,
+	weapon: string,
+	evolved: boolean,
+	ox: number,
+	oz: number,
+	ex: number,
+	ez: number,
+	range: number
+)
 	local now = os.clock()
 	local quiet = lastBurst[pid] ~= nil and now - lastBurst[pid] < 0.03
 	if not quiet then

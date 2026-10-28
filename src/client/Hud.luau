@@ -1440,18 +1440,12 @@ function Hud.update(run, me, extra, dt: number)
 			ui.howToText.TextTransparency = k
 			ui.howTo.BackgroundTransparency = 0.15 + k * 0.85
 		end
-		-- Prompt pill (S01 lesson / legacy evolution)
+		-- Prompt pill (the S01 lesson; DD-112 stage 3: the evolution fires by itself, no prompt)
 		-- (on a phone the S01 lesson's pill shows too: one more thing to tap besides the hammer button)
-		ui.evolve.Visible = (me.canEvolve and not touch) or me.s01Tutorial
+		ui.evolve.Visible = me.s01Tutorial == true
 		if me.s01Tutorial then
 			ui.evolveScale.Scale = 1 + math.sin(now * 8) * 0.06
 			ui.evolveText.Text = "ГРОМОБОЙ — УДАРЬ  " .. keyLabel(extra.device, "[Q]", "[Y]")
-		elseif me.canEvolve then
-			ui.evolveScale.Scale = 1 + math.sin(now * 6) * 0.04
-			ui.evolveText.Text = "ЭВОЛЮЦИЯ — "
-				.. Defs.Evolutions[wdef.evolution].name
-				.. "  "
-				.. keyLabel(extra.device, "[F]", "[X]")
 		end
 		-- Kill streak
 		local combo = me.combo or 0

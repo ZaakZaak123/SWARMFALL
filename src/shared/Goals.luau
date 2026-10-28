@@ -6,6 +6,7 @@
 local Defs = require(script.Parent.Defs)
 local Meta = require(script.Parent.Meta)
 local Modules = require(script.Parent.Modules)
+local Evolve = require(script.Parent.Evolve)
 local Ops = require(script.Parent.Ops)
 
 local Goals = {}
@@ -205,16 +206,68 @@ function Goals.next(pub): Goal?
 				best = m
 			end
 		end
+		-- the next tier waits only for сплав: the drill defence pays it (DD-112). From the Broodmother on, where
+		-- the chapters are built for a tier II; before that the story sortie stays the next step.
+		local short = nil
+		if not best and won(pub, "O04") then
+			for _, m in Modules.ByWeapon[fav] or {} do
+				local _, why = Modules.craftable(pub, m, rank)
+				if why == "alloy" and (not short or m.alloy < short.alloy) then
+					short = m
+				end
+			end
+		end
+		if short then
+			local level = pub.outpost and pub.outpost.siege or 1
+			return {
+				key = "alloy_" .. short.id,
+				icon = "shield",
+				title = "СПЛАВ ДЛЯ МОДУЛЯ",
+				text = string.format(
+					"«%s %s» ждёт %d сплава, у тебя %d. Сплав даёт оборона бура: +%d за победу.",
+					short.name,
+					Modules.Roman[short.tier],
+					short.alloy,
+					pub.alloy or 0,
+					Defs.Alloy.siege(level, true)
+				),
+				station = "launch",
+				mode = "siege",
+				weapon = fav,
+				module = short.id,
+			}
+		end
+		-- DD-112 stage 3: the gun's evolution, once it can be opened (after the modules it can take now)
+		local evo = Evolve.of(fav)
+		if not best and evo and Evolve.canOpen(pub, fav) then
+			return {
+				key = "evo_" .. fav,
+				icon = "evolve",
+				title = "ЭВОЛЮЦИЯ: " .. evo.name,
+				text = string.format(
+					"Открой её в оружейной (%d ксенита и %d сплава): в долгом бою «%s» станет «%s».",
+					Defs.Evolve.OpenCost,
+					Defs.Evolve.OpenAlloy,
+					Goals.titleCase(Defs.Weapons[fav].short),
+					Goals.titleCase(evo.name)
+				),
+				station = "armory",
+				weapon = fav,
+			}
+		end
 		if best then
 			return {
 				key = "module_" .. best.id,
 				icon = "gear",
 				title = "НОВЫЙ МОДУЛЬ · " .. Defs.Weapons[fav].short,
 				text = string.format(
-					"«%s»: %s. Хватает ксенита (%d).",
+					if best.alloy > 0
+						then "«%s»: %s. Хватает ксенита (%d) и сплава (%d)."
+						else "«%s»: %s. Хватает ксенита (%d).",
 					best.name,
 					lowerFirst(best.text),
-					best.cost
+					best.cost,
+					best.alloy
 				),
 				station = "armory",
 				weapon = fav,

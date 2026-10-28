@@ -11,6 +11,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Defs = require(Shared:WaitForChild("Defs"))
 local Ops = require(Shared:WaitForChild("Ops"))
 local Modules = require(Shared:WaitForChild("Modules"))
+local Evolve = require(Shared:WaitForChild("Evolve"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 local Meta = require(Shared:WaitForChild("Meta"))
 
@@ -52,6 +53,7 @@ local function defaults()
 		research = {}, -- species -> confirmed squad kills (permanent collection)
 		tech = {}, -- owned technologies
 		forms = {}, -- crafted permanent forms (evolution id -> true)
+		evoOpen = {}, -- DD-112 stage 3: weapon id -> its evolution opened (it fires in the fight)
 		equip = {}, -- weapon id -> equipped form id
 		lineTrial = 0, -- railgun «Пробой линии» qualified shots
 		feats = {}, -- M20 feat counters per weapon: { [weaponId] = { arcKills = n, ... } }
@@ -184,6 +186,13 @@ local function reconcile(data)
 			grantWeapon(data, wid)
 		end
 	end
+	-- DD-112 stage 3: a permanent form made before evolution had to be opened keeps it open
+	for evoId in data.forms do
+		local evo = Defs.Evolutions[evoId]
+		if evo and not evo.m20 then
+			data.evoOpen[evo.weapon] = true
+		end
+	end
 	data.v = VERSION
 	return data
 end
@@ -288,6 +297,7 @@ function Profile.public(player: Player)
 		research = d.research,
 		tech = d.tech,
 		forms = d.forms,
+		evoOpen = d.evoOpen,
 		equip = d.equip,
 		modules = d.modules,
 		loadout = d.loadout,
@@ -520,13 +530,29 @@ function Profile.formStatus(player: Player, evoId: string)
 			afford = d.scrap >= evo.cost,
 		}
 	end
+	-- DD-112 stage 3: the base form needs its evolution opened, M10, xenite and сплав (Evolve.canForm)
+	local _, why = Evolve.canForm(d, evo.weapon)
 	return {
 		crafted = d.forms[evoId] == true,
 		owned = d.weapons[evo.weapon] == true,
 		mastery = rank >= Defs.FormMastery,
-		component = d.components[evo.component] == true,
-		afford = d.scrap >= evo.cost,
+		component = d.evoOpen[evo.weapon] == true,
+		afford = why ~= "scrap" and why ~= "alloy",
 	}
+end
+
+-- DD-112 stage 3: open a gun's evolution (its component + M6 + xenite + сплав); it fires in the fight.
+function Profile.openEvolution(player: Player, wid: string): boolean
+	local d = Profile.get(player)
+	if not d or not Evolve.canOpen(d, wid) then
+		return false
+	end
+	d.scrap -= Defs.Evolve.OpenCost
+	d.alloy -= Defs.Evolve.OpenAlloy
+	d.evoOpen[wid] = true
+	mark(player)
+	task.spawn(Profile.save, player)
+	return true
 end
 
 function Profile.craftForm(player: Player, evoId: string): boolean
@@ -536,7 +562,12 @@ function Profile.craftForm(player: Player, evoId: string): boolean
 	end
 	local d = Profile.get(player)
 	local evo = Defs.Evolutions[evoId]
-	d.scrap -= evo.cost
+	if evo.m20 then
+		d.scrap -= evo.cost
+	else
+		d.scrap -= Defs.Evolve.FormCost
+		d.alloy -= Defs.Evolve.FormAlloy
+	end
 	d.forms[evoId] = true
 	d.equip[evo.weapon] = evoId
 	mark(player)

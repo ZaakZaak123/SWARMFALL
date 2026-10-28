@@ -1251,6 +1251,29 @@ Defs.TechOrder = { "TECH_PIERCE_CORE", "TECH_EMERGENCY_CAP" }
 Defs.FirstWinGrant = 180
 Defs.FormMastery = 10 -- M10 opens the permanent form craft
 
+-- DD-112 stage 3: mastery shows on the gun — one step every 4 ranks (M4, M8, M12, M16): a thicker, brighter
+-- tracer, a bigger flash, the barrel's glow (own shots only, a feel, not power).
+function Defs.masteryTier(rank: number): number
+	return math.clamp(rank // 4, 0, 4)
+end
+Defs.MasteryTierColor = { rgb(255, 204, 70), rgb(255, 150, 60), rgb(255, 86, 120), rgb(182, 124, 255) }
+
+-- DD-112 stage 3: evolution is earned. A gun's evolution is opened once in the armory (its component + M6
+-- + xenite + сплав); then from the third sortie on (op.runEvolution) it fires in the fight on two keys:
+-- the run's level and a core — from an elite or a nest, the boss once it is wounded, or the clock. Until
+-- the fight ends the gun is its evolved form. The permanent form (the fight starts evolved) costs more.
+Defs.Evolve = {
+	OpenCost = 300,
+	OpenAlloy = 30,
+	OpenMastery = 6,
+	Level = 5, -- the run's level
+	BossCoreHp = 0.75, -- the boss drops the core below this share of its health
+	CoreAt = 75, -- s: without an elite the core comes with the clock
+	Pause = 0.8, -- s: the solo fight holds still for the transformation
+	FormCost = 1200,
+	FormAlloy = 100,
+}
+
 -- Railgun trial «Пробой линии» (D03 §3): N charged shots that each damage >= 2 normal enemies in one
 -- line. Counted across runs once the railgun is owned; the first completion grants the component.
 Defs.LineTrial = { Shots = 60, MinHits = 2 }

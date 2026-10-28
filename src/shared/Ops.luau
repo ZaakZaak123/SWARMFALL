@@ -257,7 +257,7 @@ Ops.O03 = {
 	goal = "Заряди тесла-вышку",
 	objective = "relay",
 	playerDamageMult = 0.85,
-	runEvolution = false,
+	runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 	relay = { need = 190, radius = 30, hp = 900, primary = 1, backup = 2 },
 	winOnObjective = true,
 	finaleTime = 2.5,
@@ -336,8 +336,8 @@ Ops.O04 = {
 	playerDamageMult = 1.1,
 	enemyHpMult = 1.4,
 	spawnMult = 1.3,
-	runEvolution = false,
-	nests = { need = 2, hp = 1400 },
+	runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
+	nests = { need = 2, hp = 1400 }, -- set again after compress() below: the tuned number is the played one
 	winOnObjective = true,
 	winBanner = {
 		"ГНЁЗДА ВЫЖЖЕНЫ",
@@ -346,8 +346,8 @@ Ops.O04 = {
 	winFx = 6,
 	homeText = "Вернёшься — в лаборатории заведётся свой рой, и откроются вторжения на чужие буры.",
 	finaleTime = 2.5,
-	deadline = 75, -- the build: 0:32–0:58 (bot); bare 0:47–1:45
-	hardLimit = 270,
+	deadline = 85, -- set again after compress() below
+	hardLimit = 145,
 	xpTable = XP_O02,
 	finale = { at = 0, label = "КОРНИ ВЫЖЖЕНЫ", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
 	phases = {
@@ -419,7 +419,7 @@ Ops.O05 = {
 	enemyHpMult = 1.5,
 	playerDamageMult = 0.5,
 	reactor = { hp = 2600, name = "БУР" },
-	runEvolution = false,
+	runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 	deadline = 240,
 	hardLimit = 125, -- 2:05: the build kills her by 1:08–1:35 (bot), bare 1:33–2:06
 	xpTable = XP_O05,
@@ -478,7 +478,7 @@ Ops.O06 = {
 	playerDamageMult = 1.3,
 	enemyHpMult = 1.6,
 	spawnMult = 1.4,
-	runEvolution = false,
+	runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 	nodes = { hp = 2400, count = 2 },
 	winOnObjective = true,
 	winBanner = {
@@ -560,11 +560,11 @@ Ops.O07 = {
 	enemyHpMult = 1.5,
 	playerDamageMult = 0.6,
 	reactor = { hp = 3000, name = "БУР" },
-	runEvolution = false,
+	runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 	deadline = 300,
 	hardLimit = 210, -- 3:30: the build kills it by ~2:30 (bot), bare 1:54–5:49
 	xpTable = XP_O05,
-	homeText = "Его смерть закроет главу — и сердце пустоты сделает из «Рельсотрона» «Копьё пустоты».",
+	homeText = "Его смерть закроет главу — и сердце пустоты сделает из «Разлома» «Копьё пустоты».",
 	phases = {
 		{
 			at = 0,
@@ -615,7 +615,7 @@ Ops.CA01 = {
 	goal = "Защити бур",
 	objective = "acid",
 	reactor = { hp = 1500, name = "БУР" },
-	runEvolution = false,
+	runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 	acid = { hp = 2000, every = 3.4, count = 2 },
 	finaleTime = 50,
 	deadline = 400,
@@ -689,8 +689,12 @@ local function compress(op: OpDef, k: number)
 end
 compress(Ops.O03, 0.7)
 compress(Ops.O04, 0.75)
-Ops.O04.deadline = 420 -- nests are walked to and shot down: keep a margin over the plain ×0.75
-Ops.O04.hardLimit = 420 + Ops.O04.finaleTime + 60
+-- DD-112 (tests/difficulty, on the played op): two nests of 1400 by 1:25. The build burns them by
+-- 0:35–1:14 (bot), the bare rifle by 1:00–1:30 (bot ~5/8). compress() used to scale these back down and a
+-- leftover override reset the deadline to 7:00, so the chapter's tuning never reached the game.
+Ops.O04.nests.hp = 1400
+Ops.O04.deadline = 85
+Ops.O04.hardLimit = 85 + 60
 
 Ops.Order = { "O01", "O02", "O03", "O04", "O05", "O06", "O07", "CA01" }
 
@@ -726,30 +730,24 @@ function Ops.makeSiege(level: number): OpDef
 			w = w,
 		})
 		-- DD-088: a breather is when a neighbour from the grove may join the defence (not after the last wave)
-		table.insert(
-			phases,
-			{
-				at = at + waveLen,
-				label = "ПЕРЕДЫШКА",
-				rate = 0.5,
-				cap = 8,
-				dirs = { "N" },
-				w = { EN_RUNNER = 1 },
-				wave = k,
-				joinable = k < 5,
-			}
-		)
+		table.insert(phases, {
+			at = at + waveLen,
+			label = "ПЕРЕДЫШКА",
+			rate = 0.5,
+			cap = 8,
+			dirs = { "N" },
+			w = { EN_RUNNER = 1 },
+			wave = k,
+			joinable = k < 5,
+		})
 		table.insert(beats, { at = at + 5, type = "assault", count = 5 + 2 * k + math.floor(level / 2) })
 		if k >= 2 then
-			table.insert(
-				beats,
-				{
-					at = at + 24,
-					type = "assault",
-					count = 4 + 2 * k + math.floor(level / 2),
-					kind = if k >= 4 then "EN_STALKER" else nil,
-				}
-			)
+			table.insert(beats, {
+				at = at + 24,
+				type = "assault",
+				count = 4 + 2 * k + math.floor(level / 2),
+				kind = if k >= 4 then "EN_STALKER" else nil,
+			})
 		end
 	end
 	local last = 6 + 4 * (waveLen + calm)
@@ -771,7 +769,7 @@ function Ops.makeSiege(level: number): OpDef
 		eliteGoal = "Убей вожака натиска",
 		eliteHpMult = 0.6 * hpMult,
 		enemyHpMult = hpMult,
-		runEvolution = false,
+		runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 		finaleTime = 20,
 		deadline = last + 90,
 		hardLimit = last + 140,
@@ -862,7 +860,7 @@ function Ops.makeRaid(target): OpDef
 		brief = "Пробейся через турели и рой хозяина и разрушь его бур.",
 		goal = "Разрушь вражеский бур",
 		objective = "core",
-		runEvolution = false,
+		runEvolution = true, -- DD-112 stage 3: an opened evolution fires here
 		hardLimit = 240,
 		phases = {
 			{

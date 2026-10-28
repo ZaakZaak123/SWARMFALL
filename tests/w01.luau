@@ -186,12 +186,21 @@ end
 
 -- Evolution -----------------------------------------------------------------------------------------------
 do
+	-- DD-112 stage 3: opened in the armory, it fires on the run's level and a core (no key cards)
 	local w, p = arena()
-	p.ranks.UPG_CHAIN, p.ranks.UPG_RICOCHET, p.slots = 1, 1, 2
+	w.op = table.clone(w.op)
+	w.op.runEvolution = true
 	p.hasCore = true
-	Combat.recompute(p)
+	w.level = Defs.Evolve.Level
 	Combat.checkEvolve(w, p)
-	check("evolution unlocks with both keys + the core", p.canEvolve == true)
+	check("evolution waits for the armory", p.canEvolve == false)
+	p.evoOpen = true
+	w.level = Defs.Evolve.Level - 1
+	Combat.checkEvolve(w, p)
+	check("evolution waits for the run's level", p.canEvolve == false)
+	w.level = Defs.Evolve.Level
+	Combat.checkEvolve(w, p)
+	check("evolution: opened + the core + the level", p.canEvolve == true)
 	check("evolution accepted", w:evolve(1) == true and p.evolved == "EV_THUNDERLORD")
 	local m = Defs.Evolutions.EV_THUNDERLORD.mods
 	check("ГРОМОВЕРЖЕЦ stats: +2 damage, +15% rate, 60 cell, refilled", p.stats.damage == W.damage + m.damageAdd and near(p.stats.rate, W.rate * m.rateMult, 1e-6) and p.stats.magazine == 60 and p.ammo == 60)

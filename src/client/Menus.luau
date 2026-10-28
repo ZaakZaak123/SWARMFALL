@@ -22,6 +22,7 @@ local MetaMenus = require(script.Parent.MetaMenus)
 local Meta = require(Shared:WaitForChild("Meta"))
 local Goals = require(Shared:WaitForChild("Goals"))
 local Modules = require(Shared:WaitForChild("Modules"))
+local Evolve = require(Shared:WaitForChild("Evolve"))
 local Showcase = require(Shared:WaitForChild("Showcase"))
 
 local new, label, tween = Theme.new, Theme.label, Theme.tween
@@ -170,9 +171,7 @@ local function fitModal(m)
 		if m.headBand then
 			m.headBand.Visible = false
 		end
-		m.panel.Size = if phone
-			then UDim2.fromOffset(m.phoneSize.X, m.phoneSize.Y)
-			else UDim2.fromOffset(m.w, m.h)
+		m.panel.Size = if phone then UDim2.fromOffset(m.phoneSize.X, m.phoneSize.Y) else UDim2.fromOffset(m.w, m.h)
 		m.relayout(phone)
 	end
 	if phone then
@@ -619,6 +618,7 @@ local function buildLobby()
 		ui.settings.show()
 	end)
 	ui.xenite, ui.xeniteAmount = xenitePill(tr, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -56, 0, 2) })
+	ui.lobbyAlloy, ui.lobbyAlloyAmount = Xenite.alloy(ui.xenite, 40, 24, 18)
 	-- Play together (DD-040): one tap to the Roblox invite sheet.
 	ui.invite = Theme.button("ПОЗВАТЬ ДРУЗЕЙ", {
 		Name = "Invite",
@@ -878,8 +878,10 @@ local function weaponCard(id: string, order: number)
 	})
 	local scale = new("UIScale", { Parent = card })
 	local small = ui.lobbyPhone == true -- DD-107: the phone's small card (the gun, its name, one line)
-	local vpHolder =
-		new("Frame", { Position = UDim2.fromOffset(6, 2), Size = UDim2.new(1, -12, 0, if small then 54 else 88), Parent = card })
+	local vpHolder = new(
+		"Frame",
+		{ Position = UDim2.fromOffset(6, 2), Size = UDim2.new(1, -12, 0, if small then 54 else 88), Parent = card }
+	)
 	local vp = Preview.weapon(vpHolder, id, false, { spin = selected, zoom = 0.62, pitch = 0.18 })
 	if state ~= "owned" then
 		vp.ImageTransparency = 0.55
@@ -913,17 +915,19 @@ local function weaponCard(id: string, order: number)
 		Parent = card,
 	})
 	if state == "owned" and profile then
-		-- DD-112: the gun's mastery rank
+		-- DD-112: the gun's mastery rank; its step colours the badge (stage 3) and «ЭВО» marks an opened
+		-- evolution
 		local rank = Defs.masteryRank(id, (profile.mastery or {})[id] or 0)
+		local evo = (profile.evoOpen or {})[id] == true
 		local tag = new("Frame", {
 			Position = UDim2.fromOffset(10, 10),
-			Size = UDim2.fromOffset(40, 22),
-			BackgroundColor3 = C.gold,
+			Size = UDim2.fromOffset(if evo then 74 else 40, 22),
+			BackgroundColor3 = Defs.MasteryTierColor[Defs.masteryTier(rank)] or C.gold,
 			Corner = UDim.new(1, 0),
 			ZIndex = 3,
 			Parent = card,
 		})
-		label("M" .. rank, {
+		label("M" .. rank .. (if evo then " · ЭВО" else ""), {
 			Size = UDim2.fromScale(1, 1),
 			FontFace = F.numHeavy,
 			TextSize = 13,
@@ -1164,6 +1168,8 @@ function Menus.refreshLobby()
 	-- Xenite + upgrades: after the first hunt
 	ui.xenite.Visible = runs > 0 or (prof and prof.scrap > 0)
 	ui.xeniteAmount.Text = Theme.commas(prof and prof.scrap or 0)
+	ui.lobbyAlloy.Visible = prof ~= nil and (prof.alloy or 0) > 0
+	ui.lobbyAlloyAmount.Text = Theme.commas(prof and prof.alloy or 0)
 	ui.upgradesBtn.Visible = runs > 0
 	ui.swarmBtn.Visible = features.swarm == true
 	ui.logBtn.Visible = features.siege == true
@@ -1692,7 +1698,11 @@ local function whyNot(wid: string, m, why: string?): string
 		local prev = Modules.get(Modules.id(wid, m.branch, m.tier - 1))
 		return "Сначала собери «" .. (if prev then prev.name else "") .. "»."
 	elseif why == "scrap" then
-		return string.format("Не хватает ксенита: нужно %d, у тебя %d. Ксенит приносят вылазки.", m.cost, profile.scrap or 0)
+		return string.format(
+			"Не хватает ксенита: нужно %d, у тебя %d. Ксенит приносят вылазки.",
+			m.cost,
+			profile.scrap or 0
+		)
 	elseif why == "alloy" then
 		return string.format(
 			"Не хватает сплава: нужно %d, у тебя %d. Сплав даёт оборона бура.",
@@ -1723,6 +1733,161 @@ local function equip(wid: string, id: string)
 	end
 end
 
+-- DD-112 stage 3: what the evolution pill says when tapped and nothing can be done yet.
+local function evoNote(wid: string, why: string?): string
+	local evo = Evolve.of(wid)
+	if not evo then
+		return ""
+	end
+	local w = Defs.Weapons[wid]
+	local name = "«" .. evo.name .. "»"
+	if why == "component" then
+		local comp = Defs.Components[evo.component]
+		return string.format(
+			"%s: нужен компонент «%s» — %s.",
+			name,
+			comp and comp.name or "",
+			Evolve.ComponentFrom[evo.component] or "в вылазках"
+		)
+	elseif why == "mastery" then
+		local kills = (profile.mastery or {})[wid] or 0
+		return string.format(
+			"%s: нужно мастерство M%d — ещё %d убийств «%s».",
+			name,
+			Defs.Evolve.OpenMastery,
+			math.max(0, Defs.masteryNeed(wid, Defs.Evolve.OpenMastery) - kills),
+			w.short
+		)
+	elseif why == "scrap" or why == "alloy" then
+		return string.format(
+			"%s: открыть — %d ксенита и %d сплава (у тебя %d и %d). Сплав даёт оборона бура.",
+			name,
+			Defs.Evolve.OpenCost,
+			Defs.Evolve.OpenAlloy,
+			profile.scrap or 0,
+			profile.alloy or 0
+		)
+	end
+	-- opened: how it fires in the fight (the permanent form is the pill's next step at M10)
+	return string.format(
+		"%s — в бою с вылазки 3: %d-й уровень + ядро элиты или босса (или с %d:%02d).",
+		name,
+		Defs.Evolve.Level,
+		Defs.Evolve.CoreAt // 60,
+		Defs.Evolve.CoreAt % 60
+	)
+end
+
+-- The pill: «ЭВОЛЮЦИЯ» (locked) → «ЭВО ◆300 ●30» (open it) → «ГРОМОВЕРЖЕЦ» (opened) → «ФОРМА ◆1200 ●100»
+-- (make the permanent form) → «В ФОРМЕ» / «БЕЗ ФОРМЫ» (wear it or not).
+local function evolutionPill(
+	wid: string,
+	parent: Instance,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	phone: boolean
+)
+	local evo = Evolve.of(wid)
+	if not evo then
+		return
+	end
+	local canOpen, openWhy = Evolve.canOpen(profile, wid)
+	local opened = openWhy == "open"
+	local canForm, formWhy = Evolve.canForm(profile, wid)
+	local made = formWhy == "made"
+	local worn = made and (profile.equip or {})[wid] == evo.id
+	local text, fill, fg, price, lock = "ЭВОЛЮЦИЯ", nil, C.dim, nil, true
+	if canOpen then
+		text, fill, fg, price, lock = "ЭВО", C.lime, C.ink, { Defs.Evolve.OpenCost, Defs.Evolve.OpenAlloy }, false
+	elseif made then
+		text, fill, fg, lock =
+			if worn then "В ФОРМЕ" else "БЕЗ ФОРМЫ",
+			if worn then evo.color else nil,
+			if worn then C.ink else C.text,
+			false
+	elseif canForm then
+		text, fill, fg, price, lock =
+			"ФОРМА", C.lime, C.ink, { Defs.Evolve.FormCost, Defs.Evolve.FormAlloy }, false
+	elseif opened then
+		text, fill, fg, lock = evo.name, evo.color, C.ink, false
+	elseif openWhy == "scrap" or openWhy == "alloy" then
+		text, price, lock = "ЭВО", { Defs.Evolve.OpenCost, Defs.Evolve.OpenAlloy }, false
+	end
+	local pill = new("TextButton", {
+		Position = UDim2.fromOffset(x, y),
+		Size = UDim2.fromOffset(width, height),
+		BackgroundColor3 = fill or C.ink,
+		BackgroundTransparency = if fill then 0 else 0.3,
+		Text = "",
+		AutoButtonColor = false,
+		Corner = UDim.new(1, 0),
+		Stroke = { Color = evo.color, Transparency = if fill then 0.2 else 0.55, Thickness = 1.5 },
+		ZIndex = 43,
+		Parent = parent,
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 5),
+		},
+	})
+	icon(if lock then "lock" else "evolve", if phone then 14 else 16, if fill then fg else evo.color, {
+		LayoutOrder = 1,
+		ZIndex = 44,
+		Parent = pill,
+	})
+	local tl = label(text, {
+		Size = UDim2.fromScale(0, 1),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = F.head,
+		TextSize = if phone then 12 else 13,
+		TextColor3 = fg,
+		LayoutOrder = 2,
+		ZIndex = 44,
+		Parent = pill,
+	})
+	if price then
+		tl.Text = text .. "  ◆ " .. price[1]
+		Xenite.inline(tl)
+		icon(
+			"core",
+			if phone then 12 else 13,
+			if fill then C.ink else C.orange,
+			{ LayoutOrder = 3, ZIndex = 44, Parent = pill }
+		)
+		label(tostring(price[2]), {
+			Size = UDim2.fromScale(0, 1),
+			AutomaticSize = Enum.AutomaticSize.X,
+			FontFace = F.head,
+			TextSize = if phone then 12 else 13,
+			TextColor3 = fg,
+			LayoutOrder = 4,
+			ZIndex = 44,
+			Parent = pill,
+		})
+	end
+	pill.Activated:Connect(function()
+		if canOpen then
+			send("openEvolution", wid)
+			Audio.play("evolve", 0.7, 1.2)
+			ui.armoryNoteText = "«" .. evo.name .. "» открыт: " .. evo.text
+		elseif made then
+			send("equipForm", wid, if worn then "" else evo.id)
+			Audio.play("equip", 0.7)
+		elseif canForm then
+			send("craftForm", evo.id)
+			Audio.play("evolve", 0.8, 1)
+			ui.armoryNoteText = "«" .. evo.name .. "» навсегда: бой начинается в форме."
+		else
+			ui.armoryNoteText = evoNote(wid, if opened then nil else openWhy)
+			Audio.play(if opened then "ui" else "warn", 0.5)
+		end
+		Menus.refreshUpgrades()
+	end)
+end
+
 local function refreshGun(wid: string)
 	local body = ui.armoryBody
 	local phone = ui.upgrades.phone == true
@@ -1735,7 +1900,7 @@ local function refreshGun(wid: string)
 	-- the mastery line: name, rank, bar, what is next
 	local rowH = if phone then 30 else 40
 	label(w.name, {
-		Size = UDim2.fromOffset(if phone then 250 else 290, rowH),
+		Size = UDim2.fromOffset(if phone then 210 else 250, rowH),
 		FontFace = F.display,
 		TextSize = if phone then 17 else 20,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1744,7 +1909,7 @@ local function refreshGun(wid: string)
 		Parent = body,
 	})
 	local badge = new("Frame", {
-		Position = UDim2.fromOffset(if phone then 254 else 296, (rowH - 26) / 2),
+		Position = UDim2.fromOffset(if phone then 214 else 254, (rowH - 26) / 2),
 		Size = UDim2.fromOffset(52, 26),
 		BackgroundColor3 = C.gold,
 		Corner = UDim.new(1, 0),
@@ -1759,10 +1924,14 @@ local function refreshGun(wid: string)
 		ZIndex = 44,
 		Parent = badge,
 	})
-	local barX = (if phone then 254 else 296) + 64
+	-- DD-112 stage 3: the evolution pill — open it, make the permanent form, wear it or not
+	local evoW = if phone then 176 else 210
+	local evoX = (if phone then 214 else 254) + 60
+	evolutionPill(wid, body, evoX, (rowH - (if phone then 26 else 30)) / 2, evoW, if phone then 26 else 30, phone)
+	local barX = evoX + evoW + 10
 	local barBack = new("Frame", {
 		Position = UDim2.fromOffset(barX, rowH / 2 - 5),
-		Size = UDim2.fromOffset(math.max(60, W - barX - (if phone then 190 else 230)), 10),
+		Size = UDim2.fromOffset(math.max(60, W - barX - (if phone then 160 else 180)), 10),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.85,
 		Corner = UDim.new(1, 0),
@@ -1776,21 +1945,26 @@ local function refreshGun(wid: string)
 		ZIndex = 44,
 		Parent = barBack,
 	})
-	label(if need then string.format("до M%d — %d убийств", rank + 1, need - into) else "высшее мастерство", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 0),
-		Size = UDim2.fromOffset(if phone then 180 else 220, rowH),
-		FontFace = F.bodyBold,
-		TextSize = if phone then 13 else 14,
-		TextColor3 = C.dim,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		ZIndex = 43,
-		Parent = body,
-	})
+	label(
+		if need
+			then string.format("до M%d — %d убийств", rank + 1, need - into)
+			else "высшее мастерство",
+		{
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, 0),
+			Size = UDim2.fromOffset(if phone then 150 else 170, rowH),
+			FontFace = F.bodyBold,
+			TextSize = if phone then 13 else 14,
+			TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			ZIndex = 43,
+			Parent = body,
+		}
+	)
 	-- the note line: the two slots, or why the tapped module cannot be made
 	local core, adapter = Modules.get(lo.core), Modules.get(lo.adapter)
 	local slots = string.format(
-		"<font color=\"#%s\">ЯДРО</font>  %s     <font color=\"#%s\">АДАПТЕР</font>  %s",
+		'<font color="#%s">ЯДРО</font>  %s     <font color="#%s">АДАПТЕР</font>  %s',
 		C.lime:ToHex(),
 		if core then core.name else "—",
 		C.cyan:ToHex(),
@@ -1857,7 +2031,7 @@ local function refreshGun(wid: string)
 				Parent = body,
 			})
 			local pad = if phone then 8 else 12
-			label(m.name .. "  <font color=\"#" .. C.dim:ToHex() .. "\">" .. Modules.Roman[tier] .. "</font>", {
+			label(m.name .. '  <font color="#' .. C.dim:ToHex() .. '">' .. Modules.Roman[tier] .. "</font>", {
 				Position = UDim2.fromOffset(pad, if phone then 4 else 8),
 				Size = UDim2.new(1, -pad * 2 - (if phone then 92 else 108), 0, if phone then 20 else 22),
 				FontFace = F.display,
@@ -1870,7 +2044,7 @@ local function refreshGun(wid: string)
 			})
 			-- DD-112: a tier keeps the ones below it, and each fitted module is raw damage by its tier
 			local power = math.floor((Modules.Power[tier] or 0) * 100 + 0.5)
-			label(m.text .. string.format("  <font color=\"#%s\">+%d%% урона</font>", C.gold:ToHex(), power), {
+			label(m.text .. string.format('  <font color="#%s">+%d%% урона</font>', C.gold:ToHex(), power), {
 				Position = UDim2.fromOffset(pad, if phone then 26 else 34),
 				Size = UDim2.new(1, -pad * 2, 1, if phone then -28 else -40),
 				FontFace = F.body,
@@ -1993,7 +2167,9 @@ function Menus.refreshUpgrades()
 	for i, key in tabs do
 		local on = key == armoryTab
 		local w = Defs.Weapons[key]
-		local text = if w then w.short .. "  M" .. Defs.masteryRank(key, (profile.mastery or {})[key] or 0) else "ГЕРОЙ"
+		local text = if w
+			then w.short .. "  M" .. Defs.masteryRank(key, (profile.mastery or {})[key] or 0)
+			else "ГЕРОЙ"
 		local b, bl = Theme.button(text, {
 			Size = UDim2.fromOffset(if phone then 126 else 140, if phone then 34 else 36),
 			LayoutOrder = i,
@@ -3532,8 +3708,26 @@ local function defeatTip(result): (string, string, string)
 		if ready then
 			return "gear",
 				"УЛУЧШИ ОРУЖИЕ",
-				string.format("«%s»: %s. Хватает ксенита (%d) — в оружейной, навсегда.", ready.name, ready.text, ready.cost)
-		elseif near and nearWhy == "alloy" then
+				string.format(
+					"«%s»: %s. Хватает ксенита (%d) — в оружейной, навсегда.",
+					ready.name,
+					ready.text,
+					ready.cost
+				)
+		end
+		-- DD-112 stage 3: the evolution, when it can be opened now
+		local evo = Evolve.of(wid)
+		if evo and Evolve.canOpen(profile, wid) then
+			return "evolve",
+				"ОТКРОЙ ЭВОЛЮЦИЮ",
+				string.format(
+					"«%s» в оружейной: %d ксенита и %d сплава. В долгом бою пушка превращается сама.",
+					evo.name,
+					Defs.Evolve.OpenCost,
+					Defs.Evolve.OpenAlloy
+				)
+		end
+		if near and nearWhy == "alloy" then
 			return "gear",
 				"НУЖЕН СПЛАВ",
 				string.format(
@@ -3546,7 +3740,13 @@ local function defeatTip(result): (string, string, string)
 		elseif near and nearWhy == "scrap" then
 			return "gear",
 				"КОПИ НА МОДУЛЬ",
-				string.format("«%s»: %s. Нужно %d ксенита, у тебя %d.", near.name, near.text, near.cost, scrap)
+				string.format(
+					"«%s»: %s. Нужно %d ксенита, у тебя %d.",
+					near.name,
+					near.text,
+					near.cost,
+					scrap
+				)
 		elseif near then
 			local left = Defs.masteryNeed(wid, near.mastery) - ((profile.mastery or {})[wid] or 0)
 			return "star",
@@ -3649,7 +3849,9 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		ui.resTitle.Text = if result.victory then "БУР ВЫСТОЯЛ" else "БУР ПАЛ"
 	elseif mode == "raid" then
 		tag = "Вторжение" .. (if result.raid then " · " .. result.raid.name else "")
-		ui.resTitle.Text = if result.victory then "ВТОРЖЕНИЕ УСПЕШНО" else "ОБОРОНА ВЫСТОЯЛА"
+		ui.resTitle.Text = if result.victory
+			then "ВТОРЖЕНИЕ УСПЕШНО"
+			else "ОБОРОНА ВЫСТОЯЛА"
 	else
 		tag = (if op.code == "C-A01" then "Контракт" else "Вылазка " .. op.index)
 			.. " · "
@@ -3800,7 +4002,9 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 					Defs.Weapons[pr.weapon].short,
 					pr.rank or 1,
 					pr.added,
-					if pr.need then string.format(" (до M%d — %d)", (pr.rank or 1) + 1, pr.need - (pr.into or 0)) else ""
+					if pr.need
+						then string.format(" (до M%d — %d)", (pr.rank or 1) + 1, pr.need - (pr.into or 0))
+						else ""
 				),
 				C.gold
 			)
@@ -3820,7 +4024,9 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		-- a raid's own word on the reward (DD-108: these were cards)
 		if reward.capped then
 			chip(
-				if reward.capped == "pair" then "этот бур уже приносил ксенит сегодня" else "лимит налётов на сегодня",
+				if reward.capped == "pair"
+					then "этот бур уже приносил ксенит сегодня"
+					else "лимит налётов на сегодня",
 				C.dim
 			)
 		elseif reward.rating and not reward.rating.unrated then

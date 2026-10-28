@@ -5,6 +5,7 @@ local H = require("./harness")
 local Meta = H.require("src/shared/Meta")
 local Ops = H.require("src/shared/Ops")
 local Goals = H.require("src/shared/Goals")
+local Defs = H.require("src/shared/Defs")
 local Maps = H.require("src/shared/Maps")
 local Nav = H.require("src/server/Sim/Nav")
 local World = H.require("src/server/Sim/World")
@@ -120,6 +121,32 @@ do
 		gm.station == "armory" and gm.weapon == "W_ARC_RIFLE" and gm.module == "MOD_ARC_RIFLE_B1",
 		"goal (DD-112): the cheapest module the most-used gun can take, before the turret"
 	)
+	-- every tier I made, M4, xenite for a tier II but no сплав: before O04 the story goes on, after it the
+	-- drill defence (it pays сплав)
+	pub.modules.MOD_ARC_RIFLE_B1, pub.modules.MOD_ARC_RIFLE_C1 = true, true
+	pub.mastery.W_ARC_RIFLE, pub.alloy = 400, 10
+	local ga = step("no alloy, before O04")
+	check(ga.key:sub(1, 6) ~= "alloy_", "goal (DD-112): no сплав detour before the Broodmother")
+	pub.winsByOp.O04 = 1
+	ga = step("no alloy, after O04")
+	check(
+		ga.key:sub(1, 6) == "alloy_" and ga.mode == "siege" and ga.weapon == "W_ARC_RIFLE" and ga.text:find("10") ~= nil,
+		"goal (DD-112): a tier II short of сплав sends to the drill defence"
+	)
+	pub.alloy = 20
+	check(step("alloy").key:sub(1, 7) == "module_", "goal (DD-112): with the сплав it is the module itself")
+	-- DD-112 stage 3: no module affordable, the evolution can be opened (storm core, M6, 300 + 30)
+	pub.mastery.W_ARC_RIFLE, pub.scrap, pub.alloy = Defs.masteryNeed("W_ARC_RIFLE", 6), 320, 40
+	pub.components = { CMP_STORM_CORE = true }
+	local ge = step("evolution")
+	check(
+		ge.key == "evo_W_ARC_RIFLE" and ge.station == "armory" and ge.weapon == "W_ARC_RIFLE",
+		"goal (DD-112 stage 3): open the rifle's evolution in the armory"
+	)
+	pub.evoOpen = { W_ARC_RIFLE = true }
+	check(step("evolution open").key ~= "evo_W_ARC_RIFLE", "goal (DD-112 stage 3): an opened evolution is not asked again")
+	pub.components, pub.evoOpen = nil, nil
+	pub.winsByOp.O04, pub.alloy = nil, nil
 	pub.weapons, pub.mastery, pub.modules = nil, nil, nil
 	check(step("won O02").key == "build_ARC", "goal 6 (DD-076): the homecoming's promise first — the Разрядник")
 	pub.outpost.slots[1] = { id = "ARC", lvl = 1 }

@@ -771,42 +771,17 @@ function Combat.updatePlayer(w, p, dt: number)
 end
 
 -- Offers & evolution ----------------------------------------------------------------------------------
-function Combat.isKey(p, id: string): boolean
-	if p.evolved then
-		return false
-	end
-	return table.find(Defs.Evolutions[p.weaponDef.evolution].keys, id) ~= nil
-end
-
+-- DD-112 stage 3: evolution no longer asks for key cards (it is opened in the armory and fires on the
+-- run's level and a core), so every card can be banished and the offers are the plain draft.
 function Combat.makeOffer(w, p)
-	local evo = Defs.Evolutions[p.weaponDef.evolution]
-	local isKey = {}
-	local missingKeys = 0
-	-- Card keys only matter in legacy runs that still evolve from an elite core.
-	local legacyEvo = w.op.runEvolution and not p.evolved
-	if legacyEvo then
-		for _, k in evo.keys do
-			isKey[k] = true
-			if cardRank(p, k) == 0 then
-				missingKeys += 1
-			end
-		end
-	end
 	local freeSlots = Defs.Run.MaxSlots - p.slots
 	local weights = {}
 	local pool = {}
 	for _, id in Defs.UpgradeOrder do
 		local r = cardRank(p, id)
 		local eligible = rank(p, id) < Defs.Run.MaxRank and (r > 0 or freeSlots > 0) and not p.banished[id]
-		-- Never let filler upgrades lock the player out of their evolution.
-		if r == 0 and not isKey[id] and freeSlots <= missingKeys then
-			eligible = false
-		end
 		if eligible then
 			local weight = 1
-			if isKey[id] then
-				weight = if p.hasCore then 4 else 1.8
-			end
 			if r > 0 then
 				weight *= 1.25
 			end
@@ -828,7 +803,7 @@ function Combat.makeOffer(w, p)
 	local choices = {}
 	local cards = p.cards or 3
 	-- First offer of a run: one card of each style, so the choice is between ways of fighting.
-	if p.offersMade == 0 and not legacyEvo then
+	if p.offersMade == 0 then
 		for _, style in Defs.StyleOrder do
 			local sw, sp = {}, {}
 			for _, id in pool do
@@ -859,27 +834,6 @@ function Combat.makeOffer(w, p)
 	end
 	if table.find(choices, "UPG_MULTISHOT") then
 		p.seenMulti = true
-	end
-	-- Guarantees: the first offer and every post-core offer contain a missing evolution key.
-	if legacyEvo and (p.offersMade == 0 or p.hasCore) then
-		for _, k in evo.keys do
-			if cardRank(p, k) == 0 and not table.find(choices, k) and (freeSlots > 0) then
-				if #choices < cards then
-					table.insert(choices, k)
-				else
-					-- Replace the first non-key choice.
-					for i, c in choices do
-						if not isKey[c] then
-							choices[i] = k
-							break
-						end
-					end
-				end
-				if p.offersMade == 0 then
-					break
-				end
-			end
-		end
 	end
 	if #choices < cards then
 		table.insert(choices, "FB_REPAIR")
@@ -949,24 +903,15 @@ function Combat.applyChoice(w, p, choice: string)
 	end
 end
 
+-- DD-112 stage 3: an opened evolution fires on the run's level and a core (World:grantCores); World:tick
+-- carries it out as soon as the fight is not held (a card choice, a reveal).
 function Combat.checkEvolve(w, p)
-	if p.evolved or p.canEvolve or not p.hasCore then
+	if p.evolved or p.canEvolve or not p.evoOpen or not w.op.runEvolution then
 		return
 	end
-	local evo = Defs.Evolutions[p.weaponDef.evolution]
-	for _, k in evo.keys do
-		if rank(p, k) == 0 then
-			return
-		end
+	if p.hasCore and w.level >= Defs.Evolve.Level then
+		p.canEvolve = true
 	end
-	p.canEvolve = true
-	w:banner(
-		"ЭВОЛЮЦИЯ ГОТОВА",
-		evo.name .. " — нажми F или кнопку ЭВО",
-		C.GOLD,
-		4,
-		"evolve"
-	)
 end
 
 return Combat

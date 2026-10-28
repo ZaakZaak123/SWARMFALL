@@ -332,6 +332,7 @@ function BasePhone.build(gui: ScreenGui, on: (key: string) -> ())
 		LayoutOrder = 2,
 		Parent = ui.xenite,
 	})
+	ui.alloy, ui.alloyAmount = Xenite.alloy(ui.xenite, 36, 22, 17)
 	ui.harvest = Theme.button("", {
 		Name = "Harvest",
 		AnchorPoint = Vector2.new(1, 0),
@@ -442,7 +443,7 @@ function BasePhone.closeSheet()
 	end
 end
 
--- state: { tag, title, goal = { key, title, text, icon, color, btn }?, xenite, showXenite, harvest,
+-- state: { tag, title, goal = { key, title, text, icon, color, btn }?, xenite, alloy, showXenite, harvest,
 -- play = { label, sub, ready }, status, statusColor, hold = { visible, label }, tiles = { [key] = bool } }
 function BasePhone.set(s)
 	if not ui.root then
@@ -475,6 +476,8 @@ function BasePhone.set(s)
 	end
 	ui.xenite.Visible = s.showXenite == true
 	ui.xeniteAmount.Text = Theme.commas(s.xenite or 0)
+	ui.alloy.Visible = (s.alloy or 0) > 0
+	ui.alloyAmount.Text = Theme.commas(s.alloy or 0)
 	ui.harvest.Visible = (s.harvest or 0) > 0
 	ui.harvest.Label.Text = "СОБРАТЬ  +" .. (s.harvest or 0)
 	local p = s.play

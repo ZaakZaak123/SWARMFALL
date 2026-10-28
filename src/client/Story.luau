@@ -1173,6 +1173,13 @@ local HOMECOMING = {
 				sub = "Ток пошёл на верстак",
 				color = C.cyan,
 			},
+			-- DD-112: the gun grows first — the rifle's main module comes with the first win
+			{
+				spot = "ARMORY",
+				title = "ВИНТОВКА ДОРАБОТАНА",
+				sub = "«Двойная катушка» встала в ядро: второй разряд рядом с основным",
+				color = C.cyan,
+			},
 		},
 		next = {
 			structure = "STING",
@@ -1193,10 +1200,13 @@ local HOMECOMING = {
 				color = C.orange,
 			},
 		},
+		-- DD-112: the second gun is this sortie's prize (the turret «Разрядник» opens too: the base's goal
+		-- comes to it after the new gun's first fight)
 		next = {
-			structure = "ARC",
-			title = "ХВАТАЕТ НА «РАЗРЯДНИК»",
-			sub = "Разряд скачет по толпе — кольцо роя у бура рассыплется",
+			spot = "ARMORY",
+			marker = { "ВУЛКАН", "Новое оружие" },
+			title = "В ОРУЖЕЙНОЙ — ДРОБОВИК «ВУЛКАН»",
+			sub = "В упор — стена свинца. Он уже с основным модулем: возьми его в следующую вылазку",
 		},
 	},
 	O03 = {
@@ -1232,6 +1242,13 @@ local HOMECOMING = {
 				sub = "Из сердца гнезда выводится своя стая: она стережёт твой бур",
 				color = C.violet,
 			},
+			-- DD-112: the third gun
+			{
+				spot = "ARMORY",
+				title = "ЛУЧЕМЁТ «РАЗЛОМ»",
+				sub = "Непрерывная плазма режет шеренги — он уже в оружейной, с основным модулем",
+				color = C.cyan,
+			},
 		},
 		next = {
 			spot = "LAB",
@@ -1256,9 +1273,9 @@ local HOMECOMING = {
 		},
 		next = {
 			spot = "ARMORY",
-			marker = { "РЕЛЬСОТРОН", "Чертёж в оружейной" },
-			title = "В ГНЕЗДЕ НАШЁЛСЯ ЧЕРТЁЖ",
-			sub = "«Рельсотрон» пробивает толпу насквозь — он ждёт в оружейной",
+			marker = { "РЕЛЬСОТРОН", "Новое оружие" },
+			title = "В ГНЕЗДЕ НАШЁЛСЯ РЕЛЬСОТРОН",
+			sub = "Один выстрел — целая колонна. Он уже в оружейной, с основным модулем",
 		},
 	},
 	O06 = {
@@ -1298,7 +1315,7 @@ local HOMECOMING = {
 		},
 		next = {
 			spot = "ARMORY",
-			marker = { "КОПЬЁ ПУСТОТЫ", "Форма «Рельсотрона»" },
+			marker = { "КОПЬЁ ПУСТОТЫ", "Форма «Разлома»" },
 			title = "ГЛАВА ПРОЙДЕНА",
 			sub = "Воронка затихла. Дальше — оборона бура по уровням, вторжения и «Копьё пустоты»",
 			sting = "victory",

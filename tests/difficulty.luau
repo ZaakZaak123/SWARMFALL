@@ -1,6 +1,6 @@
 -- Chapter difficulty against builds (DD-112 stage 2): from the middle of the chapter a rifle with only its
 -- free main module should lose, and the build the chapter's loot can make by then should win.
--- Usage (repo root):  lune run tests/difficulty <op> <bare|ref> [seeds]     one op, one build, prints each seed
+-- Usage (repo root):  lune run tests/difficulty <op> <bare|ref|evo> [seeds]  one op, one build, prints each seed
 --                     lune run tests/difficulty all                         the whole table (slow: run ops in
 --                                                                           parallel with the first form)
 
@@ -8,16 +8,20 @@ local process = require("@lune/process")
 local Bot = require("./bot")
 local H = require("./harness")
 local Ops = H.require("src/shared/Ops")
+local Defs = H.require("src/shared/Defs")
 
 -- The build the player can have before each sortie: Bot.ChapterBuild (O04: one tier I bought; O05: the
 -- first tier II, after the first drill defence; O06–O07: two tier II).
-local MAIN = "MOD_ARC_RIFLE_A1"
-local REF = Bot.ChapterBuild
+-- `weapon=W_SCATTERGUN` plays another gun with the same shape of build (Bot.buildFor).
+local WEAPON = "W_ARC_RIFLE"
+for _, a in process.args do
+	WEAPON = string.match(a, "^weapon=(W_[%u_]+)$") or WEAPON
+end
 
 -- What each build should do over the eight seeds (the bot aims past the screen and kites well, so a player
 -- does worse than it): the bare rifle wins at most `bare`, the chapter's build at least `ref`.
 local EXPECT = {
-	O04 = { bare = nil, ref = 7 }, -- bare ~50/50: not checked
+	O04 = { bare = 6, ref = 7 }, -- the turn: bare ~5/8 (a player does worse), the build 8/8 by half the time
 	O05 = { bare = 5, ref = 7 }, -- the bot dodges the Broodmother better than a player; her limit is 2:05
 	O06 = { bare = 5, ref = 7 },
 	O07 = { bare = 4, ref = 7 },
@@ -33,8 +37,19 @@ for _, a in process.args do
 	end
 end
 
+-- `weaponDamage=6.8` / `weaponRate=…` tune the gun itself for this run (weapon balance across chapters).
+if overrides.weaponDamage then
+	Defs.Weapons[WEAPON].damage = overrides.weaponDamage
+	overrides.weaponDamage = nil
+end
+if overrides.weaponRate then
+	Defs.Weapons[WEAPON].rate = overrides.weaponRate
+	overrides.weaponRate = nil
+end
+
+-- `evo`: the chapter's build with the gun's evolution opened (DD-112 stage 3: it fires in the fight).
 local function play(op: string, build: string, seed: number)
-	local loadout = if build == "ref" then REF[op] else { core = MAIN }
+	local loadout = Bot.buildFor(WEAPON, op, build == "bare")
 	local opDef = nil
 	local tuned = false
 	for k in overrides do
@@ -58,7 +73,10 @@ local function play(op: string, build: string, seed: number)
 		end
 	end
 	local out =
-		Bot.run("W_ARC_RIFLE", 1, seed, false, nil, 1, nil, { op = op, orbit = 34, loadout = loadout, opDef = opDef })
+		Bot.run(WEAPON, 1, seed, false, nil, 1, nil, { op = op, orbit = 34, loadout = loadout, opDef = opDef, evoOpen = build == "evo" })
+	if out.milestones.evolved then
+		out.result.evolvedAt = out.milestones.evolved
+	end
 	return out.result
 end
 
@@ -82,11 +100,12 @@ local function runOne(op: string, build: string, n: number): number
 				Bot.fmt(r.time),
 				r.kills,
 				r.level,
-				if r.reactor then string.format(", drill %d%%", math.floor(r.reactor * 100)) else ""
+				(if r.reactor then string.format(", drill %d%%", math.floor(r.reactor * 100)) else "")
+					.. (if r.evolvedAt then ", evolved at " .. Bot.fmt(r.evolvedAt) else "")
 			)
 		)
 	end
-	print(string.format("%s %s: %d/%d wins", op, build, wins, n))
+	print(string.format("%s %s %s: %d/%d wins", op, WEAPON, build, wins, n))
 	return wins
 end
 

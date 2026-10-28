@@ -327,6 +327,35 @@ do
 		old.weapons.W_SCATTERGUN and old.modules[vMain] and old.modules[rifleMain] and old.alloy == 0,
 		"migration: won sorties' guns and main modules (DD-112)"
 	)
+	-- DD-112 stage 3: the evolution is opened once (its component + M6 + 300 xenite + 30 сплава), then the
+	-- permanent form (M10 + 1200 xenite + 100 сплава)
+	dg.scrap, dg.alloy = 5000, 200
+	dg.mastery.W_ARC_RIFLE = Defs.masteryNeed("W_ARC_RIFLE", 6)
+	dg.components.CMP_STORM_CORE = nil
+	check(not Profile.openEvolution(g, "W_ARC_RIFLE"), "evolution needs its component (the storm core)")
+	dg.components.CMP_STORM_CORE = true
+	dg.mastery.W_ARC_RIFLE = Defs.masteryNeed("W_ARC_RIFLE", 6) - 1
+	check(not Profile.openEvolution(g, "W_ARC_RIFLE"), "evolution needs mastery M6")
+	dg.mastery.W_ARC_RIFLE = Defs.masteryNeed("W_ARC_RIFLE", 6)
+	check(not Profile.openEvolution(g, "W_RAILGUN"), "no evolution for a gun not owned")
+	check(
+		Profile.openEvolution(g, "W_ARC_RIFLE") and dg.evoOpen.W_ARC_RIFLE and dg.scrap == 4700 and dg.alloy == 170,
+		"evolution opened: 300 xenite + 30 сплава"
+	)
+	check(not Profile.openEvolution(g, "W_ARC_RIFLE"), "an evolution is opened once")
+	check(not Profile.craftForm(g, "EV_THUNDERLORD"), "the permanent form needs M10")
+	dg.mastery.W_ARC_RIFLE = Defs.masteryNeed("W_ARC_RIFLE", 10)
+	check(
+		Profile.craftForm(g, "EV_THUNDERLORD") and dg.forms.EV_THUNDERLORD and dg.scrap == 3500 and dg.alloy == 70,
+		"the permanent form: 1200 xenite + 100 сплава, equipped"
+	)
+	check(Profile.equippedForm(g, "W_ARC_RIFLE") == "EV_THUNDERLORD", "the form is equipped once made")
+	dg.evoOpen.W_SCATTERGUN = nil
+	dg.mastery.W_SCATTERGUN = Defs.masteryNeed("W_SCATTERGUN", 10)
+	dg.components.CMP_FLAME_HEART = true
+	check(not Profile.craftForm(g, "EV_INFERNO_GRINDER"), "no permanent form before the evolution is opened")
+	local kept = Profile._reconcile({ forms = { EV_THUNDERLORD = true }, weapons = {}, modules = {}, loadout = {} })
+	check(kept.evoOpen.W_ARC_RIFLE == true, "migration: an old permanent form keeps its evolution open")
 end
 
 if failures > 0 then
