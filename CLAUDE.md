@@ -33,6 +33,7 @@ lune run tests/auto_target          (быстро: выбор цели оруж�
 lune run tests/supers               (быстро: суперудары оружия, DD-105)
 lune run tests/ops_run O01          (бот играет O01: ~10 мин)
 lune run tests/ops_run <O02..CA01>  (бот играет операцию; запускай параллельно в фоне)
+lune run tests/difficulty <O04..O07> <bare|ref>  (DD-112: голая винтовка против сборки главы, 8 сидов; параллельно по главам)
 lune run tests/sim_run W_ARC_RIFLE  (старый регрессионный прогон)
 stylua --check src   (форматирование: только для новых/изменённых файлов)
 selene src
