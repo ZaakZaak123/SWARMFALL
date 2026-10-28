@@ -32,6 +32,10 @@ Modules.ByWeapon = {} :: { [string]: { ModuleDef } }
 local COST = { 160, 400, 700 }
 local ALLOY = { 0, 20, 60 }
 local MASTERY = { 1, 4, 8 }
+-- DD-112 stage 2: a fitted module is also raw power — weapon damage by its tier, on top of its effect. Its
+-- card ranks share the cap III with the fight's cards (the bot drafted the same cards and the modules
+-- barely mattered); this is what makes the next tier felt.
+Modules.Power = { 0.15, 0.3, 0.5 }
 local ROMAN = { "I", "II", "III" }
 Modules.Roman = ROMAN
 
@@ -218,18 +222,58 @@ function Modules.validLoadout(weapon: string, core: string?, adapter: string?): 
 	return true
 end
 
--- Merges the virtual card ranks of an equipped loadout (each family capped at III by Combat).
-function Modules.ranksFor(core: string?, adapter: string?): { [string]: number }
+-- DD-112 stage 2: a branch's tiers build on each other — a tier II keeps what tier I gave (the rifle's
+-- «Фокусировка II» used to drop the second bolt of «Двойная катушка I» and was weaker than it). The
+-- fitted module and the tiers below it in its branch, lowest first.
+function Modules.stackOf(id: string?): { ModuleDef }
+	local m = Modules.get(id)
 	local out = {}
-	for _, id in { core, adapter } do
-		local m = Modules.get(id)
-		if m then
-			for k, v in m.ranks do
-				out[k] = (out[k] or 0) + v
+	if m then
+		for tier = 1, m.tier do
+			local t = Modules.get(Modules.id(m.weapon, m.branch, tier))
+			if t then
+				table.insert(out, t)
 			end
 		end
 	end
 	return out
+end
+
+-- Merges the virtual card ranks of an equipped loadout (each family capped at III by Combat). Within a
+-- branch a family takes its highest tier's rank (tier II «Живая сеть» is chain II, not I + II).
+function Modules.ranksFor(core: string?, adapter: string?): { [string]: number }
+	local out = {}
+	for _, id in { core, adapter } do
+		local best = {}
+		for _, m in Modules.stackOf(id) do
+			for k, v in m.ranks do
+				best[k] = math.max(best[k] or 0, v)
+			end
+		end
+		for k, v in best do
+			out[k] = (out[k] or 0) + v
+		end
+	end
+	return out
+end
+
+-- The stat tweaks of a fitted module with the tiers below it (they add up), and its raw power.
+function Modules.modsFor(id: string?, into)
+	local m = Modules.get(id)
+	if not m then
+		return into
+	end
+	into.damageMult = (into.damageMult or 1) * (1 + (Modules.Power[m.tier] or 0))
+	for _, t in Modules.stackOf(id) do
+		for k, v in t.mods do
+			if k:sub(-4) == "Mult" then
+				into[k] = (into[k] or 1) * v
+			else
+				into[k] = (into[k] or 0) + v
+			end
+		end
+	end
+	return into
 end
 
 return Modules

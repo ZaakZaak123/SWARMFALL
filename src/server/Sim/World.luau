@@ -136,13 +136,8 @@ local function newPlayer(map, info, index: number, count: number)
 		for _, id in { info.loadout.core, info.loadout.adapter } do
 			local m = Modules.get(id)
 			if m and m.weapon == weapon.id then
-				for k, v in m.mods do
-					if k:sub(-4) == "Mult" then
-						mods[k] = (mods[k] or 1) * v
-					else
-						mods[k] = (mods[k] or 0) + v
-					end
-				end
+				-- DD-112: the tiers below it in its branch add up, and every fitted module is raw power
+				Modules.modsFor(id, mods)
 			end
 		end
 		p.modMods = mods

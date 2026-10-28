@@ -332,9 +332,12 @@ Ops.O04 = {
 	brief = "Рой пустил корни в воронке. Выжги любые два гнезда из трёх — и забери сердце гнезда.",
 	goal = "Выжги 2 гнезда из 3",
 	objective = "nests",
-	playerDamageMult = 0.8,
+	-- DD-112 stage 2 (tests/difficulty): the rifle with only its main module is ~50/50 (bot); the chapter's build wins
+	playerDamageMult = 1.1,
+	enemyHpMult = 1.4,
+	spawnMult = 1.3,
 	runEvolution = false,
-	nests = { need = 2, hp = 850 },
+	nests = { need = 2, hp = 1400 },
 	winOnObjective = true,
 	winBanner = {
 		"ГНЁЗДА ВЫЖЖЕНЫ",
@@ -343,7 +346,7 @@ Ops.O04 = {
 	winFx = 6,
 	homeText = "Вернёшься — в лаборатории заведётся свой рой, и откроются вторжения на чужие буры.",
 	finaleTime = 2.5,
-	deadline = 210,
+	deadline = 75, -- the build: 0:32–0:58 (bot); bare 0:47–1:45
 	hardLimit = 270,
 	xpTable = XP_O02,
 	finale = { at = 0, label = "КОРНИ ВЫЖЖЕНЫ", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
@@ -411,12 +414,14 @@ Ops.O05 = {
 	brief = "Королева роя выходит из провала метро и идёт на бур. Убей Мать роя.",
 	goal = "Защити бур",
 	objective = "boss",
-	bossHpMult = 0.5,
-	playerDamageMult = 0.6,
+	-- DD-112 stage 2 (tests/difficulty): the rifle with only its main module is too slow for the limit; the chapter's build wins
+	bossHpMult = 0.7,
+	enemyHpMult = 1.5,
+	playerDamageMult = 0.5,
 	reactor = { hp = 2600, name = "БУР" },
 	runEvolution = false,
 	deadline = 240,
-	hardLimit = 300,
+	hardLimit = 125, -- 2:05: the build kills her by 1:08–1:35 (bot), bare 1:33–2:06
 	xpTable = XP_O05,
 	homeText = "Вернёшься с трофеем — и в гнезде найдётся чертёж «Рельсотрона».",
 	phases = {
@@ -450,7 +455,7 @@ Ops.O05 = {
 	beats = {
 		{ at = 18, type = "assault", count = 8 },
 		{ at = 30, type = "boss" },
-		{ at = 110, type = "enrage" },
+		{ at = 65, type = "enrage" },
 	},
 	unlocks = { "O06" },
 	requires = "O04",
@@ -469,9 +474,12 @@ Ops.O06 = {
 	brief = "Ночью воронка краснеет: два питающих узла кормят рой. Разрушь оба — взрывуны рвутся рядом и помогают.",
 	goal = "Разрушь питающие узлы",
 	objective = "nodes",
-	playerDamageMult = 0.7,
+	-- DD-112 stage 2 (tests/difficulty): the rifle with only its main module is late (bot ~4/8); the chapter's build wins
+	playerDamageMult = 1.3,
+	enemyHpMult = 1.6,
+	spawnMult = 1.4,
 	runEvolution = false,
-	nodes = { hp = 1600, count = 2 },
+	nodes = { hp = 2400, count = 2 },
 	winOnObjective = true,
 	winBanner = {
 		"УЗЛЫ РАЗРУШЕНЫ",
@@ -480,7 +488,7 @@ Ops.O06 = {
 	winFx = 6,
 	homeText = "Вернёшься с сердцем пламени — «Вулкан» сможет стать «Адской мельницей».",
 	finaleTime = 2.5,
-	deadline = 240,
+	deadline = 75, -- the build: 0:42–0:49 (bot); bare 1:00–1:27
 	hardLimit = 300,
 	xpTable = XP_O05,
 	finale = { at = 0, label = "УЛЕЙ ОБЕСТОЧЕН", rate = 0, cap = 0, dirs = ALL, w = { EN_RUNNER = 1 } },
@@ -547,12 +555,14 @@ Ops.O07 = {
 	brief = "Финал главы. Из-под воронки поднимается Пожиратель и идёт на бур. Убей его.",
 	goal = "Защити бур",
 	objective = "boss",
-	bossHpMult = 0.38, -- it burrows: a short boss window, not a sponge
+	-- DD-112 stage 2 (tests/difficulty): the rifle with only its main module is too slow for the limit; the chapter's build wins
+	bossHpMult = 0.55, -- it burrows: a short boss window, not a sponge
+	enemyHpMult = 1.5,
 	playerDamageMult = 0.6,
 	reactor = { hp = 3000, name = "БУР" },
 	runEvolution = false,
 	deadline = 300,
-	hardLimit = 360,
+	hardLimit = 210, -- 3:30: the build kills it by ~2:30 (bot), bare 1:54–5:49
 	xpTable = XP_O05,
 	homeText = "Его смерть закроет главу — и сердце пустоты сделает из «Рельсотрона» «Копьё пустоты».",
 	phases = {
@@ -586,7 +596,7 @@ Ops.O07 = {
 	beats = {
 		{ at = 20, type = "assault", count = 8 },
 		{ at = 35, type = "boss" },
-		{ at = 130, type = "enrage" },
+		{ at = 140, type = "enrage" },
 	},
 	unlocks = {},
 	requires = "O06",

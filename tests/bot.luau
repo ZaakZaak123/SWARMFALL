@@ -13,6 +13,19 @@ local Codec = H.require("src/shared/Codec")
 
 local Bot = {}
 
+-- DD-112 stage 2: the rifle a player has by each sortie of the chapter (the free main module, then what
+-- the loot buys: tier I 160, tier II 400 + 20 alloy at M4). From O04 the chapter needs it (tests/difficulty).
+Bot.ChapterBuild = {
+	O01 = nil, -- the first sortie: no module yet
+	O02 = { core = "MOD_ARC_RIFLE_A1" },
+	O03 = { core = "MOD_ARC_RIFLE_A1" },
+	O04 = { core = "MOD_ARC_RIFLE_A1", adapter = "MOD_ARC_RIFLE_B1" },
+	O05 = { core = "MOD_ARC_RIFLE_A2", adapter = "MOD_ARC_RIFLE_B1" },
+	O06 = { core = "MOD_ARC_RIFLE_A2", adapter = "MOD_ARC_RIFLE_B2" },
+	O07 = { core = "MOD_ARC_RIFLE_A2", adapter = "MOD_ARC_RIFLE_B2" },
+	CA01 = { core = "MOD_ARC_RIFLE_A2", adapter = "MOD_ARC_RIFLE_B2" },
+}
+
 local function fmt(t: number): string
 	return string.format("%d:%02d", t // 60, math.floor(t % 60))
 end
@@ -128,23 +141,28 @@ function Bot.run(
 					milestones.s01Tutorial = w.t
 				end
 				-- Target nearest enemy (boss preferred when close).
-				local target, td = nil, math.huge
+				-- (DD-112: the preference weights pick among enemies in range first, and the trigger checks the
+				-- real distance — the weighted one fired at a far boss while the swarm closed in)
+				local range = p.stats.range
+				local target, td, real = nil, math.huge, math.huge
+				local inRange = false
 				for _, e in w.enemies do
 					if e.alive and not e.invulnerable then
-						local d = (e.x - p.x) ^ 2 + (e.z - p.z) ^ 2
+						local d0 = (e.x - p.x) ^ 2 + (e.z - p.z) ^ 2
+						local d = d0
 						if e.kind == "BOSS_BROODMOTHER" or e.def.elite or e.def.static then
 							d *= 0.15
 						elseif e.role == "R" and not opts.ignoreReactor then
 							d *= 0.4
 						end
-						if d < td then
-							target, td = e, d
+						local inside = d0 < (range * 1.05) ^ 2
+						if (inside and not inRange) or (inside == inRange and d < td) then
+							target, td, real, inRange = e, d, d0, inside
 						end
 					end
 				end
-				local range = p.stats.range
 				if target then
-					w:setAim(p.id, target.x - p.x, target.z - p.z, math.sqrt(td) < range * 1.1)
+					w:setAim(p.id, target.x - p.x, target.z - p.z, math.sqrt(real) < range * 1.1)
 				else
 					w:setAim(p.id, 0, 1, false)
 				end
@@ -221,7 +239,7 @@ function Bot.run(
 					end
 					if best then
 						gx0, gz0, gr = best.x, best.z, math.min(18, range * 0.5)
-						if not target or td > (range * 0.9) ^ 2 or not target.alive then
+						if not target or real > (range * 0.9) ^ 2 or not target.alive then
 							target = best
 						end
 					end

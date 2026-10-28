@@ -1868,7 +1868,9 @@ local function refreshGun(wid: string)
 				ZIndex = 44,
 				Parent = tile,
 			})
-			label(m.text, {
+			-- DD-112: a tier keeps the ones below it, and each fitted module is raw damage by its tier
+			local power = math.floor((Modules.Power[tier] or 0) * 100 + 0.5)
+			label(m.text .. string.format("  <font color=\"#%s\">+%d%% урона</font>", C.gold:ToHex(), power), {
 				Position = UDim2.fromOffset(pad, if phone then 26 else 34),
 				Size = UDim2.new(1, -pad * 2, 1, if phone then -28 else -40),
 				FontFace = F.body,

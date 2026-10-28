@@ -101,7 +101,9 @@ local CHAPTER = { "O03", "O04", "O05", "O06", "O07", "CA01" }
 for _, id in CHAPTER do
 	if opArg == id or opArg == "all" or opArg == "chapter" then
 		print("=== " .. id)
-		local out = Bot.run(weapon, 1, seed + #id, false, nil, 1, nil, { op = id, orbit = 34 })
+		-- DD-112: the defending bot carries the build the chapter expects by then (the rifle's modules)
+		local loadout = if weapon == "W_ARC_RIFLE" then Bot.ChapterBuild[id] else nil
+		local out = Bot.run(weapon, 1, seed + #id, false, nil, 1, nil, { op = id, orbit = 34, loadout = loadout })
 		report(id, out)
 		local r = out.result
 		check(r ~= nil, id .. " resolves")
