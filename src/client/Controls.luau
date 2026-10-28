@@ -38,7 +38,7 @@ local mouseDown = false
 local padFire = false
 local touchAim: InputObject? = nil
 local touchVec = Vector2.zero
-local gui, pad, knob, buttons, padName
+local gui, pad, knob, buttons
 local touchLayoutSize = Vector2.zero
 local autoId = nil -- the enemy the touch auto-aim holds
 local marker = nil -- the ring under it
@@ -176,8 +176,7 @@ local function layoutTouch()
 	local main = math.clamp(H * 0.25, 76, 128) -- the corner button
 	local small = math.clamp(H * 0.16, 52, 84)
 	local margin = math.clamp(H * 0.03, 10, 22)
-	local captionRoom = 13 -- (the corner one's name hangs under it)
-	local cx, cy = -(margin + main / 2), -(margin + captionRoom + main / 2)
+	local cx, cy = -(margin + main / 2), -(margin + main / 2)
 	local function place(name: string, angle: number, radius: number, d: number)
 		local a = math.rad(angle)
 		local x = cx + math.cos(a) * radius
@@ -188,7 +187,6 @@ local function layoutTouch()
 	pad.Position = UDim2.new(1, cx, 1, cy)
 	pad.Size = UDim2.fromOffset(main * 1.2, main * 1.2)
 	knob.Size = UDim2.fromOffset(main * 0.45, main * 0.45)
-	padName.Text = "ПРИЦЕЛ И ОГОНЬ"
 	if padSimple then
 		local ring1 = main / 2 + small / 2 + gap
 		local ring2 = ring1 + small + math.max(10, small * 0.2)
@@ -211,53 +209,9 @@ local function layoutTouch()
 	end
 end
 
--- DD-104: the first time a button shows up, a bubble beside it says what it does (one at a time).
-local TIPS = {
-	super = "СУПЕРУДАР — копится от урона; нажми — по цели, потяни — куда укажешь",
-	dash = "РЫВОК — проскочить сквозь рой, в рывке не ранят",
-	overdrive = "ГРОМОБОЙ — удар по всем вокруг, отбрасывает рой",
-	evolve = "ЭВОЛЮЦИЯ — оружие становится сильнее навсегда до конца вылазки",
-	reload = "ПЕРЕЗАРЯДКА — зарядить заранее, пока рядом нет врагов",
-	view = "ВИД — сверху, из-за плеча или от первого лица",
-}
-local tipShown = {}
-local tipQueue = {}
-local tipUntil = 0
-local calmSince = nil -- when the fight last became tip-worthy (Controls.tipsOk, set by Main)
-local tipBubble, tipText, tipFor
-local function queueTip(name: string)
-	if tipShown[name] or not TIPS[name] then
-		return
-	end
-	tipShown[name] = true
-	table.insert(tipQueue, name)
-end
-local function stepTips(now: number)
-	if not tipBubble then
-		return
-	end
-	if tipFor and now < tipUntil and buttons[tipFor].button.Visible and gui.Enabled then
-		return
-	end
-	tipFor = nil
-	tipBubble.Visible = false
-	-- only in the fight itself (no scene, no cards), and not in its first seconds
-	calmSince = if Controls.tipsOk then calmSince or now else nil
-	local name = tipQueue[1]
-	if name and calmSince and now - calmSince > 2.5 and gui.Enabled and buttons[name].button.Visible then
-		table.remove(tipQueue, 1)
-		tipFor = name
-		tipUntil = now + 5
-		-- the button's name in its own colour, then what it does
-		local b = buttons[name]
-		local head, rest = string.match(TIPS[name], "^(.-) — (.*)$")
-		tipText.Text = if head
-			then string.format('<font color="#%s">%s</font>  %s', b.color:ToHex(), head, rest)
-			else TIPS[name]
-		tipBubble.Parent = gui
-		tipBubble.Visible = true
-	end
-end
+-- DD-108 (owner, phone: «столько надписей лишних… если интерфейс интуитивно понятен, то и говорить
+-- нечего»): no names under the buttons and no first-time bubbles — each button says what it is by its
+-- icon, its ring and its colour (DD-104's captions and tips are gone).
 
 local function act(name: string)
 	local fn = Controls.actions[name]
@@ -266,23 +220,12 @@ local function act(name: string)
 	end
 end
 
--- DD-104: every touch button says what it is
-local NAMES = {
-	Super = "СУПЕРУДАР",
-	Dash = "РЫВОК",
-	Gravihammer = "ГРОМОБОЙ",
-	Evolve = "ЭВОЛЮЦИЯ",
-	Reload = "ПЕРЕЗАРЯДКА",
-	View = "ВИД",
-}
-
--- DD-106: every touch button is an ActionButton (ring of charge / cooldown, icon, count, caption)
+-- DD-106: every touch button is an ActionButton (ring of charge / cooldown, icon, count)
 local function makeButton(name: string, icon: string, color: Color3, big: boolean?)
 	return ActionButton.new({
 		name = name,
 		icon = icon,
 		color = color,
-		caption = NAMES[name],
 		big = big,
 		parent = gui,
 	})
@@ -312,17 +255,6 @@ function Controls.init(playerGui: PlayerGui)
 	cross.AnchorPoint = Vector2.new(0.5, 0.5)
 	cross.Position = UDim2.fromScale(0.5, 0.5)
 	cross.Parent = pad
-	padName = Theme.label("", {
-		Name = "Caption",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, 2),
-		Size = UDim2.fromOffset(120, 13),
-		FontFace = Theme.F.head,
-		TextSize = 10,
-		TextColor3 = C.lime,
-		Parent = pad,
-	})
-	new("UIStroke", { Color = C.ink, Thickness = 1.6, Transparency = 0.2, Parent = padName })
 	knob = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -372,38 +304,6 @@ function Controls.init(playerGui: PlayerGui)
 	end)
 	Controls.buttons = buttons
 	Controls.gui = gui
-	-- the first-time bubble. DD-107: beside its button it covered the next button, the health bar or the
-	-- hero; it stands under the timer and the goal instead (it names its button, in its colour)
-	tipBubble = Theme.panel({
-		Name = "Tip",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.33),
-		Size = UDim2.fromOffset(0, 0),
-		AutomaticSize = Enum.AutomaticSize.XY,
-		Visible = false,
-		ZIndex = 5,
-		CornerRadius = 12,
-	}, C.lime)
-	tipBubble.Parent = gui
-	-- DD-107: a small two-line note beside the button, not a bar across the fight
-	new("UIPadding", {
-		PaddingLeft = UDim.new(0, 9),
-		PaddingRight = UDim.new(0, 9),
-		PaddingTop = UDim.new(0, 5),
-		PaddingBottom = UDim.new(0, 5),
-		Parent = tipBubble,
-	})
-	tipText = Theme.label("", {
-		Size = UDim2.fromOffset(190, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		TextWrapped = true,
-		RichText = true,
-		FontFace = Theme.F.bodyBold,
-		TextSize = 11,
-		ZIndex = 6,
-		Parent = tipBubble,
-	})
-
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local t = input.UserInputType
 		-- Studio phone emulation keeps the touch layout while the developer's mouse moves around.
@@ -568,7 +468,6 @@ function Controls.update(
 		end
 		layoutTouch()
 		buttons.view.button.Visible = not simple and not Controls.range -- (chase: the simple fight's only view)
-		stepTips(now)
 		for _, b in buttons do
 			b:step(now)
 		end
@@ -718,9 +617,6 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	-- DD-107: the base's shooting range is the gun alone (the shelter's buttons hold the corner there)
 	visible = visible and not Controls.range
 	b.button.Visible = visible
-	if visible then
-		queueTip(name)
-	end
 	local f = math.clamp(cooldownFrac or 0, 0, 1)
 	if name == "super" then
 		b:set(f, nil, ready == true) -- (the ring is the charge; no number over the emblem)
@@ -729,16 +625,14 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	end
 end
 
--- DD-105: the super button wears the weapon's super (icon, short name, what it does).
-function Controls.setSuperLook(key: string, icon: string, short: string, tip: string)
+-- DD-105: the super button wears the weapon's super (its icon).
+function Controls.setSuperLook(key: string, icon: string)
 	local b = buttons and buttons.super
 	if not b or superLook == key then
 		return
 	end
 	superLook = key
 	b:setIcon(icon)
-	b.caption.Text = short
-	TIPS.super = short .. " — " .. tip
 end
 
 -- DD-106: the super went off: the button's burst.

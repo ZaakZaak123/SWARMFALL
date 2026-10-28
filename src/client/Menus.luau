@@ -78,15 +78,20 @@ local function viewportScale(base: Vector2): number
 	return math.clamp(math.min(vs.X / base.X, vs.Y / base.Y), 0.3, 1.25)
 end
 
--- The results body: on a phone only the centre column is laid out, so it fits a narrower base.
+-- The results body (DD-108): a monitor's column (RES_DESK), a phone's two columns (RES_PHONE) under
+-- Roblox's own top bar.
+local RES_DESK = Vector2.new(760, 520)
+local RES_PHONE = Vector2.new(1000, 270)
 local function resultsScale(): number
 	if Theme.phone() then
-		-- DD-102: the column with the buttons beside it (1220 × 500), under Roblox's top bar (~60 points)
 		local vs = if gui and gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
-		-- DD-107: the column's real height (more unlocks, a longer goal), so nothing hangs off the bottom
-		return math.clamp(math.min(vs.X / 1220, (vs.Y - 62) / (ui.resPhoneH or 500)), 0.3, 1.25)
+		local ok, inset = pcall(function()
+			return game:GetService("GuiService").TopbarInset.Max.Y
+		end)
+		local top = (if ok and inset then inset else 60) + 4
+		return math.clamp(math.min((vs.X - 16) / RES_PHONE.X, (vs.Y - top - 8) / RES_PHONE.Y), 0.3, 1.25)
 	end
-	return viewportScale(Vector2.new(1240, 780))
+	return viewportScale(Vector2.new(RES_DESK.X + 60, RES_DESK.Y + 60))
 end
 
 local function setBlur(size: number)
@@ -2342,6 +2347,16 @@ function Menus.whiteFlash(amount: number)
 end
 
 -- Results ---------------------------------------------------------------------------------------------------
+-- DD-108 (owner: «по итогам боя столько дофига карточек, текстов… у нас уже есть катсцены после победы,
+-- где показываем, что открылось; достаточно показать, сколько ксенита добыли, кратко следующую цель и
+-- небольшие итоги боя раскрывающимся элементом»). The screen is three things and the way out:
+--   the verdict (one line under it: which sortie, why it ended);
+--   the xenite card — the amount big, the shelter's total, what it was made of as chips;
+--   the next goal (after a loss: how to come back stronger);
+--   «ИТОГИ БОЯ» — a pill with the time and kills that opens the numbers, the build and the squad;
+--   НА БАЗУ / В ЛАГЕРЬ.
+-- What opened is told by the homecoming scenes, not by cards here. A monitor stacks it in one column; a
+-- phone puts the verdict and the xenite on the left, the goal and the buttons on the right.
 local function buildResults()
 	local r =
 		new("Frame", { Name = "Results", Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 20, Parent = gui })
@@ -2353,200 +2368,339 @@ local function buildResults()
 	local body = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(1200, 740),
+		Size = UDim2.fromOffset(RES_DESK.X, RES_DESK.Y),
 		ZIndex = 21,
 		Parent = r,
 	})
 	ui.resBody = body
 	ui.resScale = new("UIScale", { Parent = body })
-	-- DD-082 (owner playtest: «много всего, непонятно куда смотреть»): the centre column keeps what
-	-- matters — the verdict, the loot, what opened, what to do next; the numbers sit in a side column.
-	ui.resList = new("Frame", {
-		Position = UDim2.fromOffset(230, 0),
-		Size = UDim2.new(0, 740, 1, -110),
-		ZIndex = 21,
-		Parent = body,
-		List = { HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 14) },
-	})
-	ui.resTag = label("", {
-		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, 20),
-		FontFace = F.head,
-		TextSize = 14,
-		TextColor3 = C.dim,
-		ZIndex = 22,
-		Parent = ui.resList,
-	})
 	ui.resTitle = label("", {
-		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 0, 80),
+		Name = "Verdict",
+		Size = UDim2.fromOffset(RES_DESK.X, 70),
 		FontFace = F.display,
-		TextSize = 70,
+		TextSize = 64,
 		ZIndex = 22,
-		Parent = ui.resList,
+		Parent = body,
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 4, Transparency = 0.25, Parent = ui.resTitle })
 	ui.resTitleScale = new("UIScale", { Parent = ui.resTitle })
 	ui.resReason = label("", {
-		LayoutOrder = 3,
-		Size = UDim2.new(1, 0, 0, 22),
+		Name = "Reason",
+		Size = UDim2.fromOffset(RES_DESK.X, 22),
 		FontFace = F.bodyBold,
-		TextSize = 17,
-		ZIndex = 22,
-		Parent = ui.resList,
-	})
-	-- the side column: the run's numbers, then the build (weapon + every card with its rank)
-	ui.resSide = new("Frame", {
-		Position = UDim2.fromOffset(0, 130),
-		Size = UDim2.fromOffset(200, 560),
+		TextSize = 16,
+		TextColor3 = C.dim,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 22,
 		Parent = body,
-		List = { Padding = UDim.new(0, 8) },
 	})
-	label("ИТОГИ", {
+
+	-- the xenite card ----------------------------------------------------------------------------------
+	local rw = Theme.panel(
+		{ Name = "Xenite", Size = UDim2.fromOffset(640, 132), CornerRadius = 22, ZIndex = 22, Parent = body },
+		C.pink
+	)
+	ui.resReward = rw
+	-- the crystal in its own light, left
+	new("ImageLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 62, 0.5, 0),
+		Size = UDim2.fromOffset(160, 160),
+		BackgroundTransparency = 1,
+		Image = Icons.Tex.glow,
+		ImageColor3 = C.pink,
+		ImageTransparency = 0.5,
+		ZIndex = 22,
+		Parent = rw,
+	})
+	ui.resCrystal = Xenite.icon(84, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 62, 0.5, 0),
+		ZIndex = 23,
+		Parent = rw,
+	})
+	ui.resCrystalScale = new("UIScale", { Parent = ui.resCrystal })
+	label("КСЕНИТ  ·  С БУРА ПО КАНАТКЕ", {
+		Position = UDim2.fromOffset(124, 14),
+		Size = UDim2.fromOffset(300, 14),
+		FontFace = F.head,
+		TextSize = 11,
+		TextColor3 = C.pink,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 23,
+		Parent = rw,
+	})
+	ui.resRewardAmount = label("", {
+		Position = UDim2.fromOffset(122, 26),
+		Size = UDim2.fromOffset(300, 58),
+		FontFace = F.numHeavy,
+		TextSize = 54,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 23,
+		Parent = rw,
+	})
+	new("UIStroke", { Color = C.ink, Thickness = 3, Transparency = 0.2, Parent = ui.resRewardAmount })
+	-- where it went: the shelter's total, right
+	ui.resBank = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -18, 0, 16),
+		Size = UDim2.fromOffset(150, 50),
+		ZIndex = 23,
+		Parent = rw,
+	})
+	label("ВСЕГО В УБЕЖИЩЕ", {
+		Size = UDim2.new(1, 0, 0, 14),
+		FontFace = F.head,
+		TextSize = 10,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 23,
+		Parent = ui.resBank,
+	})
+	ui.resBankAmount = label("", {
+		Position = UDim2.fromOffset(0, 16),
+		Size = UDim2.new(1, 0, 0, 28),
+		FontFace = F.numHeavy,
+		TextSize = 24,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 23,
+		Parent = ui.resBank,
+	})
+	-- what it was made of
+	ui.resRewardLines = new("Frame", {
+		Position = UDim2.fromOffset(124, 92),
+		Size = UDim2.new(1, -140, 0, 26),
+		ClipsDescendants = true,
+		ZIndex = 23,
+		Parent = rw,
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 6),
+		},
+	})
+
+	-- the next goal ------------------------------------------------------------------------------------
+	local g = Theme.panel(
+		{ Name = "Goal", Size = UDim2.fromOffset(640, 84), CornerRadius = 18, ZIndex = 22, Parent = body },
+		C.lime
+	)
+	ui.resGoal = g
+	ui.resGoalBar = new("Frame", {
+		Position = UDim2.fromOffset(0, 16),
+		Size = UDim2.new(0, 4, 1, -32),
+		BackgroundColor3 = C.lime,
+		Corner = UDim.new(1, 0),
+		ZIndex = 23,
+		Parent = g,
+	})
+	ui.resGoalIcon = new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 18, 0.5, 0),
+		Size = UDim2.fromOffset(48, 48),
+		ZIndex = 23,
+		Parent = g,
+	})
+	ui.resGoalHead = label("ДАЛЬШЕ", {
+		Position = UDim2.fromOffset(80, 12),
+		Size = UDim2.new(1, -96, 0, 14),
+		FontFace = F.head,
+		TextSize = 11,
+		TextColor3 = C.lime,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 23,
+		Parent = g,
+	})
+	ui.resGoalTitle = label("", {
+		Position = UDim2.fromOffset(80, 26),
+		Size = UDim2.new(1, -96, 0, 22),
+		FontFace = F.display,
+		TextSize = 19,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 23,
+		Parent = g,
+	})
+	ui.resGoalText = label("", {
+		Position = UDim2.fromOffset(80, 50),
+		Size = UDim2.new(1, -96, 0, 32),
+		FontFace = F.body,
+		TextSize = 13,
+		TextColor3 = C.dim,
+		TextWrapped = true,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		ZIndex = 23,
+		Parent = g,
+	})
+
+	-- «ИТОГИ БОЯ»: a pill that opens the numbers -------------------------------------------------------
+	ui.resMore = new("TextButton", {
+		Name = "More",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.2,
+		Text = "",
+		Corner = UDim.new(1, 0),
+		Stroke = { Color = C.white, Transparency = 0.8 },
+		ZIndex = 22,
+		Parent = body,
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		},
+	})
+	new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 14), Parent = ui.resMore })
+	label("ИТОГИ БОЯ", {
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = F.head,
+		TextSize = 13,
+		LayoutOrder = 1,
+		ZIndex = 23,
+		Parent = ui.resMore,
+	})
+	ui.resMoreText = label("", {
+		Size = UDim2.fromOffset(0, 40),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = F.bodyBold,
+		TextSize = 13,
+		TextColor3 = C.dim,
+		LayoutOrder = 2,
+		ZIndex = 23,
+		Parent = ui.resMore,
+	})
+	ui.resMoreArrow = label("▾", {
+		Size = UDim2.fromOffset(14, 40),
+		FontFace = F.bodyBold,
+		TextSize = 16,
+		TextColor3 = C.lime,
+		LayoutOrder = 3,
+		ZIndex = 23,
+		Parent = ui.resMore,
+	})
+	-- opened: a panel over the screen — the numbers, the build, the squad
+	ui.resStatsPanel = Theme.panel({
+		Name = "Stats",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(660, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		CornerRadius = 20,
+		Visible = false,
+		ZIndex = 30,
+		Parent = r, -- (beside the body, above the catcher that closes it; scaled like the body)
+	})
+	ui.resStatsScale = new("UIScale", { Parent = ui.resStatsPanel })
+	new("UIPadding", {
+		PaddingLeft = UDim.new(0, 18),
+		PaddingRight = UDim.new(0, 18),
+		PaddingTop = UDim.new(0, 16),
+		PaddingBottom = UDim.new(0, 18),
+		Parent = ui.resStatsPanel,
+	})
+	new("UIListLayout", {
+		Padding = UDim.new(0, 12),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = ui.resStatsPanel,
+	})
+	label("ИТОГИ БОЯ", {
 		LayoutOrder = 0,
 		Size = UDim2.new(1, 0, 0, 16),
 		FontFace = F.head,
 		TextSize = 12,
 		TextColor3 = C.dim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 22,
-		Parent = ui.resSide,
+		ZIndex = 31,
+		Parent = ui.resStatsPanel,
 	})
 	ui.resStats = new("Frame", {
 		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		ZIndex = 22,
-		Parent = ui.resSide,
-		List = { Padding = UDim.new(0, 6) },
+		Size = UDim2.new(1, 0, 0, 58),
+		ZIndex = 31,
+		Parent = ui.resStatsPanel,
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		},
 	})
 	ui.resBuild = new("Frame", {
 		LayoutOrder = 2,
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
-		ZIndex = 22,
-		Parent = ui.resSide,
+		ZIndex = 31,
+		Parent = ui.resStatsPanel,
 		List = {
 			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			Padding = UDim.new(0, 6),
 			Wraps = true,
 		},
 	})
-	ui.resReward = Theme.panel(
-		{ LayoutOrder = 6, Size = UDim2.fromOffset(560, 92), CornerRadius = 20, ZIndex = 22, Parent = ui.resList },
-		C.pink
-	)
-	-- the emblem either side of the amount: the reward is the currency, at a glance
-	for _, side in { 0, 1 } do
-		Xenite.icon(64, {
-			AnchorPoint = Vector2.new(side, 0.5),
-			Position = UDim2.new(side, if side == 0 then 18 else -18, 0.5, 0),
-			ZIndex = 23,
-			Parent = ui.resReward,
-		})
-	end
-	ui.resRewardAmount = label("", {
-		Position = UDim2.fromOffset(0, 10),
-		Size = UDim2.new(1, 0, 0, 46),
-		FontFace = F.display,
-		TextSize = 40,
-		TextColor3 = C.pink,
-		ZIndex = 23,
-		Parent = ui.resReward,
-	})
-	-- where it goes: the cableway from the drill to the shelter (DD-065)
-	ui.resRewardTag = label("С БУРА ПО КАНАТКЕ → В УБЕЖИЩЕ", {
-		Position = UDim2.fromOffset(16, 8),
-		Size = UDim2.fromOffset(300, 14),
-		FontFace = F.head,
-		TextSize = 10,
-		TextColor3 = C.lime,
-		TextTransparency = 0.2,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 23,
-		Parent = ui.resReward,
-	})
-	ui.resRewardLines = label("", {
-		Position = UDim2.fromOffset(0, 58),
-		Size = UDim2.new(1, 0, 0, 20),
-		FontFace = F.body,
-		TextSize = 13,
-		TextColor3 = C.dim,
-		ZIndex = 23,
-		Parent = ui.resReward,
-	})
-	ui.resUnlocks = new("Frame", {
-		LayoutOrder = 7,
+	-- squad contribution: everyone's part, not just kills
+	ui.resSquad = new("Frame", {
+		LayoutOrder = 3,
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
-		ZIndex = 22,
-		Parent = ui.resList,
+		ZIndex = 31,
+		Visible = false,
+		Parent = ui.resStatsPanel,
+		List = {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+			Wraps = true,
+		},
 	})
-	ui.resUnlockGrid = new("UIGridLayout", {
-		CellSize = UDim2.fromOffset(320, 96),
-		CellPadding = UDim2.fromOffset(12, 12),
-		FillDirectionMaxCells = 2,
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = ui.resUnlocks,
+	-- a tap anywhere outside the opened panel closes it (a screen-wide catcher behind it)
+	local closer = new("TextButton", {
+		Name = "CloseStats",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C.bg,
+		BackgroundTransparency = 0.5,
+		Text = "",
+		Visible = false,
+		ZIndex = 29,
+		Parent = r,
 	})
-	ui.resGoal = Theme.panel(
-		{ LayoutOrder = 8, Size = UDim2.fromOffset(560, 84), CornerRadius = 18, ZIndex = 22, Parent = ui.resList },
-		C.lime
-	)
-	ui.resGoalIcon = new(
-		"Frame",
-		{ Position = UDim2.fromOffset(14, 20), Size = UDim2.fromOffset(44, 44), ZIndex = 23, Parent = ui.resGoal }
-	)
-	ui.resGoalHead = label("ДАЛЬШЕ", {
-		Position = UDim2.fromOffset(70, 8),
-		Size = UDim2.fromOffset(120, 14),
-		FontFace = F.head,
-		TextSize = 10,
-		TextColor3 = C.lime,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 23,
-		Parent = ui.resGoal,
-	})
-	ui.resGoalTitle = label("", {
-		Position = UDim2.fromOffset(70, 22),
-		Size = UDim2.new(1, -84, 0, 20),
-		FontFace = F.display,
-		TextSize = 17,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 23,
-		Parent = ui.resGoal,
-	})
-	ui.resGoalText = label("", {
-		Position = UDim2.fromOffset(70, 43),
-		Size = UDim2.new(1, -84, 0, 34),
-		FontFace = F.body,
-		TextSize = 13,
-		TextColor3 = C.dim,
-		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		ZIndex = 23,
-		Parent = ui.resGoal,
-	})
+	local function setOpen(open: boolean)
+		ui.resStatsPanel.Visible = open
+		closer.Visible = open
+		ui.resMoreArrow.Text = if open then "▴" else "▾"
+		if open then
+			local k = ui.resScale.Scale
+			ui.resStatsScale.Scale = k * 0.9
+			tween(ui.resStatsScale, 0.25, { Scale = k }, Enum.EasingStyle.Back)
+		end
+	end
+	ui.resSetStatsOpen = setOpen
+	ui.resMore.Activated:Connect(function()
+		setOpen(not ui.resStatsPanel.Visible)
+		Audio.play("ui")
+	end)
+	closer.Activated:Connect(function()
+		setOpen(false)
+	end)
+
+	-- the way out --------------------------------------------------------------------------------------
 	ui.resButton, ui.resButtonLabel = Theme.button("НА БАЗУ", {
 		Name = "Continue",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.fromOffset(320, 76),
+		Size = UDim2.fromOffset(300, 64),
 		ZIndex = 22,
-		TextSize = 26,
+		TextSize = 24,
 	}, "primary")
 	ui.resButton.Parent = body
 	ui.resButtonLabel.ZIndex = 23
 	-- DD-053: back to the public camp instead of the squad's base
 	ui.resCamp, ui.resCampLabel = Theme.button("В ЛАГЕРЬ", {
 		Name = "ToCamp",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.5, 176, 1, -32),
-		Size = UDim2.fromOffset(170, 60),
+		Size = UDim2.fromOffset(180, 64),
 		ZIndex = 22,
 		TextSize = 16,
 	})
@@ -2561,25 +2715,8 @@ local function buildResults()
 			ui.resCampLabel.Text = "ЛЕТИМ…"
 		end
 	end)
-	-- squad contribution: everyone's part, not just kills
-	ui.resSquad = new("Frame", {
-		LayoutOrder = 5,
-		Size = UDim2.new(1, 0, 0, 34),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		ZIndex = 22,
-		Visible = false,
-		Parent = ui.resList,
-		List = {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			Padding = UDim.new(0, 8),
-			Wraps = true,
-		},
-	})
 	ui.resVotes = label("", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, 0),
-		Size = UDim2.fromOffset(400, 18),
+		Size = UDim2.fromOffset(300, 18),
 		FontFace = F.bodyBold,
 		TextSize = 13,
 		TextColor3 = C.dim,
@@ -2596,83 +2733,86 @@ local function buildResults()
 	end)
 end
 
+-- Places the results for a monitor (one column) or a phone (two columns), with or without В ЛАГЕРЬ.
+local function layoutResults(phone: boolean, camp: boolean)
+	local size = if phone then RES_PHONE else RES_DESK
+	ui.resBody.Size = UDim2.fromOffset(size.X, size.Y)
+	local function at(o: GuiObject, x: number, y: number, w: number, h: number)
+		o.AnchorPoint = Vector2.zero
+		o.Position = UDim2.fromOffset(x, y)
+		o.Size = UDim2.fromOffset(w, h)
+	end
+	if phone then
+		local lw, rx, rwid = 560, 590, 410
+		ui.resTitle.TextSize = 52
+		at(ui.resTitle, 0, 0, lw, 60)
+		ui.resReason.TextSize = 17
+		at(ui.resReason, 0, 62, lw, 22)
+		at(ui.resReward, 0, 100, lw, 132)
+		at(ui.resGoal, rx, 0, rwid, 106)
+		ui.resGoalText.TextSize = 15
+		ui.resGoalText.Size = UDim2.new(1, -96, 0, 52)
+		ui.resMore.AnchorPoint = Vector2.zero
+		ui.resMore.Position = UDim2.fromOffset(rx, 118)
+		local bw = if camp then 250 else rwid
+		at(ui.resButton, rx, 170, bw, 66)
+		at(ui.resCamp, rx + bw + 10, 170, rwid - bw - 10, 66)
+		at(ui.resVotes, rx, 244, rwid, 18)
+		ui.resStatsPanel.Size = UDim2.fromOffset(820, 0)
+	else
+		ui.resTitle.TextSize = 64
+		at(ui.resTitle, 0, 0, size.X, 70)
+		ui.resReason.TextSize = 16
+		at(ui.resReason, 0, 72, size.X, 22)
+		at(ui.resReward, 60, 112, 640, 132)
+		at(ui.resGoal, 60, 258, 640, 84)
+		ui.resGoalText.TextSize = 13
+		ui.resGoalText.Size = UDim2.new(1, -96, 0, 32)
+		ui.resMore.AnchorPoint = Vector2.new(0.5, 0)
+		ui.resMore.Position = UDim2.fromOffset(size.X / 2, 358)
+		local total = 300 + (if camp then 190 else 0)
+		local x0 = (size.X - total) / 2
+		at(ui.resButton, x0, 416, 300, 64)
+		at(ui.resCamp, x0 + 310, 416, 180, 64)
+		at(ui.resVotes, size.X / 2 - 150, 490, 300, 18)
+		ui.resStatsPanel.Size = UDim2.fromOffset(660, 0)
+	end
+	ui.resCamp.Visible = camp
+	ui.resScale.Scale = resultsScale()
+end
+
 local function statTile(iconName: string, title: string, value: string, color: Color3, order: number)
 	local t = Theme.panel({
-		Size = UDim2.new(1, 0, 0, 46),
+		Size = UDim2.fromOffset(116, 58),
 		CornerRadius = 14,
 		LayoutOrder = order,
-		ZIndex = 22,
+		ZIndex = 31,
 		Parent = ui.resStats,
 	})
-	icon(
-		iconName,
-		20,
-		color,
-		{ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), ZIndex = 23, Parent = t }
-	)
-	local v = label(value, {
-		Position = UDim2.fromOffset(42, 4),
-		Size = UDim2.new(1, -50, 0, 22),
+	icon(iconName, 16, color, { Position = UDim2.fromOffset(10, 9), ZIndex = 32, Parent = t })
+	label(title, {
+		Position = UDim2.fromOffset(32, 9),
+		Size = UDim2.new(1, -38, 0, 16),
+		FontFace = F.head,
+		TextSize = 9,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 32,
+		Parent = t,
+	})
+	return label(value, {
+		Position = UDim2.fromOffset(10, 28),
+		Size = UDim2.new(1, -16, 0, 22),
 		FontFace = F.display,
 		TextSize = 19,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 23,
+		ZIndex = 32,
 		Parent = t,
 	})
-	label(title, {
-		Position = UDim2.fromOffset(42, 26),
-		Size = UDim2.new(1, -50, 0, 14),
-		FontFace = F.head,
-		TextSize = 10,
-		TextColor3 = C.dim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 23,
-		Parent = t,
-	})
-	return v
 end
 
-local function unlockCard(iconName: string, tag: string, text: string, color: Color3, order: number)
-	local t = Theme.panel({
-		Size = UDim2.fromOffset(320, 96),
-		CornerRadius = 20,
-		LayoutOrder = order,
-		ZIndex = 22,
-		Parent = ui.resUnlocks,
-	}, color)
-	local disc = Icons.disc(iconName, 62, color, 23)
-	disc.AnchorPoint = Vector2.new(0, 0.5)
-	disc.Position = UDim2.new(0, 16, 0.5, 0)
-	disc.Parent = t
-	label(tag, {
-		Position = UDim2.fromOffset(92, 18),
-		Size = UDim2.new(1, -104, 0, 16),
-		FontFace = F.head,
-		TextSize = 12,
-		TextColor3 = color,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 23,
-		Parent = t,
-	})
-	label(text, {
-		Position = UDim2.fromOffset(92, 38),
-		Size = UDim2.new(1, -104, 0, 44),
-		FontFace = F.display,
-		TextSize = 20,
-		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		ZIndex = 23,
-		Parent = t,
-	})
-	local s = new("UIScale", { Scale = 0.6, Parent = t })
-	task.delay(0.5 + order * 0.12, function()
-		tween(s, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
-		Audio.play("level", 0.6, 1.4)
-	end)
-end
-
--- A chip in the results build strip: icon disc + short text; pops in after the stats.
+-- A chip of the build (the weapon, every card with its rank) in the opened numbers.
 local function buildChip(iconName: string, text: string, color: Color3, order: number)
 	local chip = new("Frame", {
 		Size = UDim2.fromOffset(0, 34),
@@ -2682,7 +2822,7 @@ local function buildChip(iconName: string, text: string, color: Color3, order: n
 		Corner = UDim.new(1, 0),
 		Stroke = { Color = color, Transparency = 0.45, Thickness = 1.5 },
 		LayoutOrder = order,
-		ZIndex = 22,
+		ZIndex = 31,
 		Parent = ui.resBuild,
 	})
 	new(
@@ -2702,14 +2842,14 @@ local function buildChip(iconName: string, text: string, color: Color3, order: n
 		BackgroundTransparency = 0.8,
 		Corner = UDim.new(1, 0),
 		LayoutOrder = 1,
-		ZIndex = 23,
+		ZIndex = 32,
 		Parent = chip,
 	})
 	icon(
 		iconName,
 		20,
 		color,
-		{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 24, Parent = disc }
+		{ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 33, Parent = disc }
 	)
 	if text ~= "" then
 		label(text, {
@@ -2719,14 +2859,34 @@ local function buildChip(iconName: string, text: string, color: Color3, order: n
 			TextSize = 13,
 			TextColor3 = color,
 			LayoutOrder = 2,
-			ZIndex = 23,
+			ZIndex = 32,
 			Parent = chip,
 		})
 	end
-	local sc = new("UIScale", { Scale = 0, Parent = chip })
-	task.delay(0.35 + order * 0.05, function()
-		tween(sc, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
-	end)
+end
+
+-- A chip of what the xenite was made of, in the xenite card.
+local function rewardChip(text: string, color: Color3?, order: number)
+	local chip = new("Frame", {
+		Size = UDim2.fromOffset(0, 24),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.ink,
+		BackgroundTransparency = 0.35,
+		Corner = UDim.new(1, 0),
+		LayoutOrder = order,
+		ZIndex = 24,
+		Parent = ui.resRewardLines,
+	})
+	new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = chip })
+	label(text, {
+		Size = UDim2.fromOffset(0, 24),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = F.bodyBold,
+		TextSize = 12,
+		TextColor3 = color or C.text,
+		ZIndex = 25,
+		Parent = chip,
+	})
 end
 
 -- After a loss (DD-082): what would have helped, from what the player can do right now.
@@ -2797,36 +2957,11 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 	Menus.hideOffer()
 	ui.results.Visible = true
 	setBlur(18)
-	ui.resScale.Scale = resultsScale()
-	-- DD-085: a phone keeps the centre column only (the numbers would be too small to read)
-	-- DD-102: and puts the buttons beside it instead of under it, so the column is drawn bigger
-	local phone = Theme.phone()
-	ui.resSide.Visible = not phone
-	ui.resTag.Visible = not phone
-	ui.resGoalText.TextSize = if phone then 20 else 13
-	ui.resGoalTitle.TextSize = if phone then 22 else 17
-	ui.resGoalText.Size = UDim2.new(1, -84, 0, if phone then 46 else 34)
-	ui.resRewardLines.TextSize = if phone then 19 else 13
-	ui.resReason.TextSize = if phone then 22 else 17
-	ui.resGoal.Size = UDim2.fromOffset(if phone then 720 else 560, if phone then 106 else 84)
-	ui.resTitle.TextSize = if phone then 54 else 70
-	ui.resTitle.Size = UDim2.new(1, 0, 0, if phone then 60 else 80)
-	ui.resBody.Size = UDim2.fromOffset(if phone then 1220 else 1200, if phone then 500 else 740)
-	ui.resBody.AnchorPoint = if phone then Vector2.new(0.5, 1) else Vector2.new(0.5, 0.5)
-	ui.resBody.Position = if phone then UDim2.new(0.5, 0, 1, -4) else UDim2.fromScale(0.5, 0.5)
-	ui.resList.Position = UDim2.fromOffset(if phone then 0 else 230, 0)
-	ui.resList.Size = UDim2.new(0, if phone then 760 else 740, 1, if phone then 0 else -110)
-	ui.resButton.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0.5, 1)
-	ui.resButton.Position = if phone then UDim2.new(1, 0, 1, -40) else UDim2.new(0.5, 0, 1, -24)
-	ui.resButton.Size = UDim2.fromOffset(if phone then 420 else 320, 76)
-	ui.resCamp.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0, 1)
-	ui.resCamp.Position = if phone then UDim2.new(1, 0, 1, -132) else UDim2.new(0.5, 176, 1, -32)
-	ui.resCamp.Size = UDim2.fromOffset(if phone then 260 else 170, if phone then 64 else 60)
-	ui.resVotes.AnchorPoint = if phone then Vector2.new(1, 1) else Vector2.new(0.5, 1)
-	ui.resVotes.Position = if phone then UDim2.new(1, 0, 1, -8) else UDim2.new(0.5, 0, 1, 0)
+	layoutResults(Theme.phone(), canCamp == true)
 	local op = Ops.get(result.op)
 	if first then
 		ui.resClicked = false
+		ui.resSetStatsOpen(false)
 		ui.resButtonLabel.Text = if n > 1 then "НА БАЗУ ОТРЯДА" else "НА БАЗУ"
 		ui.resCampLabel.Text = "В ЛАГЕРЬ"
 		ui.resTitleScale.Scale = 1.6
@@ -2835,41 +2970,44 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		tween(ui.resShade, 0.5, { BackgroundTransparency = 0.3 })
 		Audio.play(if result.victory then "evolve" else "warn", 0.7, if result.victory then 1.1 else 0.8)
 	end
+	-- the verdict and one line under it: which sortie, why it ended
 	local mode = result.mode or "hunt"
+	local tag
 	if result.op == "STRIKE" then
-		ui.resTag.Text = "ОБОРОНА БУРА  ·  ПЕРВЫЙ НАТИСК"
+		tag = "Оборона бура · первый натиск"
 		ui.resTitle.Text = if result.victory then "НАТИСК ОТБИТ" else "БУР ПОВРЕЖДЁН"
 	elseif mode == "siege" then
-		ui.resTag.Text = "ОБОРОНА БУРА  ·  УРОВЕНЬ " .. (result.siege or 1)
+		tag = "Оборона бура · уровень " .. (result.siege or 1)
 		ui.resTitle.Text = if result.victory then "БУР ВЫСТОЯЛ" else "БУР ПАЛ"
 	elseif mode == "raid" then
-		ui.resTag.Text = "ВТОРЖЕНИЕ  ·  " .. (if result.raid then result.raid.name else "")
-		ui.resTitle.Text = if result.victory
-			then "ВТОРЖЕНИЕ УСПЕШНО"
-			else "ОБОРОНА ВЫСТОЯЛА"
+		tag = "Вторжение" .. (if result.raid then " · " .. result.raid.name else "")
+		ui.resTitle.Text = if result.victory then "ВТОРЖЕНИЕ УСПЕШНО" else "ОБОРОНА ВЫСТОЯЛА"
 	else
-		ui.resTag.Text = (if op.code == "C-A01" then "КОНТРАКТ" else "ВЫЛАЗКА " .. op.index)
-			.. "  ·  "
+		tag = (if op.code == "C-A01" then "Контракт" else "Вылазка " .. op.index)
+			.. " · "
 			.. op.name
-			.. (if (result.threat or 1) > 1 then "  ·  УГРОЗА " .. result.threat else "")
+			.. (if (result.threat or 1) > 1 then " · угроза " .. result.threat else "")
 		ui.resTitle.Text = if result.victory then "ВЫЛАЗКА УДАЛАСЬ" else "ТЫ ПАЛ"
 	end
 	ui.resTitle.TextColor3 = if result.victory then C.lime else C.red
-	ui.resReason.Text = if result.chapterEnd and result.victory
+	local reason = if result.chapterEnd and result.victory
 		then "Глава завершена. " .. result.reason
 		else result.reason
-	ui.resReason.TextColor3 = C.text
-	-- stats
-	clear(ui.resStats)
+	ui.resReason.Text = tag .. (if reason and reason ~= "" then "  —  " .. reason else "")
+
+	-- the numbers (opened by «ИТОГИ БОЯ»), and the pill's short line
 	local mine = nil
 	for _, p in result.players do
 		if p.id == id then
 			mine = p
 		end
 	end
-	local tv = statTile("timer", "ВРЕМЯ", Theme.fmtTime(result.time), C.cyan, 1)
-	local kv = statTile("skull", if n > 1 then "ТВОИ УБИЙСТВА" else "УБИТО", "0", C.orange, 2)
-	local dv = statTile("boom", "УРОН", "0", C.pink, 3)
+	local kills = if mine then mine.kills else result.kills
+	ui.resMoreText.Text = string.format("%s  ·  %d убито", Theme.fmtTime(result.time), kills)
+	clear(ui.resStats)
+	statTile("timer", "ВРЕМЯ", Theme.fmtTime(result.time), C.cyan, 1)
+	statTile("skull", if n > 1 then "ТВОИ УБИЙСТВА" else "УБИТО", Theme.commas(kills), C.orange, 2)
+	statTile("boom", "УРОН", Theme.commas(if mine then mine.damage or 0 else 0), C.pink, 3)
 	statTile(
 		"burst",
 		"ЛУЧШЕЕ КОМБО",
@@ -2878,70 +3016,6 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 		4
 	)
 	statTile("level", "УРОВЕНЬ", tostring(result.level), C.lime, 5)
-	countUp(kv, if mine then mine.kills else result.kills, "%s", 1.1)
-	countUp(dv, if mine then mine.damage or 0 else 0, "%s", 1.3)
-	tv.Text = Theme.fmtTime(result.time)
-	ui.resCamp.Visible = canCamp == true
-	-- squad contribution (DD-053): damage, kills and rescues of everyone
-	clear(ui.resSquad)
-	ui.resSquad.Visible = n > 1
-	local awards = Showcase.awards(result.players)
-	if n > 1 then
-		for i, p in result.players do
-			local chip = new("Frame", {
-				Size = UDim2.fromOffset(0, 32),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BackgroundColor3 = C.ink,
-				BackgroundTransparency = 0.2,
-				Corner = UDim.new(1, 0),
-				Stroke = {
-					Color = if p.id == id then C.lime else C.white,
-					Transparency = if p.id == id then 0.4 else 0.85,
-				},
-				LayoutOrder = i,
-				ZIndex = 23,
-				Parent = ui.resSquad,
-			})
-			new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = chip })
-			local parts = {
-				tostring(p.name or "?"),
-				Theme.commas(p.damage or 0) .. " урона",
-				tostring(p.kills or 0) .. " убийств",
-			}
-			if (p.revives or 0) > 0 then
-				table.insert(parts, tostring(p.revives) .. " спасений")
-			end
-			new("UIListLayout", {
-				FillDirection = Enum.FillDirection.Horizontal,
-				VerticalAlignment = Enum.VerticalAlignment.Center,
-				Padding = UDim.new(0, 8),
-				SortOrder = Enum.SortOrder.LayoutOrder,
-				Parent = chip,
-			})
-			label(table.concat(parts, "  ·  "), {
-				AutomaticSize = Enum.AutomaticSize.X,
-				Size = UDim2.fromOffset(0, 32),
-				FontFace = F.bodyBold,
-				TextSize = 13,
-				ZIndex = 24,
-				Parent = chip,
-			})
-			for k, a in awards[p.id] or {} do
-				icon(a[1], 16, C.gold, { LayoutOrder = k * 2, ZIndex = 24, Parent = chip })
-				label(a[2], {
-					AutomaticSize = Enum.AutomaticSize.X,
-					Size = UDim2.fromOffset(0, 32),
-					FontFace = F.head,
-					TextSize = 12,
-					TextColor3 = C.gold,
-					LayoutOrder = k * 2 + 1,
-					ZIndex = 24,
-					Parent = chip,
-				})
-			end
-		end
-	end
-	-- build strip
 	clear(ui.resBuild)
 	ui.resBuild.Visible = mine ~= nil
 	if mine then
@@ -2957,176 +3031,145 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			end
 		end
 	end
-	-- reward
+	-- squad contribution (DD-053): damage, kills and rescues of everyone
+	clear(ui.resSquad)
+	ui.resSquad.Visible = n > 1
+	if n > 1 then
+		local awards = Showcase.awards(result.players)
+		for i, p in result.players do
+			local chip = new("Frame", {
+				Size = UDim2.fromOffset(0, 32),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = C.ink,
+				BackgroundTransparency = 0.2,
+				Corner = UDim.new(1, 0),
+				Stroke = {
+					Color = if p.id == id then C.lime else C.white,
+					Transparency = if p.id == id then 0.4 else 0.85,
+				},
+				LayoutOrder = i,
+				ZIndex = 32,
+				Parent = ui.resSquad,
+				List = {
+					FillDirection = Enum.FillDirection.Horizontal,
+					VerticalAlignment = Enum.VerticalAlignment.Center,
+					Padding = UDim.new(0, 8),
+				},
+			})
+			new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = chip })
+			local parts = {
+				tostring(p.name or "?"),
+				Theme.commas(p.damage or 0) .. " урона",
+				tostring(p.kills or 0) .. " убийств",
+			}
+			if (p.revives or 0) > 0 then
+				table.insert(parts, tostring(p.revives) .. " спасений")
+			end
+			label(table.concat(parts, "  ·  "), {
+				AutomaticSize = Enum.AutomaticSize.X,
+				Size = UDim2.fromOffset(0, 32),
+				FontFace = F.bodyBold,
+				TextSize = 13,
+				ZIndex = 33,
+				Parent = chip,
+			})
+			for k, a in awards[p.id] or {} do
+				icon(a[1], 16, C.gold, { LayoutOrder = k * 2, ZIndex = 33, Parent = chip })
+				label(a[2], {
+					AutomaticSize = Enum.AutomaticSize.X,
+					Size = UDim2.fromOffset(0, 32),
+					FontFace = F.head,
+					TextSize = 12,
+					TextColor3 = C.gold,
+					LayoutOrder = k * 2 + 1,
+					ZIndex = 33,
+					Parent = chip,
+				})
+			end
+		end
+	end
+
+	-- the xenite: the amount, the shelter's total, what it was made of
 	ui.resReward.Visible = reward ~= nil
+	clear(ui.resRewardLines)
 	if reward then
-		countUp(ui.resRewardAmount, reward.total + (reward.grant or 0), "+%s КСЕНИТ", 1.3)
-		local parts = {}
+		local got = reward.total + (reward.grant or 0)
+		countUp(ui.resRewardAmount, got, "+%s", 1.3)
+		ui.resBankAmount.Text = Theme.commas(profile and profile.scrap or 0)
+		if first then
+			ui.resCrystalScale.Scale = 0.6
+			tween(ui.resCrystalScale, 0.7, { Scale = 1 }, Enum.EasingStyle.Elastic)
+		end
 		local names = {
-			skull = "за убийства",
-			level = "за уровни",
-			crown = "за победу",
-			timer = "за стойкость",
+			skull = "убийства",
+			level = "уровни",
+			crown = "победа",
+			timer = "стойкость",
 			hive = "ульи",
 		}
+		local order = 0
+		local function chip(text: string, color: Color3?)
+			order += 1
+			rewardChip(text, color, order)
+		end
 		for _, line in reward.lines or {} do
 			if line[2] > 0 then
-				table.insert(parts, "+" .. line[2] .. " " .. (names[line[1]] or ""))
+				chip("+" .. line[2] .. " " .. (names[line[1]] or ""))
 			end
-		end
-		if reward.mult and reward.mult > 1.001 then
-			table.insert(parts, string.format("×%.2f", reward.mult))
 		end
 		if reward.grant then
-			table.insert(parts, "+" .. reward.grant .. " бонус первой победы")
+			chip("+" .. reward.grant .. " первая победа", C.gold)
+		end
+		if reward.mult and reward.mult > 1.001 then
+			chip(string.format("угроза ×%.2f", reward.mult), C.orange)
 		end
 		if reward.bonus and reward.bonus > 1.001 then
-			table.insert(parts, string.format("бонусы ×%.2f", reward.bonus))
+			chip(string.format("бонусы ×%.2f", reward.bonus), C.lime)
 		end
 		if reward.light and reward.light > 0 then
-			table.insert(parts, string.format("Свет Древа +%d%%", math.floor(reward.light * 5 + 0.5)))
+			chip(string.format("Свет Древа +%d%%", math.floor(reward.light * 5 + 0.5)), C.lime)
 		end
 		if type(reward.mentor) == "table" and #reward.mentor > 0 then
-			-- DD-088: a veteran who won beside a newcomer
-			table.insert(parts, "наставник для " .. table.concat(reward.mentor, ", "))
+			chip("наставник", C.cyan) -- DD-088: a veteran who won beside a newcomer
 		end
-		ui.resRewardLines.Text = table.concat(parts, "   ·   ")
-	end
-	-- unlocks
-	clear(ui.resUnlocks)
-	local k = 0
-	local decor = reward and Meta.decorById(reward.decor)
-	if decor then
-		-- DD-090: the week's decoration came home with this win
-		k += 1
-		unlockCard(decor.icon, "СЕЗОННОЕ УКРАШЕНИЕ", decor.name, C.gold, k)
-	end
-	for _, u in reward and reward.unlocked or {} do
-		local kind = u[1]
-		if kind == "op" then
-			k += 1
-			local nop = Ops.get(u[2])
-			unlockCard(
-				"pin",
-				if nop.code == "C-A01" then "НОВЫЙ КОНТРАКТ" else "НОВАЯ ВЫЛАЗКА",
-				nop.name,
-				C.lime,
-				k
+		-- a raid's own word on the reward (DD-108: these were cards)
+		if reward.capped then
+			chip(
+				if reward.capped == "pair" then "этот бур уже приносил ксенит сегодня" else "лимит налётов на сегодня",
+				C.dim
 			)
-		elseif kind == "s01" then
-			k += 1
-			unlockCard("hammer", "НАВСЕГДА", "Громобой", C.cyan, k)
-		elseif
-			(kind == "research" or kind == "specimen")
-			and Defs.Enemies[u[2]]
-			-- DD-075: the first win keeps to what matters next (the shelter, the turret); the collection
-			-- shows itself later
-			and not (result.op == "O01" and (((profile and profile.winsByOp) or {}).O01 or 0) <= 1)
-		then
-			k += 1
-			local stages = {
-				"СИЛУЭТ В ПРОБИРКЕ",
-				"ПОЛНЫЙ ЭКЗЕМПЛЯР",
-				"ЭТАЛОН КОЛЛЕКЦИИ",
-			}
-			unlockCard(
-				"hive",
-				if kind == "specimen" then "НОВЫЙ ВИД В КОЛЛЕКЦИИ" else stages[u[3]],
-				Defs.Enemies[u[2]].name,
-				if u[3] == 3 then C.gold else C.lime,
-				k
+		elseif reward.rating and not reward.rating.unrated then
+			local d = reward.rating.delta
+			chip(
+				string.format("рейтинг %s%d → %d", if d >= 0 then "+" else "", d, reward.rating.now),
+				if d >= 0 then C.gold else C.red
 			)
 		end
 	end
-	if reward and reward.siegeUp then
-		k += 1
-		unlockCard("threat", "ОБОРОНА БУРА", "Открыт уровень " .. reward.siegeUp, C.orange, k)
-	end
-	if reward and reward.capped then
-		k += 1
-		unlockCard(
-			"timer",
-			"БЕЗ НАГРАДЫ",
-			if reward.capped == "pair"
-				then "Этот бур уже приносил тебе ксенит сегодня"
-				else "Лимит налётов с наградой на сегодня: " .. Meta.RaidDailyCap,
-			C.dim,
-			k
-		)
-	elseif reward and reward.rating then
-		k += 1
-		local d = reward.rating.delta
-		unlockCard(
-			"crown",
-			"РЕЙТИНГ НАЛЁТЧИКА",
-			if reward.rating.unrated
-				then "Свежий снимок обороны — без рейтинга"
-				else string.format("%s%d  →  %d", if d >= 0 then "+" else "", d, reward.rating.now),
-			if d >= 0 then C.gold else C.red,
-			k
-		)
-	end
-	-- A first story win that opens a meta mode (the next hunt unlocking is the signal).
-	local newly = {
-		O02 = { "gear", "В УБЕЖИЩЕ", "Мастерская: оборона бура" },
-		O03 = { "coil", "В УБЕЖИЩЕ", "Радиостанция и огород" },
-		O04 = { "hive", "В УБЕЖИЩЕ", "Лаборатория с образцами" },
-		O05 = { "skull", "НОВЫЙ РЕЖИМ", "Вторжения на чужие буры" },
-	}
-	for _, u in reward and reward.unlocked or {} do
-		local f = u[1] == "op" and newly[u[2]]
-		if f then
-			k += 1
-			unlockCard(f[1], f[2], f[3], C.violet, k)
-		end
-	end
-	if result.victory then
-		for wid, opId in Defs.Blueprints do
-			if
-				opId == result.op
-				and table.find(SHOWN_WEAPONS, wid)
-				and profile
-				and not profile.weapons[wid]
-				and first
-			then
-				k += 1
-				unlockCard("star", "ЧЕРТЁЖ ОРУЖИЯ", Defs.Weapons[wid].name, C.gold, k)
-			end
-		end
-	end
-	ui.resUnlocks.Visible = k > 0
-	-- DD-052: one nearest goal under the loot, so the next step is obvious before leaving the screen;
-	-- after a loss, how to come back stronger instead (DD-082)
+
+	-- one nearest goal (DD-052); after a loss, how to come back stronger instead (DD-082)
 	local g = if result.victory then Goals.next(profile) else nil
 	ui.resGoal.Visible = g ~= nil or not result.victory
 	ui.resGoalHead.Text = if result.victory then "ДАЛЬШЕ" else "КАК СТАТЬ СИЛЬНЕЕ"
+	local goalColor = C.lime
+	clear(ui.resGoalIcon)
 	if not result.victory then
 		local ic, title, text = defeatTip(result)
+		goalColor = C.gold
 		ui.resGoalTitle.Text = title
 		ui.resGoalText.Text = text
-		clear(ui.resGoalIcon)
-		Icons.disc(ic, 44, C.gold, 23).Parent = ui.resGoalIcon
+		Icons.disc(ic, 48, goalColor, 23).Parent = ui.resGoalIcon
 	elseif g then
+		goalColor = if g.structure then Meta.Structures[g.structure].color else C.lime
 		ui.resGoalTitle.Text = g.title
 		ui.resGoalText.Text = g.text
-		clear(ui.resGoalIcon)
-		local col = if g.structure then Meta.Structures[g.structure].color else C.lime
-		local d = Icons.disc(g.icon, 44, col, 23)
-		d.Parent = ui.resGoalIcon
+		Icons.disc(g.icon, 48, goalColor, 23).Parent = ui.resGoalIcon
 	end
-	-- DD-107: on a phone, many unlocks stand three in a row, and the whole column is scaled to fit
-	local many = phone and k >= 3
-	ui.resUnlockGrid.FillDirectionMaxCells = if many then 3 else 2
-	ui.resUnlockGrid.CellSize = if many then UDim2.fromOffset(246, 84) else UDim2.fromOffset(320, 96)
-	if phone then
-		task.defer(function()
-			local list = ui.resList:FindFirstChildOfClass("UIListLayout")
-			if list and ui.resScale.Scale > 0 then
-				ui.resPhoneH = math.max(500, list.AbsoluteContentSize.Y / ui.resScale.Scale + 8)
-				ui.resBody.Size = UDim2.fromOffset(1220, ui.resPhoneH)
-				ui.resScale.Scale = resultsScale()
-			end
-		end)
+	ui.resGoalHead.TextColor3 = goalColor
+	ui.resGoalBar.BackgroundColor3 = goalColor
+	local gs = ui.resGoal:FindFirstChildOfClass("UIStroke")
+	if gs then
+		gs.Color = goalColor
 	end
 end
 

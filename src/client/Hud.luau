@@ -1322,7 +1322,11 @@ function Hud.update(run, me, extra, dt: number)
 			ui.super.stroke.Thickness = if charge >= 1 then 2 else 1
 		end
 		-- First-run controls hint: only before the first input and in the first seconds of a run.
-		local howTo = run.op == "O01" and (run.waiting or (run.phase == "ACTIVE" and run.t < 16)) and me.alive
+		-- DD-108: a touch screen needs none (the thumbstick is Roblox's own, the gun fires by itself)
+		local howTo = run.op == "O01"
+			and not touch
+			and (run.waiting or (run.phase == "ACTIVE" and run.t < 16))
+			and me.alive
 		ui.howTo.Visible = howTo
 		if howTo then
 			ui.howToText.Text = if touch

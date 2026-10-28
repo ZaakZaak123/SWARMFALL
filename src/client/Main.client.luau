@@ -824,12 +824,8 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 	end
 	local scened = Story.active() or Story.covered() -- a scene or the title card: no prompts over it
 	if not scened and run.phase == "COUNTDOWN" and run.waiting then
-		-- (DD-103: in the phone's simple fight there is nothing to shoot with by hand)
-		Menus.note(
-			if CameraRig.chase()
-				then "ДВИГАЙСЯ — И В БОЙ"
-				else "ДВИГАЙСЯ ИЛИ СТРЕЛЯЙ — И В БОЙ"
-		)
+		-- DD-108: the run waits for the first step; nothing to say about it (the hero simply moves off)
+		Menus.note(nil)
 	elseif not scened and run.phase == "COUNTDOWN" then
 		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
 	elseif not scened and run.phase ~= "COUNTDOWN" and not me and run.mode == "siege" then
@@ -2689,6 +2685,7 @@ local function frame(dt: number)
 		if
 			not cameraHinted
 			and not CameraRig.chase() -- (DD-103: the simple fight has one view)
+			and Controls.device ~= "touch" -- (DD-108: a phone's view button is its own hint)
 			and run.op == "O01"
 			and run.phase == "ACTIVE"
 			and (run.t or 0) > 18
@@ -2901,7 +2898,7 @@ local function frame(dt: number)
 		-- DD-105: the super charges from damage dealt; full, it glows
 		local sdef = Defs.Supers[me.weapon]
 		if sdef then
-			Controls.setSuperLook(me.weapon, sdef.icon, sdef.short, sdef.tip)
+			Controls.setSuperLook(me.weapon, sdef.icon)
 		end
 		local charge = me.super or 0
 		Controls.setButton(
@@ -2912,7 +2909,6 @@ local function frame(dt: number)
 			charge >= 1 and not me.superOn
 		)
 		Controls.setButton("evolve", me.canEvolve, 0, "", true)
-		Controls.tipsOk = isPlaying and not choosing and not Story.active() and not Story.covered()
 		-- DD-104: the simple fight reloads by itself in a lull (below): no button for it
 		Controls.setButton("reload", Defs.Weapons[me.weapon].kind ~= "beam" and not CameraRig.chase(), 0, "", false)
 		if CameraRig.chase() and isPlaying then

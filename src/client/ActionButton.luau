@@ -165,19 +165,21 @@ function ActionButton.new(opts)
 	})
 	new("UIStroke", { Color = C.ink, Thickness = 2, Transparency = 0.1, Parent = self.center })
 	new("UITextSizeConstraint", { MaxTextSize = if self.big then 22 else 16, MinTextSize = 8, Parent = self.center })
-	-- the name under it
-	self.caption = Theme.label(opts.caption or "", {
-		Name = "Caption",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, 1),
-		Size = UDim2.fromOffset(120, 13),
-		FontFace = F.head,
-		TextSize = if self.big then 11 else 10,
-		TextColor3 = opts.color,
-		ZIndex = 7,
-		Parent = b,
-	})
-	new("UIStroke", { Color = C.ink, Thickness = 1.8, Transparency = 0.15, Parent = self.caption })
+	-- the name under it (DD-108: the fight's buttons go without one)
+	if opts.caption then
+		self.caption = Theme.label(opts.caption or "", {
+			Name = "Caption",
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 1, 1),
+			Size = UDim2.fromOffset(120, 13),
+			FontFace = F.head,
+			TextSize = if self.big then 11 else 10,
+			TextColor3 = opts.color,
+			ZIndex = 7,
+			Parent = b,
+		})
+		new("UIStroke", { Color = C.ink, Thickness = 1.8, Transparency = 0.15, Parent = self.caption })
+	end
 	-- press feel
 	b.InputBegan:Connect(function(input)
 		if
