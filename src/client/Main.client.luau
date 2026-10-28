@@ -3014,6 +3014,8 @@ if RunService:IsStudio() then
 			send("like", arg)
 		elseif what == "close" then
 			HubMenus.hideAll()
+		elseif what == "armory" then
+			Menus.showUpgrades(arg) -- DD-112: the armory on a gun's tab (Studio checks)
 		end
 		return true
 	end

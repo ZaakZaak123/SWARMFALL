@@ -53,7 +53,7 @@ local function play(op: string, build: string, seed: number)
 	local opDef = nil
 	local tuned = false
 	for k in overrides do
-		tuned = tuned or k ~= "from"
+		tuned = tuned or (k ~= "from" and k ~= "threat")
 	end
 	if tuned then
 		opDef = table.clone(Ops.get(op))
@@ -67,13 +67,21 @@ local function play(op: string, build: string, seed: number)
 			elseif k == "nestsHp" then
 				opDef.nests = table.clone(opDef.nests)
 				opDef.nests.hp = v
-			elseif k ~= "from" then
+			elseif k ~= "from" and k ~= "threat" then
 				opDef[k] = v
 			end
 		end
 	end
-	local out =
-		Bot.run(WEAPON, 1, seed, false, nil, 1, nil, { op = op, orbit = 34, loadout = loadout, opDef = opDef, evoOpen = build == "evo" })
+	local out = Bot.run(
+		WEAPON,
+		1,
+		seed,
+		false,
+		nil,
+		overrides.threat or 1,
+		nil,
+		{ op = op, orbit = 34, loadout = loadout, opDef = opDef, evoOpen = build == "evo" }
+	)
 	if out.milestones.evolved then
 		out.result.evolvedAt = out.milestones.evolved
 	end
