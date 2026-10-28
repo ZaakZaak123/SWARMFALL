@@ -72,7 +72,7 @@ function AutoTarget.pick(
 		local rec = enemies[keepId]
 		return keepId, rec.dx, rec.dz
 	end
-	assert(bestE)
+	assert(bestE, "a candidate is always scored")
 	return bestE.id, bestE.rec.dx, bestE.rec.dz
 end
 

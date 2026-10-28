@@ -375,6 +375,7 @@ local reveal = nil -- a boss / leader entrance the camera is looking at (DD-082)
 local fallen = nil -- DD-082: the hero's fall — a slow close-up before the results ease in
 local FALL_TIME = 3.2
 local cameraHinted = false -- the first fight names the three camera views once (DD-082)
+local quietFor, lastAutoReload = 0, 0 -- DD-104: the simple fight's reload in a lull
 local wasAlive = false
 local resultAt = nil -- when this run's result arrived (a victory holds the field a moment, DD-083)
 local function falling(): boolean
@@ -2743,8 +2744,23 @@ local function frame(dt: number)
 			if me.s01Left > 0 then string.format("%.0f", me.s01Left) else "",
 			me.s01Left <= 0 or me.s01Tutorial
 		)
-		Controls.setButton("evolve", me.canEvolve, 0, "READY", true)
-		Controls.setButton("reload", Defs.Weapons[me.weapon].kind ~= "beam", 0, "", false)
+		Controls.setButton("evolve", me.canEvolve, 0, "", true)
+		Controls.tipsOk = isPlaying and not choosing and not Story.active() and not Story.covered()
+		-- DD-104: the simple fight reloads by itself in a lull (below): no button for it
+		Controls.setButton("reload", Defs.Weapons[me.weapon].kind ~= "beam" and not CameraRig.chase(), 0, "", false)
+		if CameraRig.chase() and isPlaying then
+			quietFor = if Controls.firing then 0 else quietFor + dt
+			if
+				quietFor > 1.2
+				and me.reload <= 0
+				and me.ammo < me.mag * 0.7
+				and Defs.Weapons[me.weapon].kind ~= "beam"
+				and now - lastAutoReload > 2
+			then
+				lastAutoReload = now
+				send("reload")
+			end
+		end
 	elseif run then
 		local extra = { arrows = {}, showReticle = false, device = Controls.device }
 		Hud.update(run, nil, extra, dt)

@@ -36,7 +36,7 @@ local mouseDown = false
 local padFire = false
 local touchAim: InputObject? = nil
 local touchVec = Vector2.zero
-local gui, pad, knob, buttons
+local gui, pad, knob, buttons, padName
 local touchLayoutSize = Vector2.zero
 local autoId = nil -- the enemy the touch auto-aim holds
 local marker = nil -- the ring under it
@@ -108,7 +108,15 @@ local function autoAim(rootPos: Vector3, ax: number, az: number, range: number, 
 end
 
 -- Keep the aim pad and abilities in the right thumb's corner on short landscape screens.
--- The original fixed offsets put Dash over the vitals/tutorial and Reload near the top edge.
+-- DD-104: the buttons stand in an arc round the aim pad (left of it and above), each with its name
+-- under it, so a phone shows what each one is; offsets are for a 600-point-high screen.
+local LAYOUT = {
+	dash = { -360, -105, 96 },
+	overdrive = { -330, -275, 86 },
+	evolve = { -150, -345, 80 },
+	reload = { -500, -215, 70 },
+	view = { -500, -345, 70 },
+}
 local function layoutTouch()
 	local size = workspace.CurrentCamera.ViewportSize
 	if size == touchLayoutSize then
@@ -121,12 +129,55 @@ local function layoutTouch()
 	pad.Size = UDim2.fromOffset(p * k, p * k)
 	knob.Size = UDim2.fromOffset(p * 0.37 * k, p * 0.37 * k)
 	pad.BackgroundTransparency = if padSimple then 0.75 else 0.6
-	for _, b in buttons do
-		local p = b.position
-		b.button.Position = UDim2.new(p.X.Scale, p.X.Offset * k, p.Y.Scale, p.Y.Offset * k)
-		local diameter = math.max(44, b.size * k)
+	padName.Text = if padSimple then "ПРИЦЕЛ РУКОЙ" else "ПРИЦЕЛ И ОГОНЬ"
+	for name, b in buttons do
+		local l = LAYOUT[name]
+		b.button.Position = UDim2.new(1, l[1] * k, 1, l[2] * k)
+		local diameter = math.max(44, l[3] * k)
 		b.button.Size = UDim2.fromOffset(diameter, diameter)
 		b.icon.Size = UDim2.fromOffset(diameter * 0.46, diameter * 0.46)
+	end
+end
+
+-- DD-104: the first time a button shows up, a bubble beside it says what it does (one at a time).
+local TIPS = {
+	dash = "РЫВОК — проскочить сквозь рой, в рывке не ранят",
+	overdrive = "ГРОМОБОЙ — удар по всем вокруг, отбрасывает рой",
+	evolve = "ЭВОЛЮЦИЯ — оружие становится сильнее навсегда до конца вылазки",
+	reload = "ПЕРЕЗАРЯДКА — зарядить заранее, пока рядом нет врагов",
+	view = "ВИД — сверху, из-за плеча или от первого лица",
+}
+local tipShown = {}
+local tipQueue = {}
+local tipUntil = 0
+local calmSince = nil -- when the fight last became tip-worthy (Controls.tipsOk, set by Main)
+local tipBubble, tipText, tipFor
+local function queueTip(name: string)
+	if tipShown[name] or not TIPS[name] then
+		return
+	end
+	tipShown[name] = true
+	table.insert(tipQueue, name)
+end
+local function stepTips(now: number)
+	if not tipBubble then
+		return
+	end
+	if tipFor and now < tipUntil and buttons[tipFor].button.Visible and gui.Enabled then
+		return
+	end
+	tipFor = nil
+	tipBubble.Visible = false
+	-- only in the fight itself (no scene, no cards), and not in its first seconds
+	calmSince = if Controls.tipsOk then calmSince or now else nil
+	local name = tipQueue[1]
+	if name and calmSince and now - calmSince > 2.5 and gui.Enabled and buttons[name].button.Visible then
+		table.remove(tipQueue, 1)
+		tipFor = name
+		tipUntil = now + 5
+		tipText.Text = TIPS[name]
+		tipBubble.Parent = buttons[name].button -- (rides on its button, left of it)
+		tipBubble.Visible = true
 	end
 end
 
@@ -136,6 +187,15 @@ local function act(name: string)
 		fn()
 	end
 end
+
+-- DD-104: every touch button says what it is
+local NAMES = {
+	Dash = "РЫВОК",
+	Gravihammer = "ГРОМОБОЙ",
+	Evolve = "ЭВОЛЮЦИЯ",
+	Reload = "ПЕРЕЗАРЯДКА",
+	View = "ВИД",
+}
 
 local function makeButton(name: string, label: string, sub: string, pos: UDim2, size: number, color: Color3)
 	local b = new("TextButton", {
@@ -163,6 +223,17 @@ local function makeButton(name: string, label: string, sub: string, pos: UDim2, 
 		TextColor3 = C.dim,
 		Parent = b,
 	})
+	local nameLabel = Theme.label(NAMES[name] or "", {
+		Name = "Name",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 2),
+		Size = UDim2.fromOffset(110, 13),
+		FontFace = Theme.F.head,
+		TextSize = 10,
+		TextColor3 = color,
+		Parent = b,
+	})
+	new("UIStroke", { Color = C.ink, Thickness = 1.6, Transparency = 0.2, Parent = nameLabel })
 	local fill = new("Frame", {
 		Name = "Cooldown",
 		Size = UDim2.fromScale(1, 0),
@@ -200,6 +271,17 @@ function Controls.init(playerGui: PlayerGui)
 	cross.AnchorPoint = Vector2.new(0.5, 0.5)
 	cross.Position = UDim2.fromScale(0.5, 0.5)
 	cross.Parent = pad
+	padName = Theme.label("", {
+		Name = "Name",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 2),
+		Size = UDim2.fromOffset(120, 13),
+		FontFace = Theme.F.head,
+		TextSize = 10,
+		TextColor3 = C.lime,
+		Parent = pad,
+	})
+	new("UIStroke", { Color = C.ink, Thickness = 1.6, Transparency = 0.2, Parent = padName })
 	knob = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -240,6 +322,27 @@ function Controls.init(playerGui: PlayerGui)
 	end)
 	Controls.buttons = buttons
 	Controls.gui = gui
+	-- the first-time bubble: left of its button, pointing at it
+	tipBubble = Theme.panel({
+		Name = "Tip",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0, -10, 0.5, 0),
+		Size = UDim2.fromOffset(0, 34),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Visible = false,
+		ZIndex = 5,
+		CornerRadius = 17,
+	}, C.lime)
+	tipBubble.Parent = gui
+	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = tipBubble })
+	tipText = Theme.label("", {
+		Size = UDim2.fromScale(0, 1),
+		AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = Theme.F.bodyBold,
+		TextSize = 13,
+		ZIndex = 6,
+		Parent = tipBubble,
+	})
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local t = input.UserInputType
@@ -383,6 +486,7 @@ function Controls.update(
 		end
 		layoutTouch()
 		buttons.view.button.Visible = not simple -- the chase camera is the simple fight's only view
+		stepTips(now)
 	end
 	gui.Enabled = Controls.enabled and device == "touch"
 	UserInputService.MouseIconEnabled = not Controls.enabled or (device ~= "pc") or false
@@ -526,6 +630,9 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 		return
 	end
 	b.button.Visible = visible
+	if visible then
+		queueTip(name)
+	end
 	b.fill.Size = UDim2.fromScale(1, math.clamp(cooldownFrac or 0, 0, 1))
 	b.sub.Text = sub or ""
 	b.button.BackgroundTransparency = if ready then 0.1 else 0.45
