@@ -1399,6 +1399,10 @@ handlers[E.SUPER] = function(pid, wIndex, phase, x, z, dx, dz, a)
 		if mine then
 			CameraRig.punch(8)
 			CameraRig.shake(0.25)
+			-- DD-106: the button bursts, the name punches in, the screen's edges flash
+			Controls.superFired()
+			Hud.superCallout(S.name, S.color)
+			Audio.play("evolve", 0.55, 1.2)
 		end
 		if id == "W_ARC_RIFLE" then
 			local ball = Instance.new("Part")

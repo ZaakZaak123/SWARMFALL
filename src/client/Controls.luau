@@ -15,6 +15,7 @@ local Settings = require(script.Parent.Settings)
 local EnemyView = require(script.Parent.EnemyView)
 local Icons = require(script.Parent.Icons)
 local CameraRig = require(script.Parent.CameraRig)
+local ActionButton = require(script.Parent.ActionButton)
 
 local new = Theme.new
 local C = Theme.C
@@ -150,16 +151,26 @@ local function autoAim(rootPos: Vector3, ax: number, az: number, range: number, 
 end
 
 -- Keep the aim pad and abilities in the right thumb's corner on short landscape screens.
--- DD-104: the buttons stand in an arc round the aim pad (left of it and above), each with its name
--- under it, so a phone shows what each one is; offsets are for a 600-point-high screen.
--- DD-105: the super (the main skill) is the biggest and nearest to the thumb; the dash above the pad.
-local LAYOUT = {
-	super = { -345, -110, 104 },
-	dash = { -255, -270, 92 },
-	overdrive = { -420, -275, 86 },
-	evolve = { -110, -350, 78 },
-	reload = { -540, -140, 70 },
-	view = { -540, -350, 70 },
+-- DD-104: the buttons stand in an arc round the corner one (left of it and above), each named under it.
+-- DD-106: in the simple fight the corner belongs to the super — the attack the player decides on —
+-- and the aim pad is gone (the gun aims itself; a drag on the super aims the super). Over the shoulder
+-- the corner stays the aim-and-fire pad and the super is next to it. Offsets for a 600-point-high
+-- screen: { x, y, diameter }.
+local LAYOUT_SIMPLE = {
+	super = { -165, -165, 200 },
+	dash = { -410, -120, 116 },
+	overdrive = { -385, -310, 106 },
+	evolve = { -165, -410, 96 },
+	reload = { -560, -330, 86 },
+	view = { -400, -450, 86 },
+}
+local LAYOUT_SHOULDER = {
+	super = { -400, -110, 140 },
+	dash = { -360, -300, 104 },
+	overdrive = { -560, -190, 100 },
+	evolve = { -150, -390, 92 },
+	reload = { -540, -345, 86 },
+	view = { -400, -450, 86 },
 }
 local function layoutTouch()
 	local size = workspace.CurrentCamera.ViewportSize
@@ -168,18 +179,15 @@ local function layoutTouch()
 	end
 	touchLayoutSize = size
 	local k = math.clamp(size.Y / 600, 0.6, 1) -- (buttons never go under 44 points, below)
-	local p = if padSimple then 150 else 200
+	pad.Visible = not padSimple
 	pad.Position = UDim2.new(1, -150 * k, 1, -150 * k)
-	pad.Size = UDim2.fromOffset(p * k, p * k)
-	knob.Size = UDim2.fromOffset(p * 0.37 * k, p * 0.37 * k)
-	pad.BackgroundTransparency = if padSimple then 0.75 else 0.6
-	padName.Text = if padSimple then "ПРИЦЕЛ РУКОЙ" else "ПРИЦЕЛ И ОГОНЬ"
+	pad.Size = UDim2.fromOffset(200 * k, 200 * k)
+	knob.Size = UDim2.fromOffset(74 * k, 74 * k)
+	padName.Text = "ПРИЦЕЛ И ОГОНЬ"
+	local layout = if padSimple then LAYOUT_SIMPLE else LAYOUT_SHOULDER
 	for name, b in buttons do
-		local l = LAYOUT[name]
-		b.button.Position = UDim2.new(1, l[1] * k, 1, l[2] * k)
-		local diameter = math.max(44, l[3] * k)
-		b.button.Size = UDim2.fromOffset(diameter, diameter)
-		b.icon.Size = UDim2.fromOffset(diameter * 0.46, diameter * 0.46)
+		local l = layout[name]
+		b:setLayout(UDim2.new(1, l[1] * k, 1, l[2] * k), math.max(44, l[3] * k))
 	end
 end
 
@@ -243,63 +251,16 @@ local NAMES = {
 	View = "ВИД",
 }
 
-local function makeButton(name: string, label: string, sub: string, pos: UDim2, size: number, color: Color3)
-	local b = new("TextButton", {
-		Name = name,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = pos,
-		Size = UDim2.fromOffset(size, size),
-		BackgroundColor3 = C.ink,
-		BackgroundTransparency = 0.3,
-		Text = "",
-		Corner = UDim.new(1, 0),
-		Stroke = { Color = color, Thickness = 2.5, Transparency = 0.25 },
-		Parent = gui,
-	})
-	local ic = Icons.new(label, math.floor(size * 0.46), color, C.ink)
-	ic.AnchorPoint = Vector2.new(0.5, 0.5)
-	ic.Position = UDim2.fromScale(0.5, 0.42)
-	ic.Parent = b
-	local subLabel = Theme.label(sub, {
-		Name = "Sub",
-		Size = UDim2.fromScale(1, 0.22),
-		Position = UDim2.fromScale(0, 0.66),
-		FontFace = Theme.F.num,
-		TextScaled = true,
-		TextColor3 = C.dim,
-		Parent = b,
-	})
-	local nameLabel = Theme.label(NAMES[name] or "", {
-		Name = "Caption",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, 2),
-		Size = UDim2.fromOffset(110, 13),
-		FontFace = Theme.F.head,
-		TextSize = 10,
-		TextColor3 = color,
-		Parent = b,
-	})
-	new("UIStroke", { Color = C.ink, Thickness = 1.6, Transparency = 0.2, Parent = nameLabel })
-	local fill = new("Frame", {
-		Name = "Cooldown",
-		Size = UDim2.fromScale(1, 0),
-		Position = UDim2.fromScale(0, 1),
-		AnchorPoint = Vector2.new(0, 1),
-		BackgroundColor3 = color,
-		BackgroundTransparency = 0.75,
-		Corner = UDim.new(1, 0),
-		Parent = b,
-	})
-	return {
-		button = b,
-		sub = subLabel,
-		fill = fill,
+-- DD-106: every touch button is an ActionButton (ring of charge / cooldown, icon, count, caption)
+local function makeButton(name: string, icon: string, color: Color3, big: boolean?)
+	return ActionButton.new({
+		name = name,
+		icon = icon,
 		color = color,
-		size = size,
-		position = pos,
-		icon = ic,
-		caption = nameLabel,
-	}
+		caption = NAMES[name],
+		big = big,
+		parent = gui,
+	})
 end
 
 function Controls.init(playerGui: PlayerGui)
@@ -348,12 +309,12 @@ function Controls.init(playerGui: PlayerGui)
 		Parent = pad,
 	})
 	buttons = {
-		super = makeButton("Super", "chain", "", UDim2.new(1, -345, 1, -110), 104, C.gold),
-		dash = makeButton("Dash", "dash", "", UDim2.new(1, -300, 1, -90), 84, C.cyan),
-		overdrive = makeButton("Gravihammer", "hammer", "", UDim2.new(1, -290, 1, -195), 76, C.lime),
-		evolve = makeButton("Evolve", "evolve", "", UDim2.new(1, -150, 1, -300), 76, C.gold),
-		reload = makeButton("Reload", "reload", "", UDim2.new(1, -60, 1, -290), 54, C.dim),
-		view = makeButton("View", "topdown", "", UDim2.new(1, -60, 1, -370), 54, C.cyan),
+		super = makeButton("Super", "chain", C.gold, true),
+		dash = makeButton("Dash", "dash", C.cyan),
+		overdrive = makeButton("Gravihammer", "hammer", C.lime),
+		evolve = makeButton("Evolve", "evolve", C.gold),
+		reload = makeButton("Reload", "reload", C.dim),
+		view = makeButton("View", "topdown", C.cyan),
 	}
 	-- DD-105: the super — a tap fires it at the gun's own target, a drag aims it (the line shows where)
 	buttons.super.button.InputBegan:Connect(function(input)
@@ -573,6 +534,9 @@ function Controls.update(
 		layoutTouch()
 		buttons.view.button.Visible = not simple -- the chase camera is the simple fight's only view
 		stepTips(now)
+		for _, b in buttons do
+			b:step(now)
+		end
 	end
 	gui.Enabled = Controls.enabled and device == "touch"
 	UserInputService.MouseIconEnabled = not Controls.enabled or (device ~= "pc") or false
@@ -710,6 +674,7 @@ function Controls.update(
 	end
 end
 
+-- cooldownFrac: the cooldown still to go (0..1); for the super, its charge. sub: the seconds left.
 function Controls.setButton(name: string, visible: boolean, cooldownFrac: number?, sub: string?, ready: boolean?)
 	local b = buttons and buttons[name]
 	if not b then
@@ -719,16 +684,11 @@ function Controls.setButton(name: string, visible: boolean, cooldownFrac: number
 	if visible then
 		queueTip(name)
 	end
-	b.fill.Size = UDim2.fromScale(1, math.clamp(cooldownFrac or 0, 0, 1))
-	b.sub.Text = sub or ""
-	b.button.BackgroundTransparency = if ready then 0.1 else 0.45
-	-- DD-105: a charged super breathes, so the thumb knows it is there
+	local f = math.clamp(cooldownFrac or 0, 0, 1)
 	if name == "super" then
-		local stroke = b.button:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			stroke.Thickness = if ready then 3 + math.sin(os.clock() * 6) * 1.5 else 2.5
-			stroke.Transparency = if ready then 0 else 0.25
-		end
+		b:set(f, nil, ready == true) -- (the ring is the charge; no number over the emblem)
+	else
+		b:set(1 - f, if f > 0 then sub else nil, f <= 0)
 	end
 end
 
@@ -739,35 +699,23 @@ function Controls.setSuperLook(key: string, icon: string, short: string, tip: st
 		return
 	end
 	superLook = key
-	local old = b.icon
-	local ic = Icons.new(icon, 48, b.color, C.ink)
-	ic.AnchorPoint = old.AnchorPoint
-	ic.Position = old.Position
-	ic.Size = old.Size
-	ic.Parent = b.button
-	old:Destroy()
-	b.icon = ic
+	b:setIcon(icon)
 	b.caption.Text = short
 	TIPS.super = short .. " — " .. tip
 end
 
+-- DD-106: the super went off: the button's burst.
+function Controls.superFired()
+	if buttons and buttons.super then
+		buttons.super:fire()
+	end
+end
+
 function Controls.setViewIcon(name: string)
 	local b = buttons and buttons.view
-	if not b then
-		return
+	if b then
+		b:setIcon(name)
 	end
-	local old = b.button:FindFirstChild("Icon_" .. (b.iconName or "topdown"))
-	if old and b.iconName == name then
-		return
-	end
-	if old then
-		old:Destroy()
-	end
-	b.iconName = name
-	local ic = Icons.new(name, 26, b.color, C.panel)
-	ic.AnchorPoint = Vector2.new(0.5, 0.5)
-	ic.Position = UDim2.fromScale(0.5, 0.42)
-	ic.Parent = b.button
 end
 
 function Controls.hideJumpButton()

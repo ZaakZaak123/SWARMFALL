@@ -845,6 +845,68 @@ end
 function Hud.setView(_mode: string, _iconName: string, _caption: string?, _device: string) end
 
 -- Camera view is switched with V / D-pad up / the view button: a toast names the view it went to.
+-- DD-106: the super goes off — its name punches in over the fight, the screen's edges flash its colour.
+local superFx = nil
+function Hud.superCallout(name: string, color: Color3)
+	if not superFx then
+		local edge = new("ImageLabel", {
+			Name = "SuperEdge",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1.6, 2.2),
+			BackgroundTransparency = 1,
+			Image = Icons.Tex.glow,
+			ImageTransparency = 1,
+			ZIndex = 1,
+			Parent = overlay,
+		})
+		-- a glow turned inside out: bright at the rim, clear in the middle
+		new("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.25, 0.85),
+				NumberSequenceKeypoint.new(0.75, 0.85),
+				NumberSequenceKeypoint.new(1, 0),
+			}),
+			Parent = edge,
+		})
+		local title = label("", {
+			Name = "SuperName",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.22), -- (above the hero, under the level bar)
+			Size = UDim2.fromOffset(600, 60),
+			FontFace = F.display,
+			TextSize = 40,
+			TextTransparency = 1,
+			ZIndex = 30,
+			Parent = gui,
+		})
+		local stroke = new("UIStroke", { Color = C.ink, Thickness = 4, Transparency = 1, Parent = title })
+		local scale = new("UIScale", { Parent = title })
+		superFx = { edge = edge, title = title, stroke = stroke, scale = scale, token = 0 }
+	end
+	local fx = superFx
+	fx.token += 1
+	local my = fx.token
+	fx.edge.ImageColor3 = color
+	fx.edge.ImageTransparency = 0.15
+	Theme.tween(fx.edge, 0.5, { ImageTransparency = 1 })
+	fx.title.Text = name
+	fx.title.TextColor3 = color
+	fx.title.TextSize = if Theme.phone() then 30 else 40
+	fx.title.TextTransparency = 0
+	fx.stroke.Transparency = 0.1
+	fx.scale.Scale = 1.6
+	Theme.tween(fx.scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+	task.delay(0.75, function()
+		if fx.token == my then
+			Theme.tween(fx.title, 0.35, { TextTransparency = 1 })
+			Theme.tween(fx.stroke, 0.35, { Transparency = 1 })
+			Theme.tween(fx.scale, 0.35, { Scale = 0.9 })
+		end
+	end)
+end
+
 function Hud.viewSwitched(mode: string, caption: string?, device: string)
 	toast(
 		string.format(
