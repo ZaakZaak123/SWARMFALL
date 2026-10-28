@@ -153,12 +153,12 @@ local function buildOutpost()
 	ui.opList = new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = ui.opDetail })
 	-- DD-107: on a phone the schematic shrinks and the buildings stand two by two, all on one screen
 	ui.opGrid = new("UIGridLayout", {
-		CellSize = UDim2.new(0.5, -4, 0, 62),
-		CellPadding = UDim2.fromOffset(8, 4),
+		CellSize = UDim2.new(0.5, -4, 0, 70),
+		CellPadding = UDim2.fromOffset(8, 6),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	})
 	local mapScale = new("UIScale", { Parent = map })
-	local mapPhone, top = 262, 84
+	local mapPhone, top = 300, 84 -- (DD-109: the window reaches the screen's top: room for a bigger map)
 	m.phoneSize = Vector2.new(960, top + mapPhone + 12)
 	function m.relayout(phone: boolean)
 		mapScale.Scale = if phone then mapPhone / (MAP_R * 2 + 40) else 1

@@ -171,7 +171,7 @@ local function buildSheet(gui: ScreenGui)
 		Parent = sheet,
 	})
 	new("UIGridLayout", {
-		CellSize = UDim2.new(1 / 3, -6, 0, 52),
+		CellSize = UDim2.new(1 / 3, -6, 0, 62), -- (DD-109: the sheet runs from the top: taller tiles)
 		CellPadding = UDim2.fromOffset(8, 7),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = list,
@@ -227,7 +227,7 @@ function BasePhone.build(gui: ScreenGui, on: (key: string) -> ())
 	-- top left: the goal in one line
 	local chip = new("TextButton", {
 		Name = "Goal",
-		Size = UDim2.fromOffset(340, 50),
+		Size = UDim2.fromOffset(340, 46),
 		BackgroundColor3 = C.ink,
 		BackgroundTransparency = 0.18,
 		Text = "",
@@ -236,10 +236,10 @@ function BasePhone.build(gui: ScreenGui, on: (key: string) -> ())
 		Parent = root,
 	})
 	ui.goal = chip
-	ui.goalIcon = new("Frame", { Position = UDim2.fromOffset(7, 7), Size = UDim2.fromOffset(36, 36), Parent = chip })
+	ui.goalIcon = new("Frame", { Position = UDim2.fromOffset(6, 5), Size = UDim2.fromOffset(36, 36), Parent = chip })
 	label("ЦЕЛЬ  ·  нажми — подробнее", {
 		Name = "Tag",
-		Position = UDim2.fromOffset(50, 6),
+		Position = UDim2.fromOffset(50, 4),
 		Size = UDim2.new(1, -60, 0, 12),
 		FontFace = F.head,
 		TextSize = 9,
@@ -248,7 +248,7 @@ function BasePhone.build(gui: ScreenGui, on: (key: string) -> ())
 		Parent = chip,
 	})
 	ui.goalTitle = label("", {
-		Position = UDim2.fromOffset(50, 19),
+		Position = UDim2.fromOffset(50, 17),
 		Size = UDim2.new(1, -60, 0, 24),
 		FontFace = F.display,
 		TextSize = 15,
@@ -493,10 +493,41 @@ function BasePhone.set(s)
 	end
 end
 
+-- DD-109 (owner: «верхнюю полосу тоже задействовать — системные иконки Roblox оставить, а остальное
+-- место почему не используется»): the goal, the xenite and the settings live in Roblox's top bar, right
+-- of its own buttons; the screen under it is the shelter's. Without a top bar they stay at the top.
+local placedFor = nil
+local function placeTop()
+	local left, right, h = Theme.topStrip()
+	local key = left .. ":" .. right .. ":" .. h
+	if placedFor == key then
+		return
+	end
+	placedFor = key
+	-- the root's content starts 10 right and 6 below the top bar (its padding)
+	local function y(size: number): number
+		return if h > 0 then -h - 6 + (h - size) / 2 else 0
+	end
+	local x0 = if h > 0 then left - 10 + 8 else 0
+	local free = (right - 10) - x0 - 200 -- (room left of the xenite and the gear)
+	local w = math.clamp(free, 240, 360)
+	ui.goal.Position = UDim2.fromOffset(x0, y(46))
+	ui.goal.Size = UDim2.fromOffset(w, 46)
+	ui.detail.Position = UDim2.fromOffset(x0, y(46) + 52)
+	ui.detail.Size = UDim2.fromOffset(w, 0)
+	ui.gear.Position = UDim2.new(1, 0, 0, y(40))
+	ui.xenite.Position = UDim2.new(1, -48, 0, y(36))
+	ui.harvest.Position = UDim2.new(1, 0, 0, if h > 0 then 0 else 46)
+	-- the menu sheet runs from the screen's top (it stands right, away from Roblox's buttons)
+	ui.overlay.Position = UDim2.fromOffset(0, -h)
+	ui.overlay.Size = UDim2.new(1, 0, 1, h)
+end
+
 function BasePhone.step(now: number)
 	if not (ui.root and ui.root.Visible) then
 		return
 	end
+	placeTop()
 	ui.playGlow.Transparency = 0.45 + math.sin(now * 3) * 0.25
 	ui.playGlow.Thickness = 2.5 + math.sin(now * 3) * 1.5
 	local open = ui.goal.Visible and os.clock() < detailUntil and not sheetOpen

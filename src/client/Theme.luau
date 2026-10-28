@@ -298,4 +298,18 @@ function Theme.phone(): boolean
 	return touch and cam ~= nil and cam.ViewportSize.Y < 560
 end
 
+-- DD-109: the free part of Roblox's top bar — right of its own buttons (the logo, the menu, chat), in
+-- screen points: left x, right x, height. A phone's screen is short; this strip is ~15% of it and was
+-- empty. Height 0 when there is no top bar (then nothing goes up there).
+function Theme.topStrip(): (number, number, number)
+	local ok, r = pcall(function()
+		return game:GetService("GuiService").TopbarInset
+	end)
+	if ok and r and r.Max.Y >= 36 and r.Max.X > r.Min.X then
+		return r.Min.X, r.Max.X, r.Max.Y
+	end
+	local cam = workspace.CurrentCamera
+	return 0, if cam then cam.ViewportSize.X else 0, 0
+end
+
 return Theme

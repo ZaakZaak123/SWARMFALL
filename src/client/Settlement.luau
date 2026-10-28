@@ -1439,9 +1439,11 @@ function Settlement.setProfile(pub)
 	profile = pub
 end
 
--- DD-102: on a phone the shelter's goal and xenite own the top row: the coach sits under it
+-- DD-102: on a phone the shelter's goal and xenite own the top row: the coach sits under it.
+-- DD-109: they moved up into Roblox's top bar, so the coach goes up to the top too.
 local function coachY(): number
-	return if Theme.phone() then 60 else 14
+	local _, _, stripH = Theme.topStrip()
+	return if Theme.phone() and stripH == 0 then 60 else 10
 end
 
 local function coachPanel()
@@ -1797,7 +1799,10 @@ function tell(e)
 		local phone = Theme.phone()
 		ticker = new("Frame", {
 			AnchorPoint = if phone then Vector2.new(1, 0) else Vector2.new(0, 1),
-			Position = if phone then UDim2.new(1, -84, 0, 140) else UDim2.new(0, 24, 1, -200),
+			-- (DD-109: right under Roblox's top bar, where the goal and the xenite used to be)
+			Position = if phone
+				then UDim2.new(1, -84, 0, select(3, Theme.topStrip()) + 8)
+				else UDim2.new(0, 24, 1, -200),
 			Size = UDim2.fromOffset(420, if phone then 120 else 200),
 			BackgroundTransparency = 1,
 			Parent = g,

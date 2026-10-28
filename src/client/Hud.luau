@@ -314,6 +314,7 @@ function Hud.init(playerGui: PlayerGui)
 		Size = UDim2.fromOffset(230, 300),
 		Parent = root,
 	})
+	ui.topRight = tr
 	ui.killsBox = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.fromScale(1, 0),
@@ -1095,6 +1096,13 @@ function Hud.update(run, me, extra, dt: number)
 	local k = math.clamp(math.min(vs.Y / 820, vs.X / 1100), if Theme.phone() then 0.52 else 0.72, 1.2)
 	ui.scale.Scale = k
 	ui.root.Size = UDim2.fromScale(1 / k, 1 / k)
+	-- DD-109: on a phone the level, its bar, the timer, the goal and the kill count stand in Roblox's top
+	-- bar (right of its buttons, ~58 points that were empty): the fight gets the screen under it
+	local _, _, stripH = Theme.topStrip()
+	local up = if Theme.phone() and stripH > 0 then (stripH + 2) / k else 0
+	ui.top.Position = UDim2.new(0.5, 0, 0, 10 - up)
+	ui.topRight.Position = UDim2.new(1, -14, 0, 10 - up)
+	ui.build.Position = UDim2.fromOffset(14, if up > 0 then 8 else 58)
 	local touch = extra.device == "touch"
 	if run.t < 0.5 and lastLevel > 1 then
 		Hud.reset()

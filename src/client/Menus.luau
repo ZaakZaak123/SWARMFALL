@@ -81,7 +81,7 @@ end
 -- The results body (DD-108): a monitor's column (RES_DESK), a phone's two columns (RES_PHONE) under
 -- Roblox's own top bar.
 local RES_DESK = Vector2.new(760, 520)
-local RES_PHONE = Vector2.new(1000, 270)
+local RES_PHONE = Vector2.new(900, 270) -- (DD-109: narrower, so it is drawn bigger: it was width-bound)
 local function resultsScale(): number
 	if Theme.phone() then
 		local vs = if gui and gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
@@ -165,12 +165,34 @@ local function fitModal(m)
 		end)
 		local top = (if ok and inset then inset else 0) + 4
 		if m.relayout then
+			-- DD-109: up to the screen's top: Roblox's buttons (top left) cover only the window's corner,
+			-- and the window's own header there steps right of them
+			local stripLeft, _, stripH = Theme.topStrip()
 			local pw, ph = m.phoneSize.X, m.phoneSize.Y
+			local y0 = if stripH > 0 then 6 else top
+			local k = math.min(1, (vs.X - 16) / pw, (vs.Y - y0 - 6) / ph)
 			m.panel.Parent = m.shade
 			m.panel.AnchorPoint = Vector2.new(0.5, 0)
-			m.panel.Position = UDim2.new(0.5, 0, 0, top)
-			m.scale.Scale = math.min(1, (vs.X - 16) / pw, (vs.Y - top - 6) / ph)
+			m.panel.Position = UDim2.new(0.5, 0, 0, y0)
+			m.scale.Scale = k
 			m.scroller.Visible = false
+			local needX = (stripLeft + 10 - (vs.X - pw * k) / 2) / k
+			for _, c in m.panel:GetChildren() do
+				if c:IsA("GuiObject") and c.Position.X.Scale == 0 and c.AnchorPoint.X == 0 then
+					local x0 = c:GetAttribute("PhoneX0")
+					if x0 == nil then
+						x0 = c.Position.X.Offset
+						c:SetAttribute("PhoneX0", x0)
+						c:SetAttribute("PhoneW0", c.Size.X.Offset)
+					end
+					local under = stripH > 0 and y0 + c.Position.Y.Offset * k < stripH
+					local dx = if under then math.max(0, needX - x0) else 0
+					c.Position = UDim2.new(0, x0 + dx, c.Position.Y.Scale, c.Position.Y.Offset)
+					if c.Size.X.Scale > 0 then
+						c.Size = UDim2.new(c.Size.X.Scale, c:GetAttribute("PhoneW0") - dx, c.Size.Y.Scale, c.Size.Y.Offset)
+					end
+				end
+			end
 			return true
 		end
 		m.panel.Parent = m.scroller
@@ -506,6 +528,7 @@ local function buildLobby()
 		Size = UDim2.fromOffset(400, 300),
 		Parent = safe,
 	})
+	ui.lobbyTopRight = tr
 	ui.gear = new("TextButton", {
 		Name = "Settings",
 		AnchorPoint = Vector2.new(1, 0),
@@ -915,6 +938,25 @@ function Menus.refreshLobby()
 	end
 	-- (DD-102: a phone has no logo above the tabs)
 	ui.hunt.Position = UDim2.fromOffset(0, (if ui.tabs.Visible then 176 else 134) - (if ui.lobbyPhone then 128 else 0))
+	-- DD-109: a phone's tabs stand in Roblox's top bar, right of its buttons; the card takes their row
+	local stripLeft, _, stripH = Theme.topStrip()
+	if ui.lobbyPhone and stripH > 0 then
+		local k = ui.lobbyScale.Scale
+		local padTop, padLeft = ui.lobbyPad.PaddingTop.Offset, ui.lobbyPad.PaddingLeft.Offset
+		local tx, ty = (stripLeft + 8) / k - padLeft, ((stripH - 40 * k) / 2) / k - padTop
+		ui.tabs.Position = UDim2.fromOffset(tx, ty)
+		ui.hunt.Position = UDim2.fromOffset(0, 0)
+		-- the way back right after the tabs (or first, with no tabs)
+		local tabW = if ui.tabs.Visible then tabCount * 132 + (tabCount - 1) * 8 + 12 else 0
+		ui.back.AnchorPoint = Vector2.zero
+		ui.back.Position = UDim2.fromOffset(tx + tabW, ty - 2)
+		ui.lobbyTopRight.Position = UDim2.new(1, 0, 0, ((stripH - 44 * k) / 2) / k - padTop)
+	else
+		ui.lobbyTopRight.Position = UDim2.new(1, 0, 0, -50)
+		ui.back.AnchorPoint = Vector2.new(1, 1)
+		ui.back.Position = UDim2.new(1, if ui.lobbyPhone then -312 else -346, 1, -36)
+		ui.tabs.Position = UDim2.fromOffset(0, if ui.lobbyPhone then 0 else 124)
+	end
 	-- anomaly of the day (hunts from the third one on, sieges)
 	local anomaly = nil
 	for _, a in Meta.Anomalies do
@@ -1182,9 +1224,13 @@ function Menus.showLobby(info, id: number, dev: string)
 	if ui.lobby.Visible then
 		local phone = Theme.phone()
 		lobbyPhoneLayout(phone)
-		local k = math.max(if phone then 0.72 else 0.72, viewportScale(Vector2.new(1280, 760))) -- (DD-107: was 0.62)
+		-- (DD-107: 0.62 → 0.72; DD-109: 0.8 — the tabs and НА БАЗУ moved up into Roblox's top bar)
+		local _, _, stripH = Theme.topStrip()
+		local strip = phone and stripH > 0
+		local k = math.max(if strip then 0.8 else 0.72, viewportScale(Vector2.new(1280, 760)))
 		ui.lobbyScale.Scale = k
 		ui.lobbySafe.Size = UDim2.fromScale(1 / k, 1 / k)
+		ui.lobbyPad.PaddingTop = UDim.new(0, if strip then (stripH + 6) / k elseif phone then 96 else 70)
 		Menus.refreshLobby()
 	end
 end
@@ -1217,8 +1263,14 @@ function lobbyPhoneLayout(phone: boolean)
 	ui.inviteNote.Visible = not phone
 	ui.harvest.Position = UDim2.new(1, -56, 0, if phone then 50 else 112)
 	ui.play.Size = UDim2.fromOffset(if phone then 300 else 330, if phone then 80 else 92)
-	ui.back.Position = UDim2.new(1, if phone then -312 else -346, 1, -36)
-	ui.back.Size = UDim2.fromOffset(if phone then 170 else 190, if phone then 60 else 64)
+	-- DD-109: a phone's way back is a round ‹ in the top bar, after the tabs (placed by refreshLobby)
+	ui.back.Size = if phone then UDim2.fromOffset(44, 44) else UDim2.fromOffset(190, 64)
+	ui.backLabel.Text = if phone then "‹" else "‹  НА БАЗУ"
+	ui.backLabel.TextSize = if phone then 28 else 16
+	ui.backLabel.Position = UDim2.fromOffset(0, if phone then -2 else 0)
+	for _, t in ui.tabButtons do
+		t.button.Size = UDim2.fromOffset(if phone then 132 else 146, 40)
+	end
 	-- the meta row stays left of НА БАЗУ
 	for _, b in ui.metaRow:GetChildren() do
 		if b:IsA("GuiButton") then
@@ -1325,12 +1377,12 @@ local function buildUpgrades()
 		Parent = ui.upgradesGrid,
 	})
 	-- DD-107: on a phone the cards lie flat (icon and name side by side), two rows of four on one screen
-	m.phoneSize = Vector2.new(56 + 4 * 200 + 3 * 10, 66 + 2 * 118 + 10 + 18)
+	m.phoneSize = Vector2.new(56 + 4 * 200 + 3 * 10, 66 + 2 * 138 + 10 + 18) -- (DD-109: taller, up to the top)
 	function m.relayout(phone: boolean)
 		lead.Visible = not phone
 		ui.upgradesGrid.Position = UDim2.fromOffset(28, if phone then 66 else 96)
 		ui.upgradesGrid.Size = UDim2.new(1, -56, 1, if phone then -84 else -120)
-		grid.CellSize = if phone then UDim2.fromOffset(200, 118) else UDim2.fromOffset(190, 210)
+		grid.CellSize = if phone then UDim2.fromOffset(200, 138) else UDim2.fromOffset(190, 210)
 		grid.CellPadding = if phone then UDim2.fromOffset(10, 10) else UDim2.fromOffset(12, 12)
 		Menus.refreshUpgrades()
 	end
@@ -1394,10 +1446,10 @@ function Menus.refreshUpgrades()
 			elseif rank > 0 then def.stat(rank) .. "  →  " .. def.stat(rank + 1)
 			else def.stat(1)
 		label(statText, {
-			Position = UDim2.fromOffset(10, if flat then 56 else 116),
-			Size = UDim2.new(1, -20, 0, if flat then 22 else 36),
+			Position = UDim2.fromOffset(10, if flat then 58 else 116),
+			Size = UDim2.new(1, -20, 0, if flat then 32 else 36),
 			FontFace = F.bodyBold,
-			TextSize = if flat then 12 else 13,
+			TextSize = 13,
 			TextWrapped = true,
 			TextColor3 = if maxed then C.dim else C.text,
 			ZIndex = 43,
@@ -1406,7 +1458,7 @@ function Menus.refreshUpgrades()
 		local b, bl = Theme.button(if maxed then "МАКС" else "◆ " .. cost, {
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, if flat then -8 else -12),
-			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 32 else 40),
+			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 36 else 40),
 			ZIndex = 43,
 			TextSize = 15,
 		}, if can then "primary" else "ghost")
@@ -1560,15 +1612,16 @@ local function buildSettings()
 	end
 	-- DD-107: on a phone the rows stand in two columns, the whole window on one screen
 	local cols = 2
-	m.phoneSize = Vector2.new(760, 84 + math.ceil(#rows / cols) * 62 + 6)
+	-- (DD-109: the window reaches the screen's top: taller rows, easier to hit)
+	m.phoneSize = Vector2.new(760, 76 + math.ceil(#rows / cols) * 78 + 8)
 	function m.relayout(phone: boolean)
 		for i, e in built do
 			if phone then
 				local c, r = (i - 1) % cols, (i - 1) // cols
-				e.row.Position = UDim2.new(c / cols, 24 - c * 18, 0, 76 + r * 62) -- (12 between the columns)
-				e.row.Size = UDim2.new(1 / cols, -30, 0, 52)
+				e.row.Position = UDim2.new(c / cols, 24 - c * 18, 0, 76 + r * 78) -- (12 between the columns)
+				e.row.Size = UDim2.new(1 / cols, -30, 0, 66)
 				e.name.Size = UDim2.new(1, -178, 1, 0)
-				e.button.Size = UDim2.fromOffset(116, 36)
+				e.button.Size = UDim2.fromOffset(120, 44)
 			else
 				e.row.Position = UDim2.fromOffset(24, 84 + (i - 1) * 66)
 				e.row.Size = UDim2.new(1, -48, 0, 56)
@@ -2746,21 +2799,21 @@ local function layoutResults(phone: boolean, camp: boolean)
 		o.Size = UDim2.fromOffset(w, h)
 	end
 	if phone then
-		local lw, rx, rwid = 560, 590, 410
+		local lw, rx, rwid = 500, 528, 372
 		ui.resTitle.TextSize = 52
 		at(ui.resTitle, 0, 0, lw, 60)
 		ui.resReason.TextSize = 17
 		at(ui.resReason, 0, 62, lw, 22)
 		at(ui.resReward, 0, 100, lw, 132)
-		at(ui.resGoal, rx, 0, rwid, 106)
+		at(ui.resGoal, rx, 0, rwid, 122)
 		ui.resGoalText.TextSize = 15
-		ui.resGoalText.Size = UDim2.new(1, -96, 0, 52)
+		ui.resGoalText.Size = UDim2.new(1, -96, 0, 66)
 		ui.resMore.AnchorPoint = Vector2.zero
-		ui.resMore.Position = UDim2.fromOffset(rx, 118)
-		local bw = if camp then 250 else rwid
-		at(ui.resButton, rx, 170, bw, 66)
-		at(ui.resCamp, rx + bw + 10, 170, rwid - bw - 10, 66)
-		at(ui.resVotes, rx, 244, rwid, 18)
+		ui.resMore.Position = UDim2.fromOffset(rx, 132)
+		local bw = if camp then 226 else rwid
+		at(ui.resButton, rx, 182, bw, 64)
+		at(ui.resCamp, rx + bw + 10, 182, rwid - bw - 10, 64)
+		at(ui.resVotes, rx, 250, rwid, 18)
 		ui.resStatsPanel.Size = UDim2.fromOffset(680, 0)
 	else
 		ui.resTitle.TextSize = 64
