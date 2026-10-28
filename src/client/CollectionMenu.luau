@@ -61,19 +61,41 @@ function Menu.init(H, openSwarm)
 	end)
 	local research, owner, selected, own, canSwarm = {}, nil, nil, true, true
 	local widgets = {}
+	local band = Theme.panel({ Name = "HeadBand", BackgroundTransparency = 0.06, CornerRadius = 18, ZIndex = 41 })
+	band.Visible = false
+	band.Parent = modal.panel
 	modal.resize = function(size)
-		local w, h = math.min(960, size.X - 32), math.min(640, size.Y - 24)
+		-- DD-110: on a phone the window starts under Roblox's top bar (its buttons stood on the title);
+		-- the title and × go up into the bar, right of those buttons
+		local stripLeft, _, stripH = Theme.topStrip()
+		local lift = Theme.phone() and stripH > 0
+		local y0 = if lift then stripH + 4 else 0
+		local w, h = math.min(960, size.X - 48), math.min(640, size.Y - 24 - y0)
 		local compact = h < 500
 		modal.scale.Scale = 1
 		modal.panel.Size = UDim2.fromOffset(w, h)
+		modal.panel.AnchorPoint = Vector2.new(0.5, if lift then 0 else 0.5)
+		modal.panel.Position = if lift then UDim2.new(0.5, 0, 0, y0) else UDim2.fromScale(0.5, 0.5)
 		local title, close = modal.panel.ModalTitle, modal.panel.ModalClose
-		title.Position = UDim2.fromOffset(20, if compact then 8 else 22)
+		if lift then
+			local x = math.max(20, stripLeft + 12 - (size.X - w) / 2)
+			title.Position = UDim2.fromOffset(x, stripH / 2 - y0 - 15)
+			title.Size = UDim2.new(1, -x - 70, 0, 30)
+			close.Position = UDim2.new(1, -12, 0, stripH / 2 - y0 - 22)
+			band.Position = UDim2.fromOffset(x - 14, 3 - y0)
+			band.Size = UDim2.new(1, -x + 14, 0, stripH - 6)
+		else
+			title.Position = UDim2.fromOffset(20, if compact then 8 else 22)
+			title.Size = UDim2.new(1, -120, 0, 36)
+			close.Position = UDim2.new(1, -12, 0, if compact then 6 else 18)
+		end
+		band.Visible = lift
 		title.TextSize = if compact then 22 else 28
-		close.Position = UDim2.new(1, -12, 0, if compact then 6 else 18)
-		sub.Position = UDim2.fromOffset(20, if compact then 44 else 60)
+		local subY = if lift then 12 elseif compact then 44 else 60
+		sub.Position = UDim2.fromOffset(20, subY)
 		sub.Size = UDim2.new(1, -92, 0, if compact then 28 else 42)
 		sub.TextSize = if compact then 12 else 14
-		local top = if compact then 80 else 112
+		local top = subY + (if compact then 36 else 52)
 		local contentH = h - top - (if compact then 64 else 90)
 		local listW = if compact then math.floor(w * 0.30) else 330
 		list.Position, list.Size = UDim2.fromOffset(20, top), UDim2.fromOffset(listW, contentH)

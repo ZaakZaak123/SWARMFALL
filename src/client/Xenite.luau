@@ -62,10 +62,26 @@ function Xenite.inline(label: TextLabel)
 			if my ~= token then
 				return
 			end
-			-- AbsoluteSize and TextBounds are on-screen pixels (after any UIScale), the measures and the
-			-- offsets are not: r converts between them
+			-- AbsoluteSize and TextBounds are on-screen pixels, the offsets are not: r is the UIScales above
+			-- the label. The text as drawn is a little narrower than measured (q, ~0.9 at small sizes):
+			-- the gap is placed by the drawn width (DD-110: taking r from the text put the emblem on the
+			-- digits of the phone's upgrade prices)
 			local tb = label.TextBounds.X
-			local r = if tb > 0 and full > 0 then tb / full else 1
+			if tb <= 0 or full <= 0 then
+				img.Visible = false -- not drawn yet (a hidden window): placed when its text gets bounds
+				return
+			end
+			local r = 1
+			local a = label
+			while a and not a:IsA("LayerCollector") do
+				local sc = a:FindFirstChildOfClass("UIScale")
+				if sc then
+					r *= sc.Scale
+				end
+				a = a.Parent
+			end
+			local drawn = tb / r
+			local q = drawn / full
 			local pad = label:FindFirstChildOfClass("UIPadding")
 			local pl = if pad then pad.PaddingLeft.Offset else 0
 			local pr = if pad then pad.PaddingRight.Offset else 0
@@ -73,13 +89,13 @@ function Xenite.inline(label: TextLabel)
 			local x0 = pl
 				+ (
 					if label.TextXAlignment == Enum.TextXAlignment.Center
-						then (w - full) / 2
-						elseif label.TextXAlignment == Enum.TextXAlignment.Right then w - full
+						then (w - drawn) / 2
+						elseif label.TextXAlignment == Enum.TextXAlignment.Right then w - drawn
 						else 0
 				)
 			local s = math.floor(size * 1.25)
 			img.Size = UDim2.fromOffset(s, s)
-			img.Position = UDim2.new(0, x0 + (before + gap) / 2, 0.5, 0)
+			img.Position = UDim2.new(0, x0 + (before + gap) / 2 * q, 0.5, 0)
 			img.ImageTransparency = label.TextTransparency
 			img.ZIndex = label.ZIndex + 1
 			img.Visible = true
@@ -99,6 +115,7 @@ function Xenite.inline(label: TextLabel)
 	label:GetPropertyChangedSignal("Text"):Connect(refresh)
 	label:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
 	label:GetPropertyChangedSignal("TextSize"):Connect(place)
+	label:GetPropertyChangedSignal("TextBounds"):Connect(place)
 	label:GetPropertyChangedSignal("TextXAlignment"):Connect(place)
 	label:GetPropertyChangedSignal("TextTransparency"):Connect(function()
 		img.ImageTransparency = label.TextTransparency

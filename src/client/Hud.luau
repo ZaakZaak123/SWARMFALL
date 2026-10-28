@@ -159,6 +159,7 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = root,
 	})
 	ui.top = top
+	ui.topScale = new("UIScale", { Parent = top })
 	ui.xpBack, ui.xpFill = bar(top, { Position = UDim2.fromOffset(34, 12), Size = UDim2.new(1, -40, 0, 12) }, C.lime)
 	new("UIStroke", { Color = C.white, Transparency = 0.85, Parent = ui.xpBack })
 	ui.xpGlow = new("Frame", {
@@ -315,6 +316,7 @@ function Hud.init(playerGui: PlayerGui)
 		Parent = root,
 	})
 	ui.topRight = tr
+	ui.topRightScale = new("UIScale", { Parent = tr })
 	ui.killsBox = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.fromScale(1, 0),
@@ -773,6 +775,8 @@ local function nextBanner()
 	local phone = Theme.phone()
 	ui.bannerSub.Text = if phone then "" else b.sub
 	ui.bannerText.TextSize = if phone then 30 else 40
+	-- (DD-110: on a phone higher, between the goal row and the hero — it stood on the hero's head)
+	ui.banner.Position = UDim2.new(0.5, 0, 0, if phone then 92 else 166)
 	ui.bannerPlate.Visible = not phone
 	ui.bannerLine.Visible = not phone
 	setBannerVisual(if phone then nil else b.visual, b.color)
@@ -1087,6 +1091,88 @@ function Hud.reset()
 	shownBoss = nil
 end
 
+-- DD-110 (owner, the phone: «в бою верхнюю часть перекомпоновать»): on a phone Roblox's top bar holds one
+-- row — the level, its bar, the timer — from Roblox's buttons to the kill count; the goal and the drill's
+-- gauge share one row under it, the boss bar under that. A monitor keeps the centred column.
+local topPhone = nil
+local TOP_PHONE = 1.45
+local function layoutTop(phone: boolean, k: number, stripLeft: number, stripH: number)
+	local top = ui.top
+	if phone then
+		-- (drawn 1.45× the HUD's scale: at a phone's 0.52 the row was 7-point words in a 58-point bar)
+		local s = TOP_PHONE
+		local rootW = ui.root.AbsoluteSize.X / k
+		local sh = stripH / k
+		local left = (stripLeft + 10) / k
+		local right = rootW - 14 - ui.killsBox.AbsoluteSize.X / k - 16
+		local topY = -sh / 2 - 18 * s
+		top.AnchorPoint = Vector2.zero
+		top.Position = UDim2.fromOffset(left, topY)
+		top.Size = UDim2.fromOffset(math.max(200, right - left) / s, 150)
+		ui.topRight.Position = UDim2.new(1, -14, 0, topY)
+		-- the goal and the drill side by side, centred on the screen just under the bar
+		local cx, ty = (rootW / 2 - left) / s, (8 - topY) / s
+		local obj = ui.obj.Visible
+		ui.goal.AnchorPoint = Vector2.new(if obj then 1 else 0.5, 0)
+		ui.goal.Position = UDim2.fromOffset(cx - (if obj then 6 else 0), ty)
+		ui.obj.AnchorPoint = Vector2.new(if ui.goal.Visible then 0 else 0.5, 0)
+		ui.obj.Position = UDim2.fromOffset(cx + (if ui.goal.Visible then 6 else 0), ty)
+		ui.boss.Position = UDim2.fromOffset(cx, ty + 38)
+		ui.boss.Size = UDim2.fromOffset(math.min(520, (rootW - 60) / s), 46)
+		if topPhone == true then
+			return
+		end
+		topPhone = true
+		ui.topScale.Scale = s
+		ui.topRightScale.Scale = s
+		ui.xpBack.Size = UDim2.new(1, -40 - 86, 0, 12)
+		ui.timer.AnchorPoint = Vector2.new(1, 0.5)
+		ui.timer.Position = UDim2.new(1, 0, 0, 18)
+		ui.timer.Size = UDim2.fromOffset(80, 30)
+		ui.timer.TextSize = 26
+		ui.timer.TextXAlignment = Enum.TextXAlignment.Right
+		-- the drill as a gauge: its icon, the bar, the percent (the name was 6 points on a phone)
+		ui.obj.Size = UDim2.fromOffset(220, 28)
+		ui.objName.Visible = false
+		ui.objIcon.Position = UDim2.fromOffset(0, 3)
+		ui.objBack.Position = UDim2.fromOffset(28, 10)
+		ui.objBack.Size = UDim2.new(1, -28 - 54, 0, 9)
+		ui.objPct.Size = UDim2.fromOffset(50, 28)
+		ui.objPct.TextSize = 14
+		ui.boss.AnchorPoint = Vector2.new(0.5, 0)
+		return
+	end
+	if topPhone == false then
+		return
+	end
+	topPhone = false
+	ui.topScale.Scale = 1
+	ui.topRightScale.Scale = 1
+	top.AnchorPoint = Vector2.new(0.5, 0)
+	top.Position = UDim2.new(0.5, 0, 0, 10)
+	top.Size = UDim2.fromOffset(520, 150)
+	ui.xpBack.Size = UDim2.new(1, -40, 0, 12)
+	ui.timer.AnchorPoint = Vector2.new(0.5, 0)
+	ui.timer.Position = UDim2.new(0.5, 0, 0, 32)
+	ui.timer.Size = UDim2.fromOffset(200, 34)
+	ui.timer.TextSize = 30
+	ui.timer.TextXAlignment = Enum.TextXAlignment.Center
+	ui.goal.AnchorPoint = Vector2.new(0.5, 0)
+	ui.goal.Position = UDim2.new(0.5, 0, 0, 70)
+	ui.obj.AnchorPoint = Vector2.new(0.5, 0)
+	ui.obj.Position = UDim2.new(0.5, 0, 0, 106)
+	ui.obj.Size = UDim2.fromOffset(360, 30)
+	ui.objName.Visible = true
+	ui.objIcon.Position = UDim2.fromOffset(0, 4)
+	ui.objBack.Position = UDim2.fromOffset(28, 17)
+	ui.objBack.Size = UDim2.new(1, -28, 0, 9)
+	ui.objPct.Size = UDim2.fromOffset(120, 14)
+	ui.objPct.TextSize = 11
+	ui.boss.AnchorPoint = Vector2.new(0.5, 0)
+	ui.boss.Position = UDim2.new(0.5, 0, 0, 104)
+	ui.boss.Size = UDim2.fromOffset(520, 46)
+end
+
 -- Frame update --------------------------------------------------------------------------------------
 function Hud.update(run, me, extra, dt: number)
 	local now = os.clock()
@@ -1098,11 +1184,11 @@ function Hud.update(run, me, extra, dt: number)
 	ui.root.Size = UDim2.fromScale(1 / k, 1 / k)
 	-- DD-109: on a phone the level, its bar, the timer, the goal and the kill count stand in Roblox's top
 	-- bar (right of its buttons, ~58 points that were empty): the fight gets the screen under it
-	local _, _, stripH = Theme.topStrip()
+	local stripLeft, _, stripH = Theme.topStrip()
 	local up = if Theme.phone() and stripH > 0 then (stripH + 2) / k else 0
-	ui.top.Position = UDim2.new(0.5, 0, 0, 10 - up)
-	ui.topRight.Position = UDim2.new(1, -14, 0, 10 - up)
+	ui.topRight.Position = UDim2.new(1, -14, 0, 10)
 	ui.build.Position = UDim2.fromOffset(14, if up > 0 then 8 else 58)
+	layoutTop(up > 0, k, stripLeft, stripH)
 	local touch = extra.device == "touch"
 	if run.t < 0.5 and lastLevel > 1 then
 		Hud.reset()

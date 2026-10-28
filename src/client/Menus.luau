@@ -81,7 +81,7 @@ end
 -- The results body (DD-108): a monitor's column (RES_DESK), a phone's two columns (RES_PHONE) under
 -- Roblox's own top bar.
 local RES_DESK = Vector2.new(760, 520)
-local RES_PHONE = Vector2.new(900, 270) -- (DD-109: narrower, so it is drawn bigger: it was width-bound)
+local RES_PHONE = Vector2.new(820, 290) -- (DD-109, DD-110: narrower, so it is drawn bigger: it was width-bound)
 local function resultsScale(): number
 	if Theme.phone() then
 		local vs = if gui and gui.AbsoluteSize.X > 0 then gui.AbsoluteSize else workspace.CurrentCamera.ViewportSize
@@ -89,7 +89,7 @@ local function resultsScale(): number
 			return game:GetService("GuiService").TopbarInset.Max.Y
 		end)
 		local top = (if ok and inset then inset else 60) + 4
-		return math.clamp(math.min((vs.X - 16) / RES_PHONE.X, (vs.Y - top - 8) / RES_PHONE.Y), 0.3, 1.25)
+		return math.clamp(math.min((vs.X - 48) / RES_PHONE.X, (vs.Y - top - 16) / RES_PHONE.Y), 0.3, 1.25)
 	end
 	return viewportScale(Vector2.new(RES_DESK.X + 60, RES_DESK.Y + 60))
 end
@@ -151,6 +151,24 @@ local function fitModal(m)
 	-- into the space under Roblox's buttons; the rest still fill the width and scroll
 	if m.relayout and m.phone ~= phone then
 		m.phone = phone
+		-- (the header's lift below is undone first: relayout places from the window's own layout)
+		for _, c in m.panel:GetChildren() do
+			if c:GetAttribute("PhoneX0") ~= nil then
+				c.Position = UDim2.new(
+					c.Position.X.Scale,
+					c:GetAttribute("PhoneX0"),
+					c.Position.Y.Scale,
+					c:GetAttribute("PhoneY0")
+				)
+				if c.Size.X.Scale > 0 then
+					c.Size = UDim2.new(c.Size.X.Scale, c:GetAttribute("PhoneW0"), c.Size.Y.Scale, c.Size.Y.Offset)
+				end
+				c:SetAttribute("PhoneX0", nil)
+			end
+		end
+		if m.headBand then
+			m.headBand.Visible = false
+		end
 		m.panel.Size = if phone
 			then UDim2.fromOffset(m.phoneSize.X, m.phoneSize.Y)
 			else UDim2.fromOffset(m.w, m.h)
@@ -165,34 +183,81 @@ local function fitModal(m)
 		end)
 		local top = (if ok and inset then inset else 0) + 4
 		if m.relayout then
-			-- DD-109: up to the screen's top: Roblox's buttons (top left) cover only the window's corner,
-			-- and the window's own header there steps right of them
+			-- DD-110 (owner, the phone: windows «прижаты к кнопкам»): the window starts under Roblox's top
+			-- bar, so its buttons never stand on it; the window's header (title, xenite, ×) goes up into
+			-- the bar right of them, and the body moves up into the header's place
 			local stripLeft, _, stripH = Theme.topStrip()
+			local lift = stripH > 0
 			local pw, ph = m.phoneSize.X, m.phoneSize.Y
-			local y0 = if stripH > 0 then 6 else top
-			local k = math.min(1, (vs.X - 16) / pw, (vs.Y - y0 - 6) / ph)
+			local kids = {}
+			for _, c in m.panel:GetChildren() do
+				if c:IsA("GuiObject") and c.Name ~= "HeadBand" then
+					if c:GetAttribute("PhoneX0") == nil then
+						c:SetAttribute("PhoneX0", c.Position.X.Offset)
+						c:SetAttribute("PhoneY0", c.Position.Y.Offset)
+						c:SetAttribute("PhoneW0", c.Size.X.Offset)
+					end
+					table.insert(kids, c)
+				end
+			end
+			-- the header: what starts in the window's top 56 points; the cut: up to the body's top
+			local function isHead(c: GuiObject): boolean
+				local y = c:GetAttribute("PhoneY0") - c.AnchorPoint.Y * c.Size.Y.Offset
+				return c.Position.Y.Scale == 0 and y < 56
+			end
+			local cut = 0
+			if lift then
+				local bodyTop = math.huge
+				for _, c in kids do
+					if c.Visible and c.Position.Y.Scale == 0 and not isHead(c) then
+						bodyTop = math.min(bodyTop, c:GetAttribute("PhoneY0") - c.AnchorPoint.Y * c.Size.Y.Offset)
+					end
+				end
+				cut = if bodyTop < math.huge then math.max(0, bodyTop - 16) else 0
+			end
+			local y0 = if lift then stripH + 4 else top
+			local k = math.min(1, (vs.X - 40) / pw, (vs.Y - y0 - 8) / (ph - cut))
+			m.panel.Size = UDim2.fromOffset(pw, ph - cut)
 			m.panel.Parent = m.shade
 			m.panel.AnchorPoint = Vector2.new(0.5, 0)
 			m.panel.Position = UDim2.new(0.5, 0, 0, y0)
 			m.scale.Scale = k
 			m.scroller.Visible = false
-			local needX = (stripLeft + 10 - (vs.X - pw * k) / 2) / k
-			for _, c in m.panel:GetChildren() do
-				if c:IsA("GuiObject") and c.Position.X.Scale == 0 and c.AnchorPoint.X == 0 then
-					local x0 = c:GetAttribute("PhoneX0")
-					if x0 == nil then
-						x0 = c.Position.X.Offset
-						c:SetAttribute("PhoneX0", x0)
-						c:SetAttribute("PhoneW0", c.Size.X.Offset)
+			-- in the window's units: the bar's middle, and the first x right of Roblox's buttons
+			local midY = (stripH / 2 - y0) / k
+			local needX = (stripLeft + 12 - (vs.X - pw * k) / 2) / k
+			for _, c in kids do
+				local x0, yy0 = c:GetAttribute("PhoneX0"), c:GetAttribute("PhoneY0")
+				local x, y, w = x0, yy0, c:GetAttribute("PhoneW0")
+				if lift and isHead(c) then
+					local h = c.Size.Y.Offset
+					y = midY - h / 2 + c.AnchorPoint.Y * h
+					if c.Position.X.Scale == 0 and c.AnchorPoint.X == 0 and x0 < needX then
+						x = needX
+						w -= needX - x0
 					end
-					local under = stripH > 0 and y0 + c.Position.Y.Offset * k < stripH
-					local dx = if under then math.max(0, needX - x0) else 0
-					c.Position = UDim2.new(0, x0 + dx, c.Position.Y.Scale, c.Position.Y.Offset)
-					if c.Size.X.Scale > 0 then
-						c.Size = UDim2.new(c.Size.X.Scale, c:GetAttribute("PhoneW0") - dx, c.Size.Y.Scale, c.Size.Y.Offset)
-					end
+				elseif c.Position.Y.Scale == 0 then
+					y = yy0 - cut
+				end
+				c.Position = UDim2.new(c.Position.X.Scale, x, c.Position.Y.Scale, y)
+				if c.Size.X.Scale > 0 then
+					c.Size = UDim2.new(c.Size.X.Scale, w, c.Size.Y.Scale, c.Size.Y.Offset)
 				end
 			end
+			-- the header's own tab in the bar (what is behind the window showed through it)
+			if not m.headBand then
+				m.headBand = Theme.panel({
+					Name = "HeadBand",
+					BackgroundTransparency = 0.06,
+					CornerRadius = 18,
+					ZIndex = 41,
+					Parent = m.panel,
+				})
+			end
+			m.headBand.Visible = lift
+			local bandH = (stripH - 6) / k
+			m.headBand.Position = UDim2.fromOffset(needX - 14, midY - bandH / 2)
+			m.headBand.Size = UDim2.fromOffset(pw - needX + 14, bandH)
 			return true
 		end
 		m.panel.Parent = m.scroller
@@ -415,6 +480,8 @@ local function buildLobby()
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Parent = hunt,
 	})
+	-- (DD-110: on a phone the brief shrinks to its box instead of running under the buttons)
+	ui.huntBriefMax = new("UITextSizeConstraint", { MaxTextSize = 17, MinTextSize = 11, Parent = ui.huntBrief })
 	-- why every sortie happens (DD-065): the same sentence the shelter's cableway tells in space
 	ui.huntWhy = label(
 		"Бур в центре воронки вскрывает погребённый город — ксенит с него идёт по канатке в твоё убежище. Рой лезет на шум бура.",
@@ -1060,8 +1127,19 @@ function Menus.refreshLobby()
 		d.button.BackgroundTransparency = if on then 0 else 0.9
 		d.text.TextColor3 = if on then C.ink else C.text
 	end
+	-- DD-110: a phone's width after its notch insets is ~900 units, not the 1000 of Studio's window: the card
+	-- and the guns share what there is (they overlapped on the owner's phone)
+	local hw, ww = 460, 434
+	if ui.lobbyPhone then
+		local pad = ui.lobbyPad
+		local avail = gui.AbsoluteSize.X / ui.lobbyScale.Scale - pad.PaddingLeft.Offset - pad.PaddingRight.Offset
+		hw = math.clamp(avail - 20 - 434, 380, 460)
+		ww = math.max(300, avail - 20 - hw)
+		ui.weapons.Size = UDim2.fromOffset(ww, 200)
+		ui.weaponsGrid.CellSize = UDim2.fromOffset(math.floor((ww - 10) / 2), 92)
+	end
 	ui.hunt.Size =
-		UDim2.fromOffset(460, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then rowY + 58 else 160)
+		UDim2.fromOffset(hw, if ui.huntPrev.Visible or ui.threat.Visible or ui.modeRow.Visible then rowY + 58 else 160)
 	-- Xenite + upgrades: after the first hunt
 	ui.xenite.Visible = runs > 0 or (prof and prof.scrap > 0)
 	ui.xeniteAmount.Text = Theme.commas(prof and prof.scrap or 0)
@@ -1134,6 +1212,32 @@ function Menus.refreshLobby()
 		ui.weapons.Position = UDim2.new(1, 0, 0, 0) -- (DD-107: from the top, under the xenite)
 		ui.metaRow.AnchorPoint = Vector2.zero
 		ui.metaRow.Position = UDim2.fromOffset(0, y - 6)
+		-- DD-110: the row is the card's width (РЕЙТИНГ ran under В БОЙ); with three buttons or more each
+		-- is an icon over its word, as a phone's tab bar
+		local btns = {}
+		for _, b in ui.metaRow:GetChildren() do
+			if b:IsA("GuiButton") and b.Visible then
+				table.insert(btns, b)
+			end
+		end
+		local stacked = #btns >= 3
+		local bw = math.floor((hw - (#btns - 1) * 10) / math.max(1, #btns))
+		for _, b in btns do
+			b.Size = if stacked
+				then UDim2.fromOffset(bw, 60)
+				else UDim2.fromOffset(if b == ui.upgradesBtn then 190 else 140, 52)
+			local lbl = b:FindFirstChild("Label")
+			for _, c in b:GetChildren() do
+				if c.Name:sub(1, 5) == "Icon_" then
+					c.AnchorPoint = Vector2.new(if stacked then 0.5 else 0, 0.5)
+					c.Position = if stacked then UDim2.new(0.5, 0, 0, 20) else UDim2.new(0, 18, 0.5, 0)
+				end
+			end
+			if lbl then
+				lbl.Position = UDim2.fromOffset(if stacked then 0 else 20, if stacked then 14 else 0)
+				lbl.TextSize = if stacked then 11 elseif b == ui.upgradesBtn then 15 else 13
+			end
+		end
 	else
 		ui.metaRow.AnchorPoint = Vector2.new(0, 1)
 		ui.metaRow.Position = UDim2.fromScale(0, 1)
@@ -1271,12 +1375,23 @@ function lobbyPhoneLayout(phone: boolean)
 	for _, t in ui.tabButtons do
 		t.button.Size = UDim2.fromOffset(if phone then 132 else 146, 40)
 	end
-	-- the meta row stays left of НА БАЗУ
+	-- the meta row stays left of НА БАЗУ (a phone's is sized by refreshLobby, DD-110)
+	ui.huntBrief.TextScaled = phone
+	ui.huntBriefMax.MaxTextSize = if phone then 15 else 17
 	for _, b in ui.metaRow:GetChildren() do
-		if b:IsA("GuiButton") then
-			b.Size = if b == ui.upgradesBtn
-				then UDim2.fromOffset(if phone then 160 else 230, if phone then 52 else 58)
-				else UDim2.fromOffset(if phone then 112 else 150, if phone then 52 else 58)
+		if b:IsA("GuiButton") and not phone then
+			b.Size = UDim2.fromOffset(if b == ui.upgradesBtn then 230 else 150, 58)
+			local lbl = b:FindFirstChild("Label")
+			for _, c in b:GetChildren() do
+				if c.Name:sub(1, 5) == "Icon_" then
+					c.AnchorPoint = Vector2.new(0, 0.5)
+					c.Position = UDim2.new(0, if b == ui.upgradesBtn then 20 else 16, 0.5, 0)
+				end
+			end
+			if lbl then
+				lbl.Position = UDim2.fromOffset(if b == ui.upgradesBtn then 22 else 18, 0)
+				lbl.TextSize = if b == ui.upgradesBtn then 17 else 14
+			end
 		end
 	end
 end
@@ -2473,7 +2588,7 @@ local function buildResults()
 		Parent = rw,
 	})
 	ui.resCrystalScale = new("UIScale", { Parent = ui.resCrystal })
-	label("КСЕНИТ  ·  С БУРА ПО КАНАТКЕ", {
+	ui.resRewardHead = label("КСЕНИТ  ·  С БУРА ПО КАНАТКЕ", {
 		Position = UDim2.fromOffset(124, 14),
 		Size = UDim2.fromOffset(300, 14),
 		FontFace = F.head,
@@ -2501,7 +2616,7 @@ local function buildResults()
 		ZIndex = 23,
 		Parent = rw,
 	})
-	label("ВСЕГО В УБЕЖИЩЕ", {
+	ui.resBankHead = label("ВСЕГО В УБЕЖИЩЕ", {
 		Size = UDim2.new(1, 0, 0, 14),
 		FontFace = F.head,
 		TextSize = 10,
@@ -2530,6 +2645,7 @@ local function buildResults()
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			Padding = UDim.new(0, 6),
+			Wraps = true, -- (DD-110: a phone's narrower card puts the rest on a second row)
 		},
 	})
 
@@ -2798,19 +2914,27 @@ local function layoutResults(phone: boolean, camp: boolean)
 		o.Position = UDim2.fromOffset(x, y)
 		o.Size = UDim2.fromOffset(w, h)
 	end
+	-- DD-110: a phone's xenite card is taller, its chips wrap to a second row and its small words are
+	-- bigger (they were 6 points on the owner's phone)
+	ui.resRewardHead.TextSize = if phone then 13 else 11
+	ui.resBankHead.TextSize = if phone then 12 else 10
+	ui.resRewardLines.Size = UDim2.new(1, -140, 0, if phone then 62 else 26)
+	ui.resRewardLines.UIListLayout.VerticalAlignment = if phone
+		then Enum.VerticalAlignment.Top
+		else Enum.VerticalAlignment.Center
 	if phone then
-		local lw, rx, rwid = 500, 528, 372
-		ui.resTitle.TextSize = 52
-		at(ui.resTitle, 0, 0, lw, 60)
-		ui.resReason.TextSize = 17
-		at(ui.resReason, 0, 62, lw, 22)
-		at(ui.resReward, 0, 100, lw, 132)
+		local lw, rx, rwid = 460, 484, 336
+		ui.resTitle.TextSize = 48
+		at(ui.resTitle, 0, 0, lw, 56)
+		ui.resReason.TextSize = 16
+		at(ui.resReason, 0, 58, lw, 22)
+		at(ui.resReward, 0, 94, lw, 172)
 		at(ui.resGoal, rx, 0, rwid, 122)
 		ui.resGoalText.TextSize = 15
 		ui.resGoalText.Size = UDim2.new(1, -96, 0, 66)
 		ui.resMore.AnchorPoint = Vector2.zero
 		ui.resMore.Position = UDim2.fromOffset(rx, 132)
-		local bw = if camp then 226 else rwid
+		local bw = if camp then 196 else rwid
 		at(ui.resButton, rx, 182, bw, 64)
 		at(ui.resCamp, rx + bw + 10, 182, rwid - bw - 10, 64)
 		at(ui.resVotes, rx, 250, rwid, 18)
