@@ -823,10 +823,8 @@ stateRemote.OnClientEvent:Connect(function(buf, info)
 		end
 	end
 	local scened = Story.active() or Story.covered() -- a scene or the title card: no prompts over it
-	if not scened and run.phase == "COUNTDOWN" and run.waiting then
-		-- DD-108: the run waits for the first step; nothing to say about it (the hero simply moves off)
-		Menus.note(nil)
-	elseif not scened and run.phase == "COUNTDOWN" then
+	-- (DD-108: while the run waits for the first step there is nothing to say: the hero simply moves off)
+	if not scened and run.phase == "COUNTDOWN" and not run.waiting then
 		Menus.note(string.format("ВЫХОД  ·  %d", math.ceil(run.countdown)))
 	elseif not scened and run.phase ~= "COUNTDOWN" and not me and run.mode == "siege" then
 		-- DD-088: a drill defence takes a spectator at the next breather between waves
