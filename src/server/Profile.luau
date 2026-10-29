@@ -18,7 +18,9 @@ local Meta = require(Shared:WaitForChild("Meta"))
 
 local Profile = {}
 
-local STORE_NAME = "SWARMFALL_Profile_v1"
+-- Wipe everyone: bump the suffix and publish. Old stores stay untouched (rollback = put the old name back).
+-- v1 (until 2026-10-29) holds the profiles from before the DD-113 wipe.
+local STORE_NAME = "SWARMFALL_Profile_w2"
 local VERSION = 3
 local store = nil
 pcall(function()
@@ -1284,6 +1286,49 @@ function Profile.grantRun(player: Player, runId: string, result, opId: string, t
 	task.spawn(Profile.save, player)
 	return reward
 end
+
+-- The experience's owner (or a group's top rank); anyone in Studio.
+local function isOwner(player: Player): boolean
+	if RunService:IsStudio() then
+		return true
+	elseif game.CreatorType == Enum.CreatorType.Group then
+		local ok, rank = pcall(player.GetRankInGroup, player, game.CreatorId)
+		return ok and rank >= 255
+	end
+	return player.UserId == game.CreatorId
+end
+
+-- Owner's own clean start (chat "/wipe"): a fresh profile written now, then a kick so every screen and the
+-- camp start over on the next join. Purchase receipts stay, so a product is never granted twice. In Studio
+-- (offline) it resets the session copy.
+function Profile.wipe(player: Player): boolean
+	local e = profiles[player]
+	if not e or (e.offline and not RunService:IsStudio()) or not isOwner(player) then
+		return false
+	end
+	local fresh = reconcile(nil)
+	fresh.receipts = e.data.receipts
+	e.data = fresh
+	e.dirty = true
+	if not e.offline and not Profile.save(player) then
+		return false
+	end
+	player:Kick("Профиль сброшен. Зайди снова.")
+	return true
+end
+
+pcall(function()
+	local cmd = Instance.new("TextChatCommand")
+	cmd.Name = "SwarmWipe"
+	cmd.PrimaryAlias = "/wipe"
+	cmd.Parent = game:GetService("TextChatService")
+	cmd.Triggered:Connect(function(source: TextSource)
+		local player = Players:GetPlayerByUserId(source.UserId)
+		if player then
+			Profile.wipe(player)
+		end
+	end)
+end)
 
 Players.PlayerAdded:Connect(function(player)
 	Profile.load(player)

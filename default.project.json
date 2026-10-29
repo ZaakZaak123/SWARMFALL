@@ -29,6 +29,9 @@
     "Players": {
       "$properties": { "CharacterAutoLoads": false, "RespawnTime": 3 }
     },
+    "TextChatService": {
+      "$properties": { "ChatVersion": "TextChatService" }
+    },
     "Lighting": {
       "$properties": { "Technology": "Future", "ClockTime": 0.4, "GlobalShadows": true }
     },
