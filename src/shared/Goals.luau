@@ -56,6 +56,7 @@ local function lowerFirst(s: string): string
 	end
 	return table.concat(out)
 end
+Goals.lowerFirst = lowerFirst
 
 local function won(pub, opId: string): boolean
 	return ((pub.winsByOp or {})[opId] or 0) > 0
@@ -128,7 +129,7 @@ function Goals.next(pub): Goal?
 			key = "hunt1",
 			icon = "skull",
 			title = "ВЫЛАЗКА ЗА ГЕНЕРАТОРОМ",
-			text = "В руинах станции — генератор для убежища. Убей Альфу, что гнездится на нём.",
+			text = "Убей Альфу и принеси генератор домой.",
 			station = "launch",
 			op = "O01",
 		}
@@ -141,13 +142,10 @@ function Goals.next(pub): Goal?
 			title = "ПЕРВАЯ ТУРЕЛЬ ДЛЯ БУРА",
 			text = if scrap >= cost
 				then string.format(
-					"Рой вернётся к буру. Собери «Турель» на верстаке (%d ксенита) — она встанет у бура и будет стрелять вместе с тобой.",
+					"На верстаке, %d ксенита. Встанет у бура и будет стрелять с тобой.",
 					cost
 				)
-				else string.format(
-					"«Турель» стоит %d ксенита — ещё одна вылазка, и хватит.",
-					cost
-				),
+				else string.format("Нужно %d ксенита — ещё одна вылазка.", cost),
 			station = if scrap >= cost then "build" else "launch",
 			slot = Meta.FirstSocket,
 			structure = "STING",
@@ -158,7 +156,7 @@ function Goals.next(pub): Goal?
 			key = "strike",
 			icon = "shield",
 			title = "ОБОРОНА БУРА",
-			text = "«Турель» уже у бура. Рой идёт на шум — выйди и отбей первый натиск вместе с ней.",
+			text = "Турель у бура. Отбей первый натиск!",
 			station = "launch",
 			mode = "siege",
 			structure = "STING",
@@ -170,7 +168,7 @@ function Goals.next(pub): Goal?
 			key = "brood",
 			icon = "hive",
 			title = "ВЫВЕДИ СВОЙ РОЙ",
-			text = "Сердце гнезда в лаборатории. Выведи первую стаю — она защищает твой бур и ходит во вторжения.",
+			text = "В лаборатории. Стая защитит бур и пойдёт во вторжения.",
 			station = "swarm",
 			spot = "LAB",
 		}
@@ -186,7 +184,7 @@ function Goals.next(pub): Goal?
 				key = "weapon_" .. wid,
 				icon = "swords",
 				title = "НОВОЕ ОРУЖИЕ: " .. w.short,
-				text = w.tagline .. " Возьми его в следующую вылазку.",
+				text = "Возьми его в следующую вылазку.", -- DD-113: short
 				station = "launch",
 				weapon = wid,
 			}
@@ -215,11 +213,9 @@ function Goals.next(pub): Goal?
 				icon = "evolve",
 				title = "ЭВОЛЮЦИЯ: " .. evo.name,
 				text = string.format(
-					"Открой её в оружейной (%d ксенита и %d сплава): в долгом бою «%s» станет «%s».",
+					"Открой в оружейной: %d ксенита и %d сплава.",
 					Defs.Evolve.OpenCost,
-					Defs.Evolve.OpenAlloy,
-					Goals.titleCase(Defs.Weapons[fav].short),
-					Goals.titleCase(evo.name)
+					Defs.Evolve.OpenAlloy
 				),
 				station = "armory",
 				weapon = fav,
@@ -243,11 +239,11 @@ function Goals.next(pub): Goal?
 				icon = "shield",
 				title = "СПЛАВ ДЛЯ МОДУЛЯ",
 				text = string.format(
-					"«%s %s» ждёт %d сплава, у тебя %d. Сплав даёт оборона бура: +%d за победу.",
+					"«%s %s»: сплава %d из %d. Оборона бура: +%d.",
 					short.name,
 					Modules.Roman[short.tier],
-					short.alloy,
 					pub.alloy or 0,
+					short.alloy,
 					Defs.Alloy.siege(level, true)
 				),
 				station = "launch",
@@ -261,14 +257,11 @@ function Goals.next(pub): Goal?
 				key = "module_" .. best.id,
 				icon = "gear",
 				title = "НОВЫЙ МОДУЛЬ · " .. Defs.Weapons[fav].short,
+				-- DD-113: the module and its one number
 				text = string.format(
-					if best.alloy > 0
-						then "«%s»: %s. Хватает ксенита (%d) и сплава (%d)."
-						else "«%s»: %s. Хватает ксенита (%d).",
+					"«%s» — +%d%% урона. Ксенита хватает.",
 					best.name,
-					lowerFirst(best.text),
-					best.cost,
-					best.alloy
+					math.floor((Modules.Power[best.tier] or 0) * 100 + 0.5)
 				),
 				station = "armory",
 				weapon = fav,
@@ -287,7 +280,7 @@ function Goals.next(pub): Goal?
 					key = "build_" .. id,
 					icon = def.icon,
 					title = "ПОСТРОЙ " .. def.name,
-					text = def.text .. string.format(" Хватает ксенита (%d).", def.cost[1]),
+					text = def.text .. " Ксенита хватает.",
 					station = "build",
 					slot = slot,
 					structure = id,
@@ -303,7 +296,7 @@ function Goals.next(pub): Goal?
 				key = "home_" .. id,
 				icon = h.icon,
 				title = "ВОССТАНОВИ: " .. h.name,
-				text = h.text .. string.format(" Хватает ксенита (%d).", h.cost),
+				text = h.text .. " Ксенита хватает.",
 				station = "home",
 				spot = id,
 			}
@@ -325,7 +318,7 @@ function Goals.next(pub): Goal?
 				end
 			end
 			if op.homeText then
-				text = op.brief .. " " .. op.homeText
+				text = op.homeText
 				structure = nil
 			elseif brings and structDef then
 				-- the cheapest of what it opens: the one the homecoming will point at
@@ -338,23 +331,18 @@ function Goals.next(pub): Goal?
 				end
 				structure = if cheapest then cheapest.id else structure
 				text = string.format(
-					"%s Вернёшься — заработает %s, и откроется «%s».",
-					op.brief,
+					"Вернёшься — заработает %s, и откроется «%s».",
 					lowerFirst(Goals.titleCase(brings.name)),
 					Goals.titleCase((cheapest or structDef).name)
 				)
 			elseif structDef then
 				-- Lead with the headline structure, then the rest in one short tail.
-				text = string.format(
-					"Ещё одна вылазка — и откроется %s: %s",
-					names[1],
-					lowerFirst(structDef.text)
-				)
+				text = string.format("Откроется %s: %s", names[1], lowerFirst(structDef.text))
 				if #names > 1 then
-					text ..= " Плюс " .. table.concat(names, ", ", 2) .. "."
+					text ..= " И " .. table.concat(names, ", ", 2) .. "."
 				end
 			elseif #names > 0 then
-				text = "Ещё одна вылазка — и откроется: " .. table.concat(names, ", ") .. "."
+				text = "Откроется: " .. table.concat(names, ", ") .. "."
 			end
 			return {
 				key = "op_" .. opId,
@@ -381,10 +369,7 @@ function Goals.next(pub): Goal?
 			key = "upgrade",
 			icon = "level",
 			title = "УЛУЧШИ " .. best.name,
-			text = string.format(
-				"Хватает ксенита (%d) — турель станет сильнее в обороне бура и вылазках.",
-				bestCost
-			),
+			text = "Ксенита хватает — турель станет сильнее.",
 			station = "build",
 			slot = bestSlot,
 			structure = best.id,
@@ -395,7 +380,7 @@ function Goals.next(pub): Goal?
 		key = "siege",
 		icon = "threat",
 		title = "ОБОРОНА БУРА · УРОВЕНЬ " .. siege,
-		text = "Сколько продержится бур? Каждая отбитая волна открывает уровень выше.",
+		text = "Отбей все волны — откроется уровень выше.",
 		station = "launch",
 	}
 end

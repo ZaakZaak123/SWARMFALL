@@ -432,7 +432,10 @@ Defs.Upgrades = {
 		icon = "fan",
 		color = rgb(255, 220, 90),
 		stat = function(r)
-			return `+{pick(r, V.UPG_MULTISHOT.extra)} снаряд`
+			-- (rank III keeps two side shots: they hit harder and pierce — the headline says so)
+			local n = pick(r, V.UPG_MULTISHOT.extra)
+			return `+{n} {if n == 1 then "снаряд" else "снаряда"}`
+				.. (if r >= 3 then ", пробой" else "")
 		end,
 		describe = function(r)
 			return `Боковые снаряды, {pct(pick(r, V.UPG_MULTISHOT.mult))} урона.`
@@ -1256,7 +1259,30 @@ Defs.FormMastery = 10 -- M10 opens the permanent form craft
 function Defs.masteryTier(rank: number): number
 	return math.clamp(rank // 4, 0, 4)
 end
-Defs.MasteryTierColor = { rgb(255, 204, 70), rgb(255, 150, 60), rgb(255, 86, 120), rgb(182, 124, 255) }
+-- DD-113: one rarity ladder for everything that grows (the colour says "better" before any word is read): a
+-- module's tier I-III, the gun's evolution, its permanent form, the mastery steps, the shop's packs.
+Defs.Rarity = {
+	{ name = "ОБЫЧНЫЙ", color = rgb(176, 186, 200) },
+	{ name = "НЕОБЫЧНЫЙ", color = rgb(96, 222, 112) },
+	{ name = "РЕДКИЙ", color = rgb(70, 156, 255) },
+	{ name = "ЭПИЧЕСКИЙ", color = rgb(178, 98, 255) },
+	{ name = "ЛЕГЕНДАРНЫЙ", color = rgb(255, 188, 46) },
+	{ name = "МИФИЧЕСКИЙ", color = rgb(255, 66, 116) },
+}
+Defs.RarityOf = { Evolution = 5, Form = 6 } -- a module's tier N is rarity N + 1
+function Defs.rarity(i: number)
+	return Defs.Rarity[math.clamp(i, 1, #Defs.Rarity)]
+end
+-- the mastery step's colour (M1-M3 common … M16+ legendary)
+function Defs.masteryColor(rank: number): Color3
+	return Defs.rarity(Defs.masteryTier(rank) + 1).color
+end
+Defs.MasteryTierColor = {
+	Defs.Rarity[2].color,
+	Defs.Rarity[3].color,
+	Defs.Rarity[4].color,
+	Defs.Rarity[5].color,
+}
 
 -- DD-112 stage 3: evolution is earned. A gun's evolution is opened once in the armory (its component + M6
 -- + xenite + сплав); then from the third sortie on (op.runEvolution) it fires in the fight on two keys:

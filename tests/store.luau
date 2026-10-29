@@ -71,6 +71,16 @@ for _, key in Store.ProductOrder do
 	)
 	keys[key] = true
 end
+-- DD-113: every card reads in a glance — a short big number, two words at most, a rarity colour
+for _, list in { Store.Passes, Store.Products } do
+	for key, item in list do
+		local words = select(2, item.small:gsub("%S+", ""))
+		check(
+			#item.big > 0 and utf8.len(item.big) <= 5 and words <= 3 and item.rarity >= 1 and item.rarity <= 6,
+			key .. ": big «" .. item.big .. "», " .. words .. " words, rarity " .. item.rarity
+		)
+	end
+end
 check(not Store.open(), "nothing on sale while the Creator Hub ids are 0 (the armory hides its shop)")
 
 local pl = { UserId = 901, Name = "T901", Parent = true }

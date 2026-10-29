@@ -8,7 +8,20 @@
 
 local Store = {}
 
-export type Pass = { key: string, id: number, name: string, text: string, price: number, icon: string }
+-- DD-113: a card is read in a glance — `big` (the number), `small` (two words), the rarity colour, a `badge`.
+-- `name` and `text` stay for the purchase's own words (the Roblox prompt shows the Creator Hub name).
+export type Pass = {
+	key: string,
+	id: number,
+	name: string,
+	text: string,
+	price: number,
+	icon: string,
+	big: string,
+	small: string,
+	rarity: number,
+	badge: string?,
+}
 export type Product = {
 	key: string,
 	id: number,
@@ -18,6 +31,10 @@ export type Product = {
 	icon: string,
 	kind: string, -- "scrap" | "alloy"
 	amount: number,
+	big: string,
+	small: string,
+	rarity: number,
+	badge: string?,
 }
 
 Store.Passes = {
@@ -28,6 +45,10 @@ Store.Passes = {
 		text = "×2 ксенита за каждый бой. Сплав не удваивается.",
 		price = 249,
 		icon = "xenite",
+		big = "×2",
+		small = "КСЕНИТА ЗА БОЙ",
+		rarity = 5,
+		badge = "НАВСЕГДА",
 	},
 	ARMORER = {
 		key = "ARMORER",
@@ -36,6 +57,10 @@ Store.Passes = {
 		text = "+50% мастерства: модули и эволюция откроются раньше.",
 		price = 199,
 		icon = "star",
+		big = "+50%",
+		small = "МАСТЕРСТВА",
+		rarity = 5,
+		badge = "НАВСЕГДА",
 	},
 } :: { [string]: Pass }
 Store.PassOrder = { "DOUBLE_XENITE", "ARMORER" }
@@ -50,6 +75,9 @@ Store.Products = {
 		icon = "xenite",
 		kind = "scrap",
 		amount = 300,
+		big = "300",
+		small = "КСЕНИТА",
+		rarity = 2,
 	},
 	XENITE_1000 = {
 		key = "XENITE_1000",
@@ -60,6 +88,10 @@ Store.Products = {
 		icon = "xenite",
 		kind = "scrap",
 		amount = 1000,
+		big = "1000",
+		small = "КСЕНИТА",
+		rarity = 3,
+		badge = "ХИТ",
 	},
 	XENITE_3000 = {
 		key = "XENITE_3000",
@@ -70,6 +102,10 @@ Store.Products = {
 		icon = "xenite",
 		kind = "scrap",
 		amount = 3000,
+		big = "3000",
+		small = "КСЕНИТА",
+		rarity = 4,
+		badge = "ВЫГОДНО",
 	},
 	ALLOY_20 = {
 		key = "ALLOY_20",
@@ -80,6 +116,9 @@ Store.Products = {
 		icon = "core",
 		kind = "alloy",
 		amount = 20,
+		big = "20",
+		small = "СПЛАВА",
+		rarity = 3,
 	},
 	ALLOY_70 = {
 		key = "ALLOY_70",
@@ -90,6 +129,10 @@ Store.Products = {
 		icon = "core",
 		kind = "alloy",
 		amount = 70,
+		big = "70",
+		small = "СПЛАВА",
+		rarity = 4,
+		badge = "ВЫГОДНО",
 	},
 } :: { [string]: Product }
 Store.ProductOrder = { "XENITE_300", "XENITE_1000", "XENITE_3000", "ALLOY_20", "ALLOY_70" }
