@@ -83,7 +83,7 @@ end
 
 -- The results body (DD-108): a monitor's column (RES_DESK), a phone's two columns (RES_PHONE) under
 -- Roblox's own top bar.
-local RES_DESK = Vector2.new(760, 520)
+local RES_DESK = Vector2.new(760, 520) -- (DD-112: +24 when the xenite card's chips take two rows)
 local RES_PHONE = Vector2.new(820, 290) -- (DD-109, DD-110: narrower, so it is drawn bigger: it was width-bound)
 local function resultsScale(): number
 	if Theme.phone() then
@@ -862,9 +862,10 @@ local function weaponCard(id: string, order: number)
 	local w = Defs.Weapons[id]
 	local state, price = weaponState(id)
 	local selected = selectedWeapon == id
+	local size = if ui.lobbyPhone then nil else ui.lobbyCard -- (a phone's grid sets the cell)
 	local card = new("TextButton", {
 		Name = id,
-		Size = UDim2.fromOffset(250, 146),
+		Size = if size then UDim2.fromOffset(size.X, size.Y) else UDim2.fromOffset(250, 146),
 		BackgroundColor3 = C.ink,
 		BackgroundTransparency = if selected then 0.05 else 0.3,
 		Text = "",
@@ -878,7 +879,8 @@ local function weaponCard(id: string, order: number)
 		Parent = ui.weapons,
 	})
 	local scale = new("UIScale", { Parent = card })
-	local small = ui.lobbyPhone == true -- DD-107: the phone's small card (the gun, its name, one line)
+	-- DD-107: the phone's small card (the gun, its name, one line); DD-112: a short monitor's too
+	local small = ui.lobbyPhone == true or (size ~= nil and size.Y < 146)
 	local vpHolder = new(
 		"Frame",
 		{ Position = UDim2.fromOffset(6, 2), Size = UDim2.new(1, -12, 0, if small then 54 else 88), Parent = card }
@@ -1271,9 +1273,26 @@ function Menus.refreshLobby()
 		ui.metaRow.Position = UDim2.fromScale(0, 1)
 		ui.weaponsTitle.Position = UDim2.fromOffset(4, y)
 		ui.weapons.Position = UDim2.fromOffset(0, y + 22)
+		-- DD-112: the guns stand left of НА БАЗУ and above the meta row (with three or four guns home early
+		-- they ran under both); short of height they are the phone's small cards
+		local k = ui.lobbyScale.Scale
+		local pad = ui.lobbyPad
+		local innerW = gui.AbsoluteSize.X / k - pad.PaddingLeft.Offset - pad.PaddingRight.Offset
+		local innerH = gui.AbsoluteSize.Y / k - pad.PaddingTop.Offset - pad.PaddingBottom.Offset
+		local n = math.max(1, #shown)
+		local avail = innerW - 346 - 190 - 16
+		local room = innerH - (if ui.upgradesBtn.Visible then 68 else 0) - (y + 22)
+		ui.lobbyCard =
+			Vector2.new(math.clamp(math.floor((avail - (n - 1) * 14) / n), 160, 250), if room < 146 then 92 else 146)
 	end
 	if showWeapons then
-		local key = selectedWeapon .. "|" .. (prof and prof.scrap or 0) .. "|" .. table.concat(shown, ",")
+		local key = selectedWeapon
+			.. "|"
+			.. (prof and prof.scrap or 0)
+			.. "|"
+			.. table.concat(shown, ",")
+			.. "|"
+			.. tostring(not ui.lobbyPhone and ui.lobbyCard)
 		for _, id in shown do
 			key ..= "|" .. weaponState(id)
 		end
@@ -1704,6 +1723,7 @@ end
 
 -- DD-112 stage 4: the shop tab — passes (owned: «ЕСТЬ») and xenite / сплав packs, Robux prices. Only
 -- items with a Creator Hub id are listed; the server prompts the purchase.
+local ROBUX = utf8.char(0xE002) -- the Robux sign in Roblox's fonts
 local function refreshShop()
 	local flat = ui.upgrades.phone == true
 	local order = 0
@@ -1718,10 +1738,25 @@ local function refreshShop()
 			Stroke = { Color = colour, Transparency = if owned then 0.7 else 0.3 },
 			Parent = ui.shopGrid,
 		})
-		local disc = Icons.disc(item.icon, if flat then 40 else 56, colour, 43)
+		local discSize = if flat then 40 else 56
+		local disc = Icons.disc(if item.icon == "xenite" then "core" else item.icon, discSize, colour, 43)
 		disc.AnchorPoint = if flat then Vector2.zero else Vector2.new(0.5, 0)
 		disc.Position = if flat then UDim2.fromOffset(10, 10) else UDim2.new(0.5, 0, 0, 12)
 		disc.Parent = tile
+		if item.icon == "xenite" then
+			-- the purse's own crystal, not a glyph
+			for _, c in disc:GetChildren() do
+				if c:IsA("GuiObject") and c.Name ~= "Glow" then
+					c.Visible = false
+				end
+			end
+			Xenite.icon(math.floor(discSize * 0.7), {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				ZIndex = 45,
+				Parent = disc,
+			})
+		end
 		label(item.name, {
 			Position = UDim2.fromOffset(if flat then 58 else 8, if flat then 12 else 74),
 			Size = UDim2.new(1, if flat then -66 else -16, 0, 20),
@@ -1744,7 +1779,7 @@ local function refreshShop()
 			ZIndex = 43,
 			Parent = tile,
 		})
-		local b, bl = Theme.button(if owned then "ЕСТЬ" else "R$ " .. item.price, {
+		local b, bl = Theme.button(if owned then "ЕСТЬ" else ROBUX .. " " .. item.price, {
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, if flat then -8 else -12),
 			Size = UDim2.new(1, if flat then -20 else -28, 0, if flat then 32 else 40),
@@ -1874,7 +1909,7 @@ local function evoNote(wid: string, why: string?): string
 	)
 end
 
--- The pill: «ЭВОЛЮЦИЯ» (locked) → «ЭВО ◆300 ●30» (open it) → «ГРОМОВЕРЖЕЦ» (opened) → «ФОРМА ◆1200 ●100»
+-- The pill: «ЭВОЛЮЦИЯ» (locked) → «ЭВОЛЮЦИЯ ◆300 ●30» (open it) → «ГРОМОВЕРЖЕЦ» (opened) → «ФОРМА ◆1200 ●100»
 -- (make the permanent form) → «В ФОРМЕ» / «БЕЗ ФОРМЫ» (wear it or not).
 local function evolutionPill(
 	wid: string,
@@ -1893,10 +1928,13 @@ local function evolutionPill(
 	local opened = openWhy == "open"
 	local canForm, formWhy = Evolve.canForm(profile, wid)
 	local made = formWhy == "made"
+	-- M10 reached, the form waits for xenite or сплав: show its price (not the opened evolution's name)
+	local formShort = opened and (formWhy == "scrap" or formWhy == "alloy")
 	local worn = made and (profile.equip or {})[wid] == evo.id
 	local text, fill, fg, price, lock = "ЭВОЛЮЦИЯ", nil, C.dim, nil, true
 	if canOpen then
-		text, fill, fg, price, lock = "ЭВО", C.lime, C.ink, { Defs.Evolve.OpenCost, Defs.Evolve.OpenAlloy }, false
+		text, fill, fg, price, lock =
+			"ЭВОЛЮЦИЯ", C.lime, C.ink, { Defs.Evolve.OpenCost, Defs.Evolve.OpenAlloy }, false
 	elseif made then
 		text, fill, fg, lock =
 			if worn then "В ФОРМЕ" else "БЕЗ ФОРМЫ",
@@ -1906,10 +1944,12 @@ local function evolutionPill(
 	elseif canForm then
 		text, fill, fg, price, lock =
 			"ФОРМА", C.lime, C.ink, { Defs.Evolve.FormCost, Defs.Evolve.FormAlloy }, false
+	elseif formShort then
+		text, price, lock = "ФОРМА", { Defs.Evolve.FormCost, Defs.Evolve.FormAlloy }, false
 	elseif opened then
 		text, fill, fg, lock = evo.name, evo.color, C.ink, false
 	elseif openWhy == "scrap" or openWhy == "alloy" then
-		text, price, lock = "ЭВО", { Defs.Evolve.OpenCost, Defs.Evolve.OpenAlloy }, false
+		text, price, lock = "ЭВОЛЮЦИЯ", { Defs.Evolve.OpenCost, Defs.Evolve.OpenAlloy }, false
 	end
 	local pill = new("TextButton", {
 		Position = UDim2.fromOffset(x, y),
@@ -1938,7 +1978,7 @@ local function evolutionPill(
 		Size = UDim2.fromScale(0, 1),
 		AutomaticSize = Enum.AutomaticSize.X,
 		FontFace = F.head,
-		TextSize = if phone then 12 else 13,
+		TextSize = if phone then 12 else 14,
 		TextColor3 = fg,
 		LayoutOrder = 2,
 		ZIndex = 44,
@@ -1957,7 +1997,7 @@ local function evolutionPill(
 			Size = UDim2.fromScale(0, 1),
 			AutomaticSize = Enum.AutomaticSize.X,
 			FontFace = F.head,
-			TextSize = if phone then 12 else 13,
+			TextSize = if phone then 12 else 14,
 			TextColor3 = fg,
 			LayoutOrder = 4,
 			ZIndex = 44,
@@ -1976,6 +2016,16 @@ local function evolutionPill(
 			send("craftForm", evo.id)
 			Audio.play("evolve", 0.8, 1)
 			ui.armoryNoteText = "«" .. evo.name .. "» навсегда: бой начинается в форме."
+		elseif formShort then
+			ui.armoryNoteText = string.format(
+				"«%s» навсегда — %d ксенита и %d сплава (у тебя %d и %d). Бой начнётся в форме.",
+				evo.name,
+				Defs.Evolve.FormCost,
+				Defs.Evolve.FormAlloy,
+				profile.scrap or 0,
+				profile.alloy or 0
+			)
+			Audio.play("warn", 0.5)
 		else
 			ui.armoryNoteText = evoNote(wid, if opened then nil else openWhy)
 			Audio.play(if opened then "ui" else "warn", 0.5)
@@ -2007,7 +2057,7 @@ local function refreshGun(wid: string)
 	local badge = new("Frame", {
 		Position = UDim2.fromOffset(if phone then 214 else 254, (rowH - 26) / 2),
 		Size = UDim2.fromOffset(52, 26),
-		BackgroundColor3 = C.gold,
+		BackgroundColor3 = Defs.MasteryTierColor[Defs.masteryTier(rank)] or C.gold, -- the gun's step colour
 		Corner = UDim.new(1, 0),
 		ZIndex = 43,
 		Parent = body,
@@ -2127,17 +2177,18 @@ local function refreshGun(wid: string)
 				Parent = body,
 			})
 			local pad = if phone then 8 else 12
-			label(m.name .. '  <font color="#' .. C.dim:ToHex() .. '">' .. Modules.Roman[tier] .. "</font>", {
-				Position = UDim2.fromOffset(pad, if phone then 4 else 8),
-				Size = UDim2.new(1, -pad * 2 - (if phone then 92 else 108), 0, if phone then 20 else 22),
-				FontFace = F.display,
-				TextSize = if phone then 13 else 14,
-				TextColor3 = if owned then C.text else C.dim,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextTruncate = Enum.TextTruncate.AtEnd,
-				ZIndex = 44,
-				Parent = tile,
-			})
+			local title =
+				label(m.name .. '  <font color="#' .. C.dim:ToHex() .. '">' .. Modules.Roman[tier] .. "</font>", {
+					Position = UDim2.fromOffset(pad, if phone then 4 else 8),
+					Size = UDim2.new(1, -pad * 2 - (if phone then 92 else 108), 0, if phone then 20 else 22),
+					FontFace = F.display,
+					TextSize = if phone then 13 else 14,
+					TextColor3 = if owned then C.text else C.dim,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					ZIndex = 44,
+					Parent = tile,
+				})
 			-- DD-112: a tier keeps the ones below it, and each fitted module is raw damage by its tier
 			local power = math.floor((Modules.Power[tier] or 0) * 100 + 0.5)
 			label(m.text .. string.format('  <font color="#%s">+%d%% урона</font>', C.gold:ToHex(), power), {
@@ -2219,6 +2270,12 @@ local function refreshGun(wid: string)
 					})
 				end
 			end
+			-- the name takes the width the state chip leaves (a «—» leaves more than a price)
+			local function fitTitle()
+				title.Size = UDim2.new(1, -pad - chip.AbsoluteSize.X - 10, 0, if phone then 20 else 22)
+			end
+			chip:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitTitle)
+			fitTitle()
 			tile.Activated:Connect(function()
 				if inCore then
 					Audio.play("ui", 0.6)
@@ -2320,6 +2377,10 @@ function Menus.showUpgrades(weapon: string?)
 	end
 	ui.upgrades.show()
 	Menus.refreshUpgrades()
+end
+
+function Menus.hideUpgrades()
+	ui.upgrades.hide()
 end
 
 -- Settings -----------------------------------------------------------------------------------------------
@@ -2969,6 +3030,18 @@ end
 
 function Menus.showOffer(me, run)
 	local offer = me.offer
+	if ui.splashEvolving then
+		-- the cards come: the evolution's words step aside instead of standing over them
+		ui.splashEvolving = false
+		tween(ui.splashTitle, 0.2, { TextTransparency = 1 })
+		tween(ui.splashSub, 0.2, { TextTransparency = 1 })
+		task.delay(0.22, function()
+			if not ui.splashEvolving then
+				ui.splashModel.Visible = false
+				ui.splash.Visible = false
+			end
+		end)
+	end
 	ui.offerMe = me
 	ui.offerSub.Text = if run.solo
 		then "Выбери одно  ·  время остановлено"
@@ -3212,6 +3285,9 @@ function Menus.evolveSplash(evoId: string)
 	ui.splashSub.TextTransparency = 1
 	tween(ui.splashSub, 0.6, { TextTransparency = 0 })
 	task.delay(2.4, function()
+		if not ui.splashEvolving then
+			return -- cut short by the level-up cards (Menus.showOffer)
+		end
 		tween(ui.splashTitle, 0.4, { TextTransparency = 1 })
 		tween(ui.splashSub, 0.4, { TextTransparency = 1 })
 		task.wait(0.42)
@@ -3219,6 +3295,11 @@ function Menus.evolveSplash(evoId: string)
 		ui.splash.Visible = false
 		ui.splashEvolving = false
 	end)
+end
+
+-- The evolution splash is on screen (the streak words wait until it is gone: they stood on its text).
+function Menus.evolving(): boolean
+	return ui.splashEvolving == true
 end
 
 function Menus.whiteFlash(amount: number)
@@ -3630,7 +3711,10 @@ end
 
 -- Places the results for a monitor (one column) or a phone (two columns), with or without В ЛАГЕРЬ.
 local function layoutResults(phone: boolean, camp: boolean)
-	local size = if phone then RES_PHONE else RES_DESK
+	-- DD-112: on a monitor the xenite card grows a row when its chips wrap (сплав and the gun's mastery
+	-- joined the xenite's chips)
+	local extra = if phone or not ui.resChipsWrap then 0 else 24
+	local size = if phone then RES_PHONE else RES_DESK + Vector2.new(0, extra)
 	ui.resBody.Size = UDim2.fromOffset(size.X, size.Y)
 	local function at(o: GuiObject, x: number, y: number, w: number, h: number)
 		o.AnchorPoint = Vector2.zero
@@ -3641,10 +3725,9 @@ local function layoutResults(phone: boolean, camp: boolean)
 	-- bigger (they were 6 points on the owner's phone)
 	ui.resRewardHead.TextSize = if phone then 13 else 11
 	ui.resBankHead.TextSize = if phone then 12 else 10
-	ui.resRewardLines.Size = UDim2.new(1, -140, 0, if phone then 62 else 26)
-	ui.resRewardLines.UIListLayout.VerticalAlignment = if phone
-		then Enum.VerticalAlignment.Top
-		else Enum.VerticalAlignment.Center
+	ui.resRewardLines.Position = UDim2.fromOffset(124, if phone then 92 else 88)
+	ui.resRewardLines.Size = UDim2.new(1, -140, 0, if phone then 62 else 32 + extra)
+	ui.resRewardLines.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 	if phone then
 		local lw, rx, rwid = 460, 484, 336
 		ui.resTitle.TextSize = 48
@@ -3667,17 +3750,17 @@ local function layoutResults(phone: boolean, camp: boolean)
 		at(ui.resTitle, 0, 0, size.X, 70)
 		ui.resReason.TextSize = 16
 		at(ui.resReason, 0, 72, size.X, 22)
-		at(ui.resReward, 60, 112, 640, 132)
-		at(ui.resGoal, 60, 258, 640, 84)
+		at(ui.resReward, 60, 112, 640, 132 + extra)
+		at(ui.resGoal, 60, 258 + extra, 640, 84)
 		ui.resGoalText.TextSize = 13
 		ui.resGoalText.Size = UDim2.new(1, -96, 0, 32)
 		ui.resMore.AnchorPoint = Vector2.new(0.5, 0)
-		ui.resMore.Position = UDim2.fromOffset(size.X / 2, 358)
+		ui.resMore.Position = UDim2.fromOffset(size.X / 2, 358 + extra)
 		local total = 300 + (if camp then 190 else 0)
 		local x0 = (size.X - total) / 2
-		at(ui.resButton, x0, 416, 300, 64)
-		at(ui.resCamp, x0 + 310, 416, 180, 64)
-		at(ui.resVotes, size.X / 2 - 150, 490, 300, 18)
+		at(ui.resButton, x0, 416 + extra, 300, 64)
+		at(ui.resCamp, x0 + 310, 416 + extra, 180, 64)
+		at(ui.resVotes, size.X / 2 - 150, 490 + extra, 300, 18)
 		ui.resStatsPanel.Size = UDim2.fromOffset(660, 0)
 	end
 	ui.resCamp.Visible = camp
@@ -4155,6 +4238,17 @@ function Menus.showResults(result, votes, id: number, reward, canCamp: boolean?)
 			)
 		end
 	end
+	-- the chips' rows decide the card's height (one row: as before; two: a row taller)
+	task.defer(function()
+		local list = ui.resRewardLines:FindFirstChildOfClass("UIListLayout")
+		local frameH = ui.resRewardLines.AbsoluteSize.Y
+		local rowH = frameH * 24 / ui.resRewardLines.Size.Y.Offset
+		local wrap = list ~= nil and list.AbsoluteContentSize.Y > rowH * 1.5
+		if wrap ~= (ui.resChipsWrap == true) then
+			ui.resChipsWrap = wrap
+			layoutResults(Theme.phone(), ui.resCamp.Visible)
+		end
+	end)
 
 	-- one nearest goal (DD-052); after a loss, how to come back stronger instead (DD-082)
 	local g = if result.victory then Goals.next(profile) else nil

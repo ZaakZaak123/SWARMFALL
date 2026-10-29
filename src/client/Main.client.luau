@@ -2835,7 +2835,7 @@ local function frame(dt: number)
 		milestoneShown = 0
 	end
 	for _, m in MILESTONES do
-		if streak >= m[1] and milestoneShown < m[1] then
+		if streak >= m[1] and milestoneShown < m[1] and not Menus.evolving() then
 			milestoneShown = m[1]
 			Hud.milestone(m[2], m[1], m[3])
 			Audio.play("evolve", 0.55, 1.25 + m[1] / 800)
@@ -3014,8 +3014,11 @@ if RunService:IsStudio() then
 			send("like", arg)
 		elseif what == "close" then
 			HubMenus.hideAll()
+			Menus.hideUpgrades()
 		elseif what == "armory" then
 			Menus.showUpgrades(arg) -- DD-112: the armory on a gun's tab (Studio checks)
+		elseif what == "launch" then
+			Menus.openLaunch()
 		end
 		return true
 	end

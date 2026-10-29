@@ -968,7 +968,8 @@ end
 -- hero, the clock's core). With the run's level reached the gun evolves at once.
 function World:grantCores(x: number?, z: number?)
 	for _, p in self.playerList do
-		if not p.hasCore and p.alive and p.evoOpen and not p.evolved then
+		-- (a downed hero takes it too: the gun evolves once they are back up — World:evolve wants them alive)
+		if not p.hasCore and p.evoOpen and not p.evolved then
 			p.hasCore = true
 			local evo = Defs.Evolutions[p.weaponDef.evolution]
 			self:emit(E.CORE, x or p.x, z or p.z, p.id)
@@ -1183,7 +1184,7 @@ function World:evolve(id: number): boolean
 	Combat.blast(self, p, p.x, p.z, 20, 90, C.GOLD, 9)
 	if self.solo then
 		self.paused = "EVOLVE"
-		self.pauseUntil = Defs.Evolve.Pause
+		self.pauseUntil = if p.pending > 0 then Defs.Evolve.PauseCards else Defs.Evolve.Pause
 		self.pauseClock = 0
 	end
 	return true

@@ -145,6 +145,14 @@ do
 	)
 	pub.evoOpen = { W_ARC_RIFLE = true }
 	check(step("evolution open").key ~= "evo_W_ARC_RIFLE", "goal (DD-112 stage 3): an opened evolution is not asked again")
+	-- every tier II made, M8: the tiers III wait for 60 сплава; with 40 the evolution (30) can be opened now —
+	-- it comes first, then the drill defence for the rest
+	pub.evoOpen = nil
+	pub.modules.MOD_ARC_RIFLE_A2, pub.modules.MOD_ARC_RIFLE_B2, pub.modules.MOD_ARC_RIFLE_C2 = true, true, true
+	pub.mastery.W_ARC_RIFLE, pub.scrap, pub.alloy = Defs.masteryNeed("W_ARC_RIFLE", 8), 1000, 40
+	check(step("evolution before сплав").key == "evo_W_ARC_RIFLE", "goal (DD-112): an evolution that can open beats a tier waiting for сплав")
+	pub.evoOpen = { W_ARC_RIFLE = true }
+	check(step("then сплав").key:sub(1, 6) == "alloy_", "goal (DD-112): …then the drill defence for the tier III")
 	pub.components, pub.evoOpen = nil, nil
 	pub.winsByOp.O04, pub.alloy = nil, nil
 	pub.weapons, pub.mastery, pub.modules = nil, nil, nil

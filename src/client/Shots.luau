@@ -187,10 +187,15 @@ function Shots.beam(
 )
 	local feel = Feel.get(weapon, evolved)
 	local color = Shots.color(weapon, evolved)
+	-- DD-112: the own beam shows its mastery step like the bolts do (brighter, thicker)
+	local tier = if isLocal then masteryTier else 0
+	if tier > 0 then
+		color = color:Lerp(Color3.new(1, 1, 1), 0.07 * tier)
+	end
 	local from = (character and Rig.muzzle(character)) or fallback
 	local b = feel.beam or { width = 0.8, helix = 0.5, spin = 18 }
 	local vk = math.clamp((workspace.CurrentCamera.CFrame.Position - from).Magnitude / 22, 1, 2)
-	Fx.beamDraw(key, from, to, color, b.width * (0.7 + 0.3 * vk), b.helix, b.spin)
+	Fx.beamDraw(key, from, to, color, b.width * (0.7 + 0.3 * vk) * (1 + 0.12 * tier), b.helix, b.spin)
 	if character then
 		Rig.buzz(character, 1)
 	end

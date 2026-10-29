@@ -1270,6 +1270,7 @@ Defs.Evolve = {
 	BossCoreHp = 0.75, -- the boss drops the core below this share of its health
 	CoreAt = 75, -- s: without an elite the core comes with the clock
 	Pause = 0.8, -- s: the solo fight holds still for the transformation
+	PauseCards = 1.8, -- s: …longer when level-up cards wait (they opened over the splash)
 	FormCost = 1200,
 	FormAlloy = 100,
 }

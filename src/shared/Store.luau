@@ -3,7 +3,8 @@
 -- random paid rewards. One catalogue for the server (Shop) and the armory's «МАГАЗИН» tab.
 --
 -- `id` is the Creator Hub id (a game pass id for Passes, a developer product id for Products); 0 = not made
--- yet: the item is hidden and cannot be bought. Prices are what to set in the Creator Hub (Robux).
+-- yet: the item is hidden and cannot be bought. Prices are what to set in the Creator Hub (Robux). `icon`: an
+-- Icons name, or "xenite" for the crystal the purse shows.
 
 local Store = {}
 
@@ -26,13 +27,13 @@ Store.Passes = {
 		name = "ДВОЙНОЙ КСЕНИТ",
 		text = "×2 ксенита за каждый бой. Сплав не удваивается.",
 		price = 249,
-		icon = "core",
+		icon = "xenite",
 	},
 	ARMORER = {
 		key = "ARMORER",
 		id = 0,
 		name = "ОРУЖЕЙНИК",
-		text = "+50% мастерства за убийства — модули и эволюция открываются раньше.",
+		text = "+50% мастерства: модули и эволюция откроются раньше.",
 		price = 199,
 		icon = "star",
 	},
@@ -46,7 +47,7 @@ Store.Products = {
 		name = "300 КСЕНИТА",
 		text = "Горсть руды с чужого бура.",
 		price = 49,
-		icon = "core",
+		icon = "xenite",
 		kind = "scrap",
 		amount = 300,
 	},
@@ -56,7 +57,7 @@ Store.Products = {
 		name = "1000 КСЕНИТА",
 		text = "Ящик руды: модуль и ещё на постройку.",
 		price = 149,
-		icon = "core",
+		icon = "xenite",
 		kind = "scrap",
 		amount = 1000,
 	},
@@ -66,7 +67,7 @@ Store.Products = {
 		name = "3000 КСЕНИТА",
 		text = "Вагонетка руды.",
 		price = 399,
-		icon = "core",
+		icon = "xenite",
 		kind = "scrap",
 		amount = 3000,
 	},

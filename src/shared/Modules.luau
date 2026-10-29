@@ -87,7 +87,7 @@ add("W_SCATTERGUN", "A", "Широкий залп", {
 })
 add("W_SCATTERGUN", "B", "Кинетика", {
 	{ "Реакция слабых целей", "Сильнее отбрасывание", mods = { knockMult = 1.6 } },
-	{ "Контролируемое отбрасывание", "Отброс + шоковый рывок", ranks = { UPG_DASH_SHOCK = 1 }, mods = { knockMult = 1.8 } },
+	{ "Шоковый отброс", "Отброс + шоковый рывок", ranks = { UPG_DASH_SHOCK = 1 }, mods = { knockMult = 1.8 } },
 	{ "Силовая волна", "Сильный шоковый рывок", ranks = { UPG_DASH_SHOCK = 2 }, mods = { knockMult = 2 } },
 })
 add("W_SCATTERGUN", "C", "Термокамера", {
